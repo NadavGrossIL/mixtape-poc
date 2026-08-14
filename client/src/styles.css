@@ -886,4 +886,15 @@
     font-size: 9.5px;
     letter-spacing: 0.5px;
   }
+  /* phones: cassette before the chips so it lands in the first viewport
+     (visual order only — the chips stay last in DOM and tab order) */
+  .chips {
+    order: 1;
+  }
+  .deck-hero {
+    margin-top: 14px;
+  }
+  .deck {
+    width: min(240px, 68vw);
+  }
 }

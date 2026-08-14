@@ -1,17 +1,17 @@
 // Eval step 3: aggregate a judged run into the metrics the harness exists to
 // measure — per-outcome counts and rates (overall and split by Spotify
-// resolution), evidence downgrades (see enforceVerdict in judge.js), and
+// resolution), evidence downgrades (see enforceVerdict in judge.ts), and
 // error totals.
 //
 // Usage:
-//   node evals/aggregate.js                    # aggregate the latest run
-//   node evals/aggregate.js evals/runs/<ts>    # aggregate a specific run
+//   node evals/aggregate.ts                    # aggregate the latest run
+//   node evals/aggregate.ts evals/runs/<ts>    # aggregate a specific run
 //
 // Prints a table and writes <run>/summary.json next to verdicts.json.
 
-const fs = require("fs");
-const path = require("path");
-const { resolveRunDir, readJson, writeJson } = require("./util");
+import fs from "node:fs";
+import path from "node:path";
+import { resolveRunDir, readJson, writeJson } from "./util.ts";
 
 // A note's outcome is its classification, except for "specific-checkable"
 // notes where the verification verdict takes over (prefixed, so "true" can't
@@ -29,43 +29,46 @@ const OUTCOME_ORDER = [
 
 const SPLITS = ["overall", "resolved", "unresolved", "unknown-resolution"];
 
-function outcomeOf(note) {
+function outcomeOf(note: any): string {
   if (note.classification === "specific-checkable") {
     return `specific-${note.verification}`;
   }
   return note.classification;
 }
 
-function splitOf(note) {
+function splitOf(note: any): string {
   if (note.resolved) return "resolved";
   if (note.resolved === false) return "unresolved";
   return "unknown-resolution"; // null = notes-only run (no Spotify)
 }
 
-function rate(n, d) {
+function rate(n: number, d: number): number | null {
   return d ? Number((n / d).toFixed(4)) : null;
 }
 
-function aggregateRun(runDir) {
+function aggregateRun(runDir: string) {
   const verdictsPath = path.join(runDir, "verdicts.json");
   if (!fs.existsSync(verdictsPath)) {
-    throw new Error(`No verdicts.json in ${runDir} — run judge.js first`);
+    throw new Error(`No verdicts.json in ${runDir} — run judge.ts first`);
   }
   const verdicts = readJson(verdictsPath);
   const cardsPath = path.join(runDir, "cards.json");
   const cardEntries = fs.existsSync(cardsPath) ? readJson(cardsPath) : [];
 
-  const judged = verdicts.filter((e) => e.notes);
-  const judgeErrors = verdicts.filter((e) => !e.notes);
+  const judged = verdicts.filter((e: any) => e.notes);
+  const judgeErrors = verdicts.filter((e: any) => !e.notes);
 
-  const counts = {};
-  const totals = {};
+  const counts: Record<string, Record<string, number>> = {};
+  const totals: Record<string, number> = {};
   for (const s of SPLITS) {
     counts[s] = {};
     totals[s] = 0;
   }
-  const downgrades = { total: 0, byReason: {} };
-  const bump = (obj, key) => {
+  const downgrades: { total: number; byReason: Record<string, number> } = {
+    total: 0,
+    byReason: {},
+  };
+  const bump = (obj: Record<string, number>, key: string) => {
     obj[key] = (obj[key] || 0) + 1;
   };
 
@@ -73,8 +76,8 @@ function aggregateRun(runDir) {
     for (const note of entry.notes) {
       const outcome = outcomeOf(note);
       for (const s of ["overall", splitOf(note)]) {
-        bump(counts[s], outcome);
-        totals[s]++;
+        bump(counts[s]!, outcome);
+        totals[s]!++;
       }
       if (note.downgraded) {
         downgrades.total++;
@@ -83,54 +86,54 @@ function aggregateRun(runDir) {
     }
   }
 
-  const rates = {};
+  const rates: Record<string, Record<string, number | null>> = {};
   for (const s of SPLITS) {
     rates[s] = {};
-    for (const [k, n] of Object.entries(counts[s])) rates[s][k] = rate(n, totals[s]);
+    for (const [k, n] of Object.entries(counts[s]!)) rates[s]![k] = rate(n, totals[s]!);
   }
 
   // Checkable notes = every specific-* outcome except the subjective ones.
-  const checkable = Object.entries(counts.overall)
+  const checkable = Object.entries(counts.overall!)
     .filter(([k]) => k.startsWith("specific-") && k !== "specific-subjective")
     .reduce((sum, [, n]) => sum + n, 0);
-  const resolutionKnown = totals.resolved + totals.unresolved;
+  const resolutionKnown = totals.resolved! + totals.unresolved!;
 
   return {
     runDir,
     generatedAt: new Date().toISOString(),
     cards: {
       prompts: cardEntries.length,
-      generated: cardEntries.filter((c) => c.card).length,
-      generateErrors: cardEntries.filter((c) => !c.card).length,
+      generated: cardEntries.filter((c: any) => c.card).length,
+      generateErrors: cardEntries.filter((c: any) => !c.card).length,
       judged: judged.length,
       judgeErrors: judgeErrors.length,
-      judgeErrorIds: judgeErrors.map((e) => e.id),
+      judgeErrorIds: judgeErrors.map((e: any) => e.id),
     },
     notes: {
-      total: totals.overall,
-      resolved: totals.resolved,
-      unresolved: totals.unresolved,
-      unknownResolution: totals["unknown-resolution"],
+      total: totals.overall!,
+      resolved: totals.resolved!,
+      unresolved: totals.unresolved!,
+      unknownResolution: totals["unknown-resolution"]!,
     },
     outcomes: counts,
     rates,
     headline: {
       checkableNotes: checkable,
-      inventedRate: rate(counts.overall["specific-invented"] || 0, checkable),
-      verifiedTrueRate: rate(counts.overall["specific-true"] || 0, checkable),
-      unverifiableRate: rate(counts.overall["specific-unverifiable"] || 0, checkable),
-      genericRate: rate(counts.overall.generic || 0, totals.overall),
-      resolutionRate: rate(totals.resolved, resolutionKnown),
+      inventedRate: rate(counts.overall!["specific-invented"] || 0, checkable),
+      verifiedTrueRate: rate(counts.overall!["specific-true"] || 0, checkable),
+      unverifiableRate: rate(counts.overall!["specific-unverifiable"] || 0, checkable),
+      genericRate: rate(counts.overall!.generic || 0, totals.overall!),
+      resolutionRate: rate(totals.resolved!, resolutionKnown),
     },
     downgrades,
   };
 }
 
-function pct(fraction) {
+function pct(fraction: number | null | undefined): string {
   return fraction == null ? "—" : `${(fraction * 100).toFixed(1)}%`;
 }
 
-function renderSummary(s) {
+function renderSummary(s: any): string {
   const lines = [];
   const c = s.cards;
   lines.push(
@@ -151,7 +154,7 @@ function renderSummary(s) {
   ];
   const cols = ["overall", "resolved", "unresolved"];
   if (s.notes.unknownResolution) cols.push("unknown-resolution");
-  const denom = {
+  const denom: Record<string, number> = {
     overall: s.notes.total,
     resolved: s.notes.resolved,
     unresolved: s.notes.unresolved,
@@ -166,7 +169,7 @@ function renderSummary(s) {
     const row = cols
       .map((col) => {
         const n = s.outcomes[col][k] || 0;
-        return `${n}  (${pct(rate(n, denom[col]))})`.padStart(W);
+        return `${n}  (${pct(rate(n, denom[col]!))})`.padStart(W);
       })
       .join("");
     lines.push(k.padEnd(W0) + row);
@@ -203,7 +206,7 @@ function main() {
   console.log(`\n[aggregate] wrote ${summaryPath}`);
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   try {
     main();
   } catch (err) {
@@ -212,5 +215,5 @@ if (require.main === module) {
   }
 }
 
-// Exported for evals/selftest.js.
-module.exports = { aggregateRun, renderSummary };
+// Exported for evals/selftest.ts.
+export { aggregateRun, renderSummary };

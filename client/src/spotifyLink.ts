@@ -27,8 +27,8 @@ const FALLBACK_MS = 1500;
 // https://open.spotify.com/track/abc123?si=… → spotify:track:abc123
 // https://open.spotify.com/search/a%20b     → spotify:search:a%20b
 // Returns null for anything we don't recognise, which means "just use the web".
-export function toAppUri(webUrl) {
-  let url;
+export function toAppUri(webUrl: string): string | null {
+  let url: URL;
   try {
     url = new URL(webUrl, window.location.href);
   } catch {
@@ -50,12 +50,12 @@ export function toAppUri(webUrl) {
   return null;
 }
 
-function openWeb(webUrl) {
+function openWeb(webUrl: string) {
   window.open(webUrl, "_blank", "noopener,noreferrer");
 }
 
 // Call from a click handler that has already preventDefault()ed.
-export function openInSpotify(webUrl) {
+export function openInSpotify(webUrl: string) {
   const uri = toAppUri(webUrl);
   if (!uri) return openWeb(webUrl);
 

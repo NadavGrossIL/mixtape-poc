@@ -5,20 +5,20 @@
 // web_search tool. Verdicts come back through a strict tool schema.
 //
 // Usage:
-//   node evals/judge.js                    # judge the latest run
-//   node evals/judge.js evals/runs/<ts>    # judge a specific run
+//   node evals/judge.ts                    # judge the latest run
+//   node evals/judge.ts evals/runs/<ts>    # judge a specific run
 //
 // Writes <run>/verdicts.json (incrementally, one entry per card).
 
-const fs = require("fs");
-const path = require("path");
-const {
+import fs from "node:fs";
+import path from "node:path";
+import {
   loadServerEnv,
   requireAnthropic,
   resolveRunDir,
   readJson,
   writeJson,
-} = require("./util");
+} from "./util.ts";
 
 loadServerEnv();
 
@@ -120,12 +120,12 @@ When all notes are handled, call record_verdicts exactly once with one entry per
 // here instead of trusting the model. Same for the verification enum itself
 // (strict mode should guarantee it, but don't rely on that). Violations are
 // downgraded to "unverifiable", never dropped: the record keeps the original
-// value in `rawVerification` plus a `downgraded` flag so aggregate.js can
+// value in `rawVerification` plus a `downgraded` flag so aggregate.ts can
 // count them.
 const VALID_VERIFICATIONS =
   VERDICTS_TOOL.input_schema.properties.verdicts.items.properties.verification.enum;
 
-function enforceVerdict(v, cardId) {
+function enforceVerdict(v: any, cardId: string): any {
   if (!VALID_VERIFICATIONS.includes(v.verification)) {
     console.warn(
       `[judge]   downgrade ${cardId}#${v.index}: unknown verification ${JSON.stringify(v.verification)} -> "unverifiable"`
@@ -153,21 +153,21 @@ function enforceVerdict(v, cardId) {
 
 // Finding 17: an entry only counts as done if it actually carries verdicts —
 // error entries stay in the file for the record but get retried on rerun.
-function doneIds(existing) {
+function doneIds(existing: any[]): Set<string> {
   return new Set(existing.filter((e) => e.notes).map((e) => e.id));
 }
 
 // Finding 17: a retried card replaces its earlier (error) entry instead of
 // appending a duplicate id.
-function upsert(list, entry) {
+function upsert(list: any[], entry: any) {
   const at = list.findIndex((e) => e.id === entry.id);
   if (at === -1) list.push(entry);
   else list[at] = entry;
 }
 
-function buildCardMessage(entry) {
+function buildCardMessage(entry: any): string {
   const lines = entry.card.tracks.map(
-    (t, i) => `${i}. ${t.artist} — "${t.title}"\n   note: ${JSON.stringify(t.note)}`
+    (t: any, i: number) => `${i}. ${t.artist} — "${t.title}"\n   note: ${JSON.stringify(t.note)}`
   );
   return `Playlist prompt: ${JSON.stringify(entry.prompt)}
 Card title: ${JSON.stringify(entry.card.title)}
@@ -187,7 +187,7 @@ function emptyUsage() {
   };
 }
 
-function addUsage(total, usage) {
+function addUsage(total: any, usage: any) {
   if (!usage) return;
   total.input_tokens += usage.input_tokens || 0;
   total.output_tokens += usage.output_tokens || 0;
@@ -198,12 +198,12 @@ function addUsage(total, usage) {
 
 // One judge conversation per card. Loops on pause_turn (server-side search
 // iteration limit) and nudges once if the model ends without calling the tool.
-async function judgeCard(client, entry, usageTotal) {
+async function judgeCard(client: any, entry: any, usageTotal: any) {
   const tools = [
     { type: "web_search_20260209", name: "web_search", max_uses: MAX_SEARCHES_PER_CARD },
     VERDICTS_TOOL,
   ];
-  const messages = [{ role: "user", content: buildCardMessage(entry) }];
+  const messages: any[] = [{ role: "user", content: buildCardMessage(entry) }];
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const response = await client.messages.create({
@@ -222,7 +222,7 @@ async function judgeCard(client, entry, usageTotal) {
     addUsage(usageTotal, response.usage);
 
     const toolUse = response.content.find(
-      (b) => b.type === "tool_use" && b.name === "record_verdicts"
+      (b: any) => b.type === "tool_use" && b.name === "record_verdicts"
     );
     if (toolUse) return toolUse.input.verdicts;
 
@@ -254,7 +254,7 @@ async function main() {
   }
 
   const runDir = resolveRunDir(process.argv.slice(2));
-  const cards = readJson(path.join(runDir, "cards.json")).filter((e) => e.card);
+  const cards = readJson(path.join(runDir, "cards.json")).filter((e: any) => e.card);
   const verdictsPath = path.join(runDir, "verdicts.json");
   const existing = fs.existsSync(verdictsPath) ? readJson(verdictsPath) : [];
   const done = doneIds(existing);
@@ -275,17 +275,17 @@ async function main() {
     let verdicts;
     try {
       verdicts = await judgeCard(client, entry, usage);
-    } catch (err) {
+    } catch (err: any) {
       console.error(`[judge] ✗ ${entry.id}: ${err.message}`);
       upsert(results, { id: entry.id, error: err.message, usage });
       writeJson(verdictsPath, results);
       continue;
     }
 
-    const notes = entry.card.tracks.map((t, idx) => {
-      const raw = verdicts.find((x) => x.index === idx) || null;
+    const notes = entry.card.tracks.map((t: any, idx: number) => {
+      const raw = verdicts.find((x: any) => x.index === idx) || null;
       const v = raw ? enforceVerdict(raw, entry.id) : null;
-      const note = {
+      const note: any = {
         index: idx,
         artist: t.artist,
         title: t.title,
@@ -303,7 +303,7 @@ async function main() {
       return note;
     });
 
-    const summary = notes.map((n) =>
+    const summary = notes.map((n: any) =>
       n.classification === "specific-checkable" ? n.verification : n.classification
     );
     console.log(`[judge]   verdicts: ${summary.join(", ")}`);
@@ -323,12 +323,12 @@ async function main() {
   console.log(`\n[judge] done → ${verdictsPath}`);
 }
 
-if (require.main === module) {
+if (import.meta.main) {
   main().catch((err) => {
     console.error(err);
     process.exit(1);
   });
 }
 
-// Exported for evals/selftest.js — pure logic only, no API calls.
-module.exports = { enforceVerdict, doneIds, upsert };
+// Exported for evals/selftest.ts — pure logic only, no API calls.
+export { enforceVerdict, doneIds, upsert };

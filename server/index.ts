@@ -1,17 +1,28 @@
 // Mixtape POC server — Express on 8888.
 // Spotify OAuth (authorization code flow) + Claude curator + track resolution.
 
-require("dotenv").config({ path: require("path").join(__dirname, ".env") });
+import "./env.ts";
 
-const express = require("express");
-const spotify = require("./spotify");
-const curator = require("./curator");
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+import express from "express";
+import type { Request, Response } from "express";
+import * as spotify from "./spotify.ts";
+import * as curator from "./curator.ts";
 
-const PORT = 8888;
+// PORT is injected by the host in production (Railway/Render); HOST must be
+// 0.0.0.0 there so the platform router can reach the container. The loopback
+// default keeps local dev LAN-invisible.
+const PORT = Number(process.env.PORT) || 8888;
+const HOST = process.env.HOST || "127.0.0.1";
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 
 const app = express();
+// req.secure must reflect the platform's TLS terminator, not the internal hop
+app.set("trust proxy", 1);
 app.use(express.json());
+app.use(express.urlencoded({ extended: false }));
 
 // ── startup credential check (warn, never crash) ─────────────
 
@@ -30,12 +41,70 @@ if (!curator.anthropicConfigured()) {
   );
 }
 
+// ── owner gate ───────────────────────────────────────────────
+
+// This server proxies two private credentials (Anthropic key, Spotify tokens)
+// with no per-request auth. Locally the loopback bind is the protection;
+// deployed, APP_SECRET turns on a cookie gate so only the owner gets in.
+// The cookie carries a hash of the secret, never the secret itself.
+const APP_SECRET = process.env.APP_SECRET || "";
+const GATE_COOKIE = "mixtape_gate";
+const GATE_TOKEN = APP_SECRET
+  ? crypto.createHash("sha256").update(APP_SECRET).digest("hex")
+  : null;
+
+function timingSafeMatch(a: unknown, b: unknown): boolean {
+  const ba = Buffer.from(String(a));
+  const bb = Buffer.from(String(b));
+  return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
+}
+
+function hasGateCookie(req: Request): boolean {
+  const pair = String(req.headers.cookie || "")
+    .split(/;\s*/)
+    .find((c) => c.startsWith(`${GATE_COOKIE}=`));
+  return Boolean(pair) && timingSafeMatch(pair!.slice(GATE_COOKIE.length + 1), GATE_TOKEN);
+}
+
+const GATE_PAGE = `<!doctype html>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mixtape</title>
+<body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#111;font-family:system-ui">
+<form method="post" action="/gate" style="display:grid;gap:12px;width:min(280px,80vw)">
+<input type="password" name="secret" placeholder="owner key" autofocus
+  style="padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:16px">
+<button style="padding:12px;border-radius:8px;border:0;background:#eee;color:#111;font-size:16px">enter</button>
+</form>`;
+
+if (APP_SECRET) {
+  app.post("/gate", (req, res) => {
+    if (!timingSafeMatch(req.body?.secret || "", APP_SECRET)) {
+      return res.status(401).type("html").send(GATE_PAGE);
+    }
+    res.setHeader(
+      "Set-Cookie",
+      `${GATE_COOKIE}=${GATE_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
+        (req.secure ? "; Secure" : "")
+    );
+    res.redirect("/");
+  });
+  app.use((req, res, next) => {
+    // /callback is exempt: Spotify lands there mid-OAuth, and the state
+    // check (issued only to a gated /auth/login) already gates it.
+    if (req.path === "/callback" || hasGateCookie(req)) return next();
+    if (req.path.startsWith("/api/") || req.path.startsWith("/auth/")) {
+      return res.status(401).json({ error: "Locked — reload the page and enter the owner key." });
+    }
+    res.status(401).type("html").send(GATE_PAGE);
+  });
+}
+
 // ── auth ─────────────────────────────────────────────────────
 
 // states issued by /auth/login, consumed by /callback — state → issued-at.
 // Expired lazily on the two auth routes; abandoned logins must not make a
 // state valid forever (or grow the map unboundedly).
-const pendingStates = new Map();
+const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 10 * 60 * 1000;
 
 function evictStaleStates() {
@@ -69,14 +138,14 @@ app.get("/callback", async (req, res) => {
       .type("text/plain")
       .send(`Spotify authorization failed: ${String(error)}`);
   }
-  if (!state || !pendingStates.has(state)) {
+  if (!state || !pendingStates.has(state as string)) {
     return res.status(400).send("State mismatch — restart the login flow.");
   }
-  pendingStates.delete(state);
+  pendingStates.delete(state as string);
   try {
-    await spotify.exchangeCode(code);
+    await spotify.exchangeCode(code as string);
     res.redirect(CLIENT_URL);
-  } catch (err) {
+  } catch (err: any) {
     console.error("[auth] token exchange failed:", err.message);
     res.status(500).send("Token exchange with Spotify failed. Check the server logs.");
   }
@@ -89,7 +158,7 @@ app.get("/auth/status", (req, res) => {
 // ── api ──────────────────────────────────────────────────────
 
 // SSE helpers — every event sent is driven by a real backend event.
-function sseInit(res) {
+function sseInit(res: Response) {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -99,7 +168,7 @@ function sseInit(res) {
   res.flushHeaders?.();
 }
 
-function sseSend(res, event, data) {
+function sseSend(res: Response, event: string, data?: unknown) {
   // A resolver worker can outlive the response (peer throws → route ends the
   // stream); writing then would emit an uncaught stream error and crash.
   if (res.writableEnded || res.destroyed) return;
@@ -113,7 +182,7 @@ app.get("/api/playlists", async (req, res) => {
   }
   try {
     res.json({ playlists: await spotify.listPlaylists() });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[playlists] failed:", err.message);
     if (err.status === 401) {
       return res.status(401).json({ error: "Not logged in to Spotify." });
@@ -160,7 +229,8 @@ app.post("/api/generate/stream", async (req, res) => {
     if (!res.writableEnded) abort.abort();
   });
   try {
-    let seed = null;
+    let seed: { name: string; tracks: { artist: string; title: string }[]; total: number } | null =
+      null;
     if (seedId) {
       sseSend(res, "seeding", { name: seedName });
       const { tracks, total } = await spotify.getSeedTracks(seedId);
@@ -197,7 +267,7 @@ app.post("/api/generate/stream", async (req, res) => {
       card,
       verified: card.tracks.filter((t) => t.resolved).length,
     });
-  } catch (err) {
+  } catch (err: any) {
     if (abort.signal.aborted) {
       console.log("[generate/stream] client disconnected — stopped");
       return res.end();
@@ -254,7 +324,7 @@ app.post("/api/adjust/stream", async (req, res) => {
       replacements,
       3,
       (event, payload) =>
-        sseSend(res, event, { ...payload, index: diff.changes[payload.index].index }),
+        sseSend(res, event, { ...payload, index: diff.changes[payload.index]!.index }),
       abort.signal
     );
     if (abort.signal.aborted) {
@@ -275,9 +345,9 @@ app.post("/api/adjust/stream", async (req, res) => {
     };
     sseSend(res, "done", {
       card: merged,
-      verified: tracks.filter((t) => t.resolved).length,
+      verified: tracks.filter((t: any) => t.resolved).length,
     });
-  } catch (err) {
+  } catch (err: any) {
     if (abort.signal.aborted) {
       console.log("[adjust/stream] client disconnected — stopped");
       return res.end();
@@ -319,7 +389,7 @@ app.post("/api/playlist", async (req, res) => {
       uris,
     });
     res.json({ playlistUrl });
-  } catch (err) {
+  } catch (err: any) {
     console.error("[playlist] failed:", err.message);
     // detail stays in the server log — clients get a generic line
     const message =
@@ -334,8 +404,25 @@ app.post("/api/playlist", async (req, res) => {
   }
 });
 
-// Loopback only: this server proxies two private credentials (Anthropic key,
-// Spotify tokens) with no per-request auth — it must not be LAN-reachable.
-app.listen(PORT, "127.0.0.1", () => {
-  console.log(`Mixtape POC server listening on http://127.0.0.1:${PORT}`);
+// ── production static client ─────────────────────────────────
+
+// In dev the Vite server proxies /api, /auth and /callback here; deployed,
+// Express serves the built client itself so everything stays same-origin
+// (no CORS, relative fetches keep working). Registered last: API routes win.
+const CLIENT_DIST = path.join(import.meta.dirname, "..", "client", "dist");
+if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
+  app.use(express.static(CLIENT_DIST));
+  app.get("*", (req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
+}
+
+if (HOST !== "127.0.0.1" && !APP_SECRET) {
+  console.warn(
+    "[config] HOST is not loopback but APP_SECRET is unset — anyone who can " +
+      "reach this server can spend the Anthropic key and write to the Spotify " +
+      "account. Set APP_SECRET."
+  );
+}
+
+app.listen(PORT, HOST, () => {
+  console.log(`Mixtape POC server listening on http://${HOST}:${PORT}`);
 });

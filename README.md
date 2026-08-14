@@ -52,6 +52,25 @@ nothing is invented for show.
 The tiny control in the bottom-right corner (dev only) cycles the candidate
 wordmarks: MADE YOU A MIXTAPE / DEEP/CUTS / PROMP/TAPE.
 
+## Deploy (Railway)
+
+The repo deploys as one always-on service: the root `package.json` builds the
+client and Express serves `client/dist` same-origin (the Vite proxy is
+dev-only). Required env vars on the host:
+
+| Var | Value |
+| --- | --- |
+| `HOST` | `0.0.0.0` |
+| `CLIENT_URL` | `/` |
+| `SPOTIFY_REDIRECT_URI` | `https://<app-host>/callback` — must also be registered in the Spotify dashboard |
+| `APP_SECRET` | owner key; gates every request behind a cookie (required off-loopback) |
+| `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `ANTHROPIC_API_KEY` | as in local dev |
+| `SPOTIFY_REFRESH_TOKEN` | paste from `server/.tokens.json` after one login — survives the host's ephemeral disk |
+
+Log in once (from any device — the callback is same-origin in production),
+copy `refresh_token` from `.tokens.json` into the env var, and the server
+re-auths itself on every cold start from then on.
+
 ## Tests
 
 ```sh

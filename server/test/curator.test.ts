@@ -2,11 +2,11 @@
 // arbitrary chunk boundaries — every test buffer below is a legal mid-stream
 // state, not necessarily valid JSON.
 
-const test = require("node:test");
-const assert = require("node:assert");
-const { extractCompleteTracks } = require("../curator.js");
+import test from "node:test";
+import assert from "node:assert";
+import { extractCompleteTracks } from "../curator.ts";
 
-const TRACK = (artist, title, note = "n") =>
+const TRACK = (artist: string, title: string, note = "n") =>
   `{"artist":${JSON.stringify(artist)},"title":${JSON.stringify(title)},"note":${JSON.stringify(note)}}`;
 
 test("returns [] before the tracks array appears", () => {
@@ -68,7 +68,7 @@ test("nested objects count as one entry (change objects wrap a track)", () => {
 
 // ── seedContext: the "in the spirit of" prompt block ─────────
 
-const { seedContext } = require("../curator.js");
+import { seedContext } from "../curator.ts";
 
 test("seedContext: names the playlist, lists every track, states the dedup rule", () => {
   const ctx = seedContext({

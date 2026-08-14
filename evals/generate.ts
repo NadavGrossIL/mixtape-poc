@@ -2,28 +2,30 @@
 // resolver when tokens work) and persist the cards.
 //
 // Usage:
-//   node evals/generate.js                 # all prompts
-//   node evals/generate.js --limit 2       # pilot: first N prompts
-//   node evals/generate.js --only id1,id2  # specific prompt ids
+//   node evals/generate.ts                 # all prompts
+//   node evals/generate.ts --limit 2       # pilot: first N prompts
+//   node evals/generate.ts --only id1,id2  # specific prompt ids
 //
 // Writes evals/runs/<timestamp>/cards.json.
 
-const path = require("path");
-const { loadServerEnv, newRunDir, readJson, writeJson, sleep } = require("./util");
+import path from "node:path";
+import { loadServerEnv, newRunDir, readJson, writeJson, sleep } from "./util.ts";
 
 loadServerEnv();
 
-const curator = require(path.join(__dirname, "..", "server", "curator"));
-const spotify = require(path.join(__dirname, "..", "server", "spotify"));
+// Dynamic imports so server/.env is in process.env before the server modules
+// evaluate (static ESM imports would hoist above loadServerEnv()).
+const curator = await import("../server/curator.ts");
+const spotify = await import("../server/spotify.ts");
 
 const DELAY_MS = 1500;
 
-function selectPrompts(argv) {
-  let prompts = readJson(path.join(__dirname, "prompts.json"));
+function selectPrompts(argv: string[]): any[] {
+  let prompts = readJson(path.join(import.meta.dirname, "prompts.json"));
   const onlyIdx = argv.indexOf("--only");
   if (onlyIdx !== -1) {
     const ids = new Set((argv[onlyIdx + 1] || "").split(","));
-    prompts = prompts.filter((p) => ids.has(p.id));
+    prompts = prompts.filter((p: any) => ids.has(p.id));
   }
   const limitIdx = argv.indexOf("--limit");
   if (limitIdx !== -1) {
@@ -55,13 +57,13 @@ async function main() {
   console.log(`[generate] run dir: ${runDir}`);
   console.log(`[generate] ${prompts.length} prompts, model ${curator.MODEL}`);
 
-  const results = [];
+  const results: any[] = [];
   for (const [i, p] of prompts.entries()) {
     console.log(`\n[generate] ${i + 1}/${prompts.length} (${p.id}): "${p.prompt}"`);
     let card;
     try {
       card = await curator.generateCard(p.prompt);
-    } catch (err) {
+    } catch (err: any) {
       console.error(`[generate] ✗ curator failed for ${p.id}: ${err.message}`);
       results.push({ ...p, error: err.message });
       writeJson(cardsPath, results);
@@ -70,11 +72,11 @@ async function main() {
     }
     console.log(`[generate]   "${card.title}" — ${card.tracks.length} tracks`);
 
-    let tracks = card.tracks.map((t) => ({ ...t, resolved: null }));
+    let tracks = card.tracks.map((t: any) => ({ ...t, resolved: null }));
     if (spotifyOk) {
       try {
         tracks = await spotify.resolveTracks(card.tracks);
-      } catch (err) {
+      } catch (err: any) {
         console.warn(`[generate] Spotify resolution failed (${err.message}) — continuing notes-only`);
         spotifyOk = false; // don't hammer a broken auth for the rest of the run
       }

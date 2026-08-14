@@ -1,4 +1,11 @@
-import { useEffect, useRef, useState } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type MutableRefObject,
+  type MouseEvent as ReactMouseEvent,
+  type PointerEvent as ReactPointerEvent,
+} from "react";
 import {
   DndContext,
   closestCenter,
@@ -6,6 +13,7 @@ import {
   TouchSensor,
   useSensor,
   useSensors,
+  type DragEndEvent,
 } from "@dnd-kit/core";
 import {
   SortableContext,
@@ -16,6 +24,78 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
 
+// The card/track shapes the server streams back. Unresolved tracks keep only
+// the curator's fields; the Spotify fields land on successful resolution.
+interface Track {
+  artist: string;
+  title: string;
+  note: string;
+  resolved: boolean;
+  spotifyUri?: string | null;
+  spotifyUrl?: string | null;
+  albumArt?: string | null;
+}
+
+interface MixCard {
+  title: string;
+  vibe: string;
+  accent: string;
+  prompt?: string;
+  seed?: { id?: string; name: string };
+  tracks: Track[];
+}
+
+interface Playlist {
+  id: string;
+  name: string;
+  total?: number | null;
+}
+
+// Progress-log line for the generate stream — written sparsely by index, so
+// the array can have holes until every "track" event has landed.
+interface LogTrack {
+  artist: string;
+  title: string;
+  resolved?: boolean;
+}
+
+// Progress-log line for the refine stream.
+interface AdjustLogLine {
+  index: number;
+  artist: string;
+  title: string;
+  resolved?: boolean;
+}
+
+// SSE payloads, per stream, as [event, data] tuples — a discriminated tuple
+// union, so narrowing on the event name types the data in the callback.
+// Events the client ignores ("seeded", "resolving") are listed for honesty.
+type GenerateStreamEvent =
+  | ["seeding", { name?: string } | null]
+  | ["seeded", { count: number; total: number } | null]
+  | ["curating", { prompt?: string } | null]
+  | ["track", { index: number; artist: string; title: string }]
+  | ["curated", { count: number; title: string } | null]
+  | ["resolving", { index: number; artist: string; title: string } | null]
+  | ["resolved", { index: number; resolved: boolean }]
+  | ["done", { card?: MixCard; verified?: number } | null]
+  | ["error", { message?: string } | null];
+
+type AdjustStreamEvent =
+  | ["adjusting", { adjustment?: string } | null]
+  | ["change", { index: number; artist: string; title: string }]
+  | ["adjusted", { count: number } | null]
+  | ["resolving", { index: number; artist: string; title: string } | null]
+  | ["resolved", { index: number; resolved: boolean }]
+  | ["done", { card?: MixCard } | null]
+  | ["error", { message?: string } | null];
+
+type SaveStreamEvent =
+  | ["creating", { name?: string } | null]
+  | ["adding", { count?: number } | null]
+  | ["done", { playlistUrl?: string } | null]
+  | ["error", { message?: string } | null];
+
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
 // The mic button only renders when the browser can actually transcribe.
 const SpeechRecognitionImpl =
@@ -25,7 +105,9 @@ const SpeechRecognitionImpl =
 
 // Color tokens live in styles.css. This map is the per-mixtape accent,
 // darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
-const ACCENT_INK = {
+// Record<string, string>: the accent name arrives from the server, and the
+// lookup below already falls back to crimson for anything unknown.
+const ACCENT_INK: Record<string, string> = {
   crimson: "#A81F24",
   cobalt: "#1F4BC7",
   forest: "#1D6A43",
@@ -62,8 +144,15 @@ const UNVERIFIED_TITLE =
   "misremembered it. Tap to search Spotify yourself.";
 
 // Minimal SSE parser over a fetch ReadableStream (native only, no libraries).
-async function readSSE(response, onEvent) {
-  const reader = response.body.getReader();
+// E is the caller's [event, data] tuple union for the stream being read — a
+// declared contract, not something the wire can prove.
+async function readSSE<E extends [string, unknown]>(
+  response: Response,
+  onEvent: (...args: E) => void
+) {
+  // these endpoints always stream a body; a bodyless response would have
+  // thrown here before the migration too
+  const reader = response.body!.getReader();
   const decoder = new TextDecoder();
   let buf = "";
   for (;;) {
@@ -85,13 +174,16 @@ async function readSSE(response, onEvent) {
         }
       }
       const data = dataLines.join("\n");
-      let parsed = null;
+      let parsed: unknown = null;
       try {
         parsed = JSON.parse(data);
       } catch {
         /* keep null */
       }
-      onEvent(event, parsed);
+      // the one cast at the wire boundary: the server's events are trusted to
+      // match the caller's declared union (unknown events fall through the
+      // caller's if/else chains unhandled, exactly as before)
+      onEvent(...([event, parsed] as E));
     }
   }
 }
@@ -197,7 +289,7 @@ function DeckHero() {
   );
 }
 
-function BrandText({ text }) {
+function BrandText({ text }: { text: string }) {
   const i = text.indexOf("/");
   if (i === -1) return <>{text}</>;
   return (
@@ -211,20 +303,32 @@ function BrandText({ text }) {
 
 // Identity for a track. Not guaranteed unique: a repeated curated track, or
 // two entries resolving to the same URI, would collide.
-const trackId = (t) => t.spotifyUri || `${t.artist}—${t.title}`;
+const trackId = (t: Track) => t.spotifyUri || `${t.artist}—${t.title}`;
 
 // Sortable/key id, made unique by position. Computed from the card's current
 // order at render time — dnd-kit snapshots items at drag start, so ids stay
 // stable for the duration of a drag, and the positional suffix makes the
 // drag-end indexOf lookup exact even with duplicate tracks.
-const sortableId = (t, i) => `${trackId(t)}#${i}`;
+const sortableId = (t: Track, i: number) => `${trackId(t)}#${i}`;
 
 // One row on the sleeve. The entire row is the drag surface (dnd-kit sortable);
 // while not editable it degrades to the plain link row it always was.
 // While a refine is in flight, drag and the swap button are disabled — the
 // server merges against the card the client sent, so mid-flight edits would
 // be clobbered by the merged result.
-function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDragged, onSwap }) {
+interface TrackRowProps {
+  id: string;
+  t: Track;
+  index: number;
+  accentInk: string;
+  editable: boolean;
+  adjusting: boolean;
+  href: string;
+  justDragged: MutableRefObject<boolean>;
+  onSwap: () => void;
+}
+
+function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDragged, onSwap }: TrackRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled: !editable || adjusting });
 
@@ -314,43 +418,45 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
 
 export default function LinerNotes() {
   const [prompt, setPrompt] = useState("");
-  const [card, setCard] = useState(null);
+  const [card, setCard] = useState<MixCard | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [loggedIn, setLoggedIn] = useState(null); // null = checking
+  const [error, setError] = useState<string | null>(null);
+  const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
   const [brandIdx, setBrandIdx] = useState(0);
   const [saving, setSaving] = useState(false);
-  const [playlistUrl, setPlaylistUrl] = useState(null);
-  const [saveError, setSaveError] = useState(null);
+  const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
   // real progress, driven only by SSE events from the backend
-  const [stage, setStage] = useState(null); // "seeding" | "curating" | "resolving"
-  const [logTracks, setLogTracks] = useState([]); // {artist, title, resolved?}
-  const [seedLog, setSeedLog] = useState(null); // {name} while seeding this run
+  const [stage, setStage] = useState<"seeding" | "curating" | "resolving" | null>(null);
+  const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
+  const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
   // "in the spirit of" seed picker
-  const [playlists, setPlaylists] = useState(null); // null=loading | [] | "unauthorized" | "error"
+  const [playlists, setPlaylists] = useState<
+    Playlist[] | "unauthorized" | "error" | null
+  >(null); // null=loading
   const [seedId, setSeedId] = useState("");
-  const [saveStage, setSaveStage] = useState(null); // "creating" | "adding N"
-  const [inputHint, setInputHint] = useState(null);
+  const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
+  const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
   // second-chance refine — same real-SSE discipline as generate
   const [adjustText, setAdjustText] = useState("");
   const [adjusting, setAdjusting] = useState(false);
-  const [adjustError, setAdjustError] = useState(null);
-  const [adjustStage, setAdjustStage] = useState(null); // "adjusting" | "resolving"
-  const [adjustLog, setAdjustLog] = useState([]); // {index, artist, title, resolved?}
+  const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [adjustStage, setAdjustStage] = useState<"adjusting" | "resolving" | null>(null);
+  const [adjustLog, setAdjustLog] = useState<AdjustLogLine[]>([]);
 
   // voice input — dictation appends to whatever is already typed
   const [listening, setListening] = useState(false);
-  const recogRef = useRef(null);
+  const recogRef = useRef<SpeechRecognition | null>(null);
   const dictatingRef = useRef(false); // user intent: mic toggled on
   const dictationBaseRef = useRef(""); // text that precedes this session's speech
   const dictatedRef = useRef(""); // latest composed text, for restart folding
 
-  const inputRef = useRef(null);
-  const refineRef = useRef(null);
-  const cardTitleRef = useRef(null);
-  const abortRef = useRef(null);
-  const adjustAbortRef = useRef(null);
+  const inputRef = useRef<HTMLTextAreaElement | null>(null);
+  const refineRef = useRef<HTMLInputElement | null>(null);
+  const cardTitleRef = useRef<HTMLHeadingElement | null>(null);
+  const abortRef = useRef<AbortController | null>(null);
+  const adjustAbortRef = useRef<AbortController | null>(null);
 
   // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
   // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
@@ -378,7 +484,7 @@ export default function LinerNotes() {
   useEffect(() => {
     fetch("/auth/status")
       .then((r) => r.json())
-      .then((d) => setLoggedIn(Boolean(d.loggedIn)))
+      .then((d: { loggedIn?: boolean }) => setLoggedIn(Boolean(d.loggedIn)))
       .catch(() => setLoggedIn(false));
   }, []);
 
@@ -390,7 +496,7 @@ export default function LinerNotes() {
       .then(async (r) => {
         if (r.status === 403) return setPlaylists("unauthorized");
         if (!r.ok) throw new Error("playlists failed");
-        const d = await r.json();
+        const d: { playlists?: Playlist[] } = await r.json();
         setPlaylists(Array.isArray(d.playlists) ? d.playlists : []);
       })
       .catch(() => setPlaylists("error"));
@@ -420,7 +526,9 @@ export default function LinerNotes() {
   // ("the mic button is on"), so onend can tell an engine timeout apart
   // from a deliberate stop and reopen the mic mid-take.
   const startRecognition = () => {
-    const recog = new SpeechRecognitionImpl();
+    // non-null: only reachable through the mic button, which renders (and
+    // wires these handlers) only when SpeechRecognitionImpl exists
+    const recog = new SpeechRecognitionImpl!();
     // one language per session is a Web Speech limitation; the browser's
     // own locale is the best single guess we have
     recog.lang = navigator.language || "en-US";
@@ -487,7 +595,7 @@ export default function LinerNotes() {
   const HOLD_MS = 400;
   const holdStartRef = useRef(0);
 
-  const micPress = (e) => {
+  const micPress = (e: ReactPointerEvent<HTMLButtonElement>) => {
     // capture the pointer so the release fires here even if the finger
     // drifts off the button mid-hold
     e.currentTarget.setPointerCapture?.(e.pointerId);
@@ -501,7 +609,7 @@ export default function LinerNotes() {
     startDictation();
   };
 
-  const micRelease = (e) => {
+  const micRelease = (e: ReactPointerEvent<HTMLButtonElement>) => {
     if (!recogRef.current || !holdStartRef.current) return;
     if (e.timeStamp - holdStartRef.current < HOLD_MS) return; // quick tap: lock on
     stopDictation();
@@ -509,13 +617,13 @@ export default function LinerNotes() {
 
   // keyboard can't hold-to-talk; Enter/Space toggles (a keyboard-sourced
   // click has detail 0, pointer clicks were already handled above)
-  const micKeyToggle = (e) => {
+  const micKeyToggle = (e: ReactMouseEvent<HTMLButtonElement>) => {
     if (e.detail !== 0) return;
     if (recogRef.current) stopDictation();
     else startDictation();
   };
 
-  const generate = async (p) => {
+  const generate = async (p?: string) => {
     const thePrompt = (p ?? prompt).trim();
     if (loading || adjusting) return;
     // a seed playlist alone is a valid ask ("just like this one")
@@ -553,12 +661,14 @@ export default function LinerNotes() {
         signal: controller.signal,
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data: { error?: string } = await response.json().catch(() => ({}));
         throw new Error(data.error || "generate failed");
       }
-      let doneCard = null;
-      let streamError = null;
-      await readSSE(response, (event, data) => {
+      // widened initializers: the assignments happen inside the readSSE
+      // callback, which TS's control-flow analysis can't see
+      let doneCard = null as MixCard | null;
+      let streamError = null as string | null;
+      await readSSE<GenerateStreamEvent>(response, (event, data) => {
         if (event === "seeding") {
           setStage("seeding");
           setSeedLog({ name: data?.name || "your playlist" });
@@ -578,13 +688,14 @@ export default function LinerNotes() {
         } else if (event === "resolved") {
           setLogTracks((ts) => {
             const next = [...ts];
-            if (next[data.index]) {
-              next[data.index] = { ...next[data.index], resolved: data.resolved };
+            const cur = next[data.index]; // local so TS narrows the sparse slot
+            if (cur) {
+              next[data.index] = { ...cur, resolved: data.resolved };
             }
             return next;
           });
         } else if (event === "done") {
-          doneCard = data?.card;
+          doneCard = data?.card ?? null;
         } else if (event === "error") {
           streamError = data?.message || "generate failed";
         }
@@ -597,7 +708,7 @@ export default function LinerNotes() {
       );
       setCard(doneCard);
     } catch (e) {
-      if (e.name === "AbortError") {
+      if (e instanceof Error && e.name === "AbortError") {
         setAnnounce("Stopped.");
       } else {
         console.error(e);
@@ -616,7 +727,7 @@ export default function LinerNotes() {
   // Second-chance refine: send the current card + an adjustment instruction,
   // stream the diff, swap in the merged card. One pipeline serves both the
   // refine box and the per-track ↻ swap buttons.
-  const refine = async (instruction) => {
+  const refine = async (instruction?: string) => {
     const theInstruction = (instruction ?? adjustText).trim();
     if (!card || adjusting || saving || loading) return;
     if (!theInstruction) {
@@ -639,12 +750,13 @@ export default function LinerNotes() {
         signal: controller.signal,
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data: { error?: string } = await response.json().catch(() => ({}));
         throw new Error(data.error || "adjust failed");
       }
-      let doneCard = null;
-      let streamError = null;
-      await readSSE(response, (event, data) => {
+      // widened initializers, same reason as in generate
+      let doneCard = null as MixCard | null;
+      let streamError = null as string | null;
+      await readSSE<AdjustStreamEvent>(response, (event, data) => {
         if (event === "adjusting") {
           setAdjustStage("adjusting");
         } else if (event === "change") {
@@ -663,7 +775,7 @@ export default function LinerNotes() {
             )
           );
         } else if (event === "done") {
-          doneCard = data?.card;
+          doneCard = data?.card ?? null;
         } else if (event === "error") {
           streamError = data?.message || "adjust failed";
         }
@@ -676,7 +788,7 @@ export default function LinerNotes() {
       setCard(doneCard);
       setAdjustText("");
     } catch (e) {
-      if (e.name === "AbortError") {
+      if (e instanceof Error && e.name === "AbortError") {
         setAnnounce("Stopped.");
       } else {
         console.error(e);
@@ -695,7 +807,7 @@ export default function LinerNotes() {
   };
 
   // Per-track swap: a canned instruction through the same refine pipeline.
-  const swapTrack = (i, t) =>
+  const swapTrack = (i: number, t: Track) =>
     refine(
       `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`
     );
@@ -728,15 +840,16 @@ export default function LinerNotes() {
         }),
       });
       if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
+        const data: { error?: string } = await response.json().catch(() => ({}));
         throw new Error(data.error || "save failed");
       }
-      let url = null;
-      let streamError = null;
-      await readSSE(response, (event, data) => {
+      // widened initializers, same reason as in generate
+      let url = null as string | null;
+      let streamError = null as string | null;
+      await readSSE<SaveStreamEvent>(response, (event, data) => {
         if (event === "creating") setSaveStage("CREATING PLAYLIST…");
         else if (event === "adding") setSaveStage(`ADDING ${data?.count} TRACKS…`);
-        else if (event === "done") url = data?.playlistUrl;
+        else if (event === "done") url = data?.playlistUrl ?? null;
         else if (event === "error") streamError = data?.message || "save failed";
       });
       if (streamError) throw new Error(streamError);
@@ -764,23 +877,30 @@ export default function LinerNotes() {
     </span>
   );
 
-  const spotifySearch = (t) =>
+  const spotifySearch = (t: Track) =>
     `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
   const editable = Boolean(card) && !playlistUrl && !saving;
 
-  const onDragEnd = ({ active, over }) => {
+  const onDragEnd = ({ active, over }: DragEndEvent) => {
     // the click that follows a drop must not open the track
     justDragged.current = true;
     setTimeout(() => (justDragged.current = false), 0);
     if (over && active.id !== over.id) {
       setCard((c) => {
+        if (!c) return c; // unreachable: a drag can only start on a rendered card
         const ids = c.tracks.map(sortableId);
         return {
           ...c,
-          tracks: arrayMove(c.tracks, ids.indexOf(active.id), ids.indexOf(over.id)),
+          // dnd-kit's UniqueIdentifier is string | number; ours are always the
+          // sortableId strings handed to SortableContext above
+          tracks: arrayMove(
+            c.tracks,
+            ids.indexOf(active.id as string),
+            ids.indexOf(over.id as string)
+          ),
         };
       });
     }

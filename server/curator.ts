@@ -4,16 +4,44 @@
 // Streaming: fine-grained tool-input streaming (eager_input_streaming, GA — no
 // beta header) lets us emit each track as the model produces it.
 
-const Anthropic = require("@anthropic-ai/sdk");
+import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL = "claude-sonnet-5";
 const TRACK_COUNT = 8;
 
 const PLACEHOLDER_RE = /^(your_|<|\.\.\.|xxx)/i;
 
-function anthropicConfigured() {
+function anthropicConfigured(): boolean {
   const key = process.env.ANTHROPIC_API_KEY || "";
   return key.length > 0 && !PLACEHOLDER_RE.test(key);
+}
+
+// A curated track, plus the optional fields Spotify resolution adds later.
+interface Track {
+  artist: string;
+  title: string;
+  note: string;
+  resolved?: boolean | null;
+  spotifyUrl?: string | null;
+  spotifyUri?: string;
+  albumArt?: string | null;
+  matchedName?: string;
+}
+
+interface MixtapeCard {
+  title: string;
+  vibe: string;
+  accent: string;
+  tracks: Track[];
+  prompt?: string;
+  seed?: { id: string; name: string };
+}
+
+interface AdjustDiff {
+  changes: { index: number; track: { artist: string; title: string; note: string } }[];
+  title?: string;
+  vibe?: string;
+  accent?: string;
 }
 
 const CURATOR_TOOL = {
@@ -142,12 +170,12 @@ You are adjusting an existing mixtape, not building a new one:
 // COMPLETE object found inside the named array so far ("tracks" for
 // create_mixtape, "changes" for adjust_mixtape).
 // String-aware brace matching — no assumptions about chunk boundaries.
-function extractCompleteTracks(buf, arrayKey = "tracks") {
+function extractCompleteTracks(buf: string, arrayKey = "tracks"): any[] {
   const key = buf.indexOf(`"${arrayKey}"`);
   if (key === -1) return [];
   const arrStart = buf.indexOf("[", key);
   if (arrStart === -1) return [];
-  const tracks = [];
+  const tracks: any[] = [];
   let depth = 0;
   let inStr = false;
   let esc = false;
@@ -184,7 +212,7 @@ function extractCompleteTracks(buf, arrayKey = "tracks") {
 // Serialize a seed playlist ({name, tracks: [{artist, title}], total}) into
 // prompt context for "in the spirit of" generation. The dedup rule is load-
 // bearing: without it the model's laziest valid answer is the playlist back.
-function seedContext(seed) {
+function seedContext(seed: { name: string; tracks: { artist: string; title: string }[]; total: number }): string {
   const lines = seed.tracks.map((t) => `${t.artist} — ${t.title}`).join("\n");
   const scope =
     seed.total > seed.tracks.length
@@ -203,7 +231,18 @@ function seedContext(seed) {
 // seed the prompt may be empty ("just like this playlist" is a valid ask).
 // signal (optional): aborting kills the model stream mid-flight (client
 // disconnect must stop the paid request); iteration then throws an abort error.
-async function generateCard(prompt, { seed, onTrack, signal } = {}) {
+async function generateCard(
+  prompt: string,
+  {
+    seed,
+    onTrack,
+    signal,
+  }: {
+    seed?: { name: string; tracks: { artist: string; title: string }[]; total: number } | null;
+    onTrack?: (index: number, t: { artist: string; title: string }) => void;
+    signal?: AbortSignal;
+  } = {}
+): Promise<MixtapeCard> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   const parts = [
@@ -216,7 +255,7 @@ async function generateCard(prompt, { seed, onTrack, signal } = {}) {
       model: MODEL,
       max_tokens: 2000,
       system: SYSTEM,
-      tools: [CURATOR_TOOL],
+      tools: [CURATOR_TOOL] as any,
       tool_choice: { type: "tool", name: "create_mixtape" },
       messages: [
         {
@@ -253,7 +292,7 @@ async function generateCard(prompt, { seed, onTrack, signal } = {}) {
   if (!toolUse) {
     throw new Error("Curator returned no tool_use block");
   }
-  const card = toolUse.input;
+  const card = toolUse.input as MixtapeCard;
   if (!Array.isArray(card.tracks) || card.tracks.length === 0) {
     throw new Error("Curator returned no tracks");
   }
@@ -274,7 +313,17 @@ async function generateCard(prompt, { seed, onTrack, signal } = {}) {
 //   { changes: [{index, track: {artist, title, note}}], title?, vibe?, accent? }
 // onChange(i, {index, track}) fires as the model streams each complete change.
 // signal: same abort contract as generateCard.
-async function adjustCard(card, adjustment, { onChange, signal } = {}) {
+async function adjustCard(
+  card: MixtapeCard,
+  adjustment: string,
+  {
+    onChange,
+    signal,
+  }: {
+    onChange?: (i: number, c: { index: number; track: { artist: string; title: string } }) => void;
+    signal?: AbortSignal;
+  } = {}
+): Promise<AdjustDiff> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   // Strip spotify resolution fields — the model doesn't need them. The
@@ -299,7 +348,7 @@ async function adjustCard(card, adjustment, { onChange, signal } = {}) {
       system: ADJUST_SYSTEM,
       // Static tool list (both tools, always) — varying it would invalidate the
       // compiled-grammar cache.
-      tools: [CURATOR_TOOL, ADJUST_TOOL],
+      tools: [CURATOR_TOOL, ADJUST_TOOL] as any,
       tool_choice: { type: "tool", name: "adjust_mixtape" },
       messages: [
         {
@@ -345,12 +394,12 @@ async function adjustCard(card, adjustment, { onChange, signal } = {}) {
   if (!toolUse) {
     throw new Error("Curator returned no tool_use block");
   }
-  const result = toolUse.input;
+  const result = toolUse.input as any;
   const rawChanges = Array.isArray(result.changes) ? result.changes : [];
   // Strict schemas can't enforce array length, index range against THIS card,
   // or duplicate indices — clamp/validate here, like the 8-track clamp above.
-  const seen = new Set();
-  const changes = [];
+  const seen = new Set<number>();
+  const changes: AdjustDiff["changes"] = [];
   for (const c of rawChanges) {
     const valid =
       c &&
@@ -379,14 +428,15 @@ async function adjustCard(card, adjustment, { onChange, signal } = {}) {
       track: { artist: c.track.artist, title: c.track.title, note: c.track.note },
     });
   }
-  const diff = { changes };
+  const diff: AdjustDiff = { changes };
   if (typeof result.title === "string" && result.title) diff.title = result.title;
   if (typeof result.vibe === "string" && result.vibe) diff.vibe = result.vibe;
   if (typeof result.accent === "string" && result.accent) diff.accent = result.accent;
   return diff;
 }
 
-module.exports = {
+export type { Track, MixtapeCard };
+export {
   anthropicConfigured,
   generateCard,
   adjustCard,

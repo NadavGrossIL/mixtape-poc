@@ -3,12 +3,12 @@
 // logic, and the finding-18 aggregation, against evals/test-fixtures/.
 //
 // Usage:
-//   node evals/selftest.js
+//   node evals/selftest.ts
 
-const assert = require("assert");
-const path = require("path");
-const { enforceVerdict, doneIds, upsert } = require("./judge");
-const { aggregateRun, renderSummary } = require("./aggregate");
+import assert from "node:assert";
+import path from "node:path";
+import { enforceVerdict, doneIds, upsert } from "./judge.ts";
+import { aggregateRun, renderSummary } from "./aggregate.ts";
 
 // --- Finding 9: enforceVerdict -----------------------------------------------
 
@@ -76,7 +76,7 @@ const done = doneIds([
 assert.ok(done.has("a") && done.has("c"));
 assert.ok(!done.has("b"), "error entries must not count as done");
 
-const list = [{ id: "b", error: "boom" }];
+const list: any[] = [{ id: "b", error: "boom" }];
 upsert(list, { id: "b", notes: [{ index: 0 }] });
 assert.strictEqual(list.length, 1, "retry must replace the error entry, not duplicate the id");
 assert.deepStrictEqual(list[0], { id: "b", notes: [{ index: 0 }] });
@@ -85,7 +85,7 @@ assert.strictEqual(list.length, 2);
 
 // --- Finding 18: aggregateRun over the fixture -------------------------------
 
-const summary = aggregateRun(path.join(__dirname, "test-fixtures", "run-fixture"));
+const summary = aggregateRun(path.join(import.meta.dirname, "test-fixtures", "run-fixture"));
 
 assert.deepStrictEqual(summary.cards, {
   prompts: 4,
@@ -109,10 +109,10 @@ assert.deepStrictEqual(summary.outcomes.overall, {
   "specific-subjective": 1,
   missing: 1,
 });
-assert.strictEqual(summary.outcomes.resolved["specific-true"], 1);
-assert.strictEqual(summary.outcomes.unresolved["specific-unverifiable"], 1);
-assert.strictEqual(summary.outcomes.unresolved.missing, 1);
-assert.strictEqual(summary.outcomes["unknown-resolution"]["specific-subjective"], 1);
+assert.strictEqual(summary.outcomes.resolved!["specific-true"], 1);
+assert.strictEqual(summary.outcomes.unresolved!["specific-unverifiable"], 1);
+assert.strictEqual(summary.outcomes.unresolved!.missing, 1);
+assert.strictEqual(summary.outcomes["unknown-resolution"]!["specific-subjective"], 1);
 assert.deepStrictEqual(summary.downgrades, { total: 1, byReason: { "evidence-missing": 1 } });
 assert.strictEqual(summary.headline.checkableNotes, 4);
 assert.strictEqual(summary.headline.inventedRate, 0.25);
@@ -120,7 +120,7 @@ assert.strictEqual(summary.headline.verifiedTrueRate, 0.25);
 assert.strictEqual(summary.headline.unverifiableRate, 0.5);
 assert.strictEqual(summary.headline.genericRate, 0.1429);
 assert.strictEqual(summary.headline.resolutionRate, 0.6667);
-assert.strictEqual(summary.rates.overall["specific-invented"], 0.1429);
+assert.strictEqual(summary.rates.overall!["specific-invented"], 0.1429);
 
 console.log("\n" + renderSummary(summary) + "\n");
 console.log("[selftest] all assertions passed");

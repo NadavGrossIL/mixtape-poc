@@ -1,14 +1,14 @@
 // Pure matching internals of the resolver — the hallucination gate's scoring.
 
-const test = require("node:test");
-const assert = require("node:assert");
-const {
+import test from "node:test";
+import assert from "node:assert";
+import {
   normalize,
   similarity,
   artistScore,
   buildQueries,
   ARTIST_FLOOR,
-} = require("../spotify.js");
+} from "../spotify.ts";
 
 // ── normalize ────────────────────────────────────────────────
 
@@ -72,12 +72,12 @@ test("buildQueries: three strategies in order, field-filtered first", () => {
     qs.map((x) => x.strategy),
     ["field", "plain", "normalized"]
   );
-  assert.strictEqual(qs[0].q, 'artist:"Adele" track:"Hello"');
+  assert.strictEqual(qs[0]!.q, 'artist:"Adele" track:"Hello"');
 });
 
-test("buildQueries: strips \" from values in the field filter", () => {
+test('buildQueries: strips " from values in the field filter', () => {
   const qs = buildQueries({ artist: 'The "Fake" Band', title: 'Say "Hi"' });
-  const field = qs.find((x) => x.strategy === "field");
+  const field = qs.find((x) => x.strategy === "field")!;
   // only the four delimiting quotes survive — none from the values
   assert.strictEqual(field.q, 'artist:"The Fake Band" track:"Say Hi"');
   assert.strictEqual((field.q.match(/"/g) || []).length, 4);
@@ -92,7 +92,7 @@ test("buildQueries: drops empty and duplicate queries", () => {
 
 // ── sampleTracks ─────────────────────────────────────────────
 
-const { sampleTracks, SEED_TRACK_CAP } = require("../spotify.js");
+import { sampleTracks, SEED_TRACK_CAP } from "../spotify.ts";
 
 test("sampleTracks: at or under the cap returns the input unchanged", () => {
   const tracks = [{ title: "a" }, { title: "b" }];
@@ -105,11 +105,11 @@ test("sampleTracks: over the cap samples evenly — ordered, no duplicates, ends
   const out = sampleTracks(tracks, 80);
   assert.strictEqual(out.length, 80);
   // starts at the top; a top-only slice would end at 79, not deep in the tail
-  assert.strictEqual(out[0].title, "0");
-  assert.ok(Number(out[out.length - 1].title) >= 195);
+  assert.strictEqual(out[0]!.title, "0");
+  assert.ok(Number(out[out.length - 1]!.title) >= 195);
   // strictly increasing source positions = order preserved and no duplicates
   const idx = out.map((t) => Number(t.title));
-  for (let i = 1; i < idx.length; i++) assert.ok(idx[i] > idx[i - 1]);
+  for (let i = 1; i < idx.length; i++) assert.ok(idx[i]! > idx[i - 1]!);
 });
 
 test("sampleTracks: default cap is SEED_TRACK_CAP", () => {

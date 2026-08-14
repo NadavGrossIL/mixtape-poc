@@ -12,14 +12,19 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          # 24 LTS: runs .ts files natively (type stripping), has import.meta.main
+          node-version: 24
 
       - name: Server tests
         working-directory: server
         run: npm ci && npm test
 
+      - name: Typecheck
+        working-directory: server
+        run: npm run typecheck
+
       - name: Evals selftest
-        run: node evals/selftest.js
+        run: node evals/selftest.ts
 
       - name: Client build
         working-directory: client

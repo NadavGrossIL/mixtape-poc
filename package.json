@@ -1,0 +1,15 @@
+{
+  "name": "mixtape-poc",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Prompt → Claude-curated mixtape card → real Spotify playlist",
+  "type": "module",
+  "engines": {
+    "node": ">=24"
+  },
+  "scripts": {
+    "build": "npm --prefix client ci && npm --prefix client run build && npm --prefix server ci --omit=dev",
+    "start": "node server/index.ts",
+    "typecheck": "npm --prefix server run typecheck"
+  }
+}

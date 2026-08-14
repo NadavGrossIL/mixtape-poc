@@ -1,0 +1,27 @@
+{
+  // Typechecking only (noEmit) — the server runs directly on Node's native
+  // TypeScript type-stripping, so there is no compile step anywhere.
+  // Run via `npm run typecheck` (root) or `npm --prefix server run typecheck`.
+  "compilerOptions": {
+    "target": "esnext",
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+
+    // Node runs the .ts files as-is: imports keep their .ts extensions and
+    // only erasable TS syntax is allowed (no enums/namespaces/param props).
+    "allowImportingTsExtensions": true,
+    "erasableSyntaxOnly": true,
+    "verbatimModuleSyntax": true,
+    "noEmit": true,
+
+    "strict": true,
+    "skipLibCheck": true,
+
+    // devDeps (typescript, @types/*) are installed in server/ — the repo root
+    // has no node_modules of its own.
+    "typeRoots": ["./server/node_modules/@types"],
+    "types": ["node"]
+  },
+  "include": ["server/**/*.ts", "evals/**/*.ts"],
+  "exclude": ["**/node_modules"]
+}

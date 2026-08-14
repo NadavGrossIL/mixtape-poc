@@ -7,14 +7,19 @@
 // - Dev-mode apps: search max limit=10; track objects no longer include
 //   popularity / external_ids / available_markets — do not reference those.
 
-const fs = require("fs");
-const path = require("path");
-const crypto = require("crypto");
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
 
-const TOKENS_PATH = path.join(__dirname, ".tokens.json");
+type HttpError = Error & { status?: number };
+
+const TOKENS_PATH = path.join(import.meta.dirname, ".tokens.json");
 const ACCOUNTS = "https://accounts.spotify.com";
 const API = "https://api.spotify.com/v1";
-const REDIRECT_URI = "http://127.0.0.1:8888/callback";
+// Deployed, this must be the app's public https://<host>/callback and match
+// the Spotify dashboard exactly; the loopback default is for local dev.
+const REDIRECT_URI =
+  process.env.SPOTIFY_REDIRECT_URI || "http://127.0.0.1:8888/callback";
 const SCOPES =
   "playlist-modify-private playlist-modify-public " +
   // read scopes power the "in the spirit of" seed picker; tokens issued
@@ -23,7 +28,7 @@ const SCOPES =
 
 const PLACEHOLDER_RE = /^(your_|sk-ant-your|<|\.\.\.|xxx)/i;
 
-function credentialsConfigured() {
+function credentialsConfigured(): boolean {
   const id = process.env.SPOTIFY_CLIENT_ID || "";
   const secret = process.env.SPOTIFY_CLIENT_SECRET || "";
   return (
@@ -36,15 +41,28 @@ function credentialsConfigured() {
 
 // ── token persistence ────────────────────────────────────────
 
-function loadTokens() {
+interface StoredTokens {
+  access_token: string | null;
+  refresh_token: string;
+  expires_at: number;
+}
+
+function loadTokens(): StoredTokens | null {
   try {
     return JSON.parse(fs.readFileSync(TOKENS_PATH, "utf8"));
   } catch {
+    // No token file (fresh container, ephemeral disk wiped on redeploy):
+    // bootstrap from SPOTIFY_REFRESH_TOKEN so a deployed server comes back
+    // logged in. expires_at 0 forces a refresh on first use.
+    const refresh = process.env.SPOTIFY_REFRESH_TOKEN || "";
+    if (refresh && !PLACEHOLDER_RE.test(refresh)) {
+      return { access_token: null, refresh_token: refresh, expires_at: 0 };
+    }
     return null;
   }
 }
 
-function saveTokens(tokens) {
+function saveTokens(tokens: StoredTokens) {
   // temp-then-rename: a crash mid-write must never corrupt .tokens.json
   // (a corrupt file silently reads as logged-out)
   const tmp = `${TOKENS_PATH}.tmp`;
@@ -52,20 +70,20 @@ function saveTokens(tokens) {
   fs.renameSync(tmp, TOKENS_PATH);
 }
 
-function isLoggedIn() {
+function isLoggedIn(): boolean {
   const t = loadTokens();
   return Boolean(t && t.refresh_token);
 }
 
 // ── OAuth (authorization code flow) ──────────────────────────
 
-function makeState() {
+function makeState(): string {
   return crypto.randomBytes(16).toString("hex");
 }
 
-function authorizeUrl(state) {
+function authorizeUrl(state: string): string {
   const params = new URLSearchParams({
-    client_id: process.env.SPOTIFY_CLIENT_ID,
+    client_id: process.env.SPOTIFY_CLIENT_ID!,
     response_type: "code",
     redirect_uri: REDIRECT_URI,
     scope: SCOPES,
@@ -74,7 +92,7 @@ function authorizeUrl(state) {
   return `${ACCOUNTS}/authorize?${params}`;
 }
 
-async function tokenRequest(body) {
+async function tokenRequest(body: Record<string, string>): Promise<any> {
   const basic = Buffer.from(
     `${process.env.SPOTIFY_CLIENT_ID}:${process.env.SPOTIFY_CLIENT_SECRET}`
   ).toString("base64");
@@ -93,7 +111,7 @@ async function tokenRequest(body) {
   return res.json();
 }
 
-async function exchangeCode(code) {
+async function exchangeCode(code: string) {
   const data = await tokenRequest({
     grant_type: "authorization_code",
     code,
@@ -106,7 +124,7 @@ async function exchangeCode(code) {
   });
 }
 
-async function refreshAccessToken() {
+async function refreshAccessToken(): Promise<StoredTokens> {
   const tokens = loadTokens();
   if (!tokens || !tokens.refresh_token) {
     throw new Error("Not logged in to Spotify");
@@ -121,35 +139,39 @@ async function refreshAccessToken() {
     refresh_token: data.refresh_token || tokens.refresh_token,
     expires_at: Date.now() + data.expires_in * 1000,
   });
-  return loadTokens();
+  return loadTokens()!;
 }
 
 // Single-flight: concurrent resolver workers seeing an expired token must
 // share ONE refresh. Parallel refreshes race on .tokens.json (last-write-wins
 // can persist a stale refresh_token when Spotify rotates it → silent logout).
-let refreshInFlight = null;
-function refreshOnce() {
+let refreshInFlight: Promise<StoredTokens> | null = null;
+function refreshOnce(): Promise<StoredTokens> {
   refreshInFlight ||= refreshAccessToken().finally(() => {
     refreshInFlight = null;
   });
   return refreshInFlight;
 }
 
-async function getAccessToken() {
+async function getAccessToken(): Promise<string> {
   let tokens = loadTokens();
   if (!tokens || !tokens.refresh_token) {
-    const err = new Error("Not logged in to Spotify");
+    const err: HttpError = new Error("Not logged in to Spotify");
     err.status = 401;
     throw err;
   }
   if (!tokens.access_token || Date.now() > tokens.expires_at - 30_000) {
     tokens = await refreshOnce();
   }
-  return tokens.access_token;
+  return tokens.access_token!;
 }
 
 // Authenticated fetch with one automatic refresh-and-retry on 401.
-async function spotifyFetch(pathname, options = {}, retried = false) {
+async function spotifyFetch(
+  pathname: string,
+  options: RequestInit & { headers?: Record<string, string> } = {},
+  retried = false
+): Promise<any> {
   const token = await getAccessToken();
   const res = await fetch(`${API}${pathname}`, {
     ...options,
@@ -173,7 +195,7 @@ async function spotifyFetch(pathname, options = {}, retried = false) {
   }
   if (!res.ok) {
     const text = await res.text().catch(() => "");
-    const err = new Error(`Spotify API ${res.status} on ${pathname}: ${text}`);
+    const err: HttpError = new Error(`Spotify API ${res.status} on ${pathname}: ${text}`);
     err.status = res.status;
     throw err;
   }
@@ -185,7 +207,7 @@ async function spotifyFetch(pathname, options = {}, retried = false) {
 
 // ── track resolution ─────────────────────────────────────────
 
-function normalize(s) {
+function normalize(s: unknown): string {
   return String(s)
     .toLowerCase()
     .normalize("NFD")
@@ -197,7 +219,7 @@ function normalize(s) {
     .trim();
 }
 
-function similarity(a, b) {
+function similarity(a: string, b: string): number {
   const na = normalize(a);
   const nb = normalize(b);
   if (!na || !nb) return 0;
@@ -215,7 +237,7 @@ const MATCH_THRESHOLD = 0.55;
 // Strip parenthetical suffixes and trailing feat./ft./featuring/with segments.
 // "Krizz Kaliko ft. Tech N9ne" → "Krizz Kaliko"
 // "Look at Me Now (verse)"     → "Look at Me Now"
-function stripSuffixes(s) {
+function stripSuffixes(s: unknown): string {
   return String(s)
     .replace(/\(.*?\)|\[.*?\]/g, " ")
     .replace(/\s+(?:feat\.?|ft\.?|featuring|with)\s+.*$/i, " ")
@@ -226,7 +248,7 @@ function stripSuffixes(s) {
 // Featured-artist-tolerant artist score: the curated artist counts as a match
 // if it is ANY of the candidate's artists (or the joined list), and a curated
 // "X ft. Y" also matches on its primary artist X alone.
-function artistScore(itemArtists, curatedArtist) {
+function artistScore(itemArtists: { name: string }[] | undefined, curatedArtist: string): number {
   const names = (itemArtists || []).map((a) => a.name);
   const candidates = names.length > 1 ? names.concat(names.join(" ")) : names;
   const variants = [curatedArtist, stripSuffixes(curatedArtist)];
@@ -243,7 +265,7 @@ function artistScore(itemArtists, curatedArtist) {
 // Search strategies, tried in order until one produces a confident match:
 // 1. field-filtered as curated, 2. plain free text, 3. normalized variant
 // (parenthetical / feat. suffixes and punctuation stripped).
-function buildQueries(track) {
+function buildQueries(track: { artist: string; title: string }): { strategy: string; q: string }[] {
   // `"` inside a value terminates the field filter early and malforms the query
   const fArtist = String(track.artist).replace(/"/g, "");
   const fTitle = String(track.title).replace(/"/g, "");
@@ -255,7 +277,7 @@ function buildQueries(track) {
       q: `${normalize(stripSuffixes(track.artist))} ${normalize(stripSuffixes(track.title))}`.trim(),
     },
   ];
-  const seen = new Set();
+  const seen = new Set<string>();
   return raw.filter(({ q }) => {
     if (!q.trim() || seen.has(q)) return false;
     seen.add(q);
@@ -268,20 +290,31 @@ function buildQueries(track) {
 // or hallucinated tracks silently "resolve" to the wrong record.
 const ARTIST_FLOOR = 0.3;
 
+// The fields resolution adds to a curated track.
+interface ResolvedFields {
+  resolved: boolean;
+  spotifyUrl?: string | null;
+  spotifyUri?: string;
+  albumArt?: string | null;
+  matchedName?: string;
+}
+
 // Resolve one curated track against Spotify search (multi-strategy).
 // Dev-mode search cap is limit=10 — use all of it.
-async function resolveTrack(track) {
+async function resolveTrack<T extends { artist: string; title: string }>(
+  track: T
+): Promise<T & ResolvedFields> {
   const label = `"${track.artist} — ${track.title}"`;
-  let best = null; // best candidate meeting the artist floor
-  let bestAny = null; // best overall, for honest fail logging
+  let best: { item: any; score: number; strategy: string } | null = null; // best candidate meeting the artist floor
+  let bestAny: { item: any; score: number; strategy: string } | null = null; // best overall, for honest fail logging
 
   for (const { strategy, q } of buildQueries(track)) {
-    let items = [];
+    let items: any[] = [];
     try {
       const params = new URLSearchParams({ q, type: "track", limit: "10" });
       const data = await spotifyFetch(`/search?${params}`);
       items = data?.tracks?.items || [];
-    } catch (err) {
+    } catch (err: any) {
       // 401 = login problem, 429 = still rate-limited after the retry —
       // both must surface as errors, never as "unresolved" (which the
       // product reads as a hallucination).
@@ -314,7 +347,7 @@ async function resolveTrack(track) {
   }
 
   const { item, score, strategy } = best;
-  const matchedName = `${(item.artists || []).map((a) => a.name).join(", ")} — ${item.name}`;
+  const matchedName = `${(item.artists || []).map((a: any) => a.name).join(", ")} — ${item.name}`;
   console.log(
     `[resolve] ✓ ${label} via ${strategy} → "${matchedName}" (${score.toFixed(2)})`
   );
@@ -334,8 +367,13 @@ async function resolveTrack(track) {
 // onProgress(event, payload) fires per track: "resolving", then "resolved".
 // signal (optional): an aborted signal stops the pool between tracks — the
 // caller checks it and discards the partial results.
-async function resolveTracks(tracks, concurrency = 3, onProgress, signal) {
-  const results = new Array(tracks.length);
+async function resolveTracks<T extends { artist: string; title: string }>(
+  tracks: T[],
+  concurrency = 3,
+  onProgress?: (event: string, payload: any) => void,
+  signal?: AbortSignal
+): Promise<(T & ResolvedFields)[]> {
+  const results: (T & ResolvedFields)[] = new Array(tracks.length);
   let next = 0;
   let failed = false; // one worker throwing must stop the others, not orphan them
   async function worker() {
@@ -344,12 +382,12 @@ async function resolveTracks(tracks, concurrency = 3, onProgress, signal) {
       if (onProgress) {
         onProgress("resolving", {
           index: i,
-          artist: tracks[i].artist,
-          title: tracks[i].title,
+          artist: tracks[i]!.artist,
+          title: tracks[i]!.title,
         });
       }
       try {
-        results[i] = await resolveTrack(tracks[i]);
+        results[i] = await resolveTrack(tracks[i]!);
       } catch (err) {
         failed = true;
         throw err;
@@ -357,10 +395,10 @@ async function resolveTracks(tracks, concurrency = 3, onProgress, signal) {
       if (onProgress) {
         onProgress("resolved", {
           index: i,
-          artist: tracks[i].artist,
-          title: tracks[i].title,
-          resolved: Boolean(results[i].resolved),
-          matched: results[i].matchedName || null,
+          artist: tracks[i]!.artist,
+          title: tracks[i]!.title,
+          resolved: Boolean(results[i]!.resolved),
+          matched: results[i]!.matchedName || null,
         });
       }
     }
@@ -381,18 +419,18 @@ const SEED_FETCH_MAX = 200;
 
 // Evenly-spaced sample preserving order — a playlist's arc is part of its
 // spirit, so never sample from just the top.
-function sampleTracks(tracks, cap = SEED_TRACK_CAP) {
+function sampleTracks<T>(tracks: T[], cap: number = SEED_TRACK_CAP): T[] {
   if (tracks.length <= cap) return tracks;
   const step = tracks.length / cap;
-  const out = [];
-  for (let i = 0; i < cap; i++) out.push(tracks[Math.floor(i * step)]);
+  const out: T[] = [];
+  for (let i = 0; i < cap; i++) out.push(tracks[Math.floor(i * step)]!);
   return out;
 }
 
 // List the user's playlists for the picker. Paginated at 50 (the API max);
 // capped at 4 pages — a picker doesn't need more than 200 entries.
 async function listPlaylists() {
-  const playlists = [];
+  const playlists: { id: string; name: string; total: number | null; owner: string | null }[] = [];
   for (let offset = 0; offset < 200; offset += 50) {
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
     const data = await spotifyFetch(`/me/playlists?${params}`);
@@ -415,9 +453,9 @@ async function listPlaylists() {
 // Fetch a playlist's tracks (artist/title only) to seed the curator.
 // No `fields` trim: the Feb 2026 renames make exact field paths risky, and a
 // wrong fields path silently returns nothing instead of erroring.
-async function getSeedTracks(playlistId) {
-  const tracks = [];
-  let total = null;
+async function getSeedTracks(playlistId: string) {
+  const tracks: { artist: string; title: string }[] = [];
+  let total: number | null = null;
   for (let offset = 0; offset < SEED_FETCH_MAX; offset += 50) {
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
     const data = await spotifyFetch(
@@ -431,7 +469,7 @@ async function getSeedTracks(playlistId) {
       // skip podcast episodes and local files — no artists to curate from
       if (!t?.name || !Array.isArray(t.artists) || t.artists.length === 0) continue;
       tracks.push({
-        artist: t.artists.map((a) => a?.name).filter(Boolean).join(", "),
+        artist: t.artists.map((a: any) => a?.name).filter(Boolean).join(", "),
         title: t.name,
       });
     }
@@ -444,7 +482,10 @@ async function getSeedTracks(playlistId) {
 
 // onProgress(event, payload) fires on the two real steps:
 // "creating" (playlist create request) and "adding" (adding N tracks).
-async function createPlaylist({ name, description, uris }, onProgress) {
+async function createPlaylist(
+  { name, description, uris }: { name: string; description: string; uris: string[] },
+  onProgress?: (event: string, data?: any) => void
+): Promise<string | null> {
   // POST /v1/me/playlists — NOT /users/{id}/playlists (removed Feb 2026)
   if (onProgress) onProgress("creating", { name });
   const playlist = await spotifyFetch("/me/playlists", {
@@ -468,7 +509,7 @@ async function createPlaylist({ name, description, uris }, onProgress) {
         await spotifyFetch(`/playlists/${playlist.id}/followers`, {
           method: "DELETE",
         });
-      } catch (cleanupErr) {
+      } catch (cleanupErr: any) {
         console.warn(
           `[playlist] cleanup of orphaned ${playlist.id} failed: ${cleanupErr.message}`
         );
@@ -479,7 +520,7 @@ async function createPlaylist({ name, description, uris }, onProgress) {
   return playlist.external_urls?.spotify || null;
 }
 
-module.exports = {
+export {
   credentialsConfigured,
   isLoggedIn,
   makeState,

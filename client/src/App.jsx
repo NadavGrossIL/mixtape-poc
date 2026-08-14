@@ -470,11 +470,7 @@ export default function LinerNotes() {
     recogRef.current?.stop();
   };
 
-  const toggleDictation = () => {
-    if (recogRef.current) {
-      stopDictation();
-      return;
-    }
+  const startDictation = () => {
     dictatingRef.current = true;
     dictationBaseRef.current = prompt.trim()
       ? prompt.replace(/\s+$/, "") + " "
@@ -483,6 +479,40 @@ export default function LinerNotes() {
     setListening(true);
     setAnnounce("Listening. Speak your prompt.");
     startRecognition();
+  };
+
+  // WhatsApp-style push-to-talk: hold the mic to record, let go to stop.
+  // A quick tap (released before the hold threshold) "locks" the mic on
+  // instead — hands-free for long prompts — and the next tap stops it.
+  const HOLD_MS = 400;
+  const holdStartRef = useRef(0);
+
+  const micPress = (e) => {
+    // capture the pointer so the release fires here even if the finger
+    // drifts off the button mid-hold
+    e.currentTarget.setPointerCapture?.(e.pointerId);
+    e.preventDefault();
+    if (recogRef.current) {
+      stopDictation(); // mic was locked on by a quick tap — this tap ends it
+      holdStartRef.current = 0;
+      return;
+    }
+    holdStartRef.current = e.timeStamp;
+    startDictation();
+  };
+
+  const micRelease = (e) => {
+    if (!recogRef.current || !holdStartRef.current) return;
+    if (e.timeStamp - holdStartRef.current < HOLD_MS) return; // quick tap: lock on
+    stopDictation();
+  };
+
+  // keyboard can't hold-to-talk; Enter/Space toggles (a keyboard-sourced
+  // click has detail 0, pointer clicks were already handled above)
+  const micKeyToggle = (e) => {
+    if (e.detail !== 0) return;
+    if (recogRef.current) stopDictation();
+    else startDictation();
   };
 
   const generate = async (p) => {
@@ -496,7 +526,7 @@ export default function LinerNotes() {
       inputRef.current?.focus();
       return;
     }
-    recogRef.current?.stop(); // pressing it while dictating ends the take
+    stopDictation(); // pressing it while dictating ends the take
     setLoading(true);
     setError(null);
     setCard(null);
@@ -814,13 +844,23 @@ export default function LinerNotes() {
                 {SpeechRecognitionImpl && (
                   <button
                     type="button"
-                    onClick={toggleDictation}
+                    onPointerDown={micPress}
+                    onPointerUp={micRelease}
+                    onPointerCancel={micRelease}
+                    onClick={micKeyToggle}
+                    onContextMenu={(e) => e.preventDefault()}
                     className={"mic-btn" + (listening ? " mic-live" : "")}
                     aria-pressed={listening}
                     aria-label={
-                      listening ? "Stop voice input" : "Speak your prompt"
+                      listening
+                        ? "Stop voice input"
+                        : "Hold to talk, or tap to keep the mic on"
                     }
-                    title={listening ? "Stop voice input" : "Speak your prompt"}
+                    title={
+                      listening
+                        ? "Stop voice input"
+                        : "Hold to talk · tap to keep the mic on"
+                    }
                   >
                     <svg
                       width="18"

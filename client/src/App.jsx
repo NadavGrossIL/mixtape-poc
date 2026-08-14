@@ -29,6 +29,16 @@ const ACCENT_INK = {
 
 // Each example demonstrates a different prompt axis: speed/skill,
 // mood+moment, discovery/language, era+audience.
+// Rotating input placeholders — one evocative prompt at a time beats a
+// static example at selling what the box can do.
+const PLACEHOLDERS = [
+  "songs for driving at night through 1984…",
+  "a mixtape for cooking with the windows open…",
+  "the sound of a beach town in the off-season…",
+  "b-sides for a long train ride north…",
+  "what my record-store clerk crush would play…",
+];
+
 const EXAMPLES = [
   "fastest rap verses ever recorded — Rap God energy",
   "songs that sound like driving home at 2am",
@@ -103,6 +113,80 @@ function Logo() {
         className="logo-accent"
       />
     </svg>
+  );
+}
+
+const TAPE_SPILL =
+  "M140 120 C118 138 88 146 76 136 C66 127 80 118 90 127 " +
+  "C100 136 118 150 152 152 C196 154 224 144 262 152 C270 153.5 276 156 278 158";
+
+// Empty-state hero: an idle deck mid-play — spoked reels turning at
+// different speeds (the take-up pack is smaller, so it spins faster) and
+// tape spilling out into a slow shimmer. Pure decoration, aria-hidden;
+// all motion lives in CSS behind the reduced-motion gate.
+function DeckHero() {
+  return (
+    <div className="deck-hero" aria-hidden="true">
+      <svg
+        className="deck"
+        viewBox="0 0 280 172"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="40" y="14" width="200" height="104" rx="8" />
+        <rect
+          x="64"
+          y="28"
+          width="152"
+          height="48"
+          rx="4"
+          strokeWidth="1.5"
+          className="deck-line"
+        />
+        {/* screws */}
+        <g className="deck-line" strokeWidth="1.5">
+          <circle cx="50" cy="24" r="2" />
+          <circle cx="230" cy="24" r="2" />
+          <circle cx="50" cy="108" r="2" />
+          <circle cx="230" cy="108" r="2" />
+        </g>
+        {/* supply reel: fat tape pack, spoked hub */}
+        <circle cx="104" cy="52" r="17" strokeWidth="2" className="deck-accent" />
+        <g className="deck-reel deck-reel-supply">
+          <circle cx="104" cy="52" r="8" />
+          <path
+            strokeWidth="1.5"
+            d="M104 45v14M97.9 48.5l12.2 7M97.9 55.5l12.2-7"
+          />
+        </g>
+        {/* take-up reel: thin pack */}
+        <circle cx="176" cy="52" r="11" strokeWidth="2" className="deck-accent" />
+        <g className="deck-reel deck-reel-takeup">
+          <circle cx="176" cy="52" r="8" />
+          <path
+            strokeWidth="1.5"
+            d="M176 45v14M169.9 48.5l12.2 7M169.9 55.5l12.2-7"
+          />
+        </g>
+        {/* tape running pack-top to pack-top */}
+        <path d="M104 35 L176 41" strokeWidth="2" className="deck-accent" />
+        <text x="140" y="96" textAnchor="middle" className="deck-label">
+          MIXTAPE — SIDE A
+        </text>
+        {/* bottom notch + capstan holes */}
+        <path d="M96 118l6-12h76l6 12" />
+        <g className="deck-line" strokeWidth="1.5">
+          <circle cx="112" cy="112" r="2.5" />
+          <circle cx="168" cy="112" r="2.5" />
+        </g>
+        {/* spilled tape: solid run + a brighter dash sliding along it */}
+        <path className="deck-tape" d={TAPE_SPILL} />
+        <path className="deck-tape-flow" d={TAPE_SPILL} />
+      </svg>
+    </div>
   );
 }
 
@@ -264,6 +348,18 @@ export default function LinerNotes() {
   const justDragged = useRef(false);
 
   const brand = BRANDS[brandIdx];
+
+  // cycle the empty-input placeholder; hold still for reduced-motion users
+  const [phIndex, setPhIndex] = useState(0);
+  useEffect(() => {
+    if (card || loading) return;
+    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
+    const t = setInterval(
+      () => setPhIndex((i) => (i + 1) % PLACEHOLDERS.length),
+      3500
+    );
+    return () => clearInterval(t);
+  }, [card, loading]);
 
   useEffect(() => {
     fetch("/auth/status")
@@ -586,9 +682,12 @@ export default function LinerNotes() {
 
         {/* login gate */}
         {loggedIn === false && (
-          <a href="/auth/login" className="btn-press">
-            CONNECT SPOTIFY
-          </a>
+          <>
+            <a href="/auth/login" className="btn-press">
+              CONNECT SPOTIFY
+            </a>
+            <DeckHero />
+          </>
         )}
 
         {loggedIn === true && (
@@ -608,7 +707,7 @@ export default function LinerNotes() {
                     generate();
                   }
                 }}
-                placeholder="songs for driving at night through 1984…"
+                placeholder={PLACEHOLDERS[phIndex]}
                 rows={2}
                 className="prompt-input"
                 aria-label="Playlist prompt"
@@ -688,6 +787,8 @@ export default function LinerNotes() {
                 ))}
               </div>
             )}
+
+            {!card && !loading && <DeckHero />}
           </>
         )}
 

@@ -701,6 +701,47 @@
   cursor: pointer;
 }
 
+/* ── empty-state deck hero ── */
+.deck-hero {
+  margin-top: 30px;
+  color: var(--ink-dim);
+}
+.deck {
+  display: block;
+  width: min(320px, 80vw);
+  height: auto;
+}
+.deck-line {
+  stroke: var(--line);
+}
+.deck-accent {
+  stroke: var(--accent-soft);
+}
+.deck-label {
+  font-family: "Space Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  fill: var(--ink-faint);
+  stroke: none;
+}
+/* fill-box makes each hub rotate around its own center */
+.deck-reel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.deck-tape {
+  stroke: var(--accent-soft);
+  stroke-width: 2;
+  opacity: 0.4;
+}
+/* the moving highlight — invisible unless motion is allowed */
+.deck-tape-flow {
+  stroke: var(--accent-soft);
+  stroke-width: 2;
+  stroke-dasharray: 26 206;
+  opacity: 0;
+}
+
 /* ── motion: opt-in only ── */
 @keyframes spin {
   to {
@@ -737,9 +778,46 @@
     transform: rotate(-0.4deg);
   }
 }
+@keyframes float {
+  50% {
+    transform: translateY(-5px);
+  }
+}
+/* cycle length = dasharray period (26 + 206) for a seamless loop */
+@keyframes tapeflow {
+  to {
+    stroke-dashoffset: -232;
+  }
+}
 @media (prefers-reduced-motion: no-preference) {
   .spinner-disc {
     animation: spin 1.4s linear infinite;
+  }
+  .deck-hero {
+    animation: lnfade 0.5s ease, float 7s ease-in-out 0.5s infinite;
+  }
+  .deck-reel-supply {
+    animation: spin 5.2s linear infinite;
+  }
+  .deck-reel-takeup {
+    animation: spin 3.4s linear infinite;
+  }
+  .deck-tape-flow {
+    opacity: 1;
+    animation: tapeflow 3.2s linear infinite;
+  }
+  /* chips deal in one after another on first paint */
+  .chip {
+    animation: lnfade 0.4s ease backwards;
+  }
+  .chip:nth-child(2) {
+    animation-delay: 0.07s;
+  }
+  .chip:nth-child(3) {
+    animation-delay: 0.14s;
+  }
+  .chip:nth-child(4) {
+    animation-delay: 0.21s;
   }
   .cursor {
     animation: lnblink 1s steps(1) infinite;

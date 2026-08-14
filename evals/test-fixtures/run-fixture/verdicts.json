@@ -1,0 +1,126 @@
+[
+  {
+    "id": "fx-1",
+    "category": "fixture",
+    "prompt": "fixture prompt one",
+    "cardTitle": "Fixture One",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Artist A",
+        "title": "Song A",
+        "note": "Recorded in one take in 1971.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Source confirms the 1971 single-take session.",
+        "evidence": [
+          { "url": "https://example.com/song-a", "snippet": "recorded in a single take in 1971" }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Artist B",
+        "title": "Song B",
+        "note": "Hit number one in 14 countries.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Chart archives show it peaked at #7 in two countries.",
+        "evidence": [
+          { "url": "https://example.com/song-b-charts", "snippet": "peaked at number 7" }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Artist C",
+        "title": "Song C",
+        "note": "Sampled a 1968 drum break.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Judge answered 'true' but cited no evidence; downgraded by enforceVerdict.",
+        "evidence": [],
+        "downgraded": "evidence-missing",
+        "rawVerification": "true"
+      },
+      {
+        "index": 3,
+        "artist": "Artist D",
+        "title": "Song D",
+        "note": "A perfect late-night groove.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "No concrete detail unique to this track.",
+        "evidence": []
+      }
+    ],
+    "usage": {
+      "input_tokens": 100,
+      "output_tokens": 100,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 3
+    }
+  },
+  {
+    "id": "fx-2",
+    "category": "fixture",
+    "prompt": "fixture prompt two",
+    "cardTitle": "Fixture Two",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Artist E",
+        "title": "Song E",
+        "note": "The bassline mimics lane markers ticking past.",
+        "resolved": null,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Concrete imagery, not fact-checkable.",
+        "evidence": []
+      },
+      {
+        "index": 1,
+        "artist": "Artist F",
+        "title": "Song F",
+        "note": "Closes with a 90-second fadeout.",
+        "resolved": false,
+        "classification": "missing",
+        "verification": "missing",
+        "reasoning": "judge returned no verdict for this index",
+        "evidence": []
+      },
+      {
+        "index": 2,
+        "artist": "Artist G",
+        "title": "Song G",
+        "note": "Produced by a legendary studio engineer.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Searched; no adequate evidence either way.",
+        "evidence": []
+      }
+    ],
+    "usage": {
+      "input_tokens": 80,
+      "output_tokens": 60,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 2
+    }
+  },
+  {
+    "id": "fx-4",
+    "error": "no record_verdicts call after 10 turns",
+    "usage": {
+      "input_tokens": 50,
+      "output_tokens": 20,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  }
+]

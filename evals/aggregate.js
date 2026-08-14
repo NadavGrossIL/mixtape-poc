@@ -1,0 +1,216 @@
+// Eval step 3: aggregate a judged run into the metrics the harness exists to
+// measure — per-outcome counts and rates (overall and split by Spotify
+// resolution), evidence downgrades (see enforceVerdict in judge.js), and
+// error totals.
+//
+// Usage:
+//   node evals/aggregate.js                    # aggregate the latest run
+//   node evals/aggregate.js evals/runs/<ts>    # aggregate a specific run
+//
+// Prints a table and writes <run>/summary.json next to verdicts.json.
+
+const fs = require("fs");
+const path = require("path");
+const { resolveRunDir, readJson, writeJson } = require("./util");
+
+// A note's outcome is its classification, except for "specific-checkable"
+// notes where the verification verdict takes over (prefixed, so "true" can't
+// be mistaken for a boolean). Unknown values pass through literally — they
+// get counted, not hidden.
+const OUTCOME_ORDER = [
+  "specific-true",
+  "specific-invented",
+  "specific-unverifiable",
+  "specific-not-applicable",
+  "specific-subjective",
+  "generic",
+  "missing",
+];
+
+const SPLITS = ["overall", "resolved", "unresolved", "unknown-resolution"];
+
+function outcomeOf(note) {
+  if (note.classification === "specific-checkable") {
+    return `specific-${note.verification}`;
+  }
+  return note.classification;
+}
+
+function splitOf(note) {
+  if (note.resolved) return "resolved";
+  if (note.resolved === false) return "unresolved";
+  return "unknown-resolution"; // null = notes-only run (no Spotify)
+}
+
+function rate(n, d) {
+  return d ? Number((n / d).toFixed(4)) : null;
+}
+
+function aggregateRun(runDir) {
+  const verdictsPath = path.join(runDir, "verdicts.json");
+  if (!fs.existsSync(verdictsPath)) {
+    throw new Error(`No verdicts.json in ${runDir} — run judge.js first`);
+  }
+  const verdicts = readJson(verdictsPath);
+  const cardsPath = path.join(runDir, "cards.json");
+  const cardEntries = fs.existsSync(cardsPath) ? readJson(cardsPath) : [];
+
+  const judged = verdicts.filter((e) => e.notes);
+  const judgeErrors = verdicts.filter((e) => !e.notes);
+
+  const counts = {};
+  const totals = {};
+  for (const s of SPLITS) {
+    counts[s] = {};
+    totals[s] = 0;
+  }
+  const downgrades = { total: 0, byReason: {} };
+  const bump = (obj, key) => {
+    obj[key] = (obj[key] || 0) + 1;
+  };
+
+  for (const entry of judged) {
+    for (const note of entry.notes) {
+      const outcome = outcomeOf(note);
+      for (const s of ["overall", splitOf(note)]) {
+        bump(counts[s], outcome);
+        totals[s]++;
+      }
+      if (note.downgraded) {
+        downgrades.total++;
+        bump(downgrades.byReason, note.downgraded);
+      }
+    }
+  }
+
+  const rates = {};
+  for (const s of SPLITS) {
+    rates[s] = {};
+    for (const [k, n] of Object.entries(counts[s])) rates[s][k] = rate(n, totals[s]);
+  }
+
+  // Checkable notes = every specific-* outcome except the subjective ones.
+  const checkable = Object.entries(counts.overall)
+    .filter(([k]) => k.startsWith("specific-") && k !== "specific-subjective")
+    .reduce((sum, [, n]) => sum + n, 0);
+  const resolutionKnown = totals.resolved + totals.unresolved;
+
+  return {
+    runDir,
+    generatedAt: new Date().toISOString(),
+    cards: {
+      prompts: cardEntries.length,
+      generated: cardEntries.filter((c) => c.card).length,
+      generateErrors: cardEntries.filter((c) => !c.card).length,
+      judged: judged.length,
+      judgeErrors: judgeErrors.length,
+      judgeErrorIds: judgeErrors.map((e) => e.id),
+    },
+    notes: {
+      total: totals.overall,
+      resolved: totals.resolved,
+      unresolved: totals.unresolved,
+      unknownResolution: totals["unknown-resolution"],
+    },
+    outcomes: counts,
+    rates,
+    headline: {
+      checkableNotes: checkable,
+      inventedRate: rate(counts.overall["specific-invented"] || 0, checkable),
+      verifiedTrueRate: rate(counts.overall["specific-true"] || 0, checkable),
+      unverifiableRate: rate(counts.overall["specific-unverifiable"] || 0, checkable),
+      genericRate: rate(counts.overall.generic || 0, totals.overall),
+      resolutionRate: rate(totals.resolved, resolutionKnown),
+    },
+    downgrades,
+  };
+}
+
+function pct(fraction) {
+  return fraction == null ? "—" : `${(fraction * 100).toFixed(1)}%`;
+}
+
+function renderSummary(s) {
+  const lines = [];
+  const c = s.cards;
+  lines.push(
+    `Cards      : ${c.prompts} prompts | ${c.generated} generated (${c.generateErrors} errored) | ` +
+      `${c.judged} judged (${c.judgeErrors} errored${c.judgeErrorIds.length ? `: ${c.judgeErrorIds.join(", ")}` : ""})`
+  );
+  lines.push(
+    `Notes      : ${s.notes.total} total | ${s.notes.resolved} resolved | ${s.notes.unresolved} unresolved` +
+      (s.notes.unknownResolution ? ` | ${s.notes.unknownResolution} unknown-resolution` : "")
+  );
+  lines.push("");
+
+  // Known outcomes in a fixed order, anything unexpected appended after.
+  const seen = Object.keys(s.outcomes.overall);
+  const ordered = [
+    ...OUTCOME_ORDER.filter((k) => seen.includes(k)),
+    ...seen.filter((k) => !OUTCOME_ORDER.includes(k)).sort(),
+  ];
+  const cols = ["overall", "resolved", "unresolved"];
+  if (s.notes.unknownResolution) cols.push("unknown-resolution");
+  const denom = {
+    overall: s.notes.total,
+    resolved: s.notes.resolved,
+    unresolved: s.notes.unresolved,
+    "unknown-resolution": s.notes.unknownResolution,
+  };
+
+  const W0 = 26;
+  const W = 20;
+  lines.push("Outcome".padEnd(W0) + cols.map((col) => col.padStart(W)).join(""));
+  lines.push("-".repeat(W0 + W * cols.length));
+  for (const k of ordered) {
+    const row = cols
+      .map((col) => {
+        const n = s.outcomes[col][k] || 0;
+        return `${n}  (${pct(rate(n, denom[col]))})`.padStart(W);
+      })
+      .join("");
+    lines.push(k.padEnd(W0) + row);
+  }
+  lines.push("");
+
+  const h = s.headline;
+  lines.push(
+    `Headline   : invented ${pct(h.inventedRate)} of checkable (${s.outcomes.overall["specific-invented"] || 0}/${h.checkableNotes}) | ` +
+      `verified-true ${pct(h.verifiedTrueRate)} | unverifiable ${pct(h.unverifiableRate)}`
+  );
+  lines.push(
+    `             generic ${pct(h.genericRate)} of all notes | resolution ${pct(h.resolutionRate)}`
+  );
+  const d = s.downgrades;
+  lines.push(
+    `Downgrades : ${d.total}` +
+      (d.total
+        ? ` (${Object.entries(d.byReason)
+            .map(([k, n]) => `${k}: ${n}`)
+            .join(", ")})`
+        : "")
+  );
+  return lines.join("\n");
+}
+
+function main() {
+  const runDir = resolveRunDir(process.argv.slice(2));
+  console.log(`[aggregate] run dir: ${runDir}\n`);
+  const summary = aggregateRun(runDir);
+  console.log(renderSummary(summary));
+  const summaryPath = path.join(runDir, "summary.json");
+  writeJson(summaryPath, summary);
+  console.log(`\n[aggregate] wrote ${summaryPath}`);
+}
+
+if (require.main === module) {
+  try {
+    main();
+  } catch (err) {
+    console.error(err);
+    process.exit(1);
+  }
+}
+
+// Exported for evals/selftest.js.
+module.exports = { aggregateRun, renderSummary };

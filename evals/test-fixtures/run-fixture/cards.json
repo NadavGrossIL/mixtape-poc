@@ -1,0 +1,46 @@
+[
+  {
+    "id": "fx-1",
+    "category": "fixture",
+    "prompt": "fixture prompt one",
+    "card": {
+      "title": "Fixture One",
+      "tracks": [
+        { "artist": "Artist A", "title": "Song A", "note": "Recorded in one take in 1971.", "resolved": true },
+        { "artist": "Artist B", "title": "Song B", "note": "Hit number one in 14 countries.", "resolved": true },
+        { "artist": "Artist C", "title": "Song C", "note": "Sampled a 1968 drum break.", "resolved": false },
+        { "artist": "Artist D", "title": "Song D", "note": "A perfect late-night groove.", "resolved": true }
+      ]
+    }
+  },
+  {
+    "id": "fx-2",
+    "category": "fixture",
+    "prompt": "fixture prompt two",
+    "card": {
+      "title": "Fixture Two",
+      "tracks": [
+        { "artist": "Artist E", "title": "Song E", "note": "The bassline mimics lane markers ticking past.", "resolved": null },
+        { "artist": "Artist F", "title": "Song F", "note": "Closes with a 90-second fadeout.", "resolved": false },
+        { "artist": "Artist G", "title": "Song G", "note": "Produced by a legendary studio engineer.", "resolved": true }
+      ]
+    }
+  },
+  {
+    "id": "fx-3",
+    "category": "fixture",
+    "prompt": "fixture prompt three",
+    "error": "curator failed: synthetic generate error"
+  },
+  {
+    "id": "fx-4",
+    "category": "fixture",
+    "prompt": "fixture prompt four",
+    "card": {
+      "title": "Fixture Four",
+      "tracks": [
+        { "artist": "Artist H", "title": "Song H", "note": "Never judged — the judge errored.", "resolved": true }
+      ]
+    }
+  }
+]

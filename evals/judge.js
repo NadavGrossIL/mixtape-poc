@@ -115,6 +115,56 @@ JUDGE RULES (binding):
 
 When all notes are handled, call record_verdicts exactly once with one entry per note (indexes 0 through N-1, in order). Do not answer in prose.`;
 
+// Finding 9: the judge prompt's binding rule — a "true" verdict requires
+// cited evidence — cannot be expressed in the strict schema, so enforce it
+// here instead of trusting the model. Same for the verification enum itself
+// (strict mode should guarantee it, but don't rely on that). Violations are
+// downgraded to "unverifiable", never dropped: the record keeps the original
+// value in `rawVerification` plus a `downgraded` flag so aggregate.js can
+// count them.
+const VALID_VERIFICATIONS =
+  VERDICTS_TOOL.input_schema.properties.verdicts.items.properties.verification.enum;
+
+function enforceVerdict(v, cardId) {
+  if (!VALID_VERIFICATIONS.includes(v.verification)) {
+    console.warn(
+      `[judge]   downgrade ${cardId}#${v.index}: unknown verification ${JSON.stringify(v.verification)} -> "unverifiable"`
+    );
+    return {
+      ...v,
+      rawVerification: v.verification,
+      verification: "unverifiable",
+      downgraded: "invalid-verdict",
+    };
+  }
+  if (v.verification === "true" && !(Array.isArray(v.evidence) && v.evidence.length > 0)) {
+    console.warn(
+      `[judge]   downgrade ${cardId}#${v.index}: "true" with no cited evidence -> "unverifiable"`
+    );
+    return {
+      ...v,
+      rawVerification: v.verification,
+      verification: "unverifiable",
+      downgraded: "evidence-missing",
+    };
+  }
+  return v;
+}
+
+// Finding 17: an entry only counts as done if it actually carries verdicts —
+// error entries stay in the file for the record but get retried on rerun.
+function doneIds(existing) {
+  return new Set(existing.filter((e) => e.notes).map((e) => e.id));
+}
+
+// Finding 17: a retried card replaces its earlier (error) entry instead of
+// appending a duplicate id.
+function upsert(list, entry) {
+  const at = list.findIndex((e) => e.id === entry.id);
+  if (at === -1) list.push(entry);
+  else list[at] = entry;
+}
+
 function buildCardMessage(entry) {
   const lines = entry.card.tracks.map(
     (t, i) => `${i}. ${t.artist} — "${t.title}"\n   note: ${JSON.stringify(t.note)}`
@@ -207,10 +257,13 @@ async function main() {
   const cards = readJson(path.join(runDir, "cards.json")).filter((e) => e.card);
   const verdictsPath = path.join(runDir, "verdicts.json");
   const existing = fs.existsSync(verdictsPath) ? readJson(verdictsPath) : [];
-  const done = new Set(existing.map((e) => e.id));
+  const done = doneIds(existing);
+  const retriable = existing.length - done.size;
 
   console.log(`[judge] run dir: ${runDir}`);
-  console.log(`[judge] ${cards.length} cards, model ${JUDGE_MODEL} (${done.size} already judged)`);
+  console.log(
+    `[judge] ${cards.length} cards, model ${JUDGE_MODEL} (${done.size} already judged${retriable ? `, ${retriable} failed — retrying` : ""})`
+  );
 
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
   const results = existing;
@@ -224,14 +277,15 @@ async function main() {
       verdicts = await judgeCard(client, entry, usage);
     } catch (err) {
       console.error(`[judge] ✗ ${entry.id}: ${err.message}`);
-      results.push({ id: entry.id, error: err.message, usage });
+      upsert(results, { id: entry.id, error: err.message, usage });
       writeJson(verdictsPath, results);
       continue;
     }
 
     const notes = entry.card.tracks.map((t, idx) => {
-      const v = verdicts.find((x) => x.index === idx) || null;
-      return {
+      const raw = verdicts.find((x) => x.index === idx) || null;
+      const v = raw ? enforceVerdict(raw, entry.id) : null;
+      const note = {
         index: idx,
         artist: t.artist,
         title: t.title,
@@ -240,8 +294,13 @@ async function main() {
         classification: v ? v.classification : "missing",
         verification: v ? v.verification : "missing",
         reasoning: v ? v.reasoning : "judge returned no verdict for this index",
-        evidence: v ? v.evidence : [],
+        evidence: v && Array.isArray(v.evidence) ? v.evidence : [],
       };
+      if (v && v.downgraded) {
+        note.downgraded = v.downgraded;
+        note.rawVerification = v.rawVerification;
+      }
+      return note;
     });
 
     const summary = notes.map((n) =>
@@ -250,7 +309,7 @@ async function main() {
     console.log(`[judge]   verdicts: ${summary.join(", ")}`);
     console.log(`[judge]   searches: ${usage.web_search_requests}`);
 
-    results.push({
+    upsert(results, {
       id: entry.id,
       category: entry.category,
       prompt: entry.prompt,
@@ -264,7 +323,12 @@ async function main() {
   console.log(`\n[judge] done → ${verdictsPath}`);
 }
 
-main().catch((err) => {
-  console.error(err);
-  process.exit(1);
-});
+if (require.main === module) {
+  main().catch((err) => {
+    console.error(err);
+    process.exit(1);
+  });
+}
+
+// Exported for evals/selftest.js — pure logic only, no API calls.
+module.exports = { enforceVerdict, doneIds, upsert };

@@ -197,6 +197,52 @@
 .prompt-input::placeholder {
   color: var(--ink-faint);
 }
+
+/* mic sits inside the textarea's corner so the stacked mobile layout
+   doesn't gain a full-width third button */
+.prompt-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+.prompt-wrap .prompt-input {
+  flex: 1;
+}
+.prompt-wrap.has-mic .prompt-input {
+  padding-right: 52px; /* text never runs under the mic */
+}
+.mic-btn {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 44px; /* full touch target, invisible padding */
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--ink-faint);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+}
+.mic-btn:hover {
+  color: var(--ink);
+}
+.mic-btn.mic-live {
+  color: var(--accent-soft);
+}
+@media (prefers-reduced-motion: no-preference) {
+  .mic-btn.mic-live svg {
+    animation: mic-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
 .input-hint {
   font-family: "Space Mono", monospace;
   font-size: 12px;
@@ -212,24 +258,41 @@
   text-align: center;
 }
 
+/* em-dash-flanked heading over each alternate way in — track-listing style */
+.section-note {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--ink-faint);
+  text-align: center;
+}
+.section-note::before {
+  content: "— ";
+}
+.section-note::after {
+  content: " —";
+}
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 28px;
+}
+
 /* ── seed picker: "in the spirit of" ── */
 .seed-row {
   display: flex;
+  flex-direction: column;
   align-items: center;
   gap: 10px;
   width: 100%;
   max-width: 560px;
-  margin-top: 12px;
-}
-.seed-label {
-  font-family: "Space Mono", monospace;
-  font-size: 11.5px;
-  letter-spacing: 1px;
-  color: var(--ink-faint);
-  flex-shrink: 0;
+  margin-top: 28px;
 }
 .seed-select {
-  flex: 1;
+  width: 100%;
   min-width: 0;
   background: var(--shell-raised);
   border: 1px solid var(--line);
@@ -264,7 +327,7 @@
   gap: 8px;
   justify-content: center;
   max-width: 560px;
-  margin-top: 18px;
+  margin-top: 12px;
 }
 .chip {
   font-family: "Space Mono", monospace;
@@ -836,10 +899,6 @@
   .input-row {
     flex-direction: column;
   }
-  .seed-row {
-    flex-direction: column;
-    align-items: stretch;
-  }
   .refine-row {
     flex-direction: column;
   }
@@ -886,10 +945,14 @@
     font-size: 9.5px;
     letter-spacing: 0.5px;
   }
-  /* phones: cassette before the chips so it lands in the first viewport
-     (visual order only — the chips stay last in DOM and tab order) */
-  .chips {
+  /* phones: cassette right after the scope line so it lands in the first
+     viewport; examples and seed follow (visual order only — DOM and tab
+     order are unchanged, and the hero holds no focusables) */
+  .examples {
     order: 1;
+  }
+  .seed-row {
+    order: 2;
   }
   .deck-hero {
     margin-top: 14px;

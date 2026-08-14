@@ -16,6 +16,13 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
 
+// Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
+// The mic button only renders when the browser can actually transcribe.
+const SpeechRecognitionImpl =
+  typeof window !== "undefined"
+    ? window.SpeechRecognition || window.webkitSpeechRecognition
+    : null;
+
 // Color tokens live in styles.css. This map is the per-mixtape accent,
 // darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
 const ACCENT_INK = {
@@ -332,6 +339,13 @@ export default function LinerNotes() {
   const [adjustStage, setAdjustStage] = useState(null); // "adjusting" | "resolving"
   const [adjustLog, setAdjustLog] = useState([]); // {index, artist, title, resolved?}
 
+  // voice input — dictation appends to whatever is already typed
+  const [listening, setListening] = useState(false);
+  const recogRef = useRef(null);
+  const dictatingRef = useRef(false); // user intent: mic toggled on
+  const dictationBaseRef = useRef(""); // text that precedes this session's speech
+  const dictatedRef = useRef(""); // latest composed text, for restart folding
+
   const inputRef = useRef(null);
   const refineRef = useRef(null);
   const cardTitleRef = useRef(null);
@@ -392,6 +406,85 @@ export default function LinerNotes() {
     ? playlists.find((p) => p.id === seedId) || null
     : null;
 
+  // a page-leave mid-dictation must not leave the mic hot
+  useEffect(
+    () => () => {
+      dictatingRef.current = false;
+      recogRef.current?.abort();
+    },
+    []
+  );
+
+  // The engine ends a session on its own — after a pause in speech, or at
+  // Chrome's session-length cap. dictatingRef holds the user's intent
+  // ("the mic button is on"), so onend can tell an engine timeout apart
+  // from a deliberate stop and reopen the mic mid-take.
+  const startRecognition = () => {
+    const recog = new SpeechRecognitionImpl();
+    // one language per session is a Web Speech limitation; the browser's
+    // own locale is the best single guess we have
+    recog.lang = navigator.language || "en-US";
+    recog.interimResults = true; // words land in the box as they're spoken
+    recog.continuous = true; // a pause for thought must not end the take
+    recog.onresult = (e) => {
+      const heard = Array.from(e.results)
+        .map((r) => r[0].transcript)
+        .join("");
+      const composed = dictationBaseRef.current + heard;
+      dictatedRef.current = composed;
+      setPrompt(composed);
+      setInputHint(null);
+    };
+    recog.onerror = (e) => {
+      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
+        dictatingRef.current = false;
+        setInputHint(
+          "The mic is blocked — allow microphone access for this site and try again."
+        );
+      } else if (e.error !== "aborted" && e.error !== "no-speech") {
+        // real failure (network, audio-capture) — don't restart-loop on it
+        dictatingRef.current = false;
+        setInputHint("Couldn’t catch that — try again, or just type.");
+      }
+    };
+    recog.onend = () => {
+      if (dictatingRef.current) {
+        // engine gave up but the user never tapped stop — resume the take,
+        // folding what's already transcribed into the new session's base
+        dictationBaseRef.current = dictatedRef.current.trim()
+          ? dictatedRef.current.replace(/\s+$/, "") + " "
+          : "";
+        startRecognition();
+        return;
+      }
+      recogRef.current = null;
+      setListening(false);
+      inputRef.current?.focus();
+    };
+    recogRef.current = recog;
+    recog.start();
+  };
+
+  const stopDictation = () => {
+    dictatingRef.current = false;
+    recogRef.current?.stop();
+  };
+
+  const toggleDictation = () => {
+    if (recogRef.current) {
+      stopDictation();
+      return;
+    }
+    dictatingRef.current = true;
+    dictationBaseRef.current = prompt.trim()
+      ? prompt.replace(/\s+$/, "") + " "
+      : "";
+    dictatedRef.current = prompt;
+    setListening(true);
+    setAnnounce("Listening. Speak your prompt.");
+    startRecognition();
+  };
+
   const generate = async (p) => {
     const thePrompt = (p ?? prompt).trim();
     if (loading || adjusting) return;
@@ -403,6 +496,7 @@ export default function LinerNotes() {
       inputRef.current?.focus();
       return;
     }
+    recogRef.current?.stop(); // pressing it while dictating ends the take
     setLoading(true);
     setError(null);
     setCard(null);
@@ -694,24 +788,65 @@ export default function LinerNotes() {
           <>
             {/* input */}
             <div className="input-row">
-              <textarea
-                ref={inputRef}
-                value={prompt}
-                onChange={(e) => {
-                  setPrompt(e.target.value);
-                  if (inputHint) setInputHint(null);
-                }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    generate();
-                  }
-                }}
-                placeholder={PLACEHOLDERS[phIndex]}
-                rows={2}
-                className="prompt-input"
-                aria-label="Playlist prompt"
-              />
+              <div
+                className={
+                  "prompt-wrap" + (SpeechRecognitionImpl ? " has-mic" : "")
+                }
+              >
+                <textarea
+                  ref={inputRef}
+                  value={prompt}
+                  onChange={(e) => {
+                    setPrompt(e.target.value);
+                    if (inputHint) setInputHint(null);
+                  }}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" && !e.shiftKey) {
+                      e.preventDefault();
+                      generate();
+                    }
+                  }}
+                  placeholder={PLACEHOLDERS[phIndex]}
+                  rows={2}
+                  className="prompt-input"
+                  aria-label="Playlist prompt"
+                />
+                {SpeechRecognitionImpl && (
+                  <button
+                    type="button"
+                    onClick={toggleDictation}
+                    className={"mic-btn" + (listening ? " mic-live" : "")}
+                    aria-pressed={listening}
+                    aria-label={
+                      listening ? "Stop voice input" : "Speak your prompt"
+                    }
+                    title={listening ? "Stop voice input" : "Speak your prompt"}
+                  >
+                    <svg
+                      width="18"
+                      height="18"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      aria-hidden
+                    >
+                      <rect
+                        x="9"
+                        y="2"
+                        width="6"
+                        height="12"
+                        rx="3"
+                        fill="currentColor"
+                        stroke="none"
+                      />
+                      <path d="M5 11a7 7 0 0 0 14 0" />
+                      <line x1="12" y1="18" x2="12" y2="22" />
+                    </svg>
+                  </button>
+                )}
+              </div>
               <button
                 onClick={loading ? stopGenerating : () => generate()}
                 className="btn-press"
@@ -725,12 +860,42 @@ export default function LinerNotes() {
               </div>
             )}
 
+            {/* what the box does — reads as the input's help text */}
+            {!card && !loading && (
+              <div className="scope-line">
+                describe a vibe, moment, or era — you get 8 real tracks with
+                liner notes
+              </div>
+            )}
+
+            {/* example chips: populate the prompt, stay editable */}
+            {!card && !loading && (
+              <div className="examples">
+                <div className="section-note">or start from an example</div>
+                <div className="chips">
+                  {EXAMPLES.map((ex) => (
+                    <button
+                      key={ex}
+                      className="chip"
+                      onClick={() => {
+                        setPrompt(ex);
+                        setInputHint(null);
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      {ex}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
             {/* "in the spirit of" seed picker — optional; with a playlist
                 picked, the prompt may stay empty */}
             {!card && !loading && (
               <div className="seed-row">
-                <label htmlFor="seed-select" className="seed-label">
-                  in the spirit of
+                <label htmlFor="seed-select" className="section-note">
+                  or make one in the spirit of your playlists
                 </label>
                 {Array.isArray(playlists) ? (
                   <select
@@ -759,32 +924,6 @@ export default function LinerNotes() {
                 ) : (
                   <span className="seed-note">loading your playlists…</span>
                 )}
-              </div>
-            )}
-
-            {!card && !loading && (
-              <div className="scope-line">
-                describe a vibe, moment, or era — you get 8 real tracks with
-                liner notes
-              </div>
-            )}
-
-            {/* example chips: populate the prompt, stay editable */}
-            {!card && !loading && (
-              <div className="chips">
-                {EXAMPLES.map((ex) => (
-                  <button
-                    key={ex}
-                    className="chip"
-                    onClick={() => {
-                      setPrompt(ex);
-                      setInputHint(null);
-                      inputRef.current?.focus();
-                    }}
-                  >
-                    {ex}
-                  </button>
-                ))}
               </div>
             )}
 

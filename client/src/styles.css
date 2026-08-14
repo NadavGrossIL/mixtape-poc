@@ -8,8 +8,8 @@
   --shell-raised: #211e1a;
   --ink: #ede8de;
   --ink-dim: #b8b0a2;
-  --ink-faint: #8a8375; /* ≥4.5:1 on shell — dimmest allowed text */
-  --line: #6b6459; /* ≥3:1 component boundaries on shell */
+  --ink-faint: #948c7d; /* ≥4.5:1 on shell AND shell-raised — dimmest allowed text */
+  --line: #736c60; /* ≥3:1 component boundaries on shell and shell-raised */
   --accent: #e36414; /* filled surfaces only */
   --accent-soft: #e07b3a; /* accent as text/border on dark */
   --accent-press: #9c440b; /* hard offset shadow under the button */
@@ -187,7 +187,7 @@
   transition: border-color 0.15s ease;
 }
 .prompt-input:hover {
-  border-color: var(--ink-faint);
+  border-color: var(--accent-soft); /* hover speaks the focus ring's language */
 }
 .prompt-input:focus-visible {
   outline: 2px solid var(--accent-soft);
@@ -195,7 +195,8 @@
   border-color: transparent;
 }
 .prompt-input::placeholder {
-  color: var(--ink-faint);
+  /* the most-read text in the box — one full step above the caption floor */
+  color: var(--ink-dim);
 }
 
 /* mic sits inside the textarea's corner so the stacked mobile layout
@@ -220,12 +221,18 @@
   background: transparent;
   border: none;
   border-radius: 4px;
-  color: var(--ink-faint);
+  color: var(--ink-dim); /* interactive: sits above the caption tier */
   cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
   transition: color 0.15s ease;
+  /* hold-to-talk: a long press must not scroll, select, or pop the
+     iOS callout menu */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .mic-btn:hover {
   color: var(--ink);
@@ -252,18 +259,19 @@
 }
 .scope-line {
   font-family: "Space Mono", monospace;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ink-faint);
   margin-top: 10px;
   text-align: center;
 }
 
-/* em-dash-flanked heading over each alternate way in — track-listing style */
+/* em-dash-flanked heading over each alternate way in — track-listing style.
+   One tier above the faint captions: headings must outrank what they organize */
 .section-note {
   font-family: "Space Mono", monospace;
-  font-size: 11px;
+  font-size: 12px;
   letter-spacing: 1.5px;
-  color: var(--ink-faint);
+  color: var(--ink-dim);
   text-align: center;
 }
 .section-note::before {
@@ -299,24 +307,24 @@
   border-radius: 4px;
   color: var(--ink-dim);
   font-family: "Space Mono", monospace;
-  font-size: 12.5px;
+  font-size: 13px; /* control tier, matched with the chips */
   padding: 0 12px;
   min-height: 44px;
   cursor: pointer;
   transition: border-color 0.15s ease, color 0.15s ease;
 }
 .seed-select:hover {
-  border-color: var(--ink-faint);
+  border-color: var(--accent-soft);
   color: var(--ink);
 }
 .seed-note {
   font-family: "Space Mono", monospace;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--ink-faint);
 }
 .seed-reauth {
   font-family: "Space Mono", monospace;
-  font-size: 11.5px;
+  font-size: 12px;
   color: var(--accent-soft);
 }
 
@@ -331,7 +339,7 @@
 }
 .chip {
   font-family: "Space Mono", monospace;
-  font-size: 11.5px;
+  font-size: 13px; /* control tier: chips must out-size the labels around them */
   background: transparent;
   color: var(--ink-dim);
   border: 1px dashed var(--line);
@@ -343,7 +351,7 @@
 }
 .chip:hover {
   color: var(--ink);
-  border-color: var(--ink-faint);
+  border-color: var(--accent-soft);
 }
 
 /* ── loading: spinning record + console log ── */
@@ -795,7 +803,9 @@
 .deck-tape {
   stroke: var(--accent-soft);
   stroke-width: 2;
-  opacity: 0.4;
+  /* the shared brand motif — visible on its own, not only under the
+     motion-gated shimmer */
+  opacity: 0.65;
 }
 /* the moving highlight — invisible unless motion is allowed */
 .deck-tape-flow {

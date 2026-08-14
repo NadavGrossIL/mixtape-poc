@@ -1,0 +1,77 @@
+# Architecture review — 2026-08-14
+
+Pre-scaling / pre-production architecture assessment. Produced by a dedicated review agent reading the full codebase; consolidated by the orchestrating session. Companion: `2026-08-14-code-review.md`.
+
+**Framing decision that drives everything below:** the Spotify 5-user dev-mode cap means "production" can never be "users sign in with Spotify." The only viable production shape is **owner-generates / anyone-views**: the authenticated generator stays a single-owner tool (you + ≤4 allowlisted friends), and growth happens through shareable read-only card pages whose track links are plain `open.spotify.com` deep links (which work for everyone, no auth). Viewers can even *play* the mixtape if saved playlists are created public instead of `public: false` (server/spotify.js:341). Every framework recommendation below is sized to that shape — a one-owner generator plus a public read-only card viewer — not to a hypothetical multi-tenant SaaS.
+
+## 1. Current architecture map
+
+- **server/index.js (259 lines)** — Express 4 route layer: OAuth login/callback/status, `/api/generate/stream` and `/api/adjust/stream` (SSE), `/api/generate` (plain JSON, now dead code — client only uses the stream variant), `/api/playlist` (content-negotiated SSE or JSON). Thin and clean; all logic delegated. Coupling: hardcoded `PORT = 8888` (index.js:10), the SSE event vocabulary is an implicit contract shared with App.jsx's `readSSE` handlers, and the adjust endpoint's index-remapping trick (index.js:163-170) depends on `resolveTracks` preserving input order.
+- **server/spotify.js (363 lines)** — OAuth token lifecycle (file-persisted singleton at `server/.tokens.json`), `spotifyFetch` with one refresh-retry, the multi-strategy track resolver (3 query strategies, weighted title/artist similarity, artist-floor guard at spotify.js:239 so covers/karaoke never fake-resolve), concurrency-3 pool, playlist creation on the 2026 API surface. This module is the hallucination gate and the best-engineered code in the repo. Coupling: `REDIRECT_URI` hardcoded to `http://127.0.0.1:8888/callback` (spotify.js:17) — the single biggest deploy blocker.
+- **server/curator.js (355 lines)** — Anthropic layer: two static strict tools (`create_mixtape`, `adjust_mixtape`), forced tool choice, eager input streaming with a hand-rolled string-aware brace matcher (`extractCompleteTracks`, curator.js:145) to emit per-track SSE events, plus post-hoc clamps for everything strict schemas can't express (8-track clamp curator.js:233, index-range/duplicate validation curator.js:317-347).
+- **client/src/App.jsx (812 lines)** — one component holding all 20 useState hooks: three streaming flows (generate/refine/save) each with their own manual `readSSE` loop, dnd-kit reorder, the record-sleeve card render, login gate, brand switcher. It works and is readable, but it is three state machines + one view interleaved in one file — the main refactor target (a refactor, not a framework change).
+- **client/src/spotifyLink.js (81 lines)** — self-contained app-deep-link module with focus-loss fallback heuristics. No coupling; good as-is.
+- **client/src/styles.css (705 lines)** — tokenized design system (two-surface accent model, contrast-audited). The design language lives entirely here + `ACCENT_INK` in App.jsx:20.
+- **evals/** — two-step harness (generate → Opus judge with web_search + strict verdict tool), incremental writes, resumable. This is the kill-condition experiment and it **hasn't run yet** — that fact should gate almost every investment below.
+- **vite.config.js** — dev proxy for `/api`, `/auth`, `/callback`; the client uses relative URLs everywhere, which makes the production "serve dist from Express" move free.
+
+## 2. Production blockers, ranked by severity
+
+1. **BLOCKER — No auth on spend/write endpoints.** `/api/generate/stream` and `/api/adjust/stream` burn the Anthropic key and `/api/playlist` writes to *your* Spotify account for any anonymous visitor (index.js:93, 135, 216 check only `spotify.isLoggedIn()` — the *server's* global login, not the caller's). Deployed as-is, any visitor is you. Fix: a single owner secret (env var → cookie or `Authorization` header check middleware) gating those three routes. ~20 lines. Must exist before the server touches the public internet.
+2. **BLOCKER — Hardcoded loopback redirect URI** (spotify.js:17) + implicit dev-only CLIENT_URL. OAuth cannot complete on a deployed host. Fix: `REDIRECT_URI` from env, register the HTTPS callback in the Spotify dashboard (Spotify requires HTTPS for non-loopback).
+3. **HIGH — Token file assumes a persistent, single-instance disk.** `server/.tokens.json` (spotify.js:14) is fine architecturally for a single-owner app — but it dictates hosting: one instance, persistent volume, no serverless. Also read from disk on every request (harmless at this scale). Fix is a deploy-target choice, not code (see §5).
+4. **HIGH — No client-disconnect handling on SSE routes.** STOP aborts the client fetch (App.jsx:309-311), but the server never notices: the Claude stream and up to 24 Spotify searches run to completion. Money and rate-limit spent per abandoned request. Fix: `req.on("close", …)` → abort the Anthropic stream and skip resolution.
+5. **MEDIUM — Raw `err.message` leaks to clients** in SSE `error` events and JSON errors (index.js:124, 184, 212). Fix: generic client message + server-side log.
+6. **MEDIUM — `/api/adjust/stream` trusts the client card blindly** (index.js:135-147). Nothing bounds it: a 500-track card or megabyte notes go straight into the Claude prompt (token spend) — `express.json()`'s 100kb default is the only backstop. Fix: shape/size validation (tracks ≤ 8, string length caps) — 15 lines or a small zod schema.
+7. **LOW — No rate limiting** on generation (cost control). `express-rate-limit` on the two stream routes.
+8. **LOW — `pendingStates` grows forever** (index.js:36). Add a TTL or cap.
+9. **LOW — No health endpoint, no graceful shutdown, no SSE heartbeat.** Platform proxies can kill idle-looking SSE connections; a `: ping\n\n` comment every 15s during long resolution phases prevents it. Add `/healthz`.
+10. **NOT a blocker — CORS.** There is none, and correctly so: everything is same-origin via the Vite proxy. Keep it that way in production by serving the built client from Express. Never add a `cors()` middleware — it would only exist to enable a split-origin deploy you don't need.
+
+**Scalability verdict:** for the owner-generates/anyone-views shape, this infra is genuinely adequate as a basis. The server is stateless per-request except the token singleton; the bottleneck is Anthropic + Spotify latency, not the process. Nothing about Express, the SSE approach, or the module structure caps you below thousands of card *views*/day and all the *generations* one owner can produce. What it can't do — and should never try to do — is multi-user Spotify auth, and that's Spotify's decision, not the architecture's.
+
+## 3. Framework verdicts
+
+- **Backend — Express 4: KEEP.** 259 lines of routes over two well-factored modules using native `fetch` and hand-rolled SSE (the right tool — SSE is 12 lines, index.js:76-88). Fastify's throughput advantage is irrelevant at owner-scale; Nest would wrap three route files in module/provider ceremony that outweighs the entire current codebase; Hono buys edge-runtime portability the token file and long-lived SSE can't use. Migration cost is pure loss. The one structural change worth making when share-cards land: split `index.js` into `routes/auth.js` / `routes/generate.js` / `routes/cards.js` — a folder refactor, not a framework.
+- **Frontend — Vite + React 18: KEEP. Next.js/Astro: NO.** Single authenticated, highly interactive screen — SSR has zero value, and a Next migration is the biggest redesign risk on the table (styles.css assumes a client-rendered tree; dnd-kit, the SSE loops, and `import.meta.env.DEV` all port with friction). The only argument for Next is the share page's OG/social meta — solvable with ~40 lines of Express: a `/card/:id` route that returns the built `index.html` with `<meta og:title/og:description>` injected server-side. Scrapers get meta; humans get the same client-rendered card. Astro solves a content-site problem this app doesn't have.
+- **TypeScript: DEFER, with a cheap down-payment now.** The honest case *for* TS is real: the card object crosses five boundaries (Claude tool output → resolver enrichment → SSE → client state → back through adjust → merge), and the adjust index-remapping (index.js:163-170) is exactly the kind of code TS protects. But the kill-condition eval hasn't run; converting a possibly-dead POC is the definition of premature. Down-payment: one `types.js` with JSDoc `@typedef {Card, Track, AdjustDiff}` imported at module heads — ~70% of TS's checking for ~30 minutes and zero build change. Full conversion (server first) only after the eval says "go" and before share-cards multiply the surfaces.
+
+## 4. Library verdicts
+
+- **react-query: KEEP-OUT.** One true query (`/auth/status`) and three *streaming mutations*. react-query's model — cacheable, refetchable, request/response — is the wrong shape for hand-parsed SSE flows. Revisit only if the app grows real server-state reads (a "my cards" list page would qualify).
+- **zustand: KEEP-OUT.** 20 useState hooks in one component is a real smell, but it's a *co-location* problem, not a *global state* problem — every byte of state belongs to one screen. The right fix is free: extract `useGenerateStream()` / `useRefineStream()` / `useSaveStream()` custom hooks and split `TrackRow`/`ProgressLog`/`SleeveCard` into files (see code review, "App.jsx seams"). ADD-WHEN two routes need the same card state — which the share-page architecture deliberately avoids.
+- **zod: ADD-WHEN share-cards land; narrowly, server-side only.** The strict tool schema already validates Claude's output; the manual clamps cover what strict schemas can't. The genuine gap is blocker #6 (client-supplied card on `/api/adjust`) plus the future `POST /api/cards` endpoint: one shared `CardSchema` covering both is the moment zod pays for itself. A 15-line manual validator is an acceptable interim.
+- **ADD-NOW (tiny, pays immediately):** `express-rate-limit`; optionally `helmet`. Also two or three plain `node:test` unit tests for the pure functions that guard correctness — `extractCompleteTracks` (curator.js:145), `similarity`/`artistScore` (spotify.js:173-214), and the adjust merge — the highest-value tests in the codebase, cost an hour.
+- **KEEP-OUT explicitly:** Prisma/Postgres (SQLite or flat JSON suffice for ~KB card blobs), tRPC, Redux, Tailwind (already decided; the styles.css token system is better for this design), socket.io/WebSockets (SSE is correct: one-directional, proxy-friendly, working), any component library (would fight the design language).
+
+## 5. Production deployment plan
+
+**Step 0 — the eval gate.** Run the note-truthfulness eval before spending any deploy effort. Everything below assumes "go."
+
+**Target shape:** one Node process serving API + static client + share pages, on a host with a persistent volume.
+
+1. **Merge to one origin:** `vite build`; in index.js add `express.static(client/dist)` + an SPA fallback. Client already uses relative URLs; the dev proxy keeps working unchanged.
+2. **Env-ify the three hardcodes:** `PORT` (index.js:10), `REDIRECT_URI` (spotify.js:17), `CLIENT_URL`. Register `https://<host>/callback` in the Spotify dashboard.
+3. **Owner auth:** `OWNER_SECRET` env var; middleware on `/auth/login`, `/api/generate*`, `/api/adjust*`, `/api/playlist`; signed cookie after a one-field login. Public routes: `/`, `/card/:id`, static assets.
+4. **Hosting: Fly.io, Railway, or Render with a 1GB volume** (or a €4 Hetzner VPS + Caddy). **Explicitly not Vercel/Netlify/Lambda:** the token file needs a disk, SSE wants long-lived responses. Point a `DATA_DIR` env at the volume and move `.tokens.json` (and the cards DB) into it.
+5. **Token story in production:** unchanged single-owner refresh token — complete `/auth/login` once on the deployed host (gated by owner auth); the volume persists it. The "single-user token file" that looks like a POC hack is actually the correct design for this product shape. Optional hardening: encrypt at rest with a key from env; surface refresh failure in `/healthz` so a revoked token doesn't fail silently.
+6. **Share cards (the actual production feature):** `POST /api/cards` (owner-gated) stores the finished card JSON → returns `/card/:id`; `GET /card/:id` (public) serves the card page with injected OG meta; `GET /api/cards/:id` (public) serves the JSON. Storage: **SQLite via `better-sqlite3`, one table `(id TEXT PK, json TEXT, created_at)`** on the volume — cards are 2-4KB self-contained blobs with zero relations. Save the playlist `public: true` (or a toggle) so the card can link a playable playlist for viewers.
+7. **Robustness passes from §2:** disconnect-abort (#4), error scrubbing (#5), adjust-body validation (#6), rate limit (#7), `/healthz` + SSE heartbeat (#9).
+8. **Ops:** platform-managed restarts replace pm2; `console.*` logging is fine at this scale (defer pino); a CI action doing `npm ci && node --test && vite build` is all the CI this needs.
+
+Order of operations: 0 → (commit the uncommitted work!) → 2,3 → 1,4,5 → 7 → deploy the generator → 6 as the first post-deploy feature.
+
+## 6. Over-engineering watchlist (tempting, wrong now)
+
+- **Next.js migration** — the share-page OG problem is 40 lines of Express; a migration risks the design system and rewrites working SSE plumbing for zero user-visible gain.
+- **Full TypeScript rewrite before the eval verdict** — JSDoc typedefs now, TS after "go."
+- **Multi-user Spotify OAuth / session system / Clerk/Auth0** — the 5-user cap makes this a dead end *forever* (extended quota needs a 250k-MAU registered business). Any hour spent on per-user auth is wasted by policy, not by taste.
+- **Postgres/Prisma/Redis/queues** — the write rate is one human. SQLite + in-process everything.
+- **Microservice-ing the curator/resolver, or a job-queue for generation** — SSE-in-request is the *feature* (real-stage progress); a queue would force polling and destroy the studio-console UX.
+- **zustand/react-query "modernization"** — the state problem is file organization, solvable with custom hooks.
+- **Kubernetes/Docker-compose ceremony, monorepo tooling** — two npm folders and a Procfile-shaped platform is the whole story.
+- **Replacing the hand-rolled SSE parser or brace-matcher with libraries** — both are small, tested-in-practice, dependency-free; a swap is churn risk on the most delicate working code.
+- **A design-system extraction / component library** — the tokens in styles.css *are* the design system.
+- **Testing-pyramid ambitions** — the evals harness is the real test suite for the thing that decides the product's fate; add the three pure-function unit tests and stop.
+
+**Bottom line:** infra is a sound basis — keep Express, keep Vite+React, no new frameworks. Pre-deploy work is ~2-3 focused days: owner-auth gate, env-ified OAuth, disconnect-abort, error scrubbing, one-origin serving, a volume-backed host. The first *architectural* addition should be the share-card store (SQLite + OG-injected public card route), because under the Spotify cap the shareable card is the entire growth surface. And run the truthfulness eval before any of it.

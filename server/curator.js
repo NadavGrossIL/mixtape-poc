@@ -1,10 +1,13 @@
 // Claude curator: prompt in → validated mixtape card out.
 // Uses forced tool choice + strict tool schema so the JSON arrives validated —
 // no markdown-fence stripping, no regex.
+// Streaming: fine-grained tool-input streaming (eager_input_streaming, GA — no
+// beta header) lets us emit each track as the model produces it.
 
 const Anthropic = require("@anthropic-ai/sdk");
 
 const MODEL = "claude-sonnet-5";
+const TRACK_COUNT = 8;
 
 const PLACEHOLDER_RE = /^(your_|<|\.\.\.|xxx)/i;
 
@@ -18,6 +21,8 @@ const CURATOR_TOOL = {
   description:
     "Record the finished mixtape card: a title, a dedication-style vibe line, an accent color, and exactly 8 tracks in DJ-set order, each with a one-line liner note.",
   strict: true,
+  // Fine-grained tool-input streaming: track names arrive as the model writes them.
+  eager_input_streaming: true,
   input_schema: {
     type: "object",
     additionalProperties: false,
@@ -66,10 +71,54 @@ Rules:
 - Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.`;
 
-async function generateCard(prompt) {
+// Scan the accumulated partial JSON of the tool input and return every
+// COMPLETE track object found inside the "tracks" array so far.
+// String-aware brace matching — no assumptions about chunk boundaries.
+function extractCompleteTracks(buf) {
+  const key = buf.indexOf('"tracks"');
+  if (key === -1) return [];
+  const arrStart = buf.indexOf("[", key);
+  if (arrStart === -1) return [];
+  const tracks = [];
+  let depth = 0;
+  let inStr = false;
+  let esc = false;
+  let objStart = -1;
+  for (let i = arrStart + 1; i < buf.length; i++) {
+    const c = buf[i];
+    if (inStr) {
+      if (esc) esc = false;
+      else if (c === "\\") esc = true;
+      else if (c === '"') inStr = false;
+      continue;
+    }
+    if (c === '"') inStr = true;
+    else if (c === "{") {
+      if (depth === 0) objStart = i;
+      depth++;
+    } else if (c === "}") {
+      depth--;
+      if (depth === 0 && objStart !== -1) {
+        try {
+          tracks.push(JSON.parse(buf.slice(objStart, i + 1)));
+        } catch {
+          // incomplete/invalid fragment — ignore, will complete later
+        }
+        objStart = -1;
+      }
+    } else if (c === "]" && depth === 0) {
+      break;
+    }
+  }
+  return tracks;
+}
+
+// Generate a card. onTrack(index, {artist, title}) fires as the model streams
+// each track — real events, straight from the tool-input stream.
+async function generateCard(prompt, { onTrack } = {}) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const response = await client.messages.create({
+  const stream = client.messages.stream({
     model: MODEL,
     max_tokens: 2000,
     system: SYSTEM,
@@ -83,6 +132,25 @@ async function generateCard(prompt) {
     ],
   });
 
+  let buf = "";
+  let emitted = 0;
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "input_json_delta"
+    ) {
+      buf += event.delta.partial_json;
+      if (!onTrack) continue;
+      const tracks = extractCompleteTracks(buf);
+      while (emitted < tracks.length) {
+        const t = tracks[emitted];
+        if (t && t.artist && t.title) onTrack(emitted, t);
+        emitted++;
+      }
+    }
+  }
+
+  const response = await stream.finalMessage();
   const toolUse = response.content.find((b) => b.type === "tool_use");
   if (!toolUse) {
     throw new Error("Curator returned no tool_use block");
@@ -91,9 +159,16 @@ async function generateCard(prompt) {
   if (!Array.isArray(card.tracks) || card.tracks.length === 0) {
     throw new Error("Curator returned no tracks");
   }
-  // Strict schemas can't enforce array length — clamp here as a safety net.
-  card.tracks = card.tracks.slice(0, 8);
+  // Strict schemas can't enforce array length — clamp here as a safety net,
+  // and log loudly when the model ignored the spec (this is how "10 tracks"
+  // slips through silently otherwise).
+  if (card.tracks.length !== TRACK_COUNT) {
+    console.warn(
+      `[curator] model returned ${card.tracks.length} tracks, expected ${TRACK_COUNT} — clamping`
+    );
+    card.tracks = card.tracks.slice(0, TRACK_COUNT);
+  }
   return card;
 }
 
-module.exports = { anthropicConfigured, generateCard, MODEL };
+module.exports = { anthropicConfigured, generateCard, MODEL, TRACK_COUNT };

@@ -164,6 +164,7 @@ function normalize(s) {
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "") // strip diacritics
     .replace(/\(.*?\)|\[.*?\]/g, " ") // drop parentheticals like (Remastered)
+    .replace(/&/g, " and ") // "&" ≈ "and"
     .replace(/[^a-z0-9\s]/g, " ")
     .replace(/\s+/g, " ")
     .trim();
@@ -184,58 +185,143 @@ function similarity(a, b) {
 
 const MATCH_THRESHOLD = 0.55;
 
-// Resolve one curated track against Spotify search.
-// Dev-mode search cap is limit=10; we use 5.
-async function resolveTrack(track) {
-  const q = `artist:"${track.artist}" track:"${track.title}"`;
-  const params = new URLSearchParams({ q, type: "track", limit: "5" });
-  let items = [];
-  try {
-    const data = await spotifyFetch(`/search?${params}`);
-    items = data?.tracks?.items || [];
-  } catch (err) {
-    if (err.status === 401) throw err; // login problem — surface it
-    console.warn(`[spotify] search failed for "${track.artist} - ${track.title}": ${err.message}`);
-    return { ...track, resolved: false };
-  }
+// Strip parenthetical suffixes and trailing feat./ft./featuring/with segments.
+// "Krizz Kaliko ft. Tech N9ne" → "Krizz Kaliko"
+// "Look at Me Now (verse)"     → "Look at Me Now"
+function stripSuffixes(s) {
+  return String(s)
+    .replace(/\(.*?\)|\[.*?\]/g, " ")
+    .replace(/\s+(?:feat\.?|ft\.?|featuring|with)\s+.*$/i, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
 
-  let best = null;
-  let bestScore = 0;
-  for (const item of items) {
-    const titleScore = similarity(item.name, track.title);
-    const artistScore = Math.max(
-      0,
-      ...(item.artists || []).map((a) => similarity(a.name, track.artist))
-    );
-    const score = 0.6 * titleScore + 0.4 * artistScore;
-    if (score > bestScore) {
-      bestScore = score;
-      best = item;
+// Featured-artist-tolerant artist score: the curated artist counts as a match
+// if it is ANY of the candidate's artists (or the joined list), and a curated
+// "X ft. Y" also matches on its primary artist X alone.
+function artistScore(itemArtists, curatedArtist) {
+  const names = (itemArtists || []).map((a) => a.name);
+  const candidates = names.length > 1 ? names.concat(names.join(" ")) : names;
+  const variants = [curatedArtist, stripSuffixes(curatedArtist)];
+  let best = 0;
+  for (const v of variants) {
+    for (const c of candidates) {
+      const s = similarity(c, v);
+      if (s > best) best = s;
     }
   }
+  return best;
+}
 
-  if (!best || bestScore < MATCH_THRESHOLD) {
+// Search strategies, tried in order until one produces a confident match:
+// 1. field-filtered as curated, 2. plain free text, 3. normalized variant
+// (parenthetical / feat. suffixes and punctuation stripped).
+function buildQueries(track) {
+  const raw = [
+    { strategy: "field", q: `artist:"${track.artist}" track:"${track.title}"` },
+    { strategy: "plain", q: `${track.artist} ${track.title}` },
+    {
+      strategy: "normalized",
+      q: `${normalize(stripSuffixes(track.artist))} ${normalize(stripSuffixes(track.title))}`.trim(),
+    },
+  ];
+  const seen = new Set();
+  return raw.filter(({ q }) => {
+    if (!q.trim() || seen.has(q)) return false;
+    seen.add(q);
+    return true;
+  });
+}
+
+// A candidate must show SOME artist overlap — a perfect title with a wrong
+// artist (covers, karaoke, same-name songs) must never count as a match,
+// or hallucinated tracks silently "resolve" to the wrong record.
+const ARTIST_FLOOR = 0.3;
+
+// Resolve one curated track against Spotify search (multi-strategy).
+// Dev-mode search cap is limit=10 — use all of it.
+async function resolveTrack(track) {
+  const label = `"${track.artist} — ${track.title}"`;
+  let best = null; // best candidate meeting the artist floor
+  let bestAny = null; // best overall, for honest fail logging
+
+  for (const { strategy, q } of buildQueries(track)) {
+    let items = [];
+    try {
+      const params = new URLSearchParams({ q, type: "track", limit: "10" });
+      const data = await spotifyFetch(`/search?${params}`);
+      items = data?.tracks?.items || [];
+    } catch (err) {
+      if (err.status === 401) throw err; // login problem — surface it
+      console.warn(`[resolve] search error (${strategy}) for ${label}: ${err.message}`);
+      continue;
+    }
+
+    for (const item of items) {
+      const titleScore = similarity(item.name, track.title);
+      const aScore = artistScore(item.artists, track.artist);
+      const score = 0.6 * titleScore + 0.4 * aScore;
+      if (!bestAny || score > bestAny.score) {
+        bestAny = { item, score, strategy };
+      }
+      if (aScore >= ARTIST_FLOOR && (!best || score > best.score)) {
+        best = { item, score, strategy };
+      }
+    }
+    if (best && best.score >= MATCH_THRESHOLD) break; // confident — stop here
+  }
+
+  if (!best || best.score < MATCH_THRESHOLD) {
+    // The product's hallucination measurement — keep this line honest.
+    console.log(
+      `[resolve] ✗ ${label} unresolved after all strategies` +
+        (bestAny ? ` (best ${bestAny.score.toFixed(2)})` : " (no results)")
+    );
     return { ...track, resolved: false };
   }
-  const images = best.album?.images || [];
+
+  const { item, score, strategy } = best;
+  const matchedName = `${(item.artists || []).map((a) => a.name).join(", ")} — ${item.name}`;
+  console.log(
+    `[resolve] ✓ ${label} via ${strategy} → "${matchedName}" (${score.toFixed(2)})`
+  );
+  const images = item.album?.images || [];
   const albumArt = images.length ? images[images.length - 1].url : null; // smallest
   return {
     ...track,
     resolved: true,
-    spotifyUrl: best.external_urls?.spotify || null,
-    spotifyUri: best.uri,
+    spotifyUrl: item.external_urls?.spotify || null,
+    spotifyUri: item.uri,
     albumArt,
+    matchedName,
   };
 }
 
 // Resolve all tracks with a small concurrency pool (respects rate limits).
-async function resolveTracks(tracks, concurrency = 3) {
+// onProgress(event, payload) fires per track: "resolving", then "resolved".
+async function resolveTracks(tracks, concurrency = 3, onProgress) {
   const results = new Array(tracks.length);
   let next = 0;
   async function worker() {
     while (next < tracks.length) {
       const i = next++;
+      if (onProgress) {
+        onProgress("resolving", {
+          index: i,
+          artist: tracks[i].artist,
+          title: tracks[i].title,
+        });
+      }
       results[i] = await resolveTrack(tracks[i]);
+      if (onProgress) {
+        onProgress("resolved", {
+          index: i,
+          artist: tracks[i].artist,
+          title: tracks[i].title,
+          resolved: Boolean(results[i].resolved),
+          matched: results[i].matchedName || null,
+        });
+      }
     }
   }
   await Promise.all(
@@ -246,14 +332,18 @@ async function resolveTracks(tracks, concurrency = 3) {
 
 // ── playlist creation ────────────────────────────────────────
 
-async function createPlaylist({ name, description, uris }) {
+// onProgress(event, payload) fires on the two real steps:
+// "creating" (playlist create request) and "adding" (adding N tracks).
+async function createPlaylist({ name, description, uris }, onProgress) {
   // POST /v1/me/playlists — NOT /users/{id}/playlists (removed Feb 2026)
+  if (onProgress) onProgress("creating", { name });
   const playlist = await spotifyFetch("/me/playlists", {
     method: "POST",
     body: JSON.stringify({ name, description, public: false }),
   });
   if (uris.length) {
     // POST /v1/playlists/{id}/items (renamed from /tracks); body key is "uris"
+    if (onProgress) onProgress("adding", { count: uris.length });
     await spotifyFetch(`/playlists/${playlist.id}/items`, {
       method: "POST",
       body: JSON.stringify({ uris }),

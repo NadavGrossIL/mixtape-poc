@@ -72,6 +72,60 @@ app.get("/auth/status", (req, res) => {
 
 // ── api ──────────────────────────────────────────────────────
 
+// SSE helpers — every event sent is driven by a real backend event.
+function sseInit(res) {
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+  res.flushHeaders?.();
+}
+
+function sseSend(res, event, data) {
+  res.write(`event: ${event}\ndata: ${JSON.stringify(data || {})}\n\n`);
+}
+
+// Streaming variant of generate. Emits, in order:
+//   curating → track (per track, as Claude streams it) → curated (count)
+//   → resolving / resolved (per track) → done (full card) | error
+app.post("/api/generate/stream", async (req, res) => {
+  const prompt = String(req.body?.prompt || "").trim();
+  if (!prompt) {
+    return res.status(400).json({ error: "Missing prompt" });
+  }
+  if (!curator.anthropicConfigured()) {
+    return res
+      .status(500)
+      .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
+  }
+  if (!spotify.isLoggedIn()) {
+    return res.status(401).json({ error: "Not logged in to Spotify." });
+  }
+  sseInit(res);
+  sseSend(res, "curating", { prompt });
+  try {
+    const card = await curator.generateCard(prompt, {
+      onTrack: (index, t) =>
+        sseSend(res, "track", { index, artist: t.artist, title: t.title }),
+    });
+    sseSend(res, "curated", { count: card.tracks.length, title: card.title });
+    card.tracks = await spotify.resolveTracks(card.tracks, 3, (event, payload) =>
+      sseSend(res, event, payload)
+    );
+    card.prompt = prompt;
+    sseSend(res, "done", {
+      card,
+      verified: card.tracks.filter((t) => t.resolved).length,
+    });
+  } catch (err) {
+    console.error("[generate/stream] failed:", err.message);
+    sseSend(res, "error", { message: err.message });
+  }
+  res.end();
+});
+
 app.post("/api/generate", async (req, res) => {
   const prompt = String(req.body?.prompt || "").trim();
   if (!prompt) {
@@ -106,7 +160,23 @@ app.post("/api/playlist", async (req, res) => {
   if (!spotify.isLoggedIn()) {
     return res.status(401).json({ error: "Not logged in to Spotify." });
   }
+  // With Accept: text/event-stream, the two real steps (creating playlist →
+  // adding N tracks) stream as SSE events; otherwise plain JSON as before.
+  const wantsStream = String(req.headers.accept || "").includes("text/event-stream");
   try {
+    if (wantsStream) {
+      sseInit(res);
+      const playlistUrl = await spotify.createPlaylist(
+        {
+          name: title,
+          description: `made from prompt: ${prompt || ""}`.trim(),
+          uris,
+        },
+        (event, data) => sseSend(res, event, data)
+      );
+      sseSend(res, "done", { playlistUrl });
+      return res.end();
+    }
     const playlistUrl = await spotify.createPlaylist({
       name: title,
       description: `made from prompt: ${prompt || ""}`.trim(),
@@ -115,6 +185,10 @@ app.post("/api/playlist", async (req, res) => {
     res.json({ playlistUrl });
   } catch (err) {
     console.error("[playlist] failed:", err.message);
+    if (wantsStream && res.headersSent) {
+      sseSend(res, "error", { message: err.message });
+      return res.end();
+    }
     res.status(err.status === 401 ? 401 : 500).json({ error: err.message });
   }
 });

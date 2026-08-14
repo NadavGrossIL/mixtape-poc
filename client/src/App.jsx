@@ -27,6 +27,36 @@ const EXAMPLES = [
 // Where a slash exists it keeps the orange slash accent.
 const BRANDS = ["MADE YOU A MIXTAPE", "DEEP/CUTS", "PROMP/TAPE"];
 
+// Minimal SSE parser over a fetch ReadableStream (native only, no libraries).
+async function readSSE(response, onEvent) {
+  const reader = response.body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    buf += decoder.decode(value, { stream: true });
+    let idx;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const chunk = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      let event = "message";
+      let data = "";
+      for (const line of chunk.split("\n")) {
+        if (line.startsWith("event:")) event = line.slice(6).trim();
+        else if (line.startsWith("data:")) data += line.slice(5).trim();
+      }
+      let parsed = null;
+      try {
+        parsed = JSON.parse(data);
+      } catch {
+        /* keep null */
+      }
+      onEvent(event, parsed);
+    }
+  }
+}
+
 function BrandText({ text }) {
   const i = text.indexOf("/");
   if (i === -1) return <>{text}</>;
@@ -49,6 +79,10 @@ export default function LinerNotes() {
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState(null);
   const [saveError, setSaveError] = useState(null);
+  // real progress, driven only by SSE events from the backend
+  const [stage, setStage] = useState(null); // "curating" | "resolving"
+  const [logTracks, setLogTracks] = useState([]); // {artist, title, resolved?}
+  const [saveStage, setSaveStage] = useState(null); // "creating" | "adding N"
 
   const brand = BRANDS[brandIdx];
 
@@ -67,16 +101,48 @@ export default function LinerNotes() {
     setCard(null);
     setPlaylistUrl(null);
     setSaveError(null);
+    setStage(null);
+    setLogTracks([]);
     try {
-      const response = await fetch("/api/generate", {
+      const response = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: thePrompt }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "generate failed");
-      if (!data.tracks?.length) throw new Error("empty");
-      setCard(data);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "generate failed");
+      }
+      let doneCard = null;
+      let streamError = null;
+      await readSSE(response, (event, data) => {
+        if (event === "curating") {
+          setStage("curating");
+        } else if (event === "track") {
+          setLogTracks((ts) => {
+            const next = [...ts];
+            next[data.index] = { artist: data.artist, title: data.title };
+            return next;
+          });
+        } else if (event === "curated") {
+          setStage("resolving");
+        } else if (event === "resolved") {
+          setLogTracks((ts) => {
+            const next = [...ts];
+            if (next[data.index]) {
+              next[data.index] = { ...next[data.index], resolved: data.resolved };
+            }
+            return next;
+          });
+        } else if (event === "done") {
+          doneCard = data?.card;
+        } else if (event === "error") {
+          streamError = data?.message || "generate failed";
+        }
+      });
+      if (streamError) throw new Error(streamError);
+      if (!doneCard?.tracks?.length) throw new Error("empty");
+      setCard(doneCard);
     } catch (e) {
       console.error(e);
       setError("The curator dropped the needle. Try the same prompt again.");
@@ -94,24 +160,48 @@ export default function LinerNotes() {
     }
     setSaving(true);
     setSaveError(null);
+    setSaveStage(null);
     try {
       const response = await fetch("/api/playlist", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "text/event-stream",
+        },
         body: JSON.stringify({ title: card.title, uris, prompt: card.prompt }),
       });
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "save failed");
-      setPlaylistUrl(data.playlistUrl);
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "save failed");
+      }
+      let url = null;
+      let streamError = null;
+      await readSSE(response, (event, data) => {
+        if (event === "creating") setSaveStage("CREATING PLAYLIST…");
+        else if (event === "adding") setSaveStage(`ADDING ${data?.count} TRACKS…`);
+        else if (event === "done") url = data?.playlistUrl;
+        else if (event === "error") streamError = data?.message || "save failed";
+      });
+      if (streamError) throw new Error(streamError);
+      setPlaylistUrl(url);
     } catch (e) {
       console.error(e);
       setSaveError("Couldn't press it to Spotify. Try again.");
     } finally {
       setSaving(false);
+      setSaveStage(null);
     }
   };
 
   const accent = card ? ACCENTS[card.accent] || ACCENTS.crimson : ACCENTS.crimson;
+
+  const liveVerified = logTracks.filter((t) => t && t.resolved === true).length;
+  const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;
+  const cursor = (
+    <span style={styles.cursor} aria-hidden>
+      ▮
+    </span>
+  );
 
   const spotifySearch = (t) =>
     `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
@@ -189,8 +279,38 @@ export default function LinerNotes() {
       {loading && (
         <div style={styles.loading}>
           <div style={styles.spinnerDisc} />
-          <div style={{ fontFamily: "'Space Mono', monospace", fontSize: 13 }}>
-            digging through the crates…
+          {/* studio-console progress log — every line is a real backend event */}
+          <div style={styles.progressLog}>
+            {stage && (
+              <div style={styles.logLine}>
+                digging through the crates…
+                {stage === "curating" ? cursor : <span style={styles.logDone}> ok</span>}
+              </div>
+            )}
+            {logTracks.map(
+              (t, i) =>
+                t && (
+                  <div key={i} style={styles.logTrackLine}>
+                    <span style={{ color: "#E36414" }}>→</span>{" "}
+                    <span style={{ opacity: 0.55 }}>
+                      {String(i + 1).padStart(2, "0")}
+                    </span>{" "}
+                    {t.artist} — {t.title}
+                    {t.resolved === true && (
+                      <span style={{ color: "#E36414" }}> ✓</span>
+                    )}
+                    {t.resolved === false && (
+                      <span style={{ opacity: 0.45 }}> unverified</span>
+                    )}
+                  </div>
+                )
+            )}
+            {stage === "resolving" && (
+              <div style={styles.logLine}>
+                resolving on spotify… {liveVerified}/{logTracks.length} verified
+                {cursor}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -275,7 +395,9 @@ export default function LinerNotes() {
                 cursor: saving ? "default" : "pointer",
               }}
             >
-              {saving ? "PRESSING TO WAX…" : "SAVE TO SPOTIFY"}
+              {saving
+                ? saveStage || "PRESSING TO WAX…"
+                : `PRESS ${cardVerified} TRACK${cardVerified === 1 ? "" : "S"} TO SPOTIFY`}
             </button>
           )}
           {playlistUrl && (
@@ -409,6 +531,32 @@ const styles = {
     alignItems: "center",
     gap: 16,
     opacity: 0.85,
+  },
+  progressLog: {
+    display: "flex",
+    flexDirection: "column",
+    alignItems: "flex-start",
+    gap: 6,
+    fontFamily: "'Space Mono', monospace",
+    fontSize: 12.5,
+    color: "#B8B0A2",
+    width: "100%",
+    maxWidth: 440,
+  },
+  logLine: {
+    animation: "lnfade 0.35s ease",
+  },
+  logTrackLine: {
+    animation: "lnfade 0.35s ease",
+    color: "#EDE8DE",
+  },
+  logDone: {
+    opacity: 0.45,
+  },
+  cursor: {
+    color: "#E36414",
+    marginLeft: 4,
+    animation: "lnblink 1s steps(1) infinite",
   },
   spinnerDisc: {
     width: 56,
@@ -588,6 +736,9 @@ const styles = {
 if (typeof document !== "undefined" && !document.getElementById("ln-spin")) {
   const s = document.createElement("style");
   s.id = "ln-spin";
-  s.textContent = "@keyframes spin { to { transform: rotate(360deg); } }";
+  s.textContent =
+    "@keyframes spin { to { transform: rotate(360deg); } }" +
+    "@keyframes lnfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }" +
+    "@keyframes lnblink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }";
   document.head.appendChild(s);
 }

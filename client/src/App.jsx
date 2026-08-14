@@ -57,11 +57,16 @@ async function readSSE(response, onEvent) {
       const chunk = buf.slice(0, idx);
       buf = buf.slice(idx + 2);
       let event = "message";
-      let data = "";
+      const dataLines = [];
       for (const line of chunk.split("\n")) {
         if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) data += line.slice(5).trim();
+        else if (line.startsWith("data:")) {
+          // per spec: strip one leading space only, join multi-line data with \n
+          const value = line.slice(5);
+          dataLines.push(value.startsWith(" ") ? value.slice(1) : value);
+        }
       }
+      const data = dataLines.join("\n");
       let parsed = null;
       try {
         parsed = JSON.parse(data);
@@ -85,17 +90,24 @@ function BrandText({ text }) {
   );
 }
 
-// Stable identity for a track across reorders.
+// Identity for a track. Not guaranteed unique: a repeated curated track, or
+// two entries resolving to the same URI, would collide.
 const trackId = (t) => t.spotifyUri || `${t.artist}—${t.title}`;
+
+// Sortable/key id, made unique by position. Computed from the card's current
+// order at render time — dnd-kit snapshots items at drag start, so ids stay
+// stable for the duration of a drag, and the positional suffix makes the
+// drag-end indexOf lookup exact even with duplicate tracks.
+const sortableId = (t, i) => `${trackId(t)}#${i}`;
 
 // One row on the sleeve. The entire row is the drag surface (dnd-kit sortable);
 // while not editable it degrades to the plain link row it always was.
 // While a refine is in flight, drag and the swap button are disabled — the
 // server merges against the card the client sent, so mid-flight edits would
 // be clobbered by the merged result.
-function TrackRow({ t, index, accentInk, editable, adjusting, href, justDragged, onSwap }) {
+function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDragged, onSwap }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id: trackId(t), disabled: !editable || adjusting });
+    useSortable({ id, disabled: !editable || adjusting });
 
   return (
     <a
@@ -203,6 +215,7 @@ export default function LinerNotes() {
   const refineRef = useRef(null);
   const cardTitleRef = useRef(null);
   const abortRef = useRef(null);
+  const adjustAbortRef = useRef(null);
 
   // drag-to-reorder: the whole row is the drag surface. The 8px activation
   // distance is what separates a tap (opens Spotify) from a drag (reorders).
@@ -326,11 +339,14 @@ export default function LinerNotes() {
     setAdjustLog([]);
     setAnnounce("Rewinding the tape.");
     let changeCount = 0;
+    const controller = new AbortController();
+    adjustAbortRef.current = controller;
     try {
       const response = await fetch("/api/adjust/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ card, adjustment: theInstruction }),
+        signal: controller.signal,
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -370,13 +386,22 @@ export default function LinerNotes() {
       setCard(doneCard);
       setAdjustText("");
     } catch (e) {
-      console.error(e);
-      setAdjustError("The curator couldn't rewind that one. Try rewording it.");
+      if (e.name === "AbortError") {
+        setAnnounce("Stopped.");
+      } else {
+        console.error(e);
+        setAdjustError("The curator couldn't rewind that one. Try rewording it.");
+      }
     } finally {
+      adjustAbortRef.current = null;
       setAdjusting(false);
       setAdjustStage(null);
       setAdjustLog([]);
     }
+  };
+
+  const stopAdjusting = () => {
+    adjustAbortRef.current?.abort();
   };
 
   // Per-track swap: a canned instruction through the same refine pipeline.
@@ -454,7 +479,7 @@ export default function LinerNotes() {
     setTimeout(() => (justDragged.current = false), 0);
     if (over && active.id !== over.id) {
       setCard((c) => {
-        const ids = c.tracks.map(trackId);
+        const ids = c.tracks.map(sortableId);
         return {
           ...c,
           tracks: arrayMove(c.tracks, ids.indexOf(active.id), ids.indexOf(over.id)),
@@ -630,13 +655,14 @@ export default function LinerNotes() {
                   onDragEnd={onDragEnd}
                 >
                   <SortableContext
-                    items={card.tracks.map(trackId)}
+                    items={card.tracks.map(sortableId)}
                     strategy={verticalListSortingStrategy}
                   >
                     <div className="track-list">
                       {card.tracks.map((t, i) => (
                         <TrackRow
-                          key={trackId(t)}
+                          key={sortableId(t, i)}
+                          id={sortableId(t, i)}
                           t={t}
                           index={i}
                           accentInk={accentInk}
@@ -688,11 +714,10 @@ export default function LinerNotes() {
                     aria-label="Refine the mixtape"
                   />
                   <button
-                    onClick={() => refine()}
-                    disabled={adjusting}
+                    onClick={adjusting ? stopAdjusting : () => refine()}
                     className="btn-ghost refine-btn"
                   >
-                    {adjusting ? "REWINDING…" : "REFINE"}
+                    {adjusting ? "STOP" : "REFINE"}
                   </button>
                 </div>
                 {adjusting && (

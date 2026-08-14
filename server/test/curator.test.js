@@ -65,3 +65,33 @@ test("nested objects count as one entry (change objects wrap a track)", () => {
   const changes = extractCompleteTracks(buf, "changes");
   assert.strictEqual(changes.length, 1);
 });
+
+// ── seedContext: the "in the spirit of" prompt block ─────────
+
+const { seedContext } = require("../curator.js");
+
+test("seedContext: names the playlist, lists every track, states the dedup rule", () => {
+  const ctx = seedContext({
+    name: "Late Night Drives",
+    total: 2,
+    tracks: [
+      { artist: "The War on Drugs", title: "Red Eyes" },
+      { artist: "M83", title: "Midnight City" },
+    ],
+  });
+  assert.ok(ctx.includes('"Late Night Drives"'));
+  assert.ok(ctx.includes("all 2 tracks"));
+  assert.ok(ctx.includes("The War on Drugs — Red Eyes"));
+  assert.ok(ctx.includes("M83 — Midnight City"));
+  // the load-bearing rule: without it the model can echo the playlist back
+  assert.ok(/do not include any track from the list above/i.test(ctx));
+});
+
+test("seedContext: says when the list is a sample, not the whole playlist", () => {
+  const ctx = seedContext({
+    name: "Big One",
+    total: 500,
+    tracks: [{ artist: "A", title: "T" }],
+  });
+  assert.ok(ctx.includes("1 of its 500 tracks, sampled in playlist order"));
+});

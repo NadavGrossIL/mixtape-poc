@@ -199,6 +199,51 @@
   text-align: center;
 }
 
+/* ── seed picker: "in the spirit of" ── */
+.seed-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  max-width: 560px;
+  margin-top: 12px;
+}
+.seed-label {
+  font-family: "Space Mono", monospace;
+  font-size: 11.5px;
+  letter-spacing: 1px;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+}
+.seed-select {
+  flex: 1;
+  min-width: 0;
+  background: var(--shell-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink-dim);
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  padding: 0 12px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, color 0.15s ease;
+}
+.seed-select:hover {
+  border-color: var(--ink-faint);
+  color: var(--ink);
+}
+.seed-note {
+  font-family: "Space Mono", monospace;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+}
+.seed-reauth {
+  font-family: "Space Mono", monospace;
+  font-size: 11.5px;
+  color: var(--accent-soft);
+}
+
 /* ── example chips ── */
 .chips {
   display: flex;
@@ -689,6 +734,10 @@
 @media (max-width: 520px) {
   .input-row {
     flex-direction: column;
+  }
+  .seed-row {
+    flex-direction: column;
+    align-items: stretch;
   }
   .refine-row {
     flex-direction: column;

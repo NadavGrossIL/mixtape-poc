@@ -89,3 +89,32 @@ test("buildQueries: drops empty and duplicate queries", () => {
   const plain = qs.filter((x) => x.q === "adele hello");
   assert.strictEqual(plain.length, 1);
 });
+
+// ── sampleTracks ─────────────────────────────────────────────
+
+const { sampleTracks, SEED_TRACK_CAP } = require("../spotify.js");
+
+test("sampleTracks: at or under the cap returns the input unchanged", () => {
+  const tracks = [{ title: "a" }, { title: "b" }];
+  assert.strictEqual(sampleTracks(tracks, 2), tracks);
+  assert.strictEqual(sampleTracks([], 5).length, 0);
+});
+
+test("sampleTracks: over the cap samples evenly — ordered, no duplicates, ends covered", () => {
+  const tracks = Array.from({ length: 200 }, (_, i) => ({ title: String(i) }));
+  const out = sampleTracks(tracks, 80);
+  assert.strictEqual(out.length, 80);
+  // starts at the top; a top-only slice would end at 79, not deep in the tail
+  assert.strictEqual(out[0].title, "0");
+  assert.ok(Number(out[out.length - 1].title) >= 195);
+  // strictly increasing source positions = order preserved and no duplicates
+  const idx = out.map((t) => Number(t.title));
+  for (let i = 1; i < idx.length; i++) assert.ok(idx[i] > idx[i - 1]);
+});
+
+test("sampleTracks: default cap is SEED_TRACK_CAP", () => {
+  const tracks = Array.from({ length: SEED_TRACK_CAP + 40 }, (_, i) => ({
+    title: String(i),
+  }));
+  assert.strictEqual(sampleTracks(tracks).length, SEED_TRACK_CAP);
+});

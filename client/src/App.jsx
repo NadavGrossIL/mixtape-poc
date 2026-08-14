@@ -199,8 +199,12 @@ export default function LinerNotes() {
   const [playlistUrl, setPlaylistUrl] = useState(null);
   const [saveError, setSaveError] = useState(null);
   // real progress, driven only by SSE events from the backend
-  const [stage, setStage] = useState(null); // "curating" | "resolving"
+  const [stage, setStage] = useState(null); // "seeding" | "curating" | "resolving"
   const [logTracks, setLogTracks] = useState([]); // {artist, title, resolved?}
+  const [seedLog, setSeedLog] = useState(null); // {name} while seeding this run
+  // "in the spirit of" seed picker
+  const [playlists, setPlaylists] = useState(null); // null=loading | [] | "unauthorized" | "error"
+  const [seedId, setSeedId] = useState("");
   const [saveStage, setSaveStage] = useState(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
@@ -233,17 +237,38 @@ export default function LinerNotes() {
       .catch(() => setLoggedIn(false));
   }, []);
 
+  // the seed picker's playlist list. 403 = the stored token predates the
+  // playlist-read scopes — surfaced as a "reconnect Spotify" link.
+  useEffect(() => {
+    if (loggedIn !== true) return;
+    fetch("/api/playlists")
+      .then(async (r) => {
+        if (r.status === 403) return setPlaylists("unauthorized");
+        if (!r.ok) throw new Error("playlists failed");
+        const d = await r.json();
+        setPlaylists(Array.isArray(d.playlists) ? d.playlists : []);
+      })
+      .catch(() => setPlaylists("error"));
+  }, [loggedIn]);
+
   // Move focus to the result when it lands, so keyboard and
   // screen-reader users aren't stranded back at the prompt.
   useEffect(() => {
     if (card) cardTitleRef.current?.focus();
   }, [card]);
 
+  const seedPlaylist = Array.isArray(playlists)
+    ? playlists.find((p) => p.id === seedId) || null
+    : null;
+
   const generate = async (p) => {
     const thePrompt = (p ?? prompt).trim();
     if (loading || adjusting) return;
-    if (!thePrompt) {
-      setInputHint("Type a vibe first — a mood, a moment, an era, a dare.");
+    // a seed playlist alone is a valid ask ("just like this one")
+    if (!thePrompt && !seedPlaylist) {
+      setInputHint(
+        "Type a vibe first — a mood, a moment, an era — or pick a playlist to channel."
+      );
       inputRef.current?.focus();
       return;
     }
@@ -256,6 +281,7 @@ export default function LinerNotes() {
     setAdjustText("");
     setStage(null);
     setLogTracks([]);
+    setSeedLog(null);
     setAnnounce("Pressing your mixtape.");
     const controller = new AbortController();
     abortRef.current = controller;
@@ -263,7 +289,12 @@ export default function LinerNotes() {
       const response = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prompt: thePrompt }),
+        body: JSON.stringify({
+          prompt: thePrompt,
+          ...(seedPlaylist
+            ? { seed: { id: seedPlaylist.id, name: seedPlaylist.name } }
+            : {}),
+        }),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -273,7 +304,11 @@ export default function LinerNotes() {
       let doneCard = null;
       let streamError = null;
       await readSSE(response, (event, data) => {
-        if (event === "curating") {
+        if (event === "seeding") {
+          setStage("seeding");
+          setSeedLog({ name: data?.name || "your playlist" });
+          setAnnounce("Reading your playlist.");
+        } else if (event === "curating") {
           setStage("curating");
           setAnnounce("Digging through the crates.");
         } else if (event === "track") {
@@ -427,7 +462,15 @@ export default function LinerNotes() {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
         },
-        body: JSON.stringify({ title: card.title, uris, prompt: card.prompt }),
+        body: JSON.stringify({
+          title: card.title,
+          uris,
+          // seed-only cards have no prompt — the playlist description should
+          // still say where the mixtape came from
+          prompt:
+            card.prompt ||
+            (card.seed ? `in the spirit of ${card.seed.name}` : ""),
+        }),
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -546,6 +589,44 @@ export default function LinerNotes() {
                 {inputHint}
               </div>
             )}
+
+            {/* "in the spirit of" seed picker — optional; with a playlist
+                picked, the prompt may stay empty */}
+            {!card && !loading && (
+              <div className="seed-row">
+                <label htmlFor="seed-select" className="seed-label">
+                  in the spirit of
+                </label>
+                {Array.isArray(playlists) ? (
+                  <select
+                    id="seed-select"
+                    className="seed-select"
+                    value={seedId}
+                    onChange={(e) => {
+                      setSeedId(e.target.value);
+                      setInputHint(null);
+                    }}
+                  >
+                    <option value="">— nothing, fresh from the prompt —</option>
+                    {playlists.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.name}
+                        {p.total != null ? ` · ${p.total} tracks` : ""}
+                      </option>
+                    ))}
+                  </select>
+                ) : playlists === "unauthorized" ? (
+                  <a href="/auth/login" className="seed-reauth">
+                    reconnect Spotify to browse your playlists
+                  </a>
+                ) : playlists === "error" ? (
+                  <span className="seed-note">couldn’t load your playlists</span>
+                ) : (
+                  <span className="seed-note">loading your playlists…</span>
+                )}
+              </div>
+            )}
+
             {!card && !loading && (
               <div className="scope-line">
                 describe a vibe, moment, or era — you get 8 real tracks with
@@ -581,7 +662,13 @@ export default function LinerNotes() {
                 aria-hidden: the live region above narrates the milestones. */}
             <div className="progress-log" aria-hidden>
               {!stage && <div className="log-line">reading your prompt…{cursor}</div>}
-              {stage && (
+              {seedLog && (
+                <div className="log-line">
+                  pulling from “{seedLog.name}”…
+                  {stage === "seeding" ? cursor : <span className="log-ok"> ok</span>}
+                </div>
+              )}
+              {stage && stage !== "seeding" && (
                 <div className="log-line">
                   digging through the crates…
                   {stage === "curating" ? cursor : <span className="log-ok"> ok</span>}
@@ -646,7 +733,17 @@ export default function LinerNotes() {
                   “{card.vibe}”
                 </div>
                 <div className="prompt-line">
-                  prompted: <em>{card.prompt}</em>
+                  {card.prompt && (
+                    <>
+                      prompted: <em>{card.prompt}</em>
+                    </>
+                  )}
+                  {card.prompt && card.seed && " · "}
+                  {card.seed && (
+                    <>
+                      in the spirit of: <em>{card.seed.name}</em>
+                    </>
+                  )}
                 </div>
 
                 <DndContext

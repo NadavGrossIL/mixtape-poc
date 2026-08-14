@@ -118,6 +118,17 @@ async function refreshAccessToken() {
   return loadTokens();
 }
 
+// Single-flight: concurrent resolver workers seeing an expired token must
+// share ONE refresh. Parallel refreshes race on .tokens.json (last-write-wins
+// can persist a stale refresh_token when Spotify rotates it → silent logout).
+let refreshInFlight = null;
+function refreshOnce() {
+  refreshInFlight ||= refreshAccessToken().finally(() => {
+    refreshInFlight = null;
+  });
+  return refreshInFlight;
+}
+
 async function getAccessToken() {
   let tokens = loadTokens();
   if (!tokens || !tokens.refresh_token) {
@@ -126,7 +137,7 @@ async function getAccessToken() {
     throw err;
   }
   if (!tokens.access_token || Date.now() > tokens.expires_at - 30_000) {
-    tokens = await refreshAccessToken();
+    tokens = await refreshOnce();
   }
   return tokens.access_token;
 }
@@ -143,7 +154,15 @@ async function spotifyFetch(pathname, options = {}, retried = false) {
     },
   });
   if (res.status === 401 && !retried) {
-    await refreshAccessToken();
+    await refreshOnce();
+    return spotifyFetch(pathname, options, true);
+  }
+  if (res.status === 429 && !retried) {
+    // Honor Retry-After once (capped) — a rate-limited search must never be
+    // silently recorded as "track doesn't exist" by the hallucination gate.
+    const wait = Math.min(Math.max(Number(res.headers.get("retry-after")) || 1, 1), 30);
+    console.warn(`[spotify] 429 on ${pathname} — retrying in ${wait}s`);
+    await new Promise((resolve) => setTimeout(resolve, wait * 1000));
     return spotifyFetch(pathname, options, true);
   }
   if (!res.ok) {
@@ -252,7 +271,10 @@ async function resolveTrack(track) {
       const data = await spotifyFetch(`/search?${params}`);
       items = data?.tracks?.items || [];
     } catch (err) {
-      if (err.status === 401) throw err; // login problem — surface it
+      // 401 = login problem, 429 = still rate-limited after the retry —
+      // both must surface as errors, never as "unresolved" (which the
+      // product reads as a hallucination).
+      if (err.status === 401 || err.status === 429) throw err;
       console.warn(`[resolve] search error (${strategy}) for ${label}: ${err.message}`);
       continue;
     }
@@ -302,8 +324,9 @@ async function resolveTrack(track) {
 async function resolveTracks(tracks, concurrency = 3, onProgress) {
   const results = new Array(tracks.length);
   let next = 0;
+  let failed = false; // one worker throwing must stop the others, not orphan them
   async function worker() {
-    while (next < tracks.length) {
+    while (!failed && next < tracks.length) {
       const i = next++;
       if (onProgress) {
         onProgress("resolving", {
@@ -312,7 +335,12 @@ async function resolveTracks(tracks, concurrency = 3, onProgress) {
           title: tracks[i].title,
         });
       }
-      results[i] = await resolveTrack(tracks[i]);
+      try {
+        results[i] = await resolveTrack(tracks[i]);
+      } catch (err) {
+        failed = true;
+        throw err;
+      }
       if (onProgress) {
         onProgress("resolved", {
           index: i,

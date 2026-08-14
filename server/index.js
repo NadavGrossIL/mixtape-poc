@@ -51,7 +51,11 @@ app.get("/auth/login", (req, res) => {
 app.get("/callback", async (req, res) => {
   const { code, state, error } = req.query;
   if (error) {
-    return res.status(400).send(`Spotify authorization failed: ${error}`);
+    // text/plain, not HTML — `error` is attacker-controlled query input
+    return res
+      .status(400)
+      .type("text/plain")
+      .send(`Spotify authorization failed: ${String(error)}`);
   }
   if (!state || !pendingStates.has(state)) {
     return res.status(400).send("State mismatch — restart the login flow.");
@@ -84,6 +88,9 @@ function sseInit(res) {
 }
 
 function sseSend(res, event, data) {
+  // A resolver worker can outlive the response (peer throws → route ends the
+  // stream); writing then would emit an uncaught stream error and crash.
+  if (res.writableEnded || res.destroyed) return;
   res.write(`event: ${event}\ndata: ${JSON.stringify(data || {})}\n\n`);
 }
 
@@ -254,6 +261,8 @@ app.post("/api/playlist", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
+// Loopback only: this server proxies two private credentials (Anthropic key,
+// Spotify tokens) with no per-request auth — it must not be LAN-reachable.
+app.listen(PORT, "127.0.0.1", () => {
   console.log(`Mixtape POC server listening on http://127.0.0.1:${PORT}`);
 });

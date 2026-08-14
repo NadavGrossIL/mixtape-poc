@@ -2,7 +2,8 @@ import { useEffect, useRef, useState } from "react";
 import {
   DndContext,
   closestCenter,
-  PointerSensor,
+  MouseSensor,
+  TouchSensor,
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
@@ -78,6 +79,33 @@ async function readSSE(response, onEvent) {
   }
 }
 
+// Cassette mark. Stroke-based so it stays crisp at header size: the shell
+// inherits currentColor; reels and the spilled tape carry the accent.
+function Logo() {
+  return (
+    <svg
+      className="logo"
+      viewBox="0 0 44 33"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="2" y="3" width="40" height="22" rx="3" />
+      <path d="M15 9.5h14" className="logo-accent" />
+      <circle cx="15" cy="14" r="4.5" className="logo-accent" />
+      <circle cx="29" cy="14" r="4.5" className="logo-accent" />
+      <path d="M15.5 25l1.8-4h9.4l1.8 4" />
+      <path
+        d="M9 25c0 4.5 5.5 5 10.5 3.5 4-1.2 8-1 12.5 1"
+        className="logo-accent"
+      />
+    </svg>
+  );
+}
+
 function BrandText({ text }) {
   const i = text.indexOf("/");
   if (i === -1) return <>{text}</>;
@@ -136,7 +164,9 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
         transform: CSS.Transform.toString(transform),
         transition,
         cursor: editable ? "grab" : "pointer",
-        touchAction: editable ? "none" : "auto",
+        // manipulation (not none): the TouchSensor hold-delay owns dragging,
+        // so plain swipes over the row must still scroll the page
+        touchAction: editable ? "manipulation" : "auto",
       }}
       aria-label={`${t.artist} — ${t.title}${
         t.resolved ? "" : ", unverified"
@@ -172,8 +202,11 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
           disabled={adjusting}
           title="Swap this track for a different one that fits"
           aria-label={`Swap track ${index + 1}, ${t.artist} — ${t.title}, for a different one`}
-          // keep the button out of the row's drag-activation path
+          // keep the button out of the row's drag-activation path —
+          // each sensor listens on its own start event
           onPointerDown={(e) => e.stopPropagation()}
+          onMouseDown={(e) => e.stopPropagation()}
+          onTouchStart={(e) => e.stopPropagation()}
           onClick={(e) => {
             // a plain click must neither open the track nor start a drag
             e.preventDefault();
@@ -221,10 +254,12 @@ export default function LinerNotes() {
   const abortRef = useRef(null);
   const adjustAbortRef = useRef(null);
 
-  // drag-to-reorder: the whole row is the drag surface. The 8px activation
-  // distance is what separates a tap (opens Spotify) from a drag (reorders).
+  // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
+  // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
+  // finger can still scroll the list — moving during the hold cancels the drag.
   const sensors = useSensors(
-    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
   );
   const justDragged = useRef(false);
 
@@ -540,6 +575,7 @@ export default function LinerNotes() {
 
       <header className="header">
         <h1 className="wordmark">
+          <Logo />
           <BrandText text={brand} />
         </h1>
         <div className="tagline">one prompt in. a record sleeve out.</div>

@@ -81,6 +81,19 @@
   margin: 0;
   font-weight: 400;
   text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+/* cassette mark — sized to the wordmark's cap height */
+.logo {
+  width: 40px;
+  height: 30px;
+  flex-shrink: 0;
+  color: var(--ink);
+}
+.logo-accent {
+  stroke: var(--accent-soft);
 }
 .slash {
   color: var(--accent-soft);
@@ -303,6 +316,7 @@
   max-width: 460px;
   border-left: 2px solid rgba(227, 100, 20, 0.35);
   padding-left: 14px;
+  overflow-wrap: break-word; /* streamed track names can run long */
 }
 .log-line {
   color: var(--ink-dim);
@@ -410,9 +424,10 @@
   font-weight: 400;
   text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
 }
+/* focus lands here programmatically so screen readers announce the new
+   card; it's tabIndex={-1}, unreachable by Tab, so no visible ring */
 .card-title:focus-visible {
-  outline: 2px solid var(--paper-ink);
-  outline-offset: 4px;
+  outline: none;
 }
 .vibe {
   font-family: Georgia, serif;
@@ -496,6 +511,7 @@
   font-weight: 700;
   font-size: 14.5px;
   line-height: 1.3;
+  overflow-wrap: break-word; /* long unbroken artist/title strings */
 }
 .track-note {
   font-family: Georgia, serif;
@@ -625,6 +641,13 @@
   align-items: center;
   justify-content: center;
   transition: color 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+/* invisible hit-area: a 46px touch target around the 30px visual */
+.swap-btn::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
 }
 .swap-btn:hover {
   color: var(--paper-ink);
@@ -750,5 +773,39 @@
   }
   .card-footer span:first-child {
     display: none;
+  }
+  /* the full wordmark + cassette runs ~460px at desktop size */
+  .wordmark {
+    font-size: clamp(17px, 5.4vw, 24px);
+    letter-spacing: 1px;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .logo {
+    width: 30px;
+    height: 23px;
+  }
+  .card-title {
+    font-size: clamp(21px, 6.8vw, 28px);
+  }
+  .spine {
+    width: 28px;
+  }
+  .vibe {
+    font-size: 14px;
+  }
+  /* denser rows: keep title space ahead of chrome on a ~270px body */
+  .track-row {
+    gap: 8px;
+  }
+  .album-art,
+  .album-art-placeholder {
+    width: 36px;
+    height: 36px;
+  }
+  .unverified {
+    font-size: 9.5px;
+    letter-spacing: 0.5px;
   }
 }

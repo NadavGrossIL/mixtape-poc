@@ -41,9 +41,11 @@ function loadTokens() {
 }
 
 function saveTokens(tokens) {
-  fs.writeFileSync(TOKENS_PATH, JSON.stringify(tokens, null, 2), {
-    mode: 0o600,
-  });
+  // temp-then-rename: a crash mid-write must never corrupt .tokens.json
+  // (a corrupt file silently reads as logged-out)
+  const tmp = `${TOKENS_PATH}.tmp`;
+  fs.writeFileSync(tmp, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  fs.renameSync(tmp, TOKENS_PATH);
 }
 
 function isLoggedIn() {
@@ -171,8 +173,10 @@ async function spotifyFetch(pathname, options = {}, retried = false) {
     err.status = res.status;
     throw err;
   }
-  // 201/200 with JSON bodies everywhere we call
-  return res.json();
+  // 201/200 with JSON bodies everywhere we call — except DELETE
+  // /playlists/{id}/followers, which returns an empty body
+  const text = await res.text().catch(() => "");
+  return text ? JSON.parse(text) : null;
 }
 
 // ── track resolution ─────────────────────────────────────────
@@ -236,8 +240,11 @@ function artistScore(itemArtists, curatedArtist) {
 // 1. field-filtered as curated, 2. plain free text, 3. normalized variant
 // (parenthetical / feat. suffixes and punctuation stripped).
 function buildQueries(track) {
+  // `"` inside a value terminates the field filter early and malforms the query
+  const fArtist = String(track.artist).replace(/"/g, "");
+  const fTitle = String(track.title).replace(/"/g, "");
   const raw = [
-    { strategy: "field", q: `artist:"${track.artist}" track:"${track.title}"` },
+    { strategy: "field", q: `artist:"${fArtist}" track:"${fTitle}"` },
     { strategy: "plain", q: `${track.artist} ${track.title}` },
     {
       strategy: "normalized",
@@ -321,12 +328,14 @@ async function resolveTrack(track) {
 
 // Resolve all tracks with a small concurrency pool (respects rate limits).
 // onProgress(event, payload) fires per track: "resolving", then "resolved".
-async function resolveTracks(tracks, concurrency = 3, onProgress) {
+// signal (optional): an aborted signal stops the pool between tracks — the
+// caller checks it and discards the partial results.
+async function resolveTracks(tracks, concurrency = 3, onProgress, signal) {
   const results = new Array(tracks.length);
   let next = 0;
   let failed = false; // one worker throwing must stop the others, not orphan them
   async function worker() {
-    while (!failed && next < tracks.length) {
+    while (!failed && !signal?.aborted && next < tracks.length) {
       const i = next++;
       if (onProgress) {
         onProgress("resolving", {
@@ -372,10 +381,27 @@ async function createPlaylist({ name, description, uris }, onProgress) {
   if (uris.length) {
     // POST /v1/playlists/{id}/items (renamed from /tracks); body key is "uris"
     if (onProgress) onProgress("adding", { count: uris.length });
-    await spotifyFetch(`/playlists/${playlist.id}/items`, {
-      method: "POST",
-      body: JSON.stringify({ uris }),
-    });
+    try {
+      await spotifyFetch(`/playlists/${playlist.id}/items`, {
+        method: "POST",
+        body: JSON.stringify({ uris }),
+      });
+    } catch (err) {
+      // Best-effort orphan cleanup — otherwise every retry after a failed add
+      // leaves another empty playlist. There is no delete endpoint; unfollowing
+      // your own playlist removes it. A failed cleanup must not mask the
+      // original error.
+      try {
+        await spotifyFetch(`/playlists/${playlist.id}/followers`, {
+          method: "DELETE",
+        });
+      } catch (cleanupErr) {
+        console.warn(
+          `[playlist] cleanup of orphaned ${playlist.id} failed: ${cleanupErr.message}`
+        );
+      }
+      throw err;
+    }
   }
   return playlist.external_urls?.spotify || null;
 }
@@ -388,4 +414,10 @@ module.exports = {
   exchangeCode,
   resolveTracks,
   createPlaylist,
+  // pure matching internals, exported for tests only
+  normalize,
+  similarity,
+  artistScore,
+  buildQueries,
+  ARTIST_FLOOR,
 };

@@ -183,22 +183,27 @@ function extractCompleteTracks(buf, arrayKey = "tracks") {
 
 // Generate a card. onTrack(index, {artist, title}) fires as the model streams
 // each track — real events, straight from the tool-input stream.
-async function generateCard(prompt, { onTrack } = {}) {
+// signal (optional): aborting kills the model stream mid-flight (client
+// disconnect must stop the paid request); iteration then throws an abort error.
+async function generateCard(prompt, { onTrack, signal } = {}) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
-  const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 2000,
-    system: SYSTEM,
-    tools: [CURATOR_TOOL],
-    tool_choice: { type: "tool", name: "create_mixtape" },
-    messages: [
-      {
-        role: "user",
-        content: `Build a playlist for this prompt: "${prompt}"`,
-      },
-    ],
-  });
+  const stream = client.messages.stream(
+    {
+      model: MODEL,
+      max_tokens: 2000,
+      system: SYSTEM,
+      tools: [CURATOR_TOOL],
+      tool_choice: { type: "tool", name: "create_mixtape" },
+      messages: [
+        {
+          role: "user",
+          content: `Build a playlist for this prompt: "${prompt}"`,
+        },
+      ],
+    },
+    { signal }
+  );
 
   let buf = "";
   let emitted = 0;
@@ -210,7 +215,9 @@ async function generateCard(prompt, { onTrack } = {}) {
       buf += event.delta.partial_json;
       if (!onTrack) continue;
       const tracks = extractCompleteTracks(buf);
-      while (emitted < tracks.length) {
+      // never emit past TRACK_COUNT — the post-stream clamp drops the excess,
+      // so the client must not see rows that won't be on the card
+      while (emitted < tracks.length && emitted < TRACK_COUNT) {
         const t = tracks[emitted];
         if (t && t.artist && t.title) onTrack(emitted, t);
         emitted++;
@@ -243,7 +250,8 @@ async function generateCard(prompt, { onTrack } = {}) {
 // the user message, no replayed transcript). Returns a validated diff:
 //   { changes: [{index, track: {artist, title, note}}], title?, vibe?, accent? }
 // onChange(i, {index, track}) fires as the model streams each complete change.
-async function adjustCard(card, adjustment, { onChange } = {}) {
+// signal: same abort contract as generateCard.
+async function adjustCard(card, adjustment, { onChange, signal } = {}) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
 
   // Strip spotify resolution fields — the model doesn't need them. The
@@ -261,24 +269,27 @@ async function adjustCard(card, adjustment, { onChange } = {}) {
     })),
   };
 
-  const stream = client.messages.stream({
-    model: MODEL,
-    max_tokens: 2000,
-    system: ADJUST_SYSTEM,
-    // Static tool list (both tools, always) — varying it would invalidate the
-    // compiled-grammar cache.
-    tools: [CURATOR_TOOL, ADJUST_TOOL],
-    tool_choice: { type: "tool", name: "adjust_mixtape" },
-    messages: [
-      {
-        role: "user",
-        content:
-          `Original prompt: "${card.prompt || ""}"\n` +
-          `Current mixtape (JSON):\n${JSON.stringify(minimalCard)}\n\n` +
-          `User adjustment: "${adjustment}"`,
-      },
-    ],
-  });
+  const stream = client.messages.stream(
+    {
+      model: MODEL,
+      max_tokens: 2000,
+      system: ADJUST_SYSTEM,
+      // Static tool list (both tools, always) — varying it would invalidate the
+      // compiled-grammar cache.
+      tools: [CURATOR_TOOL, ADJUST_TOOL],
+      tool_choice: { type: "tool", name: "adjust_mixtape" },
+      messages: [
+        {
+          role: "user",
+          content:
+            `Original prompt: "${card.prompt || ""}"\n` +
+            `Current mixtape (JSON):\n${JSON.stringify(minimalCard)}\n\n` +
+            `User adjustment: "${adjustment}"`,
+        },
+      ],
+    },
+    { signal }
+  );
 
   let buf = "";
   let emitted = 0;
@@ -352,4 +363,12 @@ async function adjustCard(card, adjustment, { onChange } = {}) {
   return diff;
 }
 
-module.exports = { anthropicConfigured, generateCard, adjustCard, MODEL, TRACK_COUNT };
+module.exports = {
+  anthropicConfigured,
+  generateCard,
+  adjustCard,
+  MODEL,
+  TRACK_COUNT,
+  // exported for tests only
+  extractCompleteTracks,
+};

@@ -32,8 +32,18 @@ if (!curator.anthropicConfigured()) {
 
 // ── auth ─────────────────────────────────────────────────────
 
-// states issued by /auth/login, consumed by /callback
-const pendingStates = new Set();
+// states issued by /auth/login, consumed by /callback — state → issued-at.
+// Expired lazily on the two auth routes; abandoned logins must not make a
+// state valid forever (or grow the map unboundedly).
+const pendingStates = new Map();
+const STATE_TTL_MS = 10 * 60 * 1000;
+
+function evictStaleStates() {
+  const cutoff = Date.now() - STATE_TTL_MS;
+  for (const [state, issuedAt] of pendingStates) {
+    if (issuedAt < cutoff) pendingStates.delete(state);
+  }
+}
 
 app.get("/auth/login", (req, res) => {
   if (!spotify.credentialsConfigured()) {
@@ -43,12 +53,14 @@ app.get("/auth/login", (req, res) => {
         "Spotify credentials are not configured. Fill in server/.env (see .env.example) and restart the server."
       );
   }
+  evictStaleStates();
   const state = spotify.makeState();
-  pendingStates.add(state);
+  pendingStates.set(state, Date.now());
   res.redirect(spotify.authorizeUrl(state));
 });
 
 app.get("/callback", async (req, res) => {
+  evictStaleStates();
   const { code, state, error } = req.query;
   if (error) {
     // text/plain, not HTML — `error` is attacker-controlled query input
@@ -94,7 +106,7 @@ function sseSend(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data || {})}\n\n`);
 }
 
-// Streaming variant of generate. Emits, in order:
+// Streaming generate. Emits, in order:
 //   curating → track (per track, as Claude streams it) → curated (count)
 //   → resolving / resolved (per track) → done (full card) | error
 app.post("/api/generate/stream", async (req, res) => {
@@ -111,24 +123,43 @@ app.post("/api/generate/stream", async (req, res) => {
     return res.status(401).json({ error: "Not logged in to Spotify." });
   }
   sseInit(res);
+  // Client abort (STOP) must stop the paid upstream work too. `close` also
+  // fires after a normal end — writableEnded distinguishes the two.
+  const abort = new AbortController();
+  res.on("close", () => {
+    if (!res.writableEnded) abort.abort();
+  });
   sseSend(res, "curating", { prompt });
   try {
     const card = await curator.generateCard(prompt, {
+      signal: abort.signal,
       onTrack: (index, t) =>
         sseSend(res, "track", { index, artist: t.artist, title: t.title }),
     });
     sseSend(res, "curated", { count: card.tracks.length, title: card.title });
-    card.tracks = await spotify.resolveTracks(card.tracks, 3, (event, payload) =>
-      sseSend(res, event, payload)
+    card.tracks = await spotify.resolveTracks(
+      card.tracks,
+      3,
+      (event, payload) => sseSend(res, event, payload),
+      abort.signal
     );
+    if (abort.signal.aborted) {
+      console.log("[generate/stream] client disconnected — stopped");
+      return res.end();
+    }
     card.prompt = prompt;
     sseSend(res, "done", {
       card,
       verified: card.tracks.filter((t) => t.resolved).length,
     });
   } catch (err) {
+    if (abort.signal.aborted) {
+      console.log("[generate/stream] client disconnected — stopped");
+      return res.end();
+    }
     console.error("[generate/stream] failed:", err.message);
-    sseSend(res, "error", { message: err.message });
+    // detail stays in the server log — clients get a generic line
+    sseSend(res, "error", { message: "Generation failed — check the server logs." });
   }
   res.end();
 });
@@ -154,9 +185,15 @@ app.post("/api/adjust/stream", async (req, res) => {
     return res.status(401).json({ error: "Not logged in to Spotify." });
   }
   sseInit(res);
+  // Same disconnect handling as /api/generate/stream.
+  const abort = new AbortController();
+  res.on("close", () => {
+    if (!res.writableEnded) abort.abort();
+  });
   sseSend(res, "adjusting", { adjustment });
   try {
     const diff = await curator.adjustCard(card, adjustment, {
+      signal: abort.signal,
       onChange: (_, c) =>
         sseSend(res, "change", {
           index: c.index,
@@ -168,9 +205,17 @@ app.post("/api/adjust/stream", async (req, res) => {
     // Resolve ONLY the replacements; remap the subset index back to the
     // track's position on the card so the client updates the right row.
     const replacements = diff.changes.map((c) => c.track);
-    const resolved = await spotify.resolveTracks(replacements, 3, (event, payload) =>
-      sseSend(res, event, { ...payload, index: diff.changes[payload.index].index })
+    const resolved = await spotify.resolveTracks(
+      replacements,
+      3,
+      (event, payload) =>
+        sseSend(res, event, { ...payload, index: diff.changes[payload.index].index }),
+      abort.signal
     );
+    if (abort.signal.aborted) {
+      console.log("[adjust/stream] client disconnected — stopped");
+      return res.end();
+    }
     const tracks = card.tracks.slice();
     diff.changes.forEach((c, i) => {
       tracks[c.index] = resolved[i];
@@ -188,36 +233,14 @@ app.post("/api/adjust/stream", async (req, res) => {
       verified: tracks.filter((t) => t.resolved).length,
     });
   } catch (err) {
+    if (abort.signal.aborted) {
+      console.log("[adjust/stream] client disconnected — stopped");
+      return res.end();
+    }
     console.error("[adjust/stream] failed:", err.message);
-    sseSend(res, "error", { message: err.message });
+    sseSend(res, "error", { message: "Adjustment failed — check the server logs." });
   }
   res.end();
-});
-
-app.post("/api/generate", async (req, res) => {
-  const prompt = String(req.body?.prompt || "").trim();
-  if (!prompt) {
-    return res.status(400).json({ error: "Missing prompt" });
-  }
-  if (!curator.anthropicConfigured()) {
-    return res
-      .status(500)
-      .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
-  }
-  if (!spotify.isLoggedIn()) {
-    return res.status(401).json({ error: "Not logged in to Spotify." });
-  }
-  try {
-    const card = await curator.generateCard(prompt);
-    // Resolve every track; unresolved tracks are kept and flagged —
-    // the resolved/unresolved split is the hallucination-rate measurement.
-    card.tracks = await spotify.resolveTracks(card.tracks, 3);
-    card.prompt = prompt;
-    res.json(card);
-  } catch (err) {
-    console.error("[generate] failed:", err.message);
-    res.status(err.status === 401 ? 401 : 500).json({ error: err.message });
-  }
 });
 
 app.post("/api/playlist", async (req, res) => {
@@ -253,11 +276,16 @@ app.post("/api/playlist", async (req, res) => {
     res.json({ playlistUrl });
   } catch (err) {
     console.error("[playlist] failed:", err.message);
+    // detail stays in the server log — clients get a generic line
+    const message =
+      err.status === 401
+        ? "Not logged in to Spotify."
+        : "Saving the playlist failed — check the server logs.";
     if (wantsStream && res.headersSent) {
-      sseSend(res, "error", { message: err.message });
+      sseSend(res, "error", { message });
       return res.end();
     }
-    res.status(err.status === 401 ? 401 : 500).json({ error: err.message });
+    res.status(err.status === 401 ? 401 : 500).json({ error: message });
   }
 });
 

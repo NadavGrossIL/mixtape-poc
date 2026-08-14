@@ -64,6 +64,63 @@ const CURATOR_TOOL = {
   },
 };
 
+// Second-chance refinement: diff-style strict tool. Unchanged tracks are never
+// re-emitted by the model, so they survive byte-for-byte by construction
+// (see docs/research/second-chance-readjustment.md). Declared statically next
+// to CURATOR_TOOL — changing the tool set invalidates the grammar cache.
+const ADJUST_TOOL = {
+  name: "adjust_mixtape",
+  description:
+    "Record the minimal set of changes that satisfies the user's adjustment. " +
+    "Only include tracks that must change; omit every index the adjustment does not require touching. " +
+    "Omit title/vibe/accent unless the adjustment changes the mixtape's identity.",
+  strict: true,
+  eager_input_streaming: true,
+  input_schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["changes"],
+    properties: {
+      changes: {
+        type: "array",
+        description: "Replacements, fewest possible. Empty if only title/vibe change.",
+        items: {
+          type: "object",
+          additionalProperties: false,
+          required: ["index", "track"],
+          properties: {
+            index: {
+              type: "integer",
+              enum: [0, 1, 2, 3, 4, 5, 6, 7],
+              description: "Position of the track being replaced, from the current mixtape JSON.",
+            },
+            track: {
+              type: "object",
+              additionalProperties: false,
+              required: ["artist", "title", "note"],
+              properties: {
+                artist: { type: "string", description: "The recording artist's name." },
+                title: { type: "string", description: "The track title." },
+                note: {
+                  type: "string",
+                  description: "Same rules as create_mixtape notes: one specific, concrete reason. Max 18 words.",
+                },
+              },
+            },
+          },
+        },
+      },
+      // optional — omitted from `required`, so the model may skip them
+      title: { type: "string", description: "New title, only if the adjustment changes the mixtape's identity." },
+      vibe: { type: "string", description: "New vibe line, only if the adjustment changes the mixtape's identity." },
+      accent: {
+        type: "string",
+        enum: ["crimson", "cobalt", "forest", "tangerine", "violet", "gold"],
+      },
+    },
+  },
+};
+
 const SYSTEM = `You are a sharp music curator writing liner notes for a mixtape card.
 Rules:
 - Exactly 8 tracks. Real, well-known recordings only — if unsure a song exists, pick one you are sure of.
@@ -71,11 +128,22 @@ Rules:
 - Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.`;
 
+const ADJUST_SYSTEM = `${SYSTEM}
+
+You are adjusting an existing mixtape, not building a new one:
+- Change ONLY what the user's adjustment asks for. Tracks the adjustment does not touch must NOT appear in changes.
+- Never re-emit an unchanged track — omit its index entirely.
+- Replacement notes follow the same rules as new ones: specific, human, never generic.
+- Keep the DJ-set arc sensible: each replacement must sit right between its neighbors.
+- Tracks marked "resolved": false could not be verified on Spotify — prefer them as swap targets when the user says a track isn't real.
+- Only include title/vibe/accent when the adjustment changes the mixtape's identity.`;
+
 // Scan the accumulated partial JSON of the tool input and return every
-// COMPLETE track object found inside the "tracks" array so far.
+// COMPLETE object found inside the named array so far ("tracks" for
+// create_mixtape, "changes" for adjust_mixtape).
 // String-aware brace matching — no assumptions about chunk boundaries.
-function extractCompleteTracks(buf) {
-  const key = buf.indexOf('"tracks"');
+function extractCompleteTracks(buf, arrayKey = "tracks") {
+  const key = buf.indexOf(`"${arrayKey}"`);
   if (key === -1) return [];
   const arrStart = buf.indexOf("[", key);
   if (arrStart === -1) return [];
@@ -171,4 +239,117 @@ async function generateCard(prompt, { onTrack } = {}) {
   return card;
 }
 
-module.exports = { anthropicConfigured, generateCard, MODEL, TRACK_COUNT };
+// Adjust an existing card — stateless single-turn (the card travels as JSON in
+// the user message, no replayed transcript). Returns a validated diff:
+//   { changes: [{index, track: {artist, title, note}}], title?, vibe?, accent? }
+// onChange(i, {index, track}) fires as the model streams each complete change.
+async function adjustCard(card, adjustment, { onChange } = {}) {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  // Strip spotify resolution fields — the model doesn't need them. The
+  // `resolved` flag stays: unverified tracks are the natural swap targets.
+  const minimalCard = {
+    title: card.title,
+    vibe: card.vibe,
+    accent: card.accent,
+    tracks: card.tracks.map((t, index) => ({
+      index,
+      artist: t.artist,
+      title: t.title,
+      note: t.note,
+      resolved: Boolean(t.resolved),
+    })),
+  };
+
+  const stream = client.messages.stream({
+    model: MODEL,
+    max_tokens: 2000,
+    system: ADJUST_SYSTEM,
+    // Static tool list (both tools, always) — varying it would invalidate the
+    // compiled-grammar cache.
+    tools: [CURATOR_TOOL, ADJUST_TOOL],
+    tool_choice: { type: "tool", name: "adjust_mixtape" },
+    messages: [
+      {
+        role: "user",
+        content:
+          `Original prompt: "${card.prompt || ""}"\n` +
+          `Current mixtape (JSON):\n${JSON.stringify(minimalCard)}\n\n` +
+          `User adjustment: "${adjustment}"`,
+      },
+    ],
+  });
+
+  let buf = "";
+  let emitted = 0;
+  for await (const event of stream) {
+    if (
+      event.type === "content_block_delta" &&
+      event.delta.type === "input_json_delta"
+    ) {
+      buf += event.delta.partial_json;
+      if (!onChange) continue;
+      const changes = extractCompleteTracks(buf, "changes");
+      while (emitted < changes.length) {
+        const c = changes[emitted];
+        if (
+          c &&
+          Number.isInteger(c.index) &&
+          c.track &&
+          c.track.artist &&
+          c.track.title
+        ) {
+          onChange(emitted, c);
+        }
+        emitted++;
+      }
+    }
+  }
+
+  const response = await stream.finalMessage();
+  const toolUse = response.content.find((b) => b.type === "tool_use");
+  if (!toolUse) {
+    throw new Error("Curator returned no tool_use block");
+  }
+  const result = toolUse.input;
+  const rawChanges = Array.isArray(result.changes) ? result.changes : [];
+  // Strict schemas can't enforce array length, index range against THIS card,
+  // or duplicate indices — clamp/validate here, like the 8-track clamp above.
+  const seen = new Set();
+  const changes = [];
+  for (const c of rawChanges) {
+    const valid =
+      c &&
+      Number.isInteger(c.index) &&
+      c.index >= 0 &&
+      c.index < card.tracks.length &&
+      c.track &&
+      typeof c.track.artist === "string" &&
+      c.track.artist &&
+      typeof c.track.title === "string" &&
+      c.track.title &&
+      typeof c.track.note === "string";
+    if (!valid) {
+      console.warn(
+        `[curator] dropping malformed/out-of-range change: ${JSON.stringify(c)}`
+      );
+      continue;
+    }
+    if (seen.has(c.index)) {
+      console.warn(`[curator] dropping duplicate change for index ${c.index}`);
+      continue;
+    }
+    seen.add(c.index);
+    changes.push({
+      index: c.index,
+      track: { artist: c.track.artist, title: c.track.title, note: c.track.note },
+    });
+  }
+  const diff = { changes };
+  if (typeof result.title === "string" && result.title) diff.title = result.title;
+  if (typeof result.vibe === "string" && result.vibe) diff.vibe = result.vibe;
+  if (typeof result.accent === "string" && result.accent) diff.accent = result.accent;
+  return diff;
+}
+
+module.exports = { anthropicConfigured, generateCard, adjustCard, MODEL, TRACK_COUNT };

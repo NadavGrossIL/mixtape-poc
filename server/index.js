@@ -126,6 +126,67 @@ app.post("/api/generate/stream", async (req, res) => {
   res.end();
 });
 
+// Streaming refine ("second chance"). Body: { card, adjustment } — the client's
+// card is authoritative (the user may have drag-reordered it). Emits, in order:
+//   adjusting → change (per change, as Claude streams it) → adjusted (count)
+//   → resolving / resolved (changed indices only) → done (merged card) | error
+// Unchanged tracks never round-trip through the model or Spotify — their
+// spotifyUri/albumArt/resolved fields survive byte-identical by construction.
+app.post("/api/adjust/stream", async (req, res) => {
+  const card = req.body?.card;
+  const adjustment = String(req.body?.adjustment || "").trim();
+  if (!adjustment || !card || !Array.isArray(card.tracks) || card.tracks.length === 0) {
+    return res.status(400).json({ error: "Missing card or adjustment" });
+  }
+  if (!curator.anthropicConfigured()) {
+    return res
+      .status(500)
+      .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
+  }
+  if (!spotify.isLoggedIn()) {
+    return res.status(401).json({ error: "Not logged in to Spotify." });
+  }
+  sseInit(res);
+  sseSend(res, "adjusting", { adjustment });
+  try {
+    const diff = await curator.adjustCard(card, adjustment, {
+      onChange: (_, c) =>
+        sseSend(res, "change", {
+          index: c.index,
+          artist: c.track.artist,
+          title: c.track.title,
+        }),
+    });
+    sseSend(res, "adjusted", { count: diff.changes.length });
+    // Resolve ONLY the replacements; remap the subset index back to the
+    // track's position on the card so the client updates the right row.
+    const replacements = diff.changes.map((c) => c.track);
+    const resolved = await spotify.resolveTracks(replacements, 3, (event, payload) =>
+      sseSend(res, event, { ...payload, index: diff.changes[payload.index].index })
+    );
+    const tracks = card.tracks.slice();
+    diff.changes.forEach((c, i) => {
+      tracks[c.index] = resolved[i];
+    });
+    const merged = {
+      ...card,
+      tracks,
+      title: diff.title ?? card.title,
+      vibe: diff.vibe ?? card.vibe,
+      accent: diff.accent ?? card.accent,
+      prompt: card.prompt, // the original prompt stays on the card
+    };
+    sseSend(res, "done", {
+      card: merged,
+      verified: tracks.filter((t) => t.resolved).length,
+    });
+  } catch (err) {
+    console.error("[adjust/stream] failed:", err.message);
+    sseSend(res, "error", { message: err.message });
+  }
+  res.end();
+});
+
 app.post("/api/generate", async (req, res) => {
   const prompt = String(req.body?.prompt || "").trim();
   if (!prompt) {

@@ -1,21 +1,33 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import {
+  DndContext,
+  closestCenter,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  arrayMove,
+  useSortable,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import { openInSpotify } from "./spotifyLink";
 
-// ── design tokens ────────────────────────────────────────────
-// Studio-dark chrome around a paper "liner notes" insert.
-// Display: Archivo Black · Data: Space Mono · Notes: Georgia italic
-const ACCENTS = {
-  crimson: "#C1272D",
+// Color tokens live in styles.css. This map is the per-mixtape accent,
+// darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
+const ACCENT_INK = {
+  crimson: "#A81F24",
   cobalt: "#1F4BC7",
   forest: "#1D6A43",
-  tangerine: "#E36414",
+  tangerine: "#B34A08",
   violet: "#5F3DC4",
-  gold: "#B8860B",
+  gold: "#8A6508",
 };
 
-const FONT_CSS = `
-@import url('https://fonts.googleapis.com/css2?family=Archivo+Black&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Space+Grotesk:wght@400;500;700&display=swap');
-`;
-
+// Each example demonstrates a different prompt axis: speed/skill,
+// mood+moment, discovery/language, era+audience.
 const EXAMPLES = [
   "fastest rap verses ever recorded — Rap God energy",
   "songs that sound like driving home at 2am",
@@ -26,6 +38,10 @@ const EXAMPLES = [
 // Candidate product names — cycle with the tiny dev switcher in the corner.
 // Where a slash exists it keeps the orange slash accent.
 const BRANDS = ["MADE YOU A MIXTAPE", "DEEP/CUTS", "PROMP/TAPE"];
+
+const UNVERIFIED_TITLE =
+  "Spotify couldn't confirm this track exists — the curator may have " +
+  "misremembered it. Tap to search Spotify yourself.";
 
 // Minimal SSE parser over a fetch ReadableStream (native only, no libraries).
 async function readSSE(response, onEvent) {
@@ -63,9 +79,100 @@ function BrandText({ text }) {
   return (
     <>
       {text.slice(0, i)}
-      <span style={{ color: "#E36414" }}>/</span>
+      <span className="slash">/</span>
       {text.slice(i + 1)}
     </>
+  );
+}
+
+// Stable identity for a track across reorders.
+const trackId = (t) => t.spotifyUri || `${t.artist}—${t.title}`;
+
+// One row on the sleeve. The entire row is the drag surface (dnd-kit sortable);
+// while not editable it degrades to the plain link row it always was.
+// While a refine is in flight, drag and the swap button are disabled — the
+// server merges against the card the client sent, so mid-flight edits would
+// be clobbered by the merged result.
+function TrackRow({ t, index, accentInk, editable, adjusting, href, justDragged, onSwap }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
+    useSortable({ id: trackId(t), disabled: !editable || adjusting });
+
+  return (
+    <a
+      ref={setNodeRef}
+      href={href}
+      target="_blank"
+      rel="noreferrer"
+      {...(editable ? attributes : {})}
+      {...(editable ? listeners : {})}
+      // An <a href> is natively draggable: without this, Chrome starts its own
+      // link-drag on the same gesture and dnd-kit's reorder never lands.
+      draggable={editable ? false : undefined}
+      onDragStart={editable ? (e) => e.preventDefault() : undefined}
+      onClick={(e) => {
+        if (justDragged.current) {
+          e.preventDefault();
+          return;
+        }
+        // cmd/ctrl/shift-click keeps its native "open the web URL" meaning
+        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+        e.preventDefault();
+        openInSpotify(href);
+      }}
+      className={"track-row" + (isDragging ? " dragging" : "")}
+      style={{
+        transform: CSS.Transform.toString(transform),
+        transition,
+        cursor: editable ? "grab" : "pointer",
+        touchAction: editable ? "none" : "auto",
+      }}
+      aria-label={`${t.artist} — ${t.title}${
+        t.resolved ? "" : ", unverified"
+      } (opens Spotify)`}
+    >
+      {t.resolved && t.albumArt ? (
+        <img src={t.albumArt} alt="" className="album-art" draggable={false} />
+      ) : (
+        <div className="album-art-placeholder" />
+      )}
+      <div className="track-num" style={{ color: accentInk }}>
+        {String(index + 1).padStart(2, "0")}
+      </div>
+      <div className="track-main">
+        <div className="track-title">
+          {t.artist} — {t.title}
+        </div>
+        <div className="track-note">{t.note}</div>
+      </div>
+      {t.resolved ? (
+        <div className="play-hint" aria-hidden>
+          ▸
+        </div>
+      ) : (
+        <div className="unverified" title={UNVERIFIED_TITLE}>
+          unverified
+        </div>
+      )}
+      {editable && (
+        <button
+          type="button"
+          className="swap-btn"
+          disabled={adjusting}
+          title="Swap this track for a different one that fits"
+          aria-label={`Swap track ${index + 1}, ${t.artist} — ${t.title}, for a different one`}
+          // keep the button out of the row's drag-activation path
+          onPointerDown={(e) => e.stopPropagation()}
+          onClick={(e) => {
+            // a plain click must neither open the track nor start a drag
+            e.preventDefault();
+            e.stopPropagation();
+            onSwap();
+          }}
+        >
+          ↻
+        </button>
+      )}
+    </a>
   );
 }
 
@@ -83,6 +190,26 @@ export default function LinerNotes() {
   const [stage, setStage] = useState(null); // "curating" | "resolving"
   const [logTracks, setLogTracks] = useState([]); // {artist, title, resolved?}
   const [saveStage, setSaveStage] = useState(null); // "creating" | "adding N"
+  const [inputHint, setInputHint] = useState(null);
+  const [announce, setAnnounce] = useState(""); // screen-reader milestones
+  // second-chance refine — same real-SSE discipline as generate
+  const [adjustText, setAdjustText] = useState("");
+  const [adjusting, setAdjusting] = useState(false);
+  const [adjustError, setAdjustError] = useState(null);
+  const [adjustStage, setAdjustStage] = useState(null); // "adjusting" | "resolving"
+  const [adjustLog, setAdjustLog] = useState([]); // {index, artist, title, resolved?}
+
+  const inputRef = useRef(null);
+  const refineRef = useRef(null);
+  const cardTitleRef = useRef(null);
+  const abortRef = useRef(null);
+
+  // drag-to-reorder: the whole row is the drag surface. The 8px activation
+  // distance is what separates a tap (opens Spotify) from a drag (reorders).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
+  );
+  const justDragged = useRef(false);
 
   const brand = BRANDS[brandIdx];
 
@@ -93,21 +220,38 @@ export default function LinerNotes() {
       .catch(() => setLoggedIn(false));
   }, []);
 
+  // Move focus to the result when it lands, so keyboard and
+  // screen-reader users aren't stranded back at the prompt.
+  useEffect(() => {
+    if (card) cardTitleRef.current?.focus();
+  }, [card]);
+
   const generate = async (p) => {
     const thePrompt = (p ?? prompt).trim();
-    if (!thePrompt || loading) return;
+    if (loading || adjusting) return;
+    if (!thePrompt) {
+      setInputHint("Type a vibe first — a mood, a moment, an era, a dare.");
+      inputRef.current?.focus();
+      return;
+    }
     setLoading(true);
     setError(null);
     setCard(null);
     setPlaylistUrl(null);
     setSaveError(null);
+    setAdjustError(null);
+    setAdjustText("");
     setStage(null);
     setLogTracks([]);
+    setAnnounce("Pressing your mixtape.");
+    const controller = new AbortController();
+    abortRef.current = controller;
     try {
       const response = await fetch("/api/generate/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ prompt: thePrompt }),
+        signal: controller.signal,
       });
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
@@ -118,6 +262,7 @@ export default function LinerNotes() {
       await readSSE(response, (event, data) => {
         if (event === "curating") {
           setStage("curating");
+          setAnnounce("Digging through the crates.");
         } else if (event === "track") {
           setLogTracks((ts) => {
             const next = [...ts];
@@ -126,6 +271,7 @@ export default function LinerNotes() {
           });
         } else if (event === "curated") {
           setStage("resolving");
+          setAnnounce("Resolving tracks on Spotify.");
         } else if (event === "resolved") {
           setLogTracks((ts) => {
             const next = [...ts];
@@ -142,14 +288,102 @@ export default function LinerNotes() {
       });
       if (streamError) throw new Error(streamError);
       if (!doneCard?.tracks?.length) throw new Error("empty");
+      const verified = doneCard.tracks.filter((t) => t.resolved).length;
+      setAnnounce(
+        `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
+      );
       setCard(doneCard);
     } catch (e) {
-      console.error(e);
-      setError("The curator dropped the needle. Try the same prompt again.");
+      if (e.name === "AbortError") {
+        setAnnounce("Stopped.");
+      } else {
+        console.error(e);
+        setError("The curator dropped the needle. Try the same prompt again.");
+      }
     } finally {
+      abortRef.current = null;
       setLoading(false);
     }
   };
+
+  const stopGenerating = () => {
+    abortRef.current?.abort();
+  };
+
+  // Second-chance refine: send the current card + an adjustment instruction,
+  // stream the diff, swap in the merged card. One pipeline serves both the
+  // refine box and the per-track ↻ swap buttons.
+  const refine = async (instruction) => {
+    const theInstruction = (instruction ?? adjustText).trim();
+    if (!card || adjusting || saving || loading) return;
+    if (!theInstruction) {
+      refineRef.current?.focus();
+      return;
+    }
+    setAdjusting(true);
+    setAdjustError(null);
+    setAdjustStage(null);
+    setAdjustLog([]);
+    setAnnounce("Rewinding the tape.");
+    let changeCount = 0;
+    try {
+      const response = await fetch("/api/adjust/stream", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ card, adjustment: theInstruction }),
+      });
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data.error || "adjust failed");
+      }
+      let doneCard = null;
+      let streamError = null;
+      await readSSE(response, (event, data) => {
+        if (event === "adjusting") {
+          setAdjustStage("adjusting");
+        } else if (event === "change") {
+          changeCount++;
+          setAdjustLog((ls) => [
+            ...ls,
+            { index: data.index, artist: data.artist, title: data.title },
+          ]);
+        } else if (event === "adjusted") {
+          setAdjustStage("resolving");
+          setAnnounce("Resolving the new tracks on Spotify.");
+        } else if (event === "resolved") {
+          setAdjustLog((ls) =>
+            ls.map((l) =>
+              l.index === data.index ? { ...l, resolved: data.resolved } : l
+            )
+          );
+        } else if (event === "done") {
+          doneCard = data?.card;
+        } else if (event === "error") {
+          streamError = data?.message || "adjust failed";
+        }
+      });
+      if (streamError) throw new Error(streamError);
+      if (!doneCard?.tracks?.length) throw new Error("empty");
+      setAnnounce(
+        `Mixtape adjusted: ${changeCount} track${changeCount === 1 ? "" : "s"} changed.`
+      );
+      setCard(doneCard);
+      setAdjustText("");
+    } catch (e) {
+      console.error(e);
+      setAdjustError("The curator couldn't rewind that one. Try rewording it.");
+    } finally {
+      setAdjusting(false);
+      setAdjustStage(null);
+      setAdjustLog([]);
+    }
+  };
+
+  // Per-track swap: a canned instruction through the same refine pipeline.
+  const swapTrack = (i, t) =>
+    refine(
+      `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`
+    );
 
   const saveToSpotify = async () => {
     if (!card || saving) return;
@@ -183,6 +417,7 @@ export default function LinerNotes() {
         else if (event === "error") streamError = data?.message || "save failed";
       });
       if (streamError) throw new Error(streamError);
+      setAnnounce("Playlist saved to Spotify.");
       setPlaylistUrl(url);
     } catch (e) {
       console.error(e);
@@ -193,12 +428,15 @@ export default function LinerNotes() {
     }
   };
 
-  const accent = card ? ACCENTS[card.accent] || ACCENTS.crimson : ACCENTS.crimson;
+  const accentInk = card
+    ? ACCENT_INK[card.accent] || ACCENT_INK.crimson
+    : ACCENT_INK.crimson;
 
   const liveVerified = logTracks.filter((t) => t && t.resolved === true).length;
   const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;
+  const cardUnverified = card ? card.tracks.length - cardVerified : 0;
   const cursor = (
-    <span style={styles.cursor} aria-hidden>
+    <span className="cursor" aria-hidden>
       ▮
     </span>
   );
@@ -206,230 +444,363 @@ export default function LinerNotes() {
   const spotifySearch = (t) =>
     `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
 
-  return (
-    <div style={styles.app}>
-      <style>{FONT_CSS}</style>
+  // reorder is a pure client-side edit; the save flow reads card.tracks in
+  // order, so the pressed playlist follows whatever order is on the card
+  const editable = Boolean(card) && !playlistUrl && !saving;
 
-      {/* header */}
-      <div style={styles.header}>
-        <div style={styles.wordmark}>
-          <BrandText text={brand} />
-        </div>
-        <div style={styles.tagline}>one prompt in. a record sleeve out.</div>
+  const onDragEnd = ({ active, over }) => {
+    // the click that follows a drop must not open the track
+    justDragged.current = true;
+    setTimeout(() => (justDragged.current = false), 0);
+    if (over && active.id !== over.id) {
+      setCard((c) => {
+        const ids = c.tracks.map(trackId);
+        return {
+          ...c,
+          tracks: arrayMove(c.tracks, ids.indexOf(active.id), ids.indexOf(over.id)),
+        };
+      });
+    }
+  };
+
+  return (
+    <div className="app">
+      {/* screen-reader milestones: one line per stage, never per token */}
+      <div className="vh" role="status" aria-live="polite">
+        {announce}
       </div>
 
-      {/* login gate */}
-      {loggedIn === false && (
-        <a href="/auth/login" style={styles.connectButton}>
-          CONNECT SPOTIFY
-        </a>
-      )}
+      <header className="header">
+        <h1 className="wordmark">
+          <BrandText text={brand} />
+        </h1>
+        <div className="tagline">one prompt in. a record sleeve out.</div>
+      </header>
 
-      {loggedIn === true && (
-        <>
-          {/* input */}
-          <div style={styles.inputRow}>
-            <textarea
-              value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && !e.shiftKey) {
-                  e.preventDefault();
-                  generate();
-                }
-              }}
-              placeholder="describe the playlist you can hear in your head…"
-              rows={2}
-              style={styles.input}
-              aria-label="Playlist prompt"
-            />
-            <button
-              onClick={() => generate()}
-              disabled={loading || !prompt.trim()}
-              style={{
-                ...styles.button,
-                opacity: loading || !prompt.trim() ? 0.4 : 1,
-                cursor: loading || !prompt.trim() ? "default" : "pointer",
-              }}
-            >
-              {loading ? "PRESSING…" : "PRESS IT"}
-            </button>
-          </div>
+      <main className="main-col">
+        {loggedIn === null && <div className="checking">checking the deck…</div>}
 
-          {/* example chips */}
-          {!card && !loading && (
-            <div style={styles.chips}>
-              {EXAMPLES.map((ex) => (
-                <button
-                  key={ex}
-                  style={styles.chip}
-                  onClick={() => {
-                    setPrompt(ex);
-                    generate(ex);
-                  }}
-                >
-                  {ex}
-                </button>
-              ))}
+        {/* login gate */}
+        {loggedIn === false && (
+          <a href="/auth/login" className="btn-press">
+            CONNECT SPOTIFY
+          </a>
+        )}
+
+        {loggedIn === true && (
+          <>
+            {/* input */}
+            <div className="input-row">
+              <textarea
+                ref={inputRef}
+                value={prompt}
+                onChange={(e) => {
+                  setPrompt(e.target.value);
+                  if (inputHint) setInputHint(null);
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey) {
+                    e.preventDefault();
+                    generate();
+                  }
+                }}
+                placeholder="songs for driving at night through 1984…"
+                rows={2}
+                className="prompt-input"
+                aria-label="Playlist prompt"
+              />
+              <button
+                onClick={loading ? stopGenerating : () => generate()}
+                className="btn-press"
+              >
+                {loading ? "STOP" : "PRESS IT"}
+              </button>
             </div>
-          )}
-        </>
-      )}
-
-      {loading && (
-        <div style={styles.loading}>
-          <div style={styles.spinnerDisc} />
-          {/* studio-console progress log — every line is a real backend event */}
-          <div style={styles.progressLog}>
-            {stage && (
-              <div style={styles.logLine}>
-                digging through the crates…
-                {stage === "curating" ? cursor : <span style={styles.logDone}> ok</span>}
+            {inputHint && (
+              <div className="input-hint" role="alert">
+                {inputHint}
               </div>
             )}
-            {logTracks.map(
-              (t, i) =>
-                t && (
-                  <div key={i} style={styles.logTrackLine}>
-                    <span style={{ color: "#E36414" }}>→</span>{" "}
-                    <span style={{ opacity: 0.55 }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </span>{" "}
-                    {t.artist} — {t.title}
-                    {t.resolved === true && (
-                      <span style={{ color: "#E36414" }}> ✓</span>
-                    )}
-                    {t.resolved === false && (
-                      <span style={{ opacity: 0.45 }}> unverified</span>
-                    )}
-                  </div>
-                )
-            )}
-            {stage === "resolving" && (
-              <div style={styles.logLine}>
-                resolving on spotify… {liveVerified}/{logTracks.length} verified
-                {cursor}
+            {!card && !loading && (
+              <div className="scope-line">
+                describe a vibe, moment, or era — you get 8 real tracks with
+                liner notes
               </div>
             )}
-          </div>
-        </div>
-      )}
 
-      {error && <div style={styles.error}>{error}</div>}
-
-      {/* the card */}
-      {card && (
-        <div style={styles.cardWrap}>
-          <div style={styles.card}>
-            {/* spine */}
-            <div style={{ ...styles.spine, background: accent }}>
-              <span style={styles.spineText}>{card.title.toUpperCase()}</span>
-            </div>
-
-            <div style={styles.cardBody}>
-              <div style={styles.eyebrow}>
-                SIDE A · {card.tracks.length} TRACKS · CUT{" "}
-                {new Date().toLocaleDateString("en-GB", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "2-digit",
-                }).toUpperCase()}
-              </div>
-              <h1 style={styles.cardTitle}>{card.title}</h1>
-              <div style={{ ...styles.vibe, borderColor: accent }}>
-                “{card.vibe}”
-              </div>
-              <div style={styles.promptLine}>
-                prompted: <em>{card.prompt}</em>
-              </div>
-
-              <div style={styles.trackList}>
-                {card.tracks.map((t, i) => (
-                  <a
-                    key={i}
-                    href={t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearch(t)}
-                    target="_blank"
-                    rel="noreferrer"
-                    style={styles.trackRow}
+            {/* example chips: populate the prompt, stay editable */}
+            {!card && !loading && (
+              <div className="chips">
+                {EXAMPLES.map((ex) => (
+                  <button
+                    key={ex}
+                    className="chip"
+                    onClick={() => {
+                      setPrompt(ex);
+                      setInputHint(null);
+                      inputRef.current?.focus();
+                    }}
                   >
-                    {t.resolved && t.albumArt ? (
-                      <img src={t.albumArt} alt="" style={styles.albumArt} />
-                    ) : (
-                      <div style={styles.albumArtPlaceholder} />
-                    )}
-                    <div style={{ ...styles.trackNum, color: accent }}>
-                      {String(i + 1).padStart(2, "0")}
-                    </div>
-                    <div style={{ flex: 1, minWidth: 0 }}>
-                      <div style={styles.trackTitle}>
-                        {t.artist} — {t.title}
-                      </div>
-                      <div style={styles.trackNote}>{t.note}</div>
-                    </div>
-                    {t.resolved ? (
-                      <div style={styles.playHint}>▸</div>
-                    ) : (
-                      <div style={styles.unverified}>unverified</div>
-                    )}
-                  </a>
+                    {ex}
+                  </button>
                 ))}
               </div>
+            )}
+          </>
+        )}
 
-              <div style={styles.footer}>
-                <span>tap a track to open it in Spotify</span>
-                <span style={{ fontWeight: 700 }}>
-                  <BrandText text={brand} />
-                </span>
-              </div>
+        {loading && (
+          <div className="loading">
+            <div className="spinner-disc" aria-hidden />
+            {/* studio-console progress log — every line is a real backend event.
+                aria-hidden: the live region above narrates the milestones. */}
+            <div className="progress-log" aria-hidden>
+              {!stage && <div className="log-line">reading your prompt…{cursor}</div>}
+              {stage && (
+                <div className="log-line">
+                  digging through the crates…
+                  {stage === "curating" ? cursor : <span className="log-ok"> ok</span>}
+                </div>
+              )}
+              {logTracks.map(
+                (t, i) =>
+                  t && (
+                    <div key={i} className="log-track">
+                      <span className="log-arrow">→</span>{" "}
+                      <span className="log-num">
+                        {String(i + 1).padStart(2, "0")}
+                      </span>{" "}
+                      {t.artist} — {t.title}
+                      {t.resolved === true && <span className="log-check"> ✓</span>}
+                      {t.resolved === false && (
+                        <span className="log-unverified"> unverified</span>
+                      )}
+                    </div>
+                  )
+              )}
+              {stage === "resolving" && (
+                <div className="log-line">
+                  resolving on spotify… {liveVerified}/{logTracks.length} verified
+                  {cursor}
+                </div>
+              )}
             </div>
           </div>
+        )}
 
-          {/* save to spotify */}
-          {!playlistUrl && (
+        {error && (
+          <div className="error" role="alert">
+            {error}
+          </div>
+        )}
+
+        {/* the card */}
+        {card && (
+          <div className="card-wrap">
+            <div className="card">
+              {/* spine */}
+              <div className="spine" style={{ background: accentInk }}>
+                <span className="spine-text">{card.title.toUpperCase()}</span>
+              </div>
+
+              <div className="card-body">
+                <div className="eyebrow">
+                  SIDE A · {card.tracks.length} TRACKS · CUT{" "}
+                  {new Date()
+                    .toLocaleDateString("en-GB", {
+                      day: "2-digit",
+                      month: "short",
+                      year: "2-digit",
+                    })
+                    .toUpperCase()}
+                </div>
+                <h2 className="card-title" tabIndex={-1} ref={cardTitleRef}>
+                  {card.title}
+                </h2>
+                <div className="vibe" style={{ borderColor: accentInk }}>
+                  “{card.vibe}”
+                </div>
+                <div className="prompt-line">
+                  prompted: <em>{card.prompt}</em>
+                </div>
+
+                <DndContext
+                  sensors={sensors}
+                  collisionDetection={closestCenter}
+                  onDragEnd={onDragEnd}
+                >
+                  <SortableContext
+                    items={card.tracks.map(trackId)}
+                    strategy={verticalListSortingStrategy}
+                  >
+                    <div className="track-list">
+                      {card.tracks.map((t, i) => (
+                        <TrackRow
+                          key={trackId(t)}
+                          t={t}
+                          index={i}
+                          accentInk={accentInk}
+                          editable={editable}
+                          adjusting={adjusting}
+                          href={
+                            t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearch(t)
+                          }
+                          justDragged={justDragged}
+                          onSwap={() => swapTrack(i, t)}
+                        />
+                      ))}
+                    </div>
+                  </SortableContext>
+                </DndContext>
+
+                <div className="card-footer">
+                  <span>
+                    {editable
+                      ? "tap to open · drag to reorder · ↻ swaps a track"
+                      : "tap a track to open it in Spotify"}
+                  </span>
+                  <span className="footer-brand">
+                    <BrandText text={brand} /> · STEREO
+                  </span>
+                  <div className="barcode" aria-hidden />
+                </div>
+              </div>
+            </div>
+
+            {/* second chance: refine the card in place — only in the editable
+                window, same gating as drag-to-reorder */}
+            {editable && (
+              <div className="refine-area">
+                <div className="refine-row">
+                  <input
+                    ref={refineRef}
+                    value={adjustText}
+                    onChange={(e) => setAdjustText(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") {
+                        e.preventDefault();
+                        refine();
+                      }
+                    }}
+                    placeholder="tweak it — less 80s, more instrumental…"
+                    className="refine-input"
+                    disabled={adjusting}
+                    aria-label="Refine the mixtape"
+                  />
+                  <button
+                    onClick={() => refine()}
+                    disabled={adjusting}
+                    className="btn-ghost refine-btn"
+                  >
+                    {adjusting ? "REWINDING…" : "REFINE"}
+                  </button>
+                </div>
+                {adjusting && (
+                  /* same console-log aesthetic as generate — every line is a
+                     real SSE event; the live region above narrates milestones */
+                  <div className="progress-log refine-log" aria-hidden>
+                    <div className="log-line">
+                      rewinding the tape…
+                      {adjustStage === "resolving" ? (
+                        <span className="log-ok"> ok</span>
+                      ) : (
+                        cursor
+                      )}
+                    </div>
+                    {adjustLog.map((l, i) => (
+                      <div key={i} className="log-track">
+                        <span className="log-arrow">→</span>{" "}
+                        <span className="log-num">
+                          {String(l.index + 1).padStart(2, "0")}
+                        </span>{" "}
+                        {l.artist} — {l.title}
+                        {l.resolved === true && <span className="log-check"> ✓</span>}
+                        {l.resolved === false && (
+                          <span className="log-unverified"> unverified</span>
+                        )}
+                      </div>
+                    ))}
+                    {adjustStage === "resolving" && (
+                      <div className="log-line">resolving on spotify…{cursor}</div>
+                    )}
+                  </div>
+                )}
+                {adjustError && (
+                  <div className="error" role="alert">
+                    {adjustError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* save to spotify — primary action; everything else stays quiet */}
+            {!playlistUrl && (
+              <>
+                <button
+                  onClick={saveToSpotify}
+                  disabled={saving || adjusting}
+                  className="btn-press"
+                  style={{ marginTop: 24 }}
+                >
+                  {saving
+                    ? saveStage || "PRESSING TO WAX…"
+                    : `PRESS ${cardVerified} OF ${card.tracks.length} TRACKS TO SPOTIFY`}
+                </button>
+                {cardUnverified > 0 && (
+                  <div className="save-note">
+                    {cardUnverified} unverified track
+                    {cardUnverified === 1 ? "" : "s"} will be left off the
+                    playlist
+                  </div>
+                )}
+              </>
+            )}
+            {playlistUrl && (
+              <a
+                href={playlistUrl}
+                target="_blank"
+                rel="noreferrer"
+                className="playlist-link"
+                onClick={(e) => {
+                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                  e.preventDefault();
+                  openInSpotify(playlistUrl);
+                }}
+              >
+                pressed. open in Spotify ▸
+              </a>
+            )}
+            {saveError && (
+              <div className="error" role="alert">
+                {saveError}
+              </div>
+            )}
+
             <button
-              onClick={saveToSpotify}
-              disabled={saving}
-              style={{
-                ...styles.saveButton,
-                opacity: saving ? 0.4 : 1,
-                cursor: saving ? "default" : "pointer",
+              onClick={() => {
+                setCard(null);
+                setPlaylistUrl(null);
+                setSaveError(null);
+                setAdjustError(null);
+                setAdjustText("");
+                inputRef.current?.focus();
               }}
+              // disabled while adjusting: the in-flight refine would land its
+              // merged card right back on the cleared state
+              disabled={adjusting}
+              className="btn-ghost"
+              style={{ marginTop: 20 }}
             >
-              {saving
-                ? saveStage || "PRESSING TO WAX…"
-                : `PRESS ${cardVerified} TRACK${cardVerified === 1 ? "" : "S"} TO SPOTIFY`}
+              press another one
             </button>
-          )}
-          {playlistUrl && (
-            <a
-              href={playlistUrl}
-              target="_blank"
-              rel="noreferrer"
-              style={styles.playlistLink}
-            >
-              pressed. open in Spotify ▸
-            </a>
-          )}
-          {saveError && <div style={styles.error}>{saveError}</div>}
-
-          <button
-            onClick={() => {
-              setCard(null);
-              setPrompt("");
-              setPlaylistUrl(null);
-              setSaveError(null);
-            }}
-            style={styles.again}
-          >
-            press another one
-          </button>
-        </div>
-      )}
+          </div>
+        )}
+      </main>
 
       {/* dev-only wordmark switcher — the product name is undecided */}
       {import.meta.env.DEV && (
         <button
-          style={styles.brandSwitcher}
+          className="brand-switcher"
           onClick={() => setBrandIdx((i) => (i + 1) % BRANDS.length)}
           title="cycle candidate wordmarks (dev only)"
         >
@@ -438,318 +809,4 @@ export default function LinerNotes() {
       )}
     </div>
   );
-}
-
-// ── styles ───────────────────────────────────────────────────
-const styles = {
-  app: {
-    minHeight: "100vh",
-    background: "#191714",
-    color: "#EDE8DE",
-    fontFamily: "'Space Grotesk', sans-serif",
-    padding: "28px 16px 64px",
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  header: { textAlign: "center", marginBottom: 24 },
-  wordmark: {
-    fontFamily: "'Archivo Black', sans-serif",
-    fontSize: 30,
-    letterSpacing: 2,
-  },
-  tagline: {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 12,
-    opacity: 0.65,
-    marginTop: 6,
-  },
-  connectButton: {
-    fontFamily: "'Archivo Black', sans-serif",
-    fontSize: 13,
-    letterSpacing: 1,
-    background: "#E36414",
-    color: "#191714",
-    border: "none",
-    borderRadius: 4,
-    padding: "14px 22px",
-    marginTop: 24,
-    textDecoration: "none",
-    cursor: "pointer",
-  },
-  inputRow: {
-    display: "flex",
-    gap: 10,
-    width: "100%",
-    maxWidth: 560,
-    alignItems: "stretch",
-  },
-  input: {
-    flex: 1,
-    background: "#211E1A",
-    border: "1px solid #3A352E",
-    borderRadius: 4,
-    color: "#EDE8DE",
-    fontFamily: "'Space Grotesk', sans-serif",
-    fontSize: 15,
-    padding: "12px 14px",
-    resize: "none",
-    outline: "none",
-  },
-  button: {
-    fontFamily: "'Archivo Black', sans-serif",
-    fontSize: 13,
-    letterSpacing: 1,
-    background: "#E36414",
-    color: "#191714",
-    border: "none",
-    borderRadius: 4,
-    padding: "0 18px",
-  },
-  chips: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: 8,
-    justifyContent: "center",
-    maxWidth: 560,
-    marginTop: 18,
-  },
-  chip: {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 11.5,
-    background: "transparent",
-    color: "#B8B0A2",
-    border: "1px dashed #4A443B",
-    borderRadius: 999,
-    padding: "7px 12px",
-    cursor: "pointer",
-  },
-  loading: {
-    marginTop: 48,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-    gap: 16,
-    opacity: 0.85,
-  },
-  progressLog: {
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "flex-start",
-    gap: 6,
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 12.5,
-    color: "#B8B0A2",
-    width: "100%",
-    maxWidth: 440,
-  },
-  logLine: {
-    animation: "lnfade 0.35s ease",
-  },
-  logTrackLine: {
-    animation: "lnfade 0.35s ease",
-    color: "#EDE8DE",
-  },
-  logDone: {
-    opacity: 0.45,
-  },
-  cursor: {
-    color: "#E36414",
-    marginLeft: 4,
-    animation: "lnblink 1s steps(1) infinite",
-  },
-  spinnerDisc: {
-    width: 56,
-    height: 56,
-    borderRadius: "50%",
-    background:
-      "repeating-radial-gradient(circle, #0C0B09 0 2px, #26221D 2px 4px)",
-    border: "2px solid #E36414",
-    animation: "spin 1.4s linear infinite",
-  },
-  error: {
-    marginTop: 32,
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 13,
-    color: "#E36414",
-  },
-  cardWrap: {
-    marginTop: 32,
-    width: "100%",
-    maxWidth: 560,
-    display: "flex",
-    flexDirection: "column",
-    alignItems: "center",
-  },
-  card: {
-    width: "100%",
-    background: "#FAF6EC",
-    color: "#14120F",
-    display: "flex",
-    boxShadow: "0 18px 50px rgba(0,0,0,0.55)",
-  },
-  spine: {
-    width: 34,
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    flexShrink: 0,
-  },
-  spineText: {
-    writingMode: "vertical-rl",
-    transform: "rotate(180deg)",
-    fontFamily: "'Archivo Black', sans-serif",
-    fontSize: 12,
-    letterSpacing: 3,
-    color: "#FAF6EC",
-    whiteSpace: "nowrap",
-    overflow: "hidden",
-    maxHeight: "90%",
-  },
-  cardBody: { padding: "22px 20px 16px", flex: 1, minWidth: 0 },
-  eyebrow: {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 10,
-    letterSpacing: 1.5,
-    opacity: 0.55,
-  },
-  cardTitle: {
-    fontFamily: "'Archivo Black', sans-serif",
-    fontSize: 28,
-    lineHeight: 1.05,
-    margin: "8px 0 12px",
-  },
-  vibe: {
-    fontFamily: "Georgia, serif",
-    fontStyle: "italic",
-    fontSize: 15,
-    borderLeft: "3px solid",
-    paddingLeft: 12,
-    marginBottom: 8,
-  },
-  promptLine: {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 11,
-    opacity: 0.55,
-    marginBottom: 18,
-  },
-  trackList: { display: "flex", flexDirection: "column" },
-  trackRow: {
-    display: "flex",
-    gap: 12,
-    alignItems: "center",
-    padding: "10px 0",
-    borderTop: "1px solid #E2DACA",
-    textDecoration: "none",
-    color: "#14120F",
-  },
-  albumArt: {
-    width: 40,
-    height: 40,
-    objectFit: "cover",
-    flexShrink: 0,
-    display: "block",
-  },
-  albumArtPlaceholder: {
-    width: 40,
-    height: 40,
-    flexShrink: 0,
-    background: "#EFE9DA",
-    border: "1px dashed #D8CFBB",
-    boxSizing: "border-box",
-  },
-  trackNum: {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 13,
-    fontWeight: 700,
-    width: 22,
-    flexShrink: 0,
-  },
-  trackTitle: {
-    fontFamily: "'Space Grotesk', sans-serif",
-    fontWeight: 700,
-    fontSize: 14.5,
-  },
-  trackNote: {
-    fontFamily: "Georgia, serif",
-    fontStyle: "italic",
-    fontSize: 12.5,
-    opacity: 0.75,
-    marginTop: 2,
-  },
-  playHint: { fontSize: 12, opacity: 0.4, flexShrink: 0 },
-  footer: {
-    display: "flex",
-    justifyContent: "space-between",
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 9.5,
-    letterSpacing: 1,
-    opacity: 0.5,
-    marginTop: 18,
-    paddingTop: 10,
-    borderTop: "1px solid #E2DACA",
-  },
-  unverified: {
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 9.5,
-    letterSpacing: 1,
-    opacity: 0.45,
-    flexShrink: 0,
-  },
-  saveButton: {
-    marginTop: 20,
-    fontFamily: "'Archivo Black', sans-serif",
-    fontSize: 13,
-    letterSpacing: 1,
-    background: "#E36414",
-    color: "#191714",
-    border: "none",
-    borderRadius: 4,
-    padding: "12px 22px",
-  },
-  playlistLink: {
-    marginTop: 20,
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 13,
-    color: "#E36414",
-    textDecoration: "none",
-    border: "1px solid #E36414",
-    borderRadius: 4,
-    padding: "10px 16px",
-  },
-  brandSwitcher: {
-    position: "fixed",
-    bottom: 10,
-    right: 10,
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 10,
-    background: "transparent",
-    color: "#6B6459",
-    border: "1px dashed #3A352E",
-    borderRadius: 3,
-    padding: "4px 8px",
-    cursor: "pointer",
-  },
-  again: {
-    marginTop: 20,
-    fontFamily: "'Space Mono', monospace",
-    fontSize: 12,
-    background: "transparent",
-    color: "#B8B0A2",
-    border: "1px solid #4A443B",
-    borderRadius: 4,
-    padding: "9px 16px",
-    cursor: "pointer",
-  },
-};
-
-// keyframes injected once
-if (typeof document !== "undefined" && !document.getElementById("ln-spin")) {
-  const s = document.createElement("style");
-  s.id = "ln-spin";
-  s.textContent =
-    "@keyframes spin { to { transform: rotate(360deg); } }" +
-    "@keyframes lnfade { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }" +
-    "@keyframes lnblink { 0%, 49% { opacity: 1; } 50%, 100% { opacity: 0; } }";
-  document.head.appendChild(s);
 }

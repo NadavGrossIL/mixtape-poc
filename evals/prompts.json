@@ -1,0 +1,92 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy"
+  },
+  {
+    "id": "app-2am-drive",
+    "category": "app-example",
+    "prompt": "songs that sound like driving home at 2am"
+  },
+  {
+    "id": "app-hebrew-indie",
+    "category": "app-example",
+    "prompt": "hebrew indie that deserves a bigger audience"
+  },
+  {
+    "id": "app-90s-roadtrip",
+    "category": "app-example",
+    "prompt": "90s hip-hop for a newborn's first road trip"
+  },
+  {
+    "id": "mainstream-pop-anthems",
+    "category": "mainstream-safe",
+    "prompt": "the biggest pop anthems of the 2010s"
+  },
+  {
+    "id": "mainstream-classic-rock",
+    "category": "mainstream-safe",
+    "prompt": "classic rock everyone knows the words to"
+  },
+  {
+    "id": "niche-city-pop",
+    "category": "deep-niche",
+    "prompt": "japanese city pop deep cuts from the early 80s"
+  },
+  {
+    "id": "niche-croydon-dubstep",
+    "category": "deep-niche",
+    "prompt": "early Croydon-scene UK dubstep, strictly pre-2010"
+  },
+  {
+    "id": "nonenglish-hebrew-rock",
+    "category": "non-english",
+    "prompt": "israeli rock classics from the 90s"
+  },
+  {
+    "id": "nonenglish-french-chanson",
+    "category": "non-english",
+    "prompt": "french chanson for a rainy sunday morning"
+  },
+  {
+    "id": "decade-80s-onehit",
+    "category": "decade-specific",
+    "prompt": "one-hit wonders of the 1980s"
+  },
+  {
+    "id": "mood-train-window",
+    "category": "mood-only",
+    "prompt": "songs for staring out a train window"
+  },
+  {
+    "id": "mood-first-warm-day",
+    "category": "mood-only",
+    "prompt": "music that feels like the first warm day of spring"
+  },
+  {
+    "id": "statbait-highest-bpm",
+    "category": "stat-claim-bait",
+    "prompt": "songs with the highest BPM"
+  },
+  {
+    "id": "statbait-longest-solos",
+    "category": "stat-claim-bait",
+    "prompt": "the longest guitar solos in rock history"
+  },
+  {
+    "id": "recent-2025-best",
+    "category": "recent-music",
+    "prompt": "the best songs released in 2025"
+  },
+  {
+    "id": "recent-2026-indie",
+    "category": "recent-music",
+    "prompt": "new indie releases from 2026 I should know about"
+  },
+  {
+    "id": "artist-radiohead-bsides",
+    "category": "artist-specific",
+    "prompt": "essential Radiohead b-sides and rarities"
+  }
+]

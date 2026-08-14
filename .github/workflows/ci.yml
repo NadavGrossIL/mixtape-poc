@@ -1,0 +1,26 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  ci:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Server tests
+        working-directory: server
+        run: npm ci && npm test
+
+      - name: Evals selftest
+        run: node evals/selftest.js
+
+      - name: Client build
+        working-directory: client
+        run: npm ci && npx vite build

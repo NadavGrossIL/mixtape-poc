@@ -678,6 +678,17 @@ const styles = {
     marginTop: 2,
   },
   playHint: { fontSize: 12, opacity: 0.4, flexShrink: 0 },
+  footer: {
+    display: "flex",
+    justifyContent: "space-between",
+    fontFamily: "'Space Mono', monospace",
+    fontSize: 9.5,
+    letterSpacing: 1,
+    opacity: 0.5,
+    marginTop: 18,
+    paddingTop: 10,
+    borderTop: "1px solid #E2DACA",
+  },
   unverified: {
     fontFamily: "'Space Mono', monospace",
     fontSize: 9.5,

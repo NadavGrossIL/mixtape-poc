@@ -106,12 +106,42 @@ function sseSend(res, event, data) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data || {})}\n\n`);
 }
 
+// The user's playlists, for the "in the spirit of" seed picker.
+app.get("/api/playlists", async (req, res) => {
+  if (!spotify.isLoggedIn()) {
+    return res.status(401).json({ error: "Not logged in to Spotify." });
+  }
+  try {
+    res.json({ playlists: await spotify.listPlaylists() });
+  } catch (err) {
+    console.error("[playlists] failed:", err.message);
+    if (err.status === 401) {
+      return res.status(401).json({ error: "Not logged in to Spotify." });
+    }
+    if (err.status === 403) {
+      // token predates the playlist-read scopes — one re-login fixes it
+      return res.status(403).json({ error: "insufficient_scope" });
+    }
+    res
+      .status(500)
+      .json({ error: "Listing playlists failed — check the server logs." });
+  }
+});
+
 // Streaming generate. Emits, in order:
-//   curating → track (per track, as Claude streams it) → curated (count)
+//   [seeding → seeded (when a seed playlist is set)]
+//   → curating → track (per track, as Claude streams it) → curated (count)
 //   → resolving / resolved (per track) → done (full card) | error
 app.post("/api/generate/stream", async (req, res) => {
   const prompt = String(req.body?.prompt || "").trim();
-  if (!prompt) {
+  // seed: {id, name} — an existing playlist to build "in the spirit of".
+  // The name is client-provided display text; the id is what gets fetched.
+  const seedId = String(req.body?.seed?.id || "").trim();
+  const seedName = String(req.body?.seed?.name || "").trim();
+  if (seedId && !/^[A-Za-z0-9]{8,64}$/.test(seedId)) {
+    return res.status(400).json({ error: "Invalid seed playlist id" });
+  }
+  if (!prompt && !seedId) {
     return res.status(400).json({ error: "Missing prompt" });
   }
   if (!curator.anthropicConfigured()) {
@@ -129,9 +159,23 @@ app.post("/api/generate/stream", async (req, res) => {
   res.on("close", () => {
     if (!res.writableEnded) abort.abort();
   });
-  sseSend(res, "curating", { prompt });
   try {
+    let seed = null;
+    if (seedId) {
+      sseSend(res, "seeding", { name: seedName });
+      const { tracks, total } = await spotify.getSeedTracks(seedId);
+      if (tracks.length === 0) {
+        sseSend(res, "error", {
+          message: "Couldn't read that playlist — it may be empty.",
+        });
+        return res.end();
+      }
+      seed = { name: seedName || "this playlist", tracks, total };
+      sseSend(res, "seeded", { count: tracks.length, total });
+    }
+    sseSend(res, "curating", { prompt });
     const card = await curator.generateCard(prompt, {
+      seed,
       signal: abort.signal,
       onTrack: (index, t) =>
         sseSend(res, "track", { index, artist: t.artist, title: t.title }),
@@ -148,6 +192,7 @@ app.post("/api/generate/stream", async (req, res) => {
       return res.end();
     }
     card.prompt = prompt;
+    if (seed) card.seed = { id: seedId, name: seed.name };
     sseSend(res, "done", {
       card,
       verified: card.tracks.filter((t) => t.resolved).length,

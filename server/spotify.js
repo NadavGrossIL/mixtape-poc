@@ -15,7 +15,11 @@ const TOKENS_PATH = path.join(__dirname, ".tokens.json");
 const ACCOUNTS = "https://accounts.spotify.com";
 const API = "https://api.spotify.com/v1";
 const REDIRECT_URI = "http://127.0.0.1:8888/callback";
-const SCOPES = "playlist-modify-private playlist-modify-public";
+const SCOPES =
+  "playlist-modify-private playlist-modify-public " +
+  // read scopes power the "in the spirit of" seed picker; tokens issued
+  // before these were added get 403s on the read endpoints until re-login
+  "playlist-read-private playlist-read-collaborative";
 
 const PLACEHOLDER_RE = /^(your_|sk-ant-your|<|\.\.\.|xxx)/i;
 
@@ -367,6 +371,75 @@ async function resolveTracks(tracks, concurrency = 3, onProgress, signal) {
   return results;
 }
 
+// ── playlist reading (the "in the spirit of" seed picker) ────
+
+// How many seed tracks reach the curator prompt: enough signal to read a
+// playlist's spirit without paying for a 500-track context.
+const SEED_TRACK_CAP = 80;
+// Pages fetched before sampling — 4 requests, 200 tracks.
+const SEED_FETCH_MAX = 200;
+
+// Evenly-spaced sample preserving order — a playlist's arc is part of its
+// spirit, so never sample from just the top.
+function sampleTracks(tracks, cap = SEED_TRACK_CAP) {
+  if (tracks.length <= cap) return tracks;
+  const step = tracks.length / cap;
+  const out = [];
+  for (let i = 0; i < cap; i++) out.push(tracks[Math.floor(i * step)]);
+  return out;
+}
+
+// List the user's playlists for the picker. Paginated at 50 (the API max);
+// capped at 4 pages — a picker doesn't need more than 200 entries.
+async function listPlaylists() {
+  const playlists = [];
+  for (let offset = 0; offset < 200; offset += 50) {
+    const params = new URLSearchParams({ limit: "50", offset: String(offset) });
+    const data = await spotifyFetch(`/me/playlists?${params}`);
+    const items = data?.items || [];
+    for (const p of items) {
+      if (!p?.id) continue;
+      playlists.push({
+        id: p.id,
+        name: p.name || "(untitled)",
+        // Feb 2026 renamed playlist "tracks" to "items" — accept either shape
+        total: p.items?.total ?? p.tracks?.total ?? null,
+        owner: p.owner?.display_name || null,
+      });
+    }
+    if (!data?.next || items.length === 0) break;
+  }
+  return playlists;
+}
+
+// Fetch a playlist's tracks (artist/title only) to seed the curator.
+// No `fields` trim: the Feb 2026 renames make exact field paths risky, and a
+// wrong fields path silently returns nothing instead of erroring.
+async function getSeedTracks(playlistId) {
+  const tracks = [];
+  let total = null;
+  for (let offset = 0; offset < SEED_FETCH_MAX; offset += 50) {
+    const params = new URLSearchParams({ limit: "50", offset: String(offset) });
+    const data = await spotifyFetch(
+      `/playlists/${encodeURIComponent(playlistId)}/items?${params}`
+    );
+    total = data?.total ?? total;
+    const items = data?.items || [];
+    for (const entry of items) {
+      // Feb 2026 renamed the wrapper key too (/tracks → /items) — accept both
+      const t = entry?.item || entry?.track;
+      // skip podcast episodes and local files — no artists to curate from
+      if (!t?.name || !Array.isArray(t.artists) || t.artists.length === 0) continue;
+      tracks.push({
+        artist: t.artists.map((a) => a?.name).filter(Boolean).join(", "),
+        title: t.name,
+      });
+    }
+    if (!data?.next || items.length === 0) break;
+  }
+  return { tracks: sampleTracks(tracks), total: total ?? tracks.length };
+}
+
 // ── playlist creation ────────────────────────────────────────
 
 // onProgress(event, payload) fires on the two real steps:
@@ -414,6 +487,10 @@ module.exports = {
   exchangeCode,
   resolveTracks,
   createPlaylist,
+  listPlaylists,
+  getSeedTracks,
+  SEED_TRACK_CAP,
+  sampleTracks, // pure, exported for tests
   // pure matching internals, exported for tests only
   normalize,
   similarity,

@@ -181,12 +181,35 @@ function extractCompleteTracks(buf, arrayKey = "tracks") {
   return tracks;
 }
 
+// Serialize a seed playlist ({name, tracks: [{artist, title}], total}) into
+// prompt context for "in the spirit of" generation. The dedup rule is load-
+// bearing: without it the model's laziest valid answer is the playlist back.
+function seedContext(seed) {
+  const lines = seed.tracks.map((t) => `${t.artist} — ${t.title}`).join("\n");
+  const scope =
+    seed.total > seed.tracks.length
+      ? `${seed.tracks.length} of its ${seed.total} tracks, sampled in playlist order`
+      : `all ${seed.tracks.length} tracks`;
+  return (
+    `The listener wants this mixtape in the spirit of their Spotify playlist "${seed.name}" (${scope}):\n${lines}\n\n` +
+    `Read this playlist's spirit — the genre blend, the era, the energy, what the picks have in common — and build a NEW mixtape that channels it.\n` +
+    `Do not include any track from the list above; every pick must be a different recording.`
+  );
+}
+
 // Generate a card. onTrack(index, {artist, title}) fires as the model streams
 // each track — real events, straight from the tool-input stream.
+// seed (optional): an existing playlist to channel — see seedContext. With a
+// seed the prompt may be empty ("just like this playlist" is a valid ask).
 // signal (optional): aborting kills the model stream mid-flight (client
 // disconnect must stop the paid request); iteration then throws an abort error.
-async function generateCard(prompt, { onTrack, signal } = {}) {
+async function generateCard(prompt, { seed, onTrack, signal } = {}) {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+
+  const parts = [
+    prompt ? `Build a playlist for this prompt: "${prompt}"` : "Build a playlist.",
+  ];
+  if (seed) parts.push(seedContext(seed));
 
   const stream = client.messages.stream(
     {
@@ -198,7 +221,7 @@ async function generateCard(prompt, { onTrack, signal } = {}) {
       messages: [
         {
           role: "user",
-          content: `Build a playlist for this prompt: "${prompt}"`,
+          content: parts.join("\n\n"),
         },
       ],
     },
@@ -371,4 +394,5 @@ module.exports = {
   TRACK_COUNT,
   // exported for tests only
   extractCompleteTracks,
+  seedContext,
 };

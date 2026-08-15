@@ -214,7 +214,10 @@ function normalize(s: unknown): string {
     .replace(/[\u0300-\u036f]/g, "") // strip diacritics
     .replace(/\(.*?\)|\[.*?\]/g, " ") // drop parentheticals like (Remastered)
     .replace(/&/g, " and ") // "&" ≈ "and"
-    .replace(/[^a-z0-9\s]/g, " ")
+    // keep every script's letters, not just a-z — a Hebrew (or Japanese, or
+    // Cyrillic) title normalized to "" scores 0 against anything, so the
+    // track can never verify no matter what Spotify returns
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
     .replace(/\s+/g, " ")
     .trim();
 }
@@ -361,6 +364,21 @@ async function resolveTrack<T extends { artist: string; title: string }>(
     albumArt,
     matchedName,
   };
+}
+
+// Compact catalog search backing the curator's search_spotify tool — just
+// enough for the model to confirm a track exists and how Spotify spells it.
+async function searchCatalog(
+  query: string
+): Promise<{ artist: string; title: string; album: string; year: string }[]> {
+  const params = new URLSearchParams({ q: query, type: "track", limit: "5" });
+  const data = await spotifyFetch(`/search?${params}`);
+  return (data?.tracks?.items || []).map((item: any) => ({
+    artist: (item.artists || []).map((a: any) => a.name).join(", "),
+    title: item.name,
+    album: item.album?.name || "",
+    year: String(item.album?.release_date || "").slice(0, 4),
+  }));
 }
 
 // Resolve all tracks with a small concurrency pool (respects rate limits).
@@ -527,6 +545,7 @@ export {
   authorizeUrl,
   exchangeCode,
   resolveTracks,
+  searchCatalog,
   createPlaylist,
   listPlaylists,
   getSeedTracks,

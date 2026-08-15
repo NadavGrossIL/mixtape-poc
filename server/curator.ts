@@ -5,6 +5,7 @@
 // beta header) lets us emit each track as the model produces it.
 
 import Anthropic from "@anthropic-ai/sdk";
+import { searchCatalog } from "./spotify.ts";
 
 const MODEL = "claude-sonnet-5";
 const TRACK_COUNT = 8;
@@ -67,7 +68,7 @@ const CURATOR_TOOL = {
       },
       accent: {
         type: "string",
-        enum: ["crimson", "cobalt", "forest", "tangerine", "violet", "gold"],
+        enum: ["terra", "lagoon", "palm", "hibiscus", "marine", "sungold"],
         description: "Accent color matching the mood.",
       },
       tracks: {
@@ -143,15 +144,49 @@ const ADJUST_TOOL = {
       vibe: { type: "string", description: "New vibe line, only if the adjustment changes the mixtape's identity." },
       accent: {
         type: "string",
-        enum: ["crimson", "cobalt", "forest", "tangerine", "violet", "gold"],
+        enum: ["terra", "lagoon", "palm", "hibiscus", "marine", "sungold"],
       },
     },
   },
 };
 
+// The curator's verification tool — executed server-side against Spotify
+// search between model turns. This is what makes "every track exists on
+// Spotify" enforceable instead of aspirational.
+const SEARCH_TOOL = {
+  name: "search_spotify",
+  description:
+    "Search Spotify's track catalog. Returns the top matches as artist/title/album/year. " +
+    "Use it to verify every track before it goes on the card; batch several searches in one turn.",
+  strict: true,
+  input_schema: {
+    type: "object",
+    additionalProperties: false,
+    required: ["query"],
+    properties: {
+      query: {
+        type: "string",
+        description:
+          "Free-text search — artist and title together works best, e.g. 'Radiohead Let Down'.",
+      },
+    },
+  },
+};
+
+// Static tool list for every curator call (generate and adjust alike) —
+// varying it between calls would invalidate the compiled-grammar cache.
+const TOOLS = [SEARCH_TOOL, CURATOR_TOOL, ADJUST_TOOL];
+
+// Turn budget for the search-then-commit loop. Typical run: one or two turns
+// of batched searches, maybe one of replacement searches, then the final tool
+// (plus headroom for an empty-input retry). The last turn forces the final
+// tool so a run can never end without a card.
+const MAX_TOOL_TURNS = 6;
+
 const SYSTEM = `You are a sharp music curator writing liner notes for a mixtape card.
 Rules:
-- Exactly 8 tracks. Real, well-known recordings only — if unsure a song exists, pick one you are sure of.
+- Exactly 8 tracks, and every one must be a real recording that exists on Spotify.
+- Verify before you commit: check each candidate with search_spotify (batch the calls — several in one turn) and use the exact artist and title spelling the results show. If a pick doesn't come back in the results, choose a different track and verify that one too.
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
 - Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.`;
@@ -164,6 +199,7 @@ You are adjusting an existing mixtape, not building a new one:
 - Replacement notes follow the same rules as new ones: specific, human, never generic.
 - Keep the DJ-set arc sensible: each replacement must sit right between its neighbors.
 - Tracks marked "resolved": false could not be verified on Spotify — prefer them as swap targets when the user says a track isn't real.
+- Every replacement must be verified with search_spotify before you record it — same rule as new tracks.
 - Only include title/vibe/accent when the adjustment changes the mixtape's identity.`;
 
 // Scan the accumulated partial JSON of the tool input and return every
@@ -225,6 +261,154 @@ function seedContext(seed: { name: string; tracks: { artist: string; title: stri
   );
 }
 
+// The curator agent loop: stream a turn, execute any search_spotify calls
+// against Spotify, feed the results back, repeat until the model commits via
+// its final tool (create_mixtape / adjust_mixtape). Returns that tool's input.
+// onItem(i, item) fires as the model streams each element of the final tool's
+// `arrayKey` array — the same real-event streaming the single-call version had.
+async function runCuratorAgent({
+  system,
+  userContent,
+  finalTool,
+  arrayKey,
+  onItem,
+  signal,
+}: {
+  system: string;
+  userContent: string;
+  finalTool: string;
+  arrayKey: string;
+  onItem?: (index: number, item: any) => void;
+  signal?: AbortSignal;
+}): Promise<Record<string, unknown>> {
+  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const messages: Anthropic.MessageParam[] = [
+    { role: "user", content: userContent },
+  ];
+
+  for (let turn = 1; turn <= MAX_TOOL_TURNS; turn++) {
+    const lastTurn = turn === MAX_TOOL_TURNS;
+    const stream = client.messages.stream(
+      {
+        model: MODEL,
+        // headroom for search turns' reasoning on top of the card itself
+        max_tokens: 4000,
+        system,
+        tools: TOOLS as any,
+        tool_choice: lastTurn
+          ? { type: "tool", name: finalTool }
+          : { type: "auto" },
+        messages,
+      },
+      { signal }
+    );
+
+    // Stream the final tool's array items as they're written. Search calls
+    // and prose stream through the same events, so key the buffer to the
+    // final tool's content block, not to deltas in general.
+    let finalBlockIndex = -1;
+    let buf = "";
+    let emitted = 0;
+    for await (const event of stream) {
+      if (event.type === "content_block_start") {
+        if (
+          event.content_block.type === "tool_use" &&
+          event.content_block.name === finalTool
+        ) {
+          finalBlockIndex = event.index;
+          buf = "";
+          emitted = 0;
+        }
+      } else if (
+        event.type === "content_block_delta" &&
+        event.index === finalBlockIndex &&
+        event.delta.type === "input_json_delta"
+      ) {
+        buf += event.delta.partial_json;
+        if (!onItem) continue;
+        const items = extractCompleteTracks(buf, arrayKey);
+        while (emitted < items.length) {
+          onItem(emitted, items[emitted]);
+          emitted++;
+        }
+      }
+    }
+
+    const response = await stream.finalMessage();
+    console.log(
+      `[curator] turn ${turn}: stop=${response.stop_reason} blocks=` +
+        response.content
+          .map((b) => (b.type === "tool_use" ? `tool:${b.name}` : b.type))
+          .join(",")
+    );
+    const done = response.content.find(
+      (b): b is Anthropic.ToolUseBlock =>
+        b.type === "tool_use" && b.name === finalTool
+    );
+    // A final tool call occasionally arrives with an empty input object (no
+    // deltas ever stream for the block) — a wire flake, not a model choice.
+    // Only a non-empty input counts as done; an empty one is answered below
+    // with an error result so the model calls again.
+    if (done && Object.keys(done.input as object).length > 0) {
+      return done.input as Record<string, unknown>;
+    }
+
+    messages.push({ role: "assistant", content: response.content });
+    const searches = response.content.filter(
+      (b): b is Anthropic.ToolUseBlock =>
+        b.type === "tool_use" && b.name === SEARCH_TOOL.name
+    );
+    if (searches.length === 0 && !done) {
+      // text-only turn — nudge it to commit instead of narrating
+      messages.push({
+        role: "user",
+        content: `Record the final result now with ${finalTool}.`,
+      });
+      continue;
+    }
+    if (searches.length > 0) {
+      console.log(`[curator] turn ${turn}: ${searches.length} spotify searches`);
+    }
+    // All results go back in ONE user message — splitting them across
+    // messages trains the model out of batching its searches.
+    const results: Anthropic.ToolResultBlockParam[] = await Promise.all(
+      searches.map(async (s) => {
+        try {
+          const found = await searchCatalog(String((s.input as any)?.query ?? ""));
+          return {
+            type: "tool_result" as const,
+            tool_use_id: s.id,
+            content: JSON.stringify(found),
+          };
+        } catch (err: any) {
+          // Spotify being down must degrade to the old behavior (model's own
+          // judgment + the resolution gate), not kill the generation.
+          console.warn(`[curator] search_spotify failed: ${err.message}`);
+          return {
+            type: "tool_result" as const,
+            tool_use_id: s.id,
+            content:
+              "Spotify search is unavailable right now — rely on your own knowledge and prefer well-known recordings.",
+            is_error: true,
+          };
+        }
+      })
+    );
+    if (done) {
+      console.warn(`[curator] ${finalTool} arrived with empty input — retrying`);
+      results.push({
+        type: "tool_result",
+        tool_use_id: done.id,
+        content: `Your ${finalTool} call arrived with empty input. Call it again with the complete arguments.`,
+        is_error: true,
+      });
+    }
+    messages.push({ role: "user", content: results });
+  }
+  // unreachable: the last turn forces the final tool
+  throw new Error("Curator never produced a final tool call");
+}
+
 // Generate a card. onTrack(index, {artist, title}) fires as the model streams
 // each track — real events, straight from the tool-input stream.
 // seed (optional): an existing playlist to channel — see seedContext. With a
@@ -243,56 +427,27 @@ async function generateCard(
     signal?: AbortSignal;
   } = {}
 ): Promise<MixtapeCard> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   const parts = [
     prompt ? `Build a playlist for this prompt: "${prompt}"` : "Build a playlist.",
   ];
   if (seed) parts.push(seedContext(seed));
 
-  const stream = client.messages.stream(
-    {
-      model: MODEL,
-      max_tokens: 2000,
-      system: SYSTEM,
-      tools: [CURATOR_TOOL] as any,
-      tool_choice: { type: "tool", name: "create_mixtape" },
-      messages: [
-        {
-          role: "user",
-          content: parts.join("\n\n"),
-        },
-      ],
-    },
-    { signal }
-  );
+  const input = await runCuratorAgent({
+    system: SYSTEM,
+    userContent: parts.join("\n\n"),
+    finalTool: "create_mixtape",
+    arrayKey: "tracks",
+    signal,
+    onItem: onTrack
+      ? (i, t) => {
+          // never emit past TRACK_COUNT — the post-stream clamp drops the
+          // excess, so the client must not see rows that won't be on the card
+          if (i < TRACK_COUNT && t && t.artist && t.title) onTrack(i, t);
+        }
+      : undefined,
+  });
 
-  let buf = "";
-  let emitted = 0;
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "input_json_delta"
-    ) {
-      buf += event.delta.partial_json;
-      if (!onTrack) continue;
-      const tracks = extractCompleteTracks(buf);
-      // never emit past TRACK_COUNT — the post-stream clamp drops the excess,
-      // so the client must not see rows that won't be on the card
-      while (emitted < tracks.length && emitted < TRACK_COUNT) {
-        const t = tracks[emitted];
-        if (t && t.artist && t.title) onTrack(emitted, t);
-        emitted++;
-      }
-    }
-  }
-
-  const response = await stream.finalMessage();
-  const toolUse = response.content.find((b) => b.type === "tool_use");
-  if (!toolUse) {
-    throw new Error("Curator returned no tool_use block");
-  }
-  const card = toolUse.input as MixtapeCard;
+  const card = input as unknown as MixtapeCard;
   if (!Array.isArray(card.tracks) || card.tracks.length === 0) {
     throw new Error("Curator returned no tracks");
   }
@@ -324,8 +479,6 @@ async function adjustCard(
     signal?: AbortSignal;
   } = {}
 ): Promise<AdjustDiff> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
-
   // Strip spotify resolution fields — the model doesn't need them. The
   // `resolved` flag stays: unverified tracks are the natural swap targets.
   const minimalCard = {
@@ -341,60 +494,29 @@ async function adjustCard(
     })),
   };
 
-  const stream = client.messages.stream(
-    {
-      model: MODEL,
-      max_tokens: 2000,
-      system: ADJUST_SYSTEM,
-      // Static tool list (both tools, always) — varying it would invalidate the
-      // compiled-grammar cache.
-      tools: [CURATOR_TOOL, ADJUST_TOOL] as any,
-      tool_choice: { type: "tool", name: "adjust_mixtape" },
-      messages: [
-        {
-          role: "user",
-          content:
-            `Original prompt: "${card.prompt || ""}"\n` +
-            `Current mixtape (JSON):\n${JSON.stringify(minimalCard)}\n\n` +
-            `User adjustment: "${adjustment}"`,
-        },
-      ],
-    },
-    { signal }
-  );
-
-  let buf = "";
-  let emitted = 0;
-  for await (const event of stream) {
-    if (
-      event.type === "content_block_delta" &&
-      event.delta.type === "input_json_delta"
-    ) {
-      buf += event.delta.partial_json;
-      if (!onChange) continue;
-      const changes = extractCompleteTracks(buf, "changes");
-      while (emitted < changes.length) {
-        const c = changes[emitted];
-        if (
-          c &&
-          Number.isInteger(c.index) &&
-          c.track &&
-          c.track.artist &&
-          c.track.title
-        ) {
-          onChange(emitted, c);
+  const result = (await runCuratorAgent({
+    system: ADJUST_SYSTEM,
+    userContent:
+      `Original prompt: "${card.prompt || ""}"\n` +
+      `Current mixtape (JSON):\n${JSON.stringify(minimalCard)}\n\n` +
+      `User adjustment: "${adjustment}"`,
+    finalTool: "adjust_mixtape",
+    arrayKey: "changes",
+    signal,
+    onItem: onChange
+      ? (i, c) => {
+          if (
+            c &&
+            Number.isInteger(c.index) &&
+            c.track &&
+            c.track.artist &&
+            c.track.title
+          ) {
+            onChange(i, c);
+          }
         }
-        emitted++;
-      }
-    }
-  }
-
-  const response = await stream.finalMessage();
-  const toolUse = response.content.find((b) => b.type === "tool_use");
-  if (!toolUse) {
-    throw new Error("Curator returned no tool_use block");
-  }
-  const result = toolUse.input as any;
+      : undefined,
+  })) as any;
   const rawChanges = Array.isArray(result.changes) ? result.changes : [];
   // Strict schemas can't enforce array length, index range against THIS card,
   // or duplicate indices — clamp/validate here, like the 8-track clamp above.

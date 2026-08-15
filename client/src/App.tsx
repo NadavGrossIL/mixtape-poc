@@ -103,17 +103,46 @@ const SpeechRecognitionImpl =
     ? window.SpeechRecognition || window.webkitSpeechRecognition
     : null;
 
+// Once a browser has stored a "deny" for the mic, recognition fails the
+// instant it starts and no web page can reopen the permission prompt — the
+// only way back is the browser's own site settings, which live somewhere
+// different on every platform. Spell out the path for this one.
+const MIC_UNBLOCK_STEPS = (() => {
+  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
+  if (/iPhone|iPad|iPod/.test(ua))
+    return (
+      "tap the ᴀA button in the address bar → Website Settings → " +
+      "Microphone → Allow. Dictation itself must also be on: " +
+      "iOS Settings → General → Keyboard → Enable Dictation."
+    );
+  if (/Android/.test(ua))
+    return (
+      "tap the icon left of the address bar → Permissions → " +
+      "Microphone → Allow, then reload."
+    );
+  if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome/.test(ua))
+    return (
+      "open the Safari menu → Settings for This Website → " +
+      "Microphone → Allow."
+    );
+  return (
+    "click the icon left of the address bar → Site settings → " +
+    "Microphone → Allow, then reload."
+  );
+})();
+
 // Color tokens live in styles.css. This map is the per-mixtape accent,
 // darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
 // Record<string, string>: the accent name arrives from the server, and the
-// lookup below already falls back to crimson for anything unknown.
+// lookup below already falls back to terra for anything unknown — including
+// cards curated before the Riviera palette, whose accent names no longer exist.
 const ACCENT_INK: Record<string, string> = {
-  crimson: "#A81F24",
-  cobalt: "#1F4BC7",
-  forest: "#1D6A43",
-  tangerine: "#B34A08",
-  violet: "#5F3DC4",
-  gold: "#8A6508",
+  terra: "#BA4419",
+  lagoon: "#0F6E63",
+  palm: "#1D6A43",
+  hibiscus: "#A82750",
+  marine: "#3A55B8",
+  sungold: "#8A6508",
 };
 
 // Each example demonstrates a different prompt axis: speed/skill,
@@ -546,9 +575,7 @@ export default function LinerNotes() {
     recog.onerror = (e) => {
       if (e.error === "not-allowed" || e.error === "service-not-allowed") {
         dictatingRef.current = false;
-        setInputHint(
-          "The mic is blocked — allow microphone access for this site and try again."
-        );
+        setInputHint(`The mic is blocked for this site — ${MIC_UNBLOCK_STEPS}`);
       } else if (e.error !== "aborted" && e.error !== "no-speech") {
         // real failure (network, audio-capture) — don't restart-loop on it
         dictatingRef.current = false;
@@ -865,8 +892,8 @@ export default function LinerNotes() {
   };
 
   const accentInk = card
-    ? ACCENT_INK[card.accent] || ACCENT_INK.crimson
-    : ACCENT_INK.crimson;
+    ? ACCENT_INK[card.accent] || ACCENT_INK.terra
+    : ACCENT_INK.terra;
 
   const liveVerified = logTracks.filter((t) => t && t.resolved === true).length;
   const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;

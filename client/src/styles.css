@@ -1,23 +1,24 @@
 /* ── design tokens ──────────────────────────────────────────────
-   Studio-dark chrome around a paper "liner notes" insert.
+   "Riviera": 70s hi-fi — deep teal-green chrome around a warm
+   aged-paper "liner notes" insert, sunburst-gold accent.
    Display: Archivo Black · Data: Space Mono · Notes: Georgia italic
    Two-surface accent system: bright values live on the dark shell,
    "ink" values (darkened for ≥4.5:1 on cream) live on the paper. */
 :root {
-  --shell: #191714;
-  --shell-raised: #211e1a;
-  --ink: #ede8de;
-  --ink-dim: #b8b0a2;
-  --ink-faint: #948c7d; /* ≥4.5:1 on shell AND shell-raised — dimmest allowed text */
-  --line: #736c60; /* ≥3:1 component boundaries on shell and shell-raised */
-  --accent: #e36414; /* filled surfaces only */
-  --accent-soft: #e07b3a; /* accent as text/border on dark */
-  --accent-press: #9c440b; /* hard offset shadow under the button */
-  --paper: #faf6ec;
-  --paper-ink: #14120f;
-  --paper-dim: #6e675c; /* ≥4.5:1 on paper — muted print text */
-  --paper-line: #e2daca;
-  --paper-hover: #f4eede;
+  --shell: #0f1c19;
+  --shell-raised: #162521;
+  --ink: #e9e8de;
+  --ink-dim: #afb1a6;
+  --ink-faint: #8d9188; /* ≥4.5:1 on shell AND shell-raised — dimmest allowed text */
+  --line: #697066; /* ≥3:1 component boundaries on shell and shell-raised */
+  --accent: #e0a43c; /* filled surfaces only */
+  --accent-soft: #d9a850; /* accent as text/border on dark */
+  --accent-press: #96690f; /* hard offset shadow under the button */
+  --paper: #f9f3e2;
+  --paper-ink: #17130b;
+  --paper-dim: #6e6754; /* ≥4.5:1 on paper — muted print text */
+  --paper-line: #e8dfc6;
+  --paper-hover: #f2ead2;
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
 }
 
@@ -45,7 +46,7 @@
 /* ── shell ── */
 .app {
   min-height: 100vh;
-  background: radial-gradient(120% 100% at 50% 0%, #1e1b17, var(--shell) 60%);
+  background: radial-gradient(120% 100% at 50% 0%, var(--shell-raised), var(--shell) 60%);
   color: var(--ink);
   font-family: "Space Grotesk", sans-serif;
   padding: 28px 16px 64px;
@@ -356,11 +357,12 @@
 
 /* ── loading: spinning record + console log ── */
 .loading {
-  margin-top: 48px;
+  /* equal space above and below the disc: margin-top matches the gap */
+  margin-top: 32px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: 32px;
   width: 100%;
   max-width: 560px;
 }
@@ -369,9 +371,9 @@
   height: 56px;
   border-radius: 50%;
   background:
-    radial-gradient(circle at 50% 16%, rgba(237, 232, 222, 0.55) 0 2px, transparent 3px),
-    radial-gradient(circle, var(--accent) 0 8px, #0c0b09 8px 10px, transparent 10px),
-    repeating-radial-gradient(circle, #0c0b09 0 2px, #26221d 2px 4px);
+    radial-gradient(circle at 50% 16%, rgba(233, 232, 222, 0.55) 0 2px, transparent 3px),
+    radial-gradient(circle, var(--accent) 0 8px, #0a100e 8px 10px, transparent 10px),
+    repeating-radial-gradient(circle, #0a100e 0 2px, #22312c 2px 4px);
   border: 2px solid var(--accent);
 }
 .progress-log {
@@ -385,7 +387,7 @@
   color: var(--ink-dim);
   width: 100%;
   max-width: 460px;
-  border-left: 2px solid rgba(227, 100, 20, 0.35);
+  border-left: 2px solid rgba(224, 164, 60, 0.35);
   padding-left: 14px;
   overflow-wrap: break-word; /* streamed track names can run long */
 }
@@ -562,8 +564,8 @@
   width: 40px;
   height: 40px;
   flex-shrink: 0;
-  background: #efe9da;
-  border: 1px dashed #d8cfbb;
+  background: #efe6cd;
+  border: 1px dashed #ddd2b2;
 }
 .track-num {
   font-family: "Space Mono", monospace;
@@ -589,7 +591,7 @@
   font-style: italic;
   font-size: 12.5px;
   line-height: 1.45;
-  color: #4a453c;
+  color: #4c4635;
   margin-top: 2px;
 }
 .play-hint {
@@ -754,7 +756,7 @@
   transition: background 0.15s ease;
 }
 .playlist-link:hover {
-  background: rgba(227, 100, 20, 0.12);
+  background: rgba(224, 164, 60, 0.12);
 }
 
 .brand-switcher {

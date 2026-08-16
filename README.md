@@ -47,7 +47,8 @@ On the finished card you can:
   Spotify account. Track links deep-link into the installed Spotify app.
 
 Progress stages during generation are real backend events streamed over SSE —
-nothing is invented for show.
+nothing is invented for show. Tracks appear one at a time because the card is
+parsed out of the model's tool-input stream as it is written, not after.
 
 The **logs** tab in the bottom-right corner opens the server's own log tail —
 the prompt, each curator turn, every Spotify resolution, and any error, live
@@ -105,16 +106,29 @@ and judging cost real API money; the selftest doesn't.
 
 ## Constraints worth knowing
 
-A strict tool schema validates types, not substance. JSON Schema array-length
-constraints (`minItems`) aren't supported by strict tool use, so
-`"tracks": []` is a perfectly valid `create_mixtape` call — and measured over
-15 live runs, roughly one in five ended exactly that way: the model ran all
-eight Spotify searches, said "all tracks verified", then committed a card with
-an empty or single-`"placeholder"` track list. The curator therefore gates the
-final tool call itself (`cardIncompleteReason`) and hands an incomplete one
-back as a failed `tool_result` so the model fills it in on the next turn.
-Anything that must hold about the *content* of a strict tool call has to be
-checked in code like this — the schema will not do it for you.
+**A strict tool schema enforces what it can compile, and silently drops the
+rest.** JSON Schema array-length constraints (`minItems`) aren't supported by
+strict tool use, so `"tracks": [oneTrack]` was a perfectly valid
+`create_mixtape` call. Measured over 10 live runs, the model closed that array
+after a single exemplar track **6 times** — it ran all eight Spotify searches,
+said "All eight verified. Now let's finalize the mixtape.", then stopped
+cleanly at ~240 output tokens. Not truncation, not malformed JSON: it decided
+one was enough, and nothing in the schema said otherwise.
+
+Prompt wording didn't move it, and neither did removing the other
+record-the-result tool from the request (5/10 vs 6/10 — noise). What fixed it
+was changing the shape of the ask: the card's tracks are an **object with
+eight required keys** (`track1`…`track8`), not an array. `required` on object
+properties *is* compiled into the grammar, so the call cannot close until all
+eight exist. Same ten prompts, keyed schema: **0/10 failures**. The array is
+rebuilt from the keys on arrival (`toTrackList`), so nothing downstream knows.
+
+The generalisable rule: if a constraint must hold, express it as one the
+grammar can enforce — `required`, `enum`, `type` — rather than one it will
+accept and ignore. `cardIncompleteReason` still gates the call afterwards,
+because `required` guarantees the keys exist, not that they say anything:
+`{"artist": "placeholder"}` is still a valid string. Substance is never a
+thing a schema checks.
 
 Spotify dev-mode apps are capped at 5 allowlisted users, permanently, for
 individual developers — so "sign in with Spotify" can never be this app's

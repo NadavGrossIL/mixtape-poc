@@ -52,6 +52,34 @@ test("stops at the array close — objects after ] are not tracks", () => {
   assert.strictEqual(tracks[0].artist, "A");
 });
 
+// create_mixtape streams tracks as an OBJECT (track1…track8) now, so the
+// extractor has to open on `{` as readily as `[`. This is the live
+// track-by-track reveal in the UI — if it regresses, the card fills in one
+// jump at the end instead of a track at a time.
+
+test("extracts tracks from the keyed object container, in wire order", () => {
+  const buf = `{"title":"Mix","tracks":{"track1":${TRACK("A", "One")},"track2":${TRACK("B", "Two")},"track3":{"artist":"C","ti`;
+  const tracks = extractCompleteTracks(buf);
+  assert.strictEqual(tracks.length, 2);
+  assert.strictEqual(tracks[0].artist, "A");
+  assert.strictEqual(tracks[1].artist, "B");
+});
+
+test("stops at the keyed container's close — later objects are not tracks", () => {
+  const buf = `{"tracks":{"track1":${TRACK("A", "One")}},"extra":{"artist":"X","title":"Y","note":"n"}}`;
+  const tracks = extractCompleteTracks(buf);
+  assert.strictEqual(tracks.length, 1);
+  assert.strictEqual(tracks[0].artist, "A");
+});
+
+test("a brace inside the title before the container does not misplace the open", () => {
+  // the scan opens on whichever of [ or { comes first AFTER the tracks key
+  const buf = `{"title":"Mix {live}","tracks":{"track1":${TRACK("A", "One")}}`;
+  const tracks = extractCompleteTracks(buf);
+  assert.strictEqual(tracks.length, 1);
+  assert.strictEqual(tracks[0].artist, "A");
+});
+
 test("reads the named array key (changes, for adjust_mixtape)", () => {
   const buf = `{"changes":[{"index":3,"track":${TRACK("A", "One")}},{"index":5,"tr`;
   const changes = extractCompleteTracks(buf, "changes");
@@ -97,12 +125,23 @@ test("seedContext: says when the list is a sample, not the whole playlist", () =
 });
 
 // ── the completeness gate ────────────────────────────────────────
-// Strict tool schemas validate types but can't express "exactly 8 items",
-// so `"tracks": []` and a lone {"artist":"placeholder",...} row are both
-// schema-valid. Roughly one live run in five ended that way. These are the
-// exact payloads observed on the wire.
+// Strict tool schemas validate types but can't express "exactly 8 items", so
+// `"tracks": []` and a lone {"artist":"placeholder",...} row were both
+// schema-valid — and measured over 10 live runs the model closed the array
+// after one exemplar track 6 times. The card's tracks are now 8 required
+// KEYS (track1…track8), which the grammar does enforce; this gate stays for
+// substance, which no schema checks. Payloads below were observed on the wire.
 
-import { cardIncompleteReason, diffIncompleteReason, TRACK_COUNT } from "../curator.ts";
+import {
+  cardIncompleteReason,
+  diffIncompleteReason,
+  toTrackList,
+  TRACK_COUNT,
+} from "../curator.ts";
+
+// the wire shape: {track1: {...}, …}
+const keyed = (tracks: unknown[]) =>
+  Object.fromEntries(tracks.map((t, i) => [`track${i + 1}`, t]));
 
 const full = (n = TRACK_COUNT) =>
   Array.from({ length: n }, (_, i) => ({
@@ -129,7 +168,8 @@ test("rejects the empty-input wire flake", () => {
 
 test("rejects the observed empty-tracks commit", () => {
   // verbatim from a failing run: title/vibe/accent filled, tracks dropped
-  assert.match(String(cardIncompleteReason(card({ tracks: [] }))), /empty/);
+  assert.match(String(cardIncompleteReason(card({ tracks: [] }))), /no tracks/);
+  assert.match(String(cardIncompleteReason(card({ tracks: {} }))), /no tracks/);
 });
 
 test("rejects the observed single-placeholder-row commit", () => {
@@ -137,7 +177,43 @@ test("rejects the observed single-placeholder-row commit", () => {
     tracks: [{ artist: "placeholder", title: "placeholder", note: "placeholder" }],
   });
   // caught on count before it can be clamped into a 1-track mixtape
-  assert.match(String(cardIncompleteReason(stub)), /1 entries/);
+  assert.match(String(cardIncompleteReason(stub)), /only 1 of the 8/);
+});
+
+// --- the keyed wire shape the model actually sends now ---
+
+test("a complete keyed card passes", () => {
+  assert.strictEqual(cardIncompleteReason(card({ tracks: keyed(full()) })), null);
+});
+
+test("rejects the truncated commit in keyed form", () => {
+  // the exact failure the schema change makes ungrammatical, kept as a net:
+  // one filled slot, seven missing
+  const stub = card({ tracks: keyed(full(1)) });
+  assert.match(String(cardIncompleteReason(stub)), /only 1 of the 8/);
+});
+
+test("rejects a placeholder hiding in slot 5 of a keyed card", () => {
+  const tracks = full();
+  tracks[4] = { artist: "TBD", title: "Title 4", note: "Note 4" };
+  assert.match(String(cardIncompleteReason(card({ tracks: keyed(tracks) }))), /track 5/);
+});
+
+test("toTrackList reads track1…track8 in card order, not object order", () => {
+  const shuffled = {
+    track3: { artist: "C" },
+    track1: { artist: "A" },
+    track2: { artist: "B" },
+  };
+  assert.deepStrictEqual(
+    toTrackList(shuffled).map((t: any) => t.artist),
+    ["A", "B", "C"]
+  );
+});
+
+test("toTrackList still reads a plain array", () => {
+  assert.deepStrictEqual(toTrackList(full(2)).length, 2);
+  assert.deepStrictEqual(toTrackList(null), []);
 });
 
 test("rejects a placeholder row hiding in a full-length list", () => {

@@ -45,11 +45,41 @@ interface AdjustDiff {
   accent?: string;
 }
 
+// One track's shape, shared by create_mixtape and adjust_mixtape.
+const TRACK_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  required: ["artist", "title", "note"],
+  properties: {
+    artist: { type: "string", description: "The recording artist's name." },
+    title: { type: "string", description: "The track title." },
+    note: {
+      type: "string",
+      description:
+        "One specific, concrete reason this track earns its place — a detail, a moment, a stat. Max 18 words. Never generic.",
+    },
+  },
+};
+
+// track1…track8. The card's tracks are 8 REQUIRED KEYS, not an array — see
+// the note on CURATOR_TOOL for why that distinction is the whole fix.
+const TRACK_KEYS = Array.from({ length: TRACK_COUNT }, (_, i) => `track${i + 1}`);
+
+const ARC = [
+  "the opener",
+  "the second track, still building",
+  "the build",
+  "the build continues",
+  "the peak",
+  "just past the peak",
+  "the comedown",
+  "the closer",
+];
+
 const CURATOR_TOOL = {
   name: "create_mixtape",
   description:
-    "Record the finished mixtape card: a title, a dedication-style vibe line, an accent color, and exactly 8 tracks in DJ-set order, each with a one-line liner note. " +
-    "Put all 8 tracks in this one call — a call with an empty or partial tracks array records nothing and the card is lost.",
+    "Record the finished mixtape card: a title, a dedication-style vibe line, an accent color, and 8 tracks in DJ-set order, each with a one-line liner note.",
   strict: true,
   // Fine-grained tool-input streaming: track names arrive as the model writes them.
   eager_input_streaming: true,
@@ -72,23 +102,34 @@ const CURATOR_TOOL = {
         enum: ["ember", "rose", "plum", "cobalt", "forest", "rust"],
         description: "Accent color matching the mood.",
       },
+      // Eight required keys, deliberately NOT an array.
+      //
+      // This is the one part of the schema the grammar can actually enforce.
+      // A strict tool schema ignores minItems, so `tracks: [oneTrack]` was a
+      // perfectly legal create_mixtape call — and measured over 10 live runs
+      // the model closed the array after a single exemplar track 6 times,
+      // stopping cleanly at ~240 output tokens with "All eight verified. Now
+      // let's finalize the mixtape." as its text block. It wasn't truncation
+      // and it wasn't malformed JSON; it just decided one was enough.
+      //
+      // `required` on object properties IS compiled into the grammar, so as
+      // an object the call cannot close until all eight exist. The array is
+      // rebuilt from these keys the moment the input lands (see toTrackList).
       tracks: {
-        type: "array",
-        description: "Exactly 8 tracks, ordered like a DJ set with an arc.",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["artist", "title", "note"],
-          properties: {
-            artist: { type: "string", description: "The recording artist's name." },
-            title: { type: "string", description: "The track title." },
-            note: {
-              type: "string",
-              description:
-                "One specific, concrete reason this track earns its place — a detail, a moment, a stat. Max 18 words. Never generic.",
+        type: "object",
+        additionalProperties: false,
+        required: TRACK_KEYS,
+        description:
+          "All 8 tracks, keyed track1 through track8, ordered like a DJ set with an arc.",
+        properties: Object.fromEntries(
+          TRACK_KEYS.map((key, i) => [
+            key,
+            {
+              ...TRACK_SCHEMA,
+              description: `Track ${i + 1} of 8 — ${ARC[i]}.`,
             },
-          },
-        },
+          ])
+        ),
       },
     },
   },
@@ -176,6 +217,9 @@ const SEARCH_TOOL = {
 
 // Static tool list for every curator call (generate and adjust alike) —
 // varying it between calls would invalidate the compiled-grammar cache.
+// (Measured: scoping the list per flow, so a generate run never sees
+// adjust_mixtape's legitimately-empty `changes` array, made no difference to
+// the truncated-commit rate — 5/10 vs 6/10. The cause was the array itself.)
 const TOOLS = [SEARCH_TOOL, CURATOR_TOOL, ADJUST_TOOL];
 
 // Turn budget for the search-then-commit loop. Typical run: one or two turns
@@ -194,7 +238,7 @@ Rules:
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
 - Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
-- Writing the card is a separate step from choosing it: once you commit, put all 8 tracks into that single tool call. A call that carries the title but an empty or partial track list records nothing, and the searches are wasted.`;
+- Writing the card is a separate step from choosing it: once you commit, fill in all eight track slots (track1 through track8) in that single tool call.`;
 
 const ADJUST_SYSTEM = `${SYSTEM}
 
@@ -215,28 +259,39 @@ function isFilled(v: unknown): boolean {
   return typeof v === "string" && v.trim() !== "" && !STUB_RE.test(v.trim());
 }
 
+// tracks arrives as {track1: {...}, …, track8: {...}} — flatten it back to the
+// array the rest of the app has always used. Tolerates a plain array too, so
+// a card that predates the schema change still reads.
+function toTrackList(tracks: unknown): any[] {
+  if (Array.isArray(tracks)) return tracks;
+  if (!tracks || typeof tracks !== "object") return [];
+  return TRACK_KEYS.map((key) => (tracks as any)[key]).filter(
+    (t) => t !== undefined
+  );
+}
+
 // Whether a create_mixtape call actually contains a mixtape.
 //
-// This is the gate the strict schema cannot be: JSON Schema array-length
-// constraints (minItems) aren't supported by strict tool use, so `"tracks":
-// []` and a single {"artist":"placeholder",...} row are both perfectly
-// schema-valid. Measured on 15 live runs, ~20% ended that way — the model
-// runs all 8 searches, says "all tracks verified", then commits a hollow
-// card. Empty input (a wire flake where no deltas ever stream for the
-// block) is the same class of problem and folds in here.
+// The eight-required-keys schema makes a short card ungrammatical, so this is
+// no longer the thing standing between the model and a 1-track mixtape — but
+// it stays, for two reasons. Empty input still happens (a wire flake where no
+// deltas ever stream for the block), and `required` guarantees the keys are
+// present, not that they say anything: {"artist":"placeholder"} is still a
+// valid string. Substance is not a thing a schema checks.
 //
 // Returning a reason makes the agent loop hand the call back as a failed
 // tool_result, so the model fills it in on the next turn instead of the
-// route shipping a 0- or 1-track card.
+// route shipping a hollow card.
 function cardIncompleteReason(input: Record<string, unknown>): string | null {
   if (Object.keys(input).length === 0) return "the input object was empty";
-  const tracks = (input as any).tracks;
-  if (!Array.isArray(tracks)) return "tracks was not an array";
-  if (tracks.length === 0) return "the tracks array was empty";
+  const raw = (input as any).tracks;
+  if (!raw || typeof raw !== "object") return "tracks was missing";
+  const tracks = toTrackList(raw);
+  if (tracks.length === 0) return "there were no tracks";
   // Only under-count is retried; over-count still falls through to the
   // clamp in generateCard, which has always been the behaviour there.
   if (tracks.length < TRACK_COUNT) {
-    return `tracks had ${tracks.length} entries, not ${TRACK_COUNT}`;
+    return `only ${tracks.length} of the ${TRACK_COUNT} track slots were filled in`;
   }
   const hollow = tracks.findIndex(
     (t: any) =>
@@ -276,14 +331,23 @@ function diffIncompleteReason(input: Record<string, unknown>): string | null {
 }
 
 // Scan the accumulated partial JSON of the tool input and return every
-// COMPLETE object found inside the named array so far ("tracks" for
+// COMPLETE object found inside the named container so far ("tracks" for
 // create_mixtape, "changes" for adjust_mixtape).
+//
+// The container is an object for create_mixtape (track1…track8) and an array
+// for adjust_mixtape, so open on whichever bracket comes first and close on
+// its mate. The inner scan is identical either way: complete `{...}` objects
+// at depth 0, in wire order — which for track1…track8 is card order.
 // String-aware brace matching — no assumptions about chunk boundaries.
 function extractCompleteTracks(buf: string, arrayKey = "tracks"): any[] {
   const key = buf.indexOf(`"${arrayKey}"`);
   if (key === -1) return [];
-  const arrStart = buf.indexOf("[", key);
-  if (arrStart === -1) return [];
+  const candidates = [buf.indexOf("[", key), buf.indexOf("{", key)].filter(
+    (i) => i !== -1
+  );
+  if (candidates.length === 0) return [];
+  const arrStart = Math.min(...candidates);
+  const closer = buf[arrStart] === "[" ? "]" : "}";
   const tracks: any[] = [];
   let depth = 0;
   let inStr = false;
@@ -311,7 +375,7 @@ function extractCompleteTracks(buf: string, arrayKey = "tracks"): any[] {
         }
         objStart = -1;
       }
-    } else if (c === "]" && depth === 0) {
+    } else if (c === closer && depth === 0) {
       break;
     }
   }
@@ -534,13 +598,15 @@ async function generateCard(
       : undefined,
   });
 
-  const card = input as unknown as MixtapeCard;
-  if (!Array.isArray(card.tracks) || card.tracks.length === 0) {
+  // track1…track8 back into the array the rest of the app speaks.
+  const card = { ...input, tracks: toTrackList((input as any).tracks) } as unknown as MixtapeCard;
+  if (card.tracks.length === 0) {
     throw new Error("Curator returned no tracks");
   }
-  // Strict schemas can't enforce array length — clamp here as a safety net,
-  // and log loudly when the model ignored the spec (this is how "10 tracks"
-  // slips through silently otherwise).
+  // Belt-and-braces: eight required keys and additionalProperties:false make
+  // a wrong-length card ungrammatical, so this should now be unreachable —
+  // but toTrackList still accepts a plain array, and a silent "10 tracks" is
+  // exactly the class of bug that hid here before. Log loudly if it ever fires.
   if (card.tracks.length !== TRACK_COUNT) {
     console.warn(
       `[curator] model returned ${card.tracks.length} tracks, expected ${TRACK_COUNT} — clamping`
@@ -654,6 +720,7 @@ export {
   TRACK_COUNT,
   // exported for tests only
   extractCompleteTracks,
+  toTrackList,
   seedContext,
   cardIncompleteReason,
   diffIncompleteReason,

@@ -5,3 +5,4 @@ dist/
 .DS_Store
 npm-debug.log*
 server/.search-cache.json
+evals/baseline-logs/

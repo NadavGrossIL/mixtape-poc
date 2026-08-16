@@ -10,6 +10,11 @@ import express from "express";
 import type { Request, Response } from "express";
 import * as spotify from "./spotify.ts";
 import * as curator from "./curator.ts";
+import * as logbook from "./logbook.ts";
+
+// Tee console.* into the in-app logbook before anything logs, so even the
+// startup config warnings below are readable from the browser.
+logbook.patchConsole();
 
 // PORT is injected by the host in production (Railway/Render); HOST must be
 // 0.0.0.0 there so the platform router can reach the container. The loopback
@@ -175,6 +180,31 @@ function sseSend(res: Response, event: string, data?: unknown) {
   res.write(`event: ${event}\ndata: ${JSON.stringify(data || {})}\n\n`);
 }
 
+// ── logbook ──────────────────────────────────────────────────
+
+// The server's own log tail, for the owner. Under /api/, so the owner gate
+// covers it; there is nothing here a logged-in owner can't already see.
+app.get("/api/logs", (req, res) => {
+  res.json({ entries: logbook.since(Number(req.query.since) || 0) });
+});
+
+// Live tail. `since` lets a reconnecting client resume without duplicating
+// or dropping lines it already has.
+app.get("/api/logs/stream", (req, res) => {
+  sseInit(res);
+  for (const entry of logbook.since(Number(req.query.since) || 0)) {
+    sseSend(res, "log", entry);
+  }
+  // A quiet server would otherwise look like a dropped connection to any
+  // proxy that times idle streams out.
+  const beat = setInterval(() => sseSend(res, "ping"), 25_000);
+  const unsubscribe = logbook.subscribe((entry) => sseSend(res, "log", entry));
+  req.on("close", () => {
+    clearInterval(beat);
+    unsubscribe();
+  });
+});
+
 // The user's playlists, for the "in the spirit of" seed picker.
 app.get("/api/playlists", async (req, res) => {
   if (!spotify.isLoggedIn()) {
@@ -243,6 +273,10 @@ app.post("/api/generate/stream", async (req, res) => {
       seed = { name: seedName || "this playlist", tracks, total };
       sseSend(res, "seeded", { count: tracks.length, total });
     }
+    console.log(
+      `[generate/stream] prompt=${JSON.stringify(prompt)}` +
+        (seedId ? ` seed=${seedId}` : "")
+    );
     sseSend(res, "curating", { prompt });
     const card = await curator.generateCard(prompt, {
       seed,
@@ -263,18 +297,21 @@ app.post("/api/generate/stream", async (req, res) => {
     }
     card.prompt = prompt;
     if (seed) card.seed = { id: seedId, name: seed.name };
-    sseSend(res, "done", {
-      card,
-      verified: card.tracks.filter((t) => t.resolved).length,
-    });
+    const verified = card.tracks.filter((t) => t.resolved).length;
+    console.log(
+      `[generate/stream] done: "${card.title}" — ${verified}/${card.tracks.length} verified on Spotify`
+    );
+    sseSend(res, "done", { card, verified });
   } catch (err: any) {
     if (abort.signal.aborted) {
       console.log("[generate/stream] client disconnected — stopped");
       return res.end();
     }
     console.error("[generate/stream] failed:", err.message);
-    // detail stays in the server log — clients get a generic line
-    sseSend(res, "error", { message: "Generation failed — check the server logs." });
+    // The only client is the gated owner, and the logbook they'd be sent to
+    // is one tap away in the same page — so the real reason goes on screen
+    // rather than being paraphrased as "check the server logs".
+    sseSend(res, "error", { message: "Generation failed.", detail: err.message });
   }
   res.end();
 });
@@ -353,7 +390,7 @@ app.post("/api/adjust/stream", async (req, res) => {
       return res.end();
     }
     console.error("[adjust/stream] failed:", err.message);
-    sseSend(res, "error", { message: "Adjustment failed — check the server logs." });
+    sseSend(res, "error", { message: "Adjustment failed.", detail: err.message });
   }
   res.end();
 });

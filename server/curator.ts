@@ -48,7 +48,8 @@ interface AdjustDiff {
 const CURATOR_TOOL = {
   name: "create_mixtape",
   description:
-    "Record the finished mixtape card: a title, a dedication-style vibe line, an accent color, and exactly 8 tracks in DJ-set order, each with a one-line liner note.",
+    "Record the finished mixtape card: a title, a dedication-style vibe line, an accent color, and exactly 8 tracks in DJ-set order, each with a one-line liner note. " +
+    "Put all 8 tracks in this one call — a call with an empty or partial tracks array records nothing and the card is lost.",
   strict: true,
   // Fine-grained tool-input streaming: track names arrive as the model writes them.
   eager_input_streaming: true,
@@ -179,9 +180,12 @@ const TOOLS = [SEARCH_TOOL, CURATOR_TOOL, ADJUST_TOOL];
 
 // Turn budget for the search-then-commit loop. Typical run: one or two turns
 // of batched searches, maybe one of replacement searches, then the final tool
-// (plus headroom for an empty-input retry). The last turn forces the final
-// tool so a run can never end without a card.
-const MAX_TOOL_TURNS = 6;
+// (plus headroom for an incomplete-card retry — see incompleteReason). The
+// last turn forces the final tool so a run can never end without a card.
+// Raised from 6 after measuring the retry path live: the incomplete-card
+// commit chained up to three retries in one run, which left only two turns
+// for the search work that preceded it.
+const MAX_TOOL_TURNS = 8;
 
 const SYSTEM = `You are a sharp music curator writing liner notes for a mixtape card.
 Rules:
@@ -189,7 +193,8 @@ Rules:
 - Verify before you commit: check each candidate with search_spotify (batch the calls — several in one turn) and use the exact artist and title spelling the results show. If a pick doesn't come back in the results, choose a different track and verify that one too.
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
 - Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
-- The title is max 5 words; the vibe line is max 14 words, written like a dedication.`;
+- The title is max 5 words; the vibe line is max 14 words, written like a dedication.
+- Writing the card is a separate step from choosing it: once you commit, put all 8 tracks into that single tool call. A call that carries the title but an empty or partial track list records nothing, and the searches are wasted.`;
 
 const ADJUST_SYSTEM = `${SYSTEM}
 
@@ -201,6 +206,74 @@ You are adjusting an existing mixtape, not building a new one:
 - Tracks marked "resolved": false could not be verified on Spotify — prefer them as swap targets when the user says a track isn't real.
 - Every replacement must be verified with search_spotify before you record it — same rule as new tracks.
 - Only include title/vibe/accent when the adjustment changes the mixtape's identity.`;
+
+// Stubs the model reaches for when it commits a card it hasn't really
+// written. "placeholder" in every field of a lone track was observed live.
+const STUB_RE = /^(placeholder|tbd|todo|n\/?a|unknown|\.{2,})$/i;
+
+function isFilled(v: unknown): boolean {
+  return typeof v === "string" && v.trim() !== "" && !STUB_RE.test(v.trim());
+}
+
+// Whether a create_mixtape call actually contains a mixtape.
+//
+// This is the gate the strict schema cannot be: JSON Schema array-length
+// constraints (minItems) aren't supported by strict tool use, so `"tracks":
+// []` and a single {"artist":"placeholder",...} row are both perfectly
+// schema-valid. Measured on 15 live runs, ~20% ended that way — the model
+// runs all 8 searches, says "all tracks verified", then commits a hollow
+// card. Empty input (a wire flake where no deltas ever stream for the
+// block) is the same class of problem and folds in here.
+//
+// Returning a reason makes the agent loop hand the call back as a failed
+// tool_result, so the model fills it in on the next turn instead of the
+// route shipping a 0- or 1-track card.
+function cardIncompleteReason(input: Record<string, unknown>): string | null {
+  if (Object.keys(input).length === 0) return "the input object was empty";
+  const tracks = (input as any).tracks;
+  if (!Array.isArray(tracks)) return "tracks was not an array";
+  if (tracks.length === 0) return "the tracks array was empty";
+  // Only under-count is retried; over-count still falls through to the
+  // clamp in generateCard, which has always been the behaviour there.
+  if (tracks.length < TRACK_COUNT) {
+    return `tracks had ${tracks.length} entries, not ${TRACK_COUNT}`;
+  }
+  const hollow = tracks.findIndex(
+    (t: any) =>
+      !t || !isFilled(t.artist) || !isFilled(t.title) || !isFilled(t.note)
+  );
+  if (hollow !== -1) {
+    return `track ${hollow + 1} had a missing or placeholder artist, title or note`;
+  }
+  return null;
+}
+
+// Same gate for adjust_mixtape. An empty `changes` array is legitimate here
+// (the tool's own description allows it for a title/vibe-only tweak), so the
+// no-op case is what gets rejected: nothing changed at all.
+function diffIncompleteReason(input: Record<string, unknown>): string | null {
+  if (Object.keys(input).length === 0) return "the input object was empty";
+  const changes = (input as any).changes;
+  if (!Array.isArray(changes)) return "changes was not an array";
+  const hollow = changes.findIndex(
+    (c: any) =>
+      !c?.track ||
+      !isFilled(c.track.artist) ||
+      !isFilled(c.track.title) ||
+      !isFilled(c.track.note)
+  );
+  if (hollow !== -1) {
+    return `change ${hollow + 1} had a missing or placeholder artist, title or note`;
+  }
+  const identityChanged =
+    isFilled((input as any).title) ||
+    isFilled((input as any).vibe) ||
+    isFilled((input as any).accent);
+  if (changes.length === 0 && !identityChanged) {
+    return "it changed nothing — no track replacements and no new title, vibe or accent";
+  }
+  return null;
+}
 
 // Scan the accumulated partial JSON of the tool input and return every
 // COMPLETE object found inside the named array so far ("tracks" for
@@ -271,6 +344,7 @@ async function runCuratorAgent({
   userContent,
   finalTool,
   arrayKey,
+  incompleteReason,
   onItem,
   signal,
 }: {
@@ -278,6 +352,9 @@ async function runCuratorAgent({
   userContent: string;
   finalTool: string;
   arrayKey: string;
+  // Why this tool call can't be accepted, or null if it can — see
+  // cardIncompleteReason. A strict schema validates types, not substance.
+  incompleteReason: (input: Record<string, unknown>) => string | null;
   onItem?: (index: number, item: any) => void;
   signal?: AbortSignal;
 }): Promise<Record<string, unknown>> {
@@ -345,11 +422,13 @@ async function runCuratorAgent({
       (b): b is Anthropic.ToolUseBlock =>
         b.type === "tool_use" && b.name === finalTool
     );
-    // A final tool call occasionally arrives with an empty input object (no
-    // deltas ever stream for the block) — a wire flake, not a model choice.
-    // Only a non-empty input counts as done; an empty one is answered below
-    // with an error result so the model calls again.
-    if (done && Object.keys(done.input as object).length > 0) {
+    // A final tool call is not automatically the answer — see
+    // incompleteReason. A complete one returns; an incomplete one is
+    // answered below with an error result so the model calls again.
+    const gap = done
+      ? incompleteReason(done.input as Record<string, unknown>)
+      : null;
+    if (done && !gap) {
       return done.input as Record<string, unknown>;
     }
 
@@ -395,18 +474,25 @@ async function runCuratorAgent({
       })
     );
     if (done) {
-      console.warn(`[curator] ${finalTool} arrived with empty input — retrying`);
+      console.warn(
+        `[curator] turn ${turn}: incomplete ${finalTool} (${gap}) — retrying`
+      );
       results.push({
         type: "tool_result",
         tool_use_id: done.id,
-        content: `Your ${finalTool} call arrived with empty input. Call it again with the complete arguments.`,
+        content:
+          `Your ${finalTool} call was not usable: ${gap}. ` +
+          `Nothing was recorded. Call ${finalTool} again now, in a single ` +
+          `call, with every field filled in — you already have the search ` +
+          `results you need, so do not search again.`,
         is_error: true,
       });
     }
     messages.push({ role: "user", content: results });
   }
-  // unreachable: the last turn forces the final tool
-  throw new Error("Curator never produced a final tool call");
+  // The last turn forces the final tool, so we only land here when even that
+  // forced call came back incomplete.
+  throw new Error(`Curator never produced a complete ${finalTool} call`);
 }
 
 // Generate a card. onTrack(index, {artist, title}) fires as the model streams
@@ -437,6 +523,7 @@ async function generateCard(
     userContent: parts.join("\n\n"),
     finalTool: "create_mixtape",
     arrayKey: "tracks",
+    incompleteReason: cardIncompleteReason,
     signal,
     onItem: onTrack
       ? (i, t) => {
@@ -502,6 +589,7 @@ async function adjustCard(
       `User adjustment: "${adjustment}"`,
     finalTool: "adjust_mixtape",
     arrayKey: "changes",
+    incompleteReason: diffIncompleteReason,
     signal,
     onItem: onChange
       ? (i, c) => {
@@ -567,4 +655,6 @@ export {
   // exported for tests only
   extractCompleteTracks,
   seedContext,
+  cardIncompleteReason,
+  diffIncompleteReason,
 };

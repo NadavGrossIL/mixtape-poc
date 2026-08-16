@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
+import LogConsole from "./LogConsole";
 
 // The card/track shapes the server streams back. Unresolved tracks keep only
 // the curator's fields; the Spotify fields land on successful resolution.
@@ -79,7 +80,7 @@ type GenerateStreamEvent =
   | ["resolving", { index: number; artist: string; title: string } | null]
   | ["resolved", { index: number; resolved: boolean }]
   | ["done", { card?: MixCard; verified?: number } | null]
-  | ["error", { message?: string } | null];
+  | ["error", { message?: string; detail?: string } | null];
 
 type AdjustStreamEvent =
   | ["adjusting", { adjustment?: string } | null]
@@ -88,13 +89,13 @@ type AdjustStreamEvent =
   | ["resolving", { index: number; artist: string; title: string } | null]
   | ["resolved", { index: number; resolved: boolean }]
   | ["done", { card?: MixCard } | null]
-  | ["error", { message?: string } | null];
+  | ["error", { message?: string; detail?: string } | null];
 
 type SaveStreamEvent =
   | ["creating", { name?: string } | null]
   | ["adding", { count?: number } | null]
   | ["done", { playlistUrl?: string } | null]
-  | ["error", { message?: string } | null];
+  | ["error", { message?: string; detail?: string } | null];
 
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
 // The mic button only renders when the browser can actually transcribe.
@@ -451,6 +452,9 @@ export default function LinerNotes() {
   const [card, setCard] = useState<MixCard | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // The server's own words for what went wrong, shown under the friendly
+  // line — the log panel has the rest of the run.
+  const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
   const [brandIdx, setBrandIdx] = useState(0);
   const [saving, setSaving] = useState(false);
@@ -472,6 +476,7 @@ export default function LinerNotes() {
   const [adjustText, setAdjustText] = useState("");
   const [adjusting, setAdjusting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
+  const [adjustErrorDetail, setAdjustErrorDetail] = useState<string | null>(null);
   const [adjustStage, setAdjustStage] = useState<"adjusting" | "resolving" | null>(null);
   const [adjustLog, setAdjustLog] = useState<AdjustLogLine[]>([]);
 
@@ -665,10 +670,12 @@ export default function LinerNotes() {
     stopDictation(); // pressing it while dictating ends the take
     setLoading(true);
     setError(null);
+    setErrorDetail(null);
     setCard(null);
     setPlaylistUrl(null);
     setSaveError(null);
     setAdjustError(null);
+    setAdjustErrorDetail(null);
     setAdjustText("");
     setStage(null);
     setLogTracks([]);
@@ -725,7 +732,7 @@ export default function LinerNotes() {
         } else if (event === "done") {
           doneCard = data?.card ?? null;
         } else if (event === "error") {
-          streamError = data?.message || "generate failed";
+          streamError = data?.detail || data?.message || "generate failed";
         }
       });
       if (streamError) throw new Error(streamError);
@@ -741,6 +748,7 @@ export default function LinerNotes() {
       } else {
         console.error(e);
         setError("The curator dropped the needle. Try the same prompt again.");
+        setErrorDetail(e instanceof Error ? e.message : String(e));
       }
     } finally {
       abortRef.current = null;
@@ -764,6 +772,7 @@ export default function LinerNotes() {
     }
     setAdjusting(true);
     setAdjustError(null);
+    setAdjustErrorDetail(null);
     setAdjustStage(null);
     setAdjustLog([]);
     setAnnounce("Rewinding the tape.");
@@ -805,7 +814,7 @@ export default function LinerNotes() {
         } else if (event === "done") {
           doneCard = data?.card ?? null;
         } else if (event === "error") {
-          streamError = data?.message || "adjust failed";
+          streamError = data?.detail || data?.message || "adjust failed";
         }
       });
       if (streamError) throw new Error(streamError);
@@ -821,6 +830,7 @@ export default function LinerNotes() {
       } else {
         console.error(e);
         setAdjustError("The curator couldn't rewind that one. Try rewording it.");
+        setAdjustErrorDetail(e instanceof Error ? e.message : String(e));
       }
     } finally {
       adjustAbortRef.current = null;
@@ -1167,6 +1177,7 @@ export default function LinerNotes() {
         {error && (
           <div className="error" role="alert">
             {error}
+            {errorDetail && <span className="error-detail">{errorDetail}</span>}
           </div>
         )}
 
@@ -1314,6 +1325,9 @@ export default function LinerNotes() {
                 {adjustError && (
                   <div className="error" role="alert">
                     {adjustError}
+                    {adjustErrorDetail && (
+                      <span className="error-detail">{adjustErrorDetail}</span>
+                    )}
                   </div>
                 )}
               </div>
@@ -1368,6 +1382,7 @@ export default function LinerNotes() {
                 setPlaylistUrl(null);
                 setSaveError(null);
                 setAdjustError(null);
+                setAdjustErrorDetail(null);
                 setAdjustText("");
                 inputRef.current?.focus();
               }}
@@ -1382,6 +1397,9 @@ export default function LinerNotes() {
           </div>
         )}
       </main>
+
+      {/* the server's log tail — the answer to "check the server logs" */}
+      <LogConsole />
 
       {/* dev-only wordmark switcher — the product name is undecided */}
       {import.meta.env.DEV && (

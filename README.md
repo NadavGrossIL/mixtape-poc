@@ -49,6 +49,15 @@ On the finished card you can:
 Progress stages during generation are real backend events streamed over SSE —
 nothing is invented for show.
 
+The **logs** tab in the bottom-right corner opens the server's own log tail —
+the prompt, each curator turn, every Spotify resolution, and any error, live
+over SSE. The server tees `console.*` into a 500-entry ring buffer
+(`server/logbook.ts`) and serves it from `/api/logs` and `/api/logs/stream`,
+behind the same owner gate as the rest of `/api/`. stdout still gets every
+line, so the host's own log view is unaffected. This exists because deployed,
+"check the server logs" meant opening a hosting dashboard — which is not a
+thing you do from a phone halfway through a run.
+
 The tiny control in the bottom-right corner (dev only) cycles the candidate
 wordmarks: MADE YOU A MIXTAPE / DEEP/CUTS / PROMP/TAPE.
 
@@ -95,6 +104,17 @@ and judging cost real API money; the selftest doesn't.
 - `docs/research/` — design research with citations (refine-flow UX/API).
 
 ## Constraints worth knowing
+
+A strict tool schema validates types, not substance. JSON Schema array-length
+constraints (`minItems`) aren't supported by strict tool use, so
+`"tracks": []` is a perfectly valid `create_mixtape` call — and measured over
+15 live runs, roughly one in five ended exactly that way: the model ran all
+eight Spotify searches, said "all tracks verified", then committed a card with
+an empty or single-`"placeholder"` track list. The curator therefore gates the
+final tool call itself (`cardIncompleteReason`) and hands an incomplete one
+back as a failed `tool_result` so the model fills it in on the next turn.
+Anything that must hold about the *content* of a strict tool call has to be
+checked in code like this — the schema will not do it for you.
 
 Spotify dev-mode apps are capped at 5 allowlisted users, permanently, for
 individual developers — so "sign in with Spotify" can never be this app's

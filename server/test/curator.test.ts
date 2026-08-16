@@ -95,3 +95,90 @@ test("seedContext: says when the list is a sample, not the whole playlist", () =
   });
   assert.ok(ctx.includes("1 of its 500 tracks, sampled in playlist order"));
 });
+
+// ── the completeness gate ────────────────────────────────────────
+// Strict tool schemas validate types but can't express "exactly 8 items",
+// so `"tracks": []` and a lone {"artist":"placeholder",...} row are both
+// schema-valid. Roughly one live run in five ended that way. These are the
+// exact payloads observed on the wire.
+
+import { cardIncompleteReason, diffIncompleteReason, TRACK_COUNT } from "../curator.ts";
+
+const full = (n = TRACK_COUNT) =>
+  Array.from({ length: n }, (_, i) => ({
+    artist: `Artist ${i}`,
+    title: `Title ${i}`,
+    note: `Note ${i}`,
+  }));
+
+const card = (over: Record<string, unknown> = {}) => ({
+  title: "Rainy Sunday, No Plans",
+  vibe: "For the ones who let the kettle go cold",
+  accent: "plum",
+  tracks: full(),
+  ...over,
+});
+
+test("a complete card passes", () => {
+  assert.strictEqual(cardIncompleteReason(card()), null);
+});
+
+test("rejects the empty-input wire flake", () => {
+  assert.match(String(cardIncompleteReason({})), /empty/);
+});
+
+test("rejects the observed empty-tracks commit", () => {
+  // verbatim from a failing run: title/vibe/accent filled, tracks dropped
+  assert.match(String(cardIncompleteReason(card({ tracks: [] }))), /empty/);
+});
+
+test("rejects the observed single-placeholder-row commit", () => {
+  const stub = card({
+    tracks: [{ artist: "placeholder", title: "placeholder", note: "placeholder" }],
+  });
+  // caught on count before it can be clamped into a 1-track mixtape
+  assert.match(String(cardIncompleteReason(stub)), /1 entries/);
+});
+
+test("rejects a placeholder row hiding in a full-length list", () => {
+  const tracks = full();
+  tracks[4] = { artist: "TBD", title: "Title 4", note: "Note 4" };
+  assert.match(String(cardIncompleteReason(card({ tracks }))), /track 5/);
+});
+
+test("rejects blank strings, which the schema happily allows", () => {
+  const tracks = full();
+  tracks[0] = { artist: "  ", title: "Title 0", note: "Note 0" };
+  assert.match(String(cardIncompleteReason(card({ tracks }))), /track 1/);
+});
+
+test("over-count still passes the gate — generateCard clamps it", () => {
+  assert.strictEqual(cardIncompleteReason(card({ tracks: full(10) })), null);
+});
+
+test("adjust: an empty diff is fine when the identity changed", () => {
+  assert.strictEqual(
+    diffIncompleteReason({ changes: [], title: "New Title" }),
+    null
+  );
+});
+
+test("adjust: an empty diff that changes nothing is rejected", () => {
+  assert.match(String(diffIncompleteReason({ changes: [] })), /changed nothing/);
+});
+
+test("adjust: a placeholder replacement is rejected", () => {
+  const diff = {
+    changes: [{ index: 2, track: { artist: "placeholder", title: "x", note: "y" } }],
+  };
+  assert.match(String(diffIncompleteReason(diff)), /change 1/);
+});
+
+test("adjust: a real replacement passes", () => {
+  const diff = {
+    changes: [
+      { index: 2, track: { artist: "Nick Drake", title: "Pink Moon", note: "quiet" } },
+    ],
+  };
+  assert.strictEqual(diffIncompleteReason(diff), null);
+});

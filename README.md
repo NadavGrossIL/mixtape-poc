@@ -85,18 +85,52 @@ re-auths itself on every cold start from then on.
 
 ```sh
 cd server && npm test      # unit tests: streaming JSON extraction, track matching
-node evals/selftest.js     # eval-harness enforcement + aggregation, offline
+node evals/selftest.ts     # eval-harness enforcement + aggregation, offline
 ```
+
+Tests and evals answer different questions and neither replaces the other.
+Anything with one right answer — the streaming brace matcher, the
+completeness gates, track matching, the pass^k arithmetic — is a test: it
+runs offline, in CI, on every push. Anything graded on model output is an
+eval: it costs money, needs keys, and can't gate a PR.
 
 ## Evals
 
-`evals/` measures whether the liner notes tell the truth: `generate.js`
-produces cards through the real server code paths, `judge.js` has an
-Opus judge with web search verify every checkable claim (a "true" verdict
-without cited evidence is downgraded in code, not just by prompt), and
-`aggregate.js` computes the headline rates (invented / verified-true /
-unverifiable, split by whether the track resolved on Spotify). Generation
-and judging cost real API money; the selftest doesn't.
+**Truthfulness** — does the card lie? `generate.ts` produces cards through
+the real server code paths, `judge.ts` has an Opus judge with web search
+verify every checkable claim (a "true" verdict without cited evidence is
+downgraded in code, not just by prompt), and `aggregate.ts` computes the
+headline rates (invented / verified-true / unverifiable, split by whether
+the track resolved on Spotify).
+
+```sh
+node evals/generate.ts --limit 3   # pilot; drop --limit for all 18 prompts
+node evals/judge.ts                # judges the latest run
+node evals/aggregate.ts            # rates + threshold gate -> summary.json
+```
+
+**Reliability** — does the agent obey its own output contract?
+`reliability.ts` runs each prompt k times and reports how often the curator
+commits a complete mixtape *on the first try*. The app hides this: an
+incomplete commit is handed back as a failed tool_result and repaired on the
+next turn, so a regression costs latency and tokens without ever showing a
+broken card. That is the bug that shipped once — with `tracks` as an array a
+strict schema ignored `minItems`, and the model closed the array after one
+track 6 times in 10. Reported as pass@k (ever clean) and pass^k (always
+clean); pass^k is the one that matters, because 6/10 was "usually fine" too.
+
+```sh
+node evals/reliability.ts --only app-fastest-rap --trials 10
+```
+
+**Thresholds** — `evals/thresholds.json` turns a run into a gate: breaching
+one exits non-zero. It ships empty on purpose. Anthropic publishes no
+recommended numbers (they're task- and risk-specific), so these get set from
+a baseline run, never from a guess. Unset = report-only; a metric with an
+empty denominator reports "no data — skipped" rather than failing a build on
+an absence.
+
+Generation, judging and reliability cost real API money; the selftest doesn't.
 
 ## Docs
 

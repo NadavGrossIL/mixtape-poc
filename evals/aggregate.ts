@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveRunDir, readJson, writeJson } from "./util.ts";
+import { checkThresholds, renderChecks } from "./metrics.ts";
 
 // A note's outcome is its classification, except for "specific-checkable"
 // notes where the verification verdict takes over (prefixed, so "true" can't
@@ -196,14 +197,33 @@ function renderSummary(s: any): string {
   return lines.join("\n");
 }
 
+// Gates live in evals/thresholds.json, absent until a baseline run sets them.
+// A missing or unparseable file means report-only — never a hard failure, so a
+// config typo can't masquerade as a quality regression.
+function loadThresholds(): Record<string, any> {
+  try {
+    return readJson(path.join(import.meta.dirname, "thresholds.json")).aggregate || {};
+  } catch {
+    return {};
+  }
+}
+
 function main() {
   const runDir = resolveRunDir(process.argv.slice(2));
   console.log(`[aggregate] run dir: ${runDir}\n`);
   const summary = aggregateRun(runDir);
   console.log(renderSummary(summary));
+
+  const checks = checkThresholds(summary, loadThresholds());
+  console.log(`\n${renderChecks(checks)}`);
+
   const summaryPath = path.join(runDir, "summary.json");
-  writeJson(summaryPath, summary);
+  writeJson(summaryPath, { ...summary, checks });
   console.log(`\n[aggregate] wrote ${summaryPath}`);
+
+  // Non-zero exit is the whole point of a gate — a breach has to be able to
+  // fail a command, not just print red text nobody reads.
+  if (checks.some((c) => !c.ok)) process.exit(1);
 }
 
 if (import.meta.main) {

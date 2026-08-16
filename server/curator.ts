@@ -473,6 +473,7 @@ async function runCuratorAgent({
   arrayKey,
   incompleteReason,
   onItem,
+  onCommit,
   signal,
 }: {
   system: string;
@@ -483,6 +484,12 @@ async function runCuratorAgent({
   // cardIncompleteReason. A strict schema validates types, not substance.
   incompleteReason: (input: Record<string, unknown>) => string | null;
   onItem?: (index: number, item: any) => void;
+  // Fires once per final-tool call, with the gap that rejected it (null =
+  // accepted). The retry loop below repairs an incomplete commit, which is
+  // right for users but hides how often the model gets it wrong first try —
+  // the exact signal the eight-required-keys schema was meant to fix. Only
+  // evals/reliability.ts passes this; the app leaves it undefined.
+  onCommit?: (attempt: number, gap: string | null) => void;
   signal?: AbortSignal;
 }): Promise<Record<string, unknown>> {
   const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -490,6 +497,7 @@ async function runCuratorAgent({
     { role: "user", content: userContent },
   ];
   let searchesSpent = 0; // quota-costing searches this run — cache hits are free
+  let commits = 0; // final-tool calls seen, accepted or not
 
   for (let turn = 1; turn <= MAX_TOOL_TURNS; turn++) {
     const lastTurn = turn === MAX_TOOL_TURNS;
@@ -556,6 +564,7 @@ async function runCuratorAgent({
     const gap = done
       ? incompleteReason(done.input as Record<string, unknown>)
       : null;
+    if (done) onCommit?.(++commits, gap);
     if (done && !gap) {
       return done.input as Record<string, unknown>;
     }
@@ -659,10 +668,12 @@ async function generateCard(
   {
     seed,
     onTrack,
+    onCommit,
     signal,
   }: {
     seed?: { name: string; tracks: { artist: string; title: string }[]; total: number } | null;
     onTrack?: (index: number, t: { artist: string; title: string }) => void;
+    onCommit?: (attempt: number, gap: string | null) => void;
     signal?: AbortSignal;
   } = {}
 ): Promise<MixtapeCard> {
@@ -677,6 +688,7 @@ async function generateCard(
     finalTool: "create_mixtape",
     arrayKey: "tracks",
     incompleteReason: cardIncompleteReason,
+    onCommit,
     signal,
     onItem: onTrack
       ? (i, t) => {

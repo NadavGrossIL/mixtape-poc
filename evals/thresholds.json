@@ -1,0 +1,30 @@
+{
+  "$comment": [
+    "Regression gates for the eval runs. EMPTY ON PURPOSE.",
+    "Anthropic publishes no recommended numbers here — thresholds are task- and",
+    "risk-specific — so these get set from a baseline run, never from a guess.",
+    "A number invented before the first run is a build failure with no evidence",
+    "behind it. Run the harness, read summary.json, then fill these in.",
+    "",
+    "Rules are { min } and/or { max } on a dotted path into the run summary.",
+    "A metric with an empty denominator reports 'no data — skipped', not a breach.",
+    "",
+    "Paths available under \"aggregate\" (see evals/aggregate.ts summary.json):",
+    "  headline.inventedRate        fraction of checkable notes judged invented",
+    "  headline.verifiedTrueRate    fraction backed by cited evidence",
+    "  headline.unverifiableRate    checkable but no evidence found",
+    "  headline.genericRate         notes saying nothing specific at all",
+    "  headline.resolutionRate      tracks that resolved on Spotify",
+    "  downgrades.total             judge verdicts enforceVerdict had to correct",
+    "",
+    "Paths available under \"reliability\" (see evals/reliability.ts):",
+    "  overall.cleanFirstCommitRate  commits accepted on the first attempt",
+    "  overall.successRate           generateCard returned a card at all",
+    "  overall.passHatK              P(all k trials clean) — the hollow-commit gate",
+    "  overall.passAtK               P(any of k trials clean)",
+    "  overall.meanCommitAttempts    1.0 = never had to retry",
+    "  overall.refRate               tracks committed with a real Spotify ref"
+  ],
+  "aggregate": {},
+  "reliability": {}
+}

@@ -1,6 +1,9 @@
 // Plain-node self-test for the harness's pure logic — no API calls, no cost.
 // Covers the finding-9 verdict enforcement, the finding-17 resume/upsert
-// logic, and the finding-18 aggregation, against evals/test-fixtures/.
+// logic, and the finding-18 aggregation, against evals/test-fixtures/, plus
+// the pass@k/pass^k estimators, the threshold gate, and the reliability
+// summary. Importing reliability.ts pulls in server/curator.ts, which is
+// side-effect-free at module scope — no client is constructed until a call.
 //
 // Usage:
 //   node evals/selftest.ts
@@ -9,6 +12,8 @@ import assert from "node:assert";
 import path from "node:path";
 import { enforceVerdict, doneIds, upsert } from "./judge.ts";
 import { aggregateRun, renderSummary } from "./aggregate.ts";
+import { passAtK, passHatK, checkThresholds, renderChecks } from "./metrics.ts";
+import { summarizeTrials, renderReliability } from "./reliability.ts";
 
 // --- Finding 9: enforceVerdict -----------------------------------------------
 
@@ -123,4 +128,121 @@ assert.strictEqual(summary.headline.resolutionRate, 0.6667);
 assert.strictEqual(summary.rates.overall!["specific-invented"], 0.1429);
 
 console.log("\n" + renderSummary(summary) + "\n");
+
+// --- pass@k / pass^k estimators ----------------------------------------------
+
+// The all-or-nothing ends, where the two metrics agree.
+assert.strictEqual(passAtK(10, 10, 10), 1, "all clean => always at least one");
+assert.strictEqual(passHatK(10, 10, 10), 1, "all clean => all k clean");
+assert.strictEqual(passAtK(10, 0, 10), 0, "never clean => never any");
+assert.strictEqual(passHatK(10, 0, 10), 0);
+
+// The regression this harness exists for, in numbers. Pre-fix the model closed
+// the tracks array early 6 times in 10, so 4 clean; post-fix 10 clean. pass@1
+// barely moves in the eye ("it usually works"), pass^3 is the metric that
+// screams — which is exactly why the gate is set on pass^k.
+assert.strictEqual(passAtK(10, 4, 1), 0.4, "pre-fix: 4/10 clean");
+assert.strictEqual(passHatK(10, 4, 3), 0.0333, "pre-fix: 3 clean runs in a row was a coin-flip away from never");
+assert.strictEqual(passHatK(10, 10, 3), 1, "post-fix: 3 in a row is certain");
+
+// Opposite stories as k grows: pass@k rises, pass^k falls.
+assert.ok(passAtK(10, 5, 3)! > passAtK(10, 5, 1)!, "pass@k must rise with k");
+assert.ok(passHatK(10, 5, 3)! < passHatK(10, 5, 1)!, "pass^k must fall with k");
+
+// Too few failures to fill k draws => at least one success is certain.
+assert.strictEqual(passAtK(10, 9, 3), 1);
+// Too few successes to fill k draws => all-k-succeed is impossible.
+assert.strictEqual(passHatK(10, 2, 3), 0);
+
+// Guard rails: k > n, empty, and non-integer counts are null, not NaN.
+assert.strictEqual(passAtK(3, 3, 5), null, "k > n is unanswerable");
+assert.strictEqual(passHatK(0, 0, 1), null);
+assert.strictEqual(passAtK(10, 11, 3), null, "more successes than trials");
+assert.strictEqual(passHatK(10, 1.5, 3), null);
+
+// --- Threshold checking ------------------------------------------------------
+
+const fixtureSummary = {
+  headline: { inventedRate: 0.25, genericRate: 0.1429, resolutionRate: null },
+  overall: { passHatK: 0.9 },
+};
+
+// max breached, min met, min breached.
+const checks = checkThresholds(fixtureSummary, {
+  $comment: "ignored" as any,
+  "headline.inventedRate": { max: 0.1 },
+  "headline.genericRate": { max: 0.5 },
+  "overall.passHatK": { min: 0.95 },
+});
+assert.strictEqual(checks.length, 3, "$-prefixed keys are documentation, not rules");
+assert.strictEqual(checks[0]!.ok, false);
+assert.strictEqual(checks[0]!.reason, "above max 0.1");
+assert.strictEqual(checks[1]!.ok, true);
+assert.strictEqual(checks[2]!.ok, false);
+assert.strictEqual(checks[2]!.reason, "below min 0.95");
+
+// A null metric (empty denominator) is missing data, not a regression — it must
+// never fail a build on an absence.
+const nullCheck = checkThresholds(fixtureSummary, { "headline.resolutionRate": { min: 0.9 } });
+assert.strictEqual(nullCheck[0]!.ok, true);
+assert.strictEqual(nullCheck[0]!.actual, null);
+assert.strictEqual(nullCheck[0]!.reason, "no data — skipped");
+
+// A path that doesn't exist behaves the same way — a renamed metric must not
+// silently pass as "met", nor hard-fail the run.
+const missingPath = checkThresholds(fixtureSummary, { "headline.nope": { max: 1 } });
+assert.strictEqual(missingPath[0]!.actual, null);
+assert.strictEqual(missingPath[0]!.reason, "no data — skipped");
+
+// No rules configured = report-only, and the renderer says so plainly.
+assert.deepStrictEqual(checkThresholds(fixtureSummary, {}), []);
+assert.match(renderChecks([]), /none configured — report-only/);
+assert.match(renderChecks(checks), /2 threshold\(s\) breached/);
+
+// --- summarizeTrials ---------------------------------------------------------
+
+// Two prompts x 3 trials: one perfectly clean, one that retried twice and
+// errored once. Hand-planted so every number below is checkable by eye.
+const trialEntries = [
+  {
+    id: "clean-prompt",
+    category: "mainstream-safe",
+    trials: [
+      { ok: true, cleanFirstCommit: true, firstGap: null, commitAttempts: 1, trackCount: 8, refCount: 8, ms: 1000 },
+      { ok: true, cleanFirstCommit: true, firstGap: null, commitAttempts: 1, trackCount: 8, refCount: 6, ms: 2000 },
+      { ok: true, cleanFirstCommit: true, firstGap: null, commitAttempts: 1, trackCount: 8, refCount: 8, ms: 3000 },
+    ],
+  },
+  {
+    id: "flaky-prompt",
+    category: "deep-niche",
+    trials: [
+      { ok: true, cleanFirstCommit: false, firstGap: "only 1 of the 8 track slots were filled in", commitAttempts: 2, trackCount: 8, refCount: 4, ms: 4000 },
+      { ok: true, cleanFirstCommit: true, firstGap: null, commitAttempts: 1, trackCount: 8, refCount: 8, ms: 2000 },
+      { ok: false, error: "overloaded", cleanFirstCommit: false, firstGap: null, commitAttempts: 0, trackCount: 0, refCount: 0, ms: 500 },
+    ],
+  },
+];
+
+const rel = summarizeTrials(trialEntries, 3);
+assert.strictEqual(rel.overall.trials, 6);
+assert.strictEqual(rel.overall.cleanFirstCommits, 4);
+assert.strictEqual(rel.overall.cleanFirstCommitRate, 0.6667);
+assert.strictEqual(rel.overall.successRate, 0.8333, "5 of 6 returned a card");
+assert.strictEqual(rel.overall.passHatK, 0.2, "C(4,3)/C(6,3) = 4/20");
+assert.strictEqual(rel.overall.meanCommitAttempts, 1);
+assert.strictEqual(rel.overall.refRate, 0.85, "34 refs over 40 committed tracks");
+assert.strictEqual(rel.overall.meanMs, 2083);
+
+// A trial that threw before ever committing must not count as clean.
+assert.strictEqual(rel.perPrompt[1]!.clean, 1);
+assert.strictEqual(rel.perPrompt[1]!.succeeded, 2);
+assert.strictEqual(rel.perPrompt[0]!.passHatK, 1, "3/3 clean");
+assert.strictEqual(rel.perPrompt[1]!.passHatK, 0, "1 clean can't fill 3 draws");
+assert.deepStrictEqual(rel.firstCommitGaps, {
+  "only 1 of the 8 track slots were filled in": 1,
+});
+assert.deepStrictEqual(rel.perPrompt[1]!.errors, ["overloaded"]);
+
+console.log(renderReliability(rel) + "\n");
 console.log("[selftest] all assertions passed");

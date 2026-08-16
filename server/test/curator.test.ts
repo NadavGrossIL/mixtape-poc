@@ -258,3 +258,100 @@ test("adjust: a real replacement passes", () => {
   };
   assert.strictEqual(diffIncompleteReason(diff), null);
 });
+
+// ── mapPool ──────────────────────────────────────────────────
+//
+// Searches used to fan out with an unbounded Promise.all — the model emits 9
+// tool_use blocks in a turn and all 9 left at once, which is what tripped the
+// rolling-window limit. The pool caps in-flight requests without giving up
+// batching (all results still go back in one message).
+
+import { mapPool, SEARCH_BUDGET, SEARCH_CONCURRENCY } from "../curator.ts";
+
+test("mapPool: never exceeds the concurrency cap", async () => {
+  let inFlight = 0;
+  let peak = 0;
+  const items = Array.from({ length: 9 }, (_, i) => i);
+  await mapPool(items, 2, async (i) => {
+    inFlight++;
+    peak = Math.max(peak, inFlight);
+    await new Promise((r) => setTimeout(r, 5));
+    inFlight--;
+    return i;
+  });
+  assert.strictEqual(peak, 2);
+});
+
+test("mapPool: preserves input order regardless of completion order", async () => {
+  // later items finish first — output must still line up with tool_use blocks,
+  // or results get attached to the wrong tool_use_id
+  const out = await mapPool([30, 20, 10, 0], 4, async (ms, i) => {
+    await new Promise((r) => setTimeout(r, ms));
+    return i;
+  });
+  assert.deepStrictEqual(out, [0, 1, 2, 3]);
+});
+
+test("mapPool: runs every item even when there are fewer than the cap", async () => {
+  const out = await mapPool([1, 2], 8, async (n) => n * 2);
+  assert.deepStrictEqual(out, [2, 4]);
+  assert.deepStrictEqual(await mapPool([], 4, async (n) => n), []);
+});
+
+test("mapPool: a throwing item rejects the pool (quota must not be swallowed)", async () => {
+  await assert.rejects(
+    () =>
+      mapPool([1, 2, 3], 2, async (n) => {
+        if (n === 2) throw Object.assign(new Error("quota"), { quotaExceeded: true });
+        return n;
+      }),
+    /quota/
+  );
+});
+
+test("search budget leaves headroom for replacements beyond the 8 tracks", () => {
+  assert.ok(SEARCH_BUDGET > TRACK_COUNT, "must allow re-verifying rejected picks");
+  assert.ok(SEARCH_CONCURRENCY >= 1 && SEARCH_CONCURRENCY < 8);
+});
+
+// ── ref field ────────────────────────────────────────────────
+//
+// `ref` is what lets resolution be a lookup instead of a second Spotify search.
+// It has to be REQUIRED for the grammar to guarantee it is emitted at all — the
+// same mechanism that fixed the 6/10 truncated-card bug — with an explicit
+// sentinel for the degraded case rather than an omitted field.
+
+import { TRACK_SCHEMA, NO_REF } from "../curator.ts";
+
+test("TRACK_SCHEMA: ref is required, so the grammar cannot omit it", () => {
+  assert.ok(TRACK_SCHEMA.required.includes("ref"));
+  // still required alongside everything that was required before
+  for (const field of ["artist", "title", "note"]) {
+    assert.ok(TRACK_SCHEMA.required.includes(field), `${field} must stay required`);
+  }
+  assert.strictEqual(TRACK_SCHEMA.additionalProperties, false);
+});
+
+test("TRACK_SCHEMA: ref's description names the sentinel it documents", () => {
+  // a required field with no escape hatch would make the model invent a ref
+  // when Spotify search is degraded — the exact failure the field exists to stop
+  assert.ok(TRACK_SCHEMA.properties.ref.description.includes(NO_REF));
+  assert.strictEqual(TRACK_SCHEMA.properties.ref.type, "string");
+});
+
+test("NO_REF is not something isFilled would reject as a stub", () => {
+  // cardIncompleteReason must accept a legitimately-unverified track rather
+  // than looping the model forever when Spotify is down
+  const card = {
+    title: "t",
+    vibe: "v",
+    accent: "ember",
+    tracks: Object.fromEntries(
+      Array.from({ length: TRACK_COUNT }, (_, i) => [
+        `track${i + 1}`,
+        { ref: NO_REF, artist: "A", title: "B", note: "n" },
+      ])
+    ),
+  };
+  assert.strictEqual(cardIncompleteReason(card), null);
+});

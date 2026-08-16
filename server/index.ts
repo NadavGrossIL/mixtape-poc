@@ -311,7 +311,14 @@ app.post("/api/generate/stream", async (req, res) => {
     // The only client is the gated owner, and the logbook they'd be sent to
     // is one tap away in the same page — so the real reason goes on screen
     // rather than being paraphrased as "check the server logs".
-    sseSend(res, "error", { message: "Generation failed.", detail: err.message });
+    sseSend(res, "error", {
+      // Quota exhaustion is a wait-until-tomorrow condition, not a bug to retry
+      // into — say so, or the obvious response is to hammer the button.
+      message: err.quotaExceeded
+        ? "Spotify's daily limit for this app is used up."
+        : "Generation failed.",
+      detail: err.message,
+    });
   }
   res.end();
 });
@@ -390,7 +397,12 @@ app.post("/api/adjust/stream", async (req, res) => {
       return res.end();
     }
     console.error("[adjust/stream] failed:", err.message);
-    sseSend(res, "error", { message: "Adjustment failed.", detail: err.message });
+    sseSend(res, "error", {
+      message: err.quotaExceeded
+        ? "Spotify's daily limit for this app is used up."
+        : "Adjustment failed.",
+      detail: err.message,
+    });
   }
   res.end();
 });
@@ -429,8 +441,9 @@ app.post("/api/playlist", async (req, res) => {
   } catch (err: any) {
     console.error("[playlist] failed:", err.message);
     // detail stays in the server log — clients get a generic line
-    const message =
-      err.status === 401
+    const message = err.quotaExceeded
+      ? "Spotify's daily limit for this app is used up — try again tomorrow."
+      : err.status === 401
         ? "Not logged in to Spotify."
         : "Saving the playlist failed — check the server logs.";
     if (wantsStream && res.headersSent) {

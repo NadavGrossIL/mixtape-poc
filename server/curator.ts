@@ -5,7 +5,7 @@
 // beta header) lets us emit each track as the model produces it.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { searchCatalog } from "./spotify.ts";
+import { searchCatalog, isSearchCached } from "./spotify.ts";
 
 const MODEL = "claude-sonnet-5";
 const TRACK_COUNT = 8;
@@ -19,6 +19,7 @@ function anthropicConfigured(): boolean {
 
 // A curated track, plus the optional fields Spotify resolution adds later.
 interface Track {
+  ref?: string;
   artist: string;
   title: string;
   note: string;
@@ -39,20 +40,45 @@ interface MixtapeCard {
 }
 
 interface AdjustDiff {
-  changes: { index: number; track: { artist: string; title: string; note: string } }[];
+  changes: {
+    index: number;
+    track: { ref?: string; artist: string; title: string; note: string };
+  }[];
   title?: string;
   vibe?: string;
   accent?: string;
 }
 
 // One track's shape, shared by create_mixtape and adjust_mixtape.
+// NO_REF is the documented escape hatch. `ref` has to be REQUIRED for the
+// grammar to guarantee it is present at all, but a run where Spotify search
+// degraded has no refs to quote — without a sentinel the model would either
+// stall or invent one. An explicit "none" is honest and sends that track down
+// the normal search path.
+const NO_REF = "none";
+
 const TRACK_SCHEMA = {
   type: "object",
   additionalProperties: false,
-  required: ["artist", "title", "note"],
+  required: ["ref", "artist", "title", "note"],
   properties: {
-    artist: { type: "string", description: "The recording artist's name." },
-    title: { type: "string", description: "The track title." },
+    // Quoting a ref turns resolution from a second fuzzy search into a lookup
+    // of the exact record the server fetched — no request, and a track that
+    // was never in a search result cannot produce a valid ref.
+    ref: {
+      type: "string",
+      description:
+        `The "ref" value, copied character for character, from the search result you verified this track against. ` +
+        `Use "${NO_REF}" only if you genuinely did not verify this track with search_spotify.`,
+    },
+    artist: {
+      type: "string",
+      description: "The recording artist's name, spelled exactly as the search result shows it.",
+    },
+    title: {
+      type: "string",
+      description: "The track title, spelled exactly as the search result shows it.",
+    },
     note: {
       type: "string",
       description:
@@ -198,8 +224,10 @@ const ADJUST_TOOL = {
 const SEARCH_TOOL = {
   name: "search_spotify",
   description:
-    "Search Spotify's track catalog. Returns the top matches as artist/title/album/year. " +
-    "Use it to verify every track before it goes on the card; batch several searches in one turn.",
+    "Search Spotify's track catalog. Returns up to 10 real records, each with a ref, artist, title, album and year. " +
+    "Every track on the card must come from these results, and the track's ref field must be the row's ref copied exactly. " +
+    "Searches are a limited daily resource, so prefer broad searches (an artist, a scene, a sound) that can fill several " +
+    "slots at once over one narrow search per track, and never repeat a query you have already run.",
   strict: true,
   input_schema: {
     type: "object",
@@ -231,10 +259,45 @@ const TOOLS = [SEARCH_TOOL, CURATOR_TOOL, ADJUST_TOOL];
 // for the search work that preceded it.
 const MAX_TOOL_TURNS = 8;
 
+// Spotify searches are a DAILY allowance shared across the whole developer
+// account (a few hundred requests), not a per-request resource — so a run gets
+// a budget, and the model is told when it runs out rather than being allowed to
+// silently exhaust the app for the rest of the day.
+//
+// 20 covers 8 tracks verified once each plus a dozen replacements. Cache hits
+// don't count, so re-running a prompt is nearly free.
+const SEARCH_BUDGET = 20;
+// Ceiling on simultaneous searches. The model happily emits 9 tool_use blocks
+// in one turn; firing all 9 at once is what trips the rolling-window limit.
+const SEARCH_CONCURRENCY = 2;
+
+// Run fn over items with at most `concurrency` in flight, preserving order.
+async function mapPool<T, R>(
+  items: T[],
+  concurrency: number,
+  fn: (item: T, index: number) => Promise<R>
+): Promise<R[]> {
+  const out: R[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    while (next < items.length) {
+      const i = next++;
+      out[i] = await fn(items[i]!, i);
+    }
+  }
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, items.length) }, worker)
+  );
+  return out;
+}
+
 const SYSTEM = `You are a sharp music curator writing liner notes for a mixtape card.
 Rules:
 - Exactly 8 tracks, and every one must be a real recording that exists on Spotify.
-- Verify before you commit: check each candidate with search_spotify (batch the calls — several in one turn) and use the exact artist and title spelling the results show. If a pick doesn't come back in the results, choose a different track and verify that one too.
+- Every track must come from a search result you have actually seen. Search first, then fill the card from the rows that come back — do not decide on eight tracks and then look each one up.
+- Search BROADLY, not one-track-at-a-time: a search for an artist, a scene, or a sound returns ten records, and several of them may earn a slot. Batch a few such searches in one turn, then build the card from everything they returned. Only search again when nothing you have seen fits a slot.
+- Copy the artist and title spelling exactly as the result shows it, and copy that row's "ref" into the track's ref field.
+- Searches cost a limited daily allowance, so never re-run a query you have already run in this conversation, and never search for a record you have already seen in earlier results.
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
 - Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
@@ -248,7 +311,7 @@ You are adjusting an existing mixtape, not building a new one:
 - Replacement notes follow the same rules as new ones: specific, human, never generic.
 - Keep the DJ-set arc sensible: each replacement must sit right between its neighbors.
 - Tracks marked "resolved": false could not be verified on Spotify — prefer them as swap targets when the user says a track isn't real.
-- Every replacement must be verified with search_spotify before you record it — same rule as new tracks.
+- Every replacement must come from a search_spotify result, with that row's ref copied into its ref field — same rule as new tracks.
 - Only include title/vibe/accent when the adjustment changes the mixtape's identity.`;
 
 // Stubs the model reaches for when it commits a card it hasn't really
@@ -426,6 +489,7 @@ async function runCuratorAgent({
   const messages: Anthropic.MessageParam[] = [
     { role: "user", content: userContent },
   ];
+  let searchesSpent = 0; // quota-costing searches this run — cache hits are free
 
   for (let turn = 1; turn <= MAX_TOOL_TURNS; turn++) {
     const lastTurn = turn === MAX_TOOL_TURNS;
@@ -513,19 +577,44 @@ async function runCuratorAgent({
       console.log(`[curator] turn ${turn}: ${searches.length} spotify searches`);
     }
     // All results go back in ONE user message — splitting them across
-    // messages trains the model out of batching its searches.
-    const results: Anthropic.ToolResultBlockParam[] = await Promise.all(
-      searches.map(async (s) => {
+    // messages trains the model out of batching its searches. Batching is still
+    // what we want; the pool below just stops all of them leaving at once.
+    const results: Anthropic.ToolResultBlockParam[] = await mapPool(
+      searches,
+      SEARCH_CONCURRENCY,
+      async (s) => {
+        const query = String((s.input as any)?.query ?? "");
+        const free = isSearchCached(query);
+        if (!free && searchesSpent >= SEARCH_BUDGET) {
+          // Out of budget. Note what this does NOT say: it never invites the
+          // model to fall back on its own knowledge. Verified-only is the
+          // whole point of the search loop.
+          return {
+            type: "tool_result" as const,
+            tool_use_id: s.id,
+            content:
+              `Search budget for this mixtape is used up (${SEARCH_BUDGET} searches). ` +
+              `Commit now using only tracks that already came back in earlier ` +
+              `search results — do not add a track you have not seen verified.`,
+            is_error: true,
+          };
+        }
+        if (!free) searchesSpent++;
         try {
-          const found = await searchCatalog(String((s.input as any)?.query ?? ""));
+          const found = await searchCatalog(query);
           return {
             type: "tool_result" as const,
             tool_use_id: s.id,
             content: JSON.stringify(found),
           };
         } catch (err: any) {
-          // Spotify being down must degrade to the old behavior (model's own
-          // judgment + the resolution gate), not kill the generation.
+          // Exhausted daily quota is NOT a degradable condition: resolution is
+          // about to fail on every track too, so "rely on your own knowledge"
+          // would just produce an unverifiable card full of plausible
+          // inventions. Fail the run and say why.
+          if (err.quotaExceeded) throw err;
+          // A transient outage still degrades to the old behavior (model's own
+          // judgment + the resolution gate), rather than killing the run.
           console.warn(`[curator] search_spotify failed: ${err.message}`);
           return {
             type: "tool_result" as const,
@@ -535,7 +624,7 @@ async function runCuratorAgent({
             is_error: true,
           };
         }
-      })
+      }
     );
     if (done) {
       console.warn(
@@ -613,6 +702,11 @@ async function generateCard(
     );
     card.tracks = card.tracks.slice(0, TRACK_COUNT);
   }
+  // How many tracks carry a real ref is the single best signal for whether the
+  // search loop is doing its job: every ref is a resolution request not spent,
+  // and a card of all-NO_REF means the model committed without verifying.
+  const withRef = card.tracks.filter((t) => t.ref && t.ref !== NO_REF).length;
+  console.log(`[curator] ${withRef}/${card.tracks.length} tracks committed with a search ref`);
   return card;
 }
 
@@ -724,4 +818,9 @@ export {
   seedContext,
   cardIncompleteReason,
   diffIncompleteReason,
+  TRACK_SCHEMA,
+  NO_REF,
+  mapPool,
+  SEARCH_BUDGET,
+  SEARCH_CONCURRENCY,
 };

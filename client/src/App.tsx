@@ -134,15 +134,16 @@ const MIC_UNBLOCK_STEPS = (() => {
 // Color tokens live in styles.css. This map is the per-mixtape accent,
 // darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
 // Record<string, string>: the accent name arrives from the server, and the
-// lookup below already falls back to terra for anything unknown — including
-// cards curated before the Riviera palette, whose accent names no longer exist.
+// lookup below already falls back to ember for anything unknown — including
+// cards curated before the Clay Wall palette, whose accent names no longer exist.
+// Keep these names in sync with the `accent` enums in server/curator.ts.
 const ACCENT_INK: Record<string, string> = {
-  terra: "#BA4419",
-  lagoon: "#0F6E63",
-  palm: "#1D6A43",
-  hibiscus: "#A82750",
-  marine: "#3A55B8",
-  sungold: "#8A6508",
+  ember: "#a83a0a",
+  rose: "#a92e5c",
+  plum: "#6a3a86",
+  cobalt: "#2f5aa8",
+  forest: "#237a4a",
+  rust: "#7a5518",
 };
 
 // Each example demonstrates a different prompt axis: speed/skill,
@@ -892,8 +893,8 @@ export default function LinerNotes() {
   };
 
   const accentInk = card
-    ? ACCENT_INK[card.accent] || ACCENT_INK.terra
-    : ACCENT_INK.terra;
+    ? ACCENT_INK[card.accent] || ACCENT_INK.ember
+    : ACCENT_INK.ember;
 
   const liveVerified = logTracks.filter((t) => t && t.resolved === true).length;
   const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;

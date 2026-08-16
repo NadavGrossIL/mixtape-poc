@@ -68,7 +68,7 @@ const CURATOR_TOOL = {
       },
       accent: {
         type: "string",
-        enum: ["terra", "lagoon", "palm", "hibiscus", "marine", "sungold"],
+        enum: ["ember", "rose", "plum", "cobalt", "forest", "rust"],
         description: "Accent color matching the mood.",
       },
       tracks: {
@@ -144,7 +144,7 @@ const ADJUST_TOOL = {
       vibe: { type: "string", description: "New vibe line, only if the adjustment changes the mixtape's identity." },
       accent: {
         type: "string",
-        enum: ["terra", "lagoon", "palm", "hibiscus", "marine", "sungold"],
+        enum: ["ember", "rose", "plum", "cobalt", "forest", "rust"],
       },
     },
   },

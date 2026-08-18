@@ -1,18 +1,154 @@
 [
   {
     "id": "app-2am-drive",
-    "error": "Request timed out.",
+    "category": "app-example",
+    "prompt": "songs that sound like driving home at 2am",
+    "cardTitle": "2AM Empty Highway",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Miami Nights 1984",
+        "title": "Ocean Drive",
+        "note": "Analog synth wash that feels like streetlights blurring past the windshield.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Describes an 'analog synth wash' and windshield imagery — a texture impression/opinion tied to the track, with no verifiable fact (no timestamp, credit, stat, or lyric). Nothing to check.",
+        "evidence": []
+      },
+      {
+        "index": 1,
+        "artist": "The Midnight",
+        "title": "Sunset",
+        "note": "Sax solo hits right when the highway opens up and empties out.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Asserts a sax solo in The Midnight's 'Sunset'. Album credits for Endless Summer specifically attribute the solo instrument on 'Sunset' to guitar (Johannes Jørgensen), while saxophone (Thomas Edinger) is credited generally to the album; the widely transcribed solo in 'Sunset' is a guitar solo. No source supports a sax solo on this track, and the documented credit contradicts it.",
+        "evidence": [
+          {
+            "url": "https://themidnight.wiki/wiki/Endless_Summer",
+            "snippet": "Additional instrumentation was provided by Thomas Edinger (saxophone), Johannes Jørgensen (guitar on Sunset), Mads Storm (synth solo on Daytona)"
+          },
+          {
+            "url": "https://themidnight.bandcamp.com/album/endless-summer-the-instrumentals",
+            "snippet": "Additional instruments: Saxophone: Thomas Edinger Guitar on \"Sunset\": Johannes Jørgensen"
+          },
+          {
+            "url": "https://paidtabs.com/search/the_midnight_sunset_guitar_solo_mister_the_kid_guitar_tab_chords",
+            "snippet": "The Midnight - Sunset Guitar Solo Tab & Chords ... Start: (00:12) - End: (01:07)"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Men I Trust",
+        "title": "Show Me How",
+        "note": "That woozy bassline is basically cruise control for your heartbeat.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "A metaphor about the 'woozy bassline' acting as cruise control — concrete imagery but no fact-checkable assertion (no stat, credit, or timestamp).",
+        "evidence": []
+      },
+      {
+        "index": 3,
+        "artist": "Tame Impala",
+        "title": "Feels Like We Only Go Backwards",
+        "note": "The one where you accidentally speed up without noticing the odometer.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "'The one where you accidentally speed up' describes listener behavior and contains no detail unique to this track; it would fit countless songs. Nothing checkable.",
+        "evidence": []
+      },
+      {
+        "index": 4,
+        "artist": "The Weeknd",
+        "title": "Blinding Lights",
+        "note": "171 BPM peak — the moment you floor it past the last exit.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims 171 BPM for The Weeknd's 'Blinding Lights'. Multiple tempo databases list the track at exactly 171 BPM, and the artist–title attribution is correct.",
+        "evidence": [
+          {
+            "url": "https://songbpm.com/@the-weeknd/blinding-lights",
+            "snippet": "Blinding Lights is a song by The Weeknd with a tempo of 171 BPM."
+          },
+          {
+            "url": "https://music.toolstud.io/tracks/7bed-86d2/blinding-lights",
+            "snippet": "The tempo of Blinding Lights is 171 bpm (beats-per-minute)."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Timecop1983",
+        "title": "On the Run",
+        "note": "Named exactly for this feeling, arpeggios ticking like passed mile markers.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "The note asserts the track is titled 'On the Run' by Timecop1983 (a title/attribution claim). The track exists on Timecop1983's Bandcamp (from Night Drive) and as a Timecop1983 & Waves_On_Waves release, confirming the attribution. The arpeggio/mile-marker imagery itself is subjective and not the checked element.",
+        "evidence": [
+          {
+            "url": "https://timecop1983.bandcamp.com/track/on-the-run",
+            "snippet": "On the Run - Timecop1983 ... Includes unlimited streaming of Night Drive"
+          },
+          {
+            "url": "https://www.discogs.com/master/3092607-Timecop1983-Waves_On_Waves-On-the-Run-",
+            "snippet": "Explore the tracklist, credits, statistics, and more for On the Run by Timecop1983 & Waves_On_Waves."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Frank Ocean",
+        "title": "Nights",
+        "note": "The beat switch at 3:11 hits like crossing into your own zip code.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claims the beat switch in Frank Ocean's 'Nights' occurs at 3:11. Sources place the switch at roughly 3:30 into the 5:07 track (aligning with the 30-minute halfway point of the hour-long Blonde). The timestamp given is contradicted.",
+        "evidence": [
+          {
+            "url": "https://ponderworthy.com/frank-oceans-nights-why-that-beat-switch-still-breaks-the-internet-ten-years-later-51i",
+            "snippet": "It happens at exactly 3:30."
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Nights_(Frank_Ocean_song)",
+            "snippet": "Length: 5:07 ... Genre: \"Part 1\" Alternative R&B; synth-pop; \"Part 2\" Trip hop; downtempo"
+          },
+          {
+            "url": "https://bullseyenewspaper.wordpress.com/2021/05/06/understanding-frank-oceans-nights-beat-switch/",
+            "snippet": "the transition in Nights is at the halfway mark of the album at 30 minutes within its stream"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Beach House",
+        "title": "Myth",
+        "note": "Reverb-soaked closer for the driveway, engine ticking as it cools.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "'Reverb-soaked closer for the driveway' refers to the track's role as the mixtape's final song plus a production impression — sequencing choice and mood, not a verifiable fact about the recording.",
+        "evidence": []
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 513,
+      "output_tokens": 5529,
+      "cache_creation_input_tokens": 21349,
+      "cache_read_input_tokens": 87988,
+      "web_search_requests": 9
     }
   },
   {
     "id": "app-90s-roadtrip",
-    "error": "Request timed out.",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Output blocked by content filtering policy\"},\"request_id\":\"req_011Ce9kCRc6CN6Ad47mvkmo7\"}",
     "usage": {
       "input_tokens": 0,
       "output_tokens": 0,
@@ -23,13 +159,168 @@
   },
   {
     "id": "mainstream-classic-rock",
-    "error": "Request timed out.",
+    "category": "mainstream-safe",
+    "prompt": "classic rock everyone knows the words to",
+    "cardTitle": "Every Word, Every Time",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Fleetwood Mac",
+        "title": "Don't Stop - 2004 Remaster",
+        "note": "Piano intro that gets every hand clapping before the first verse even lands.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Claim: the track opens with a piano intro. Sources confirm Christine McVie played piano/tack piano on 'Don't Stop' and that the tack piano was a key addition, but one source describes the song as beginning with a Mick Fleetwood drum riff, and no authoritative source establishes the opening as a piano intro. Conflicting/inadequate evidence, so unverifiable. The 'hand clapping' effect is subjective color.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Don't_Stop_(Fleetwood_Mac_song)",
+            "snippet": "Christine McVie – piano, tack piano, Vox Continental organ, lead vocals (2nd verse) ... Caillat described the decision to add a tack piano as a \"breakthrough\" that \"made the song bounce along\"."
+          },
+          {
+            "url": "https://timscoverstory.wordpress.com/2022/12/07/dont-stop-fleetwood-mac-status-quo-elton-john/",
+            "snippet": "The song begins with a drum riff from the hyper-caffeinated Mick Fleetwood."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Journey",
+        "title": "Don't Stop Believin'",
+        "note": "Streetlight people, small town girl — the most-downloaded catalog song of the digital era.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Two claims: the lyric images 'streetlight people' / 'small town girl' (both are well-known lyrics of Journey's 'Don't Stop Believin''), and the stat that it is the most-downloaded catalog song of the digital era. SoundScan-based reporting confirms it is the biggest-selling digital catalog track ever and the first catalog song past 2 million downloads / best-selling digital track from the 20th century.",
+        "evidence": [
+          {
+            "url": "https://www.musicradar.com/news/guitars/journeys-dont-stop-believin-is-top-selling-digital-catalog-track-180372",
+            "snippet": "the epic power ballad has become the biggest-selling digital catalog track ever. According to Soundscan, it is the first catalog song to sell over 2 million downloads"
+          },
+          {
+            "url": "https://djrobblog.com/archives/20814",
+            "snippet": "\"Don't Stop Believin'\" is the most successful song from the 20th century during the digital era, having been streamed and downloaded more times than any other song recorded before 2000."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Bon Jovi",
+        "title": "Livin' On A Prayer",
+        "note": "That key change into 'ohhh we're halfway there' turns any room into a choir.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: the lyric 'ohhh we're halfway there' exists, and there is a key change into that chorus. Chord/lyric transcriptions show '(Key change) ... Woo-oooo, we're half-way there', and music-theory analyses confirm the famous late modulation (Em to Gm/Bb major) at the final chorus.",
+        "evidence": [
+          {
+            "url": "https://tabs.ultimate-guitar.com/tab/bon-jovi/livin-on-a-prayer-chords-1185747",
+            "snippet": "[Chorus] (Key change) Bb Eb Fsus4 F Woo - oooo, we're half - way there"
+          },
+          {
+            "url": "http://www.rebelmusicteacher.com/blog/2017/3/31/common-toneflattened-submediant-modulation-in-bon-jovis-livin-on-a-prayer",
+            "snippet": "For the third repetition of the chorus, a totally new key is established -- Bb major."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Guns N' Roses",
+        "title": "Sweet Child O' Mine",
+        "note": "Slash's opening riff is basically a national anthem for anyone who's picked up a guitar.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Credit claim: Slash played/created the opening riff of 'Sweet Child O' Mine'. Guitar World quotes Slash himself describing coming up with the riff, and multiple accounts trace it to his string-skipping noodling; the anthem framing is subjective but the credit checks out.",
+        "evidence": [
+          {
+            "url": "https://www.guitarworld.com/news/slash-reveals-how-he-really-came-up-with-the-sweet-child-o-mine-riff",
+            "snippet": "\"I was sitting around the house where Guns used to live at one point, in '86 I guess it was, and I just came up with this riff\""
+          },
+          {
+            "url": "https://tabofguitar.wordpress.com/2011/04/12/sweet-child-o-mine/",
+            "snippet": "Slash has been quoted as having a disdain for the song due to its roots as simply a 'string skipping' exercise"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Led Zeppelin",
+        "title": "Stairway to Heaven - Remaster",
+        "note": "Eight minutes long and somehow the whole bar still knows when the solo hits.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Duration claim: 'Stairway to Heaven' is eight minutes long. Wikipedia and track databases list the Led Zeppelin IV recording at 8:02 (remaster listings also 8:02).",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Stairway_to_Heaven",
+            "snippet": "Length: 8:02 - Label: Atlantic - Songwriters: Jimmy Page; Robert Plant"
+          },
+          {
+            "url": "https://www.deezer.com/en/track/88003859",
+            "snippet": "Led Zeppelin - Stairway to Heaven (Remaster) | Length : 08:02"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "AC/DC",
+        "title": "Back In Black",
+        "note": "That opening riff has closed out more karaoke nights than any song in history.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Superlative stat: 'Back In Black' has closed more karaoke nights than any song in history. No karaoke-industry data or reputable ranking found supporting (or specifically refuting) this; searches surfaced only best-of song rankings, not karaoke frequency data. No adequate evidence either way.",
+        "evidence": []
+      },
+      {
+        "index": 6,
+        "artist": "Eagles",
+        "title": "Hotel California - 2013 Remaster",
+        "note": "You can checkout any time you like — but you're humming it for the rest of the week.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Lyric quote check: 'You can check out any time you like' appears verbatim in the Eagles' 'Hotel California' lyrics per multiple lyric sources.",
+        "evidence": [
+          {
+            "url": "https://www.songfacts.com/lyrics/eagles/hotel-california",
+            "snippet": "\"Relax,\" said the night man \"We are programmed to receive You can check out any time you like But you can never leave\""
+          },
+          {
+            "url": "https://www.letras.com/the-eagles/63266/",
+            "snippet": "You can check out any time you like But you can never leave · Written by: Don Felder, Don Henley, Glenn Frey."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Queen",
+        "title": "Bohemian Rhapsody",
+        "note": "The Wayne's World headbang scene proved this closer works in literally any car, any decade.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Historical claim: a Wayne's World headbanging scene features this song. Confirmed: the 1992 film's opening/title sequence has Wayne and friends head-banging to Queen's 'Bohemian Rhapsody' in a car, which drove the song back to No. 2 on the charts. The 'works in any car, any decade' framing is subjective hyperbole.",
+        "evidence": [
+          {
+            "url": "https://www.nme.com/news/film/mike-myers-bohemian-rhapsody-waynes-world-2393931",
+            "snippet": "Myers famously used the iconic track of the same name during the opening of his 1992 film, which saw Wayne and his friends head-banging to it in their car."
+          },
+          {
+            "url": "https://www.indiewire.com/features/general/waynes-world-penelope-spheeris-bohemian-rhapsody-head-banging-scene-1234695533/",
+            "snippet": "That iconic \"Bohemian Rhapsody\" sing-a-long? Yep, it took almost a full day to film."
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 573,
+      "output_tokens": 6159,
+      "cache_creation_input_tokens": 16131,
+      "cache_read_input_tokens": 87609,
+      "web_search_requests": 10
     }
   }
 ]

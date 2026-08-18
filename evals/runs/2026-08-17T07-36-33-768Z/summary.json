@@ -1,43 +1,65 @@
 {
   "runDir": "/Users/nadavgross/Projects/mixtape-poc/evals/runs/2026-08-17T07-36-33-768Z",
-  "generatedAt": "2026-08-18T06:23:08.591Z",
+  "generatedAt": "2026-08-18T06:36:02.277Z",
   "cards": {
     "prompts": 6,
     "generated": 3,
     "generateErrors": 3,
-    "judged": 0,
-    "judgeErrors": 3,
+    "judged": 2,
+    "judgeErrors": 1,
     "judgeErrorIds": [
-      "app-2am-drive",
-      "app-90s-roadtrip",
-      "mainstream-classic-rock"
+      "app-90s-roadtrip"
     ]
   },
   "notes": {
-    "total": 0,
-    "resolved": 0,
+    "total": 16,
+    "resolved": 16,
     "unresolved": 0,
     "unknownResolution": 0
   },
   "outcomes": {
-    "overall": {},
-    "resolved": {},
+    "overall": {
+      "specific-subjective": 3,
+      "specific-invented": 2,
+      "generic": 1,
+      "specific-true": 8,
+      "specific-unverifiable": 2
+    },
+    "resolved": {
+      "specific-subjective": 3,
+      "specific-invented": 2,
+      "generic": 1,
+      "specific-true": 8,
+      "specific-unverifiable": 2
+    },
     "unresolved": {},
     "unknown-resolution": {}
   },
   "rates": {
-    "overall": {},
-    "resolved": {},
+    "overall": {
+      "specific-subjective": 0.1875,
+      "specific-invented": 0.125,
+      "generic": 0.0625,
+      "specific-true": 0.5,
+      "specific-unverifiable": 0.125
+    },
+    "resolved": {
+      "specific-subjective": 0.1875,
+      "specific-invented": 0.125,
+      "generic": 0.0625,
+      "specific-true": 0.5,
+      "specific-unverifiable": 0.125
+    },
     "unresolved": {},
     "unknown-resolution": {}
   },
   "headline": {
-    "checkableNotes": 0,
-    "inventedRate": null,
-    "verifiedTrueRate": null,
-    "unverifiableRate": null,
-    "genericRate": null,
-    "resolutionRate": null
+    "checkableNotes": 12,
+    "inventedRate": 0.1667,
+    "verifiedTrueRate": 0.6667,
+    "unverifiableRate": 0.1667,
+    "genericRate": 0.0625,
+    "resolutionRate": 1
   },
   "downgrades": {
     "total": 0,

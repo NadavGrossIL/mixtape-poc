@@ -82,6 +82,16 @@ async function main() {
       }
     }
 
+    // Persist the release_date the model was shown for each committed ref
+    // (searchCatalog shows its first 4 chars as `year`). The search cache ages
+    // past the run, so the run file itself must carry what the model saw —
+    // evals/grounding.ts reads this to split judge-vs-metadata date
+    // disagreements from real inventions.
+    tracks = tracks.map((t: any) => ({
+      ...t,
+      shownReleaseDate: spotify.recallByRef(t.ref)?.album?.release_date ?? null,
+    }));
+
     results.push({ ...p, card: { ...card, tracks } });
     writeJson(cardsPath, results); // incremental — a crash keeps prior cards
     if (i < prompts.length - 1) await sleep(DELAY_MS);

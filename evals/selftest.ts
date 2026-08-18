@@ -14,6 +14,7 @@ import { enforceVerdict, doneIds, upsert } from "./judge.ts";
 import { aggregateRun, renderSummary, noDataReason } from "./aggregate.ts";
 import { passAtK, passHatK, checkThresholds, renderChecks } from "./metrics.ts";
 import { summarizeTrials, renderReliability } from "./reliability.ts";
+import { extractYears, groundNote, groundRun } from "./grounding.ts";
 
 // --- Finding 9: enforceVerdict -----------------------------------------------
 
@@ -286,6 +287,51 @@ assert.match(
 );
 // The fixture run DID measure something, so it must not trip the gate.
 assert.strictEqual(noDataReason(summary), null);
+
+// --- grounding: judge-vs-metadata date split (pure logic) ------------------
+
+// A note with no year is out of scope for this check whatever the metadata.
+assert.strictEqual(groundNote("all whip-crack funk guitar", "1980-01-01").status, "no-year-in-note");
+// The 2026-08-18 Shalom Hanoch shape: note repeats the album year it was shown.
+assert.deepStrictEqual(groundNote("this 1992 late-night ballad", "1992-05-01"), {
+  status: "grounded",
+  noteYears: ["1992"],
+  shownYear: "1992",
+});
+// A year the metadata never showed is a real invention.
+assert.strictEqual(groundNote("a 1955 postcard", "1964-01-01").status, "mismatch");
+// Mixed claims stay visible rather than rounding to either side.
+assert.strictEqual(groundNote("cut 1970, reissued 1999", "1970-11-01").status, "partial");
+// No metadata on record must read as unknown, never as grounded.
+assert.strictEqual(groundNote("a 1999 peak", null).status, "unknown");
+assert.deepStrictEqual(extractYears("from 1971 to 2026, not 1799 or 20261"), ["1971", "2026"]);
+
+// groundRun joins verdict -> card track -> shown date, invented notes only,
+// preferring the persisted shownReleaseDate over the cache fallback.
+const gVerdicts = [
+  { id: "a", notes: [
+    { index: 0, artist: "x", title: "t0", note: "a 1992 ballad", verification: "invented" },
+    { index: 1, artist: "x", title: "t1", note: "a 1955 postcard", verification: "invented" },
+    { index: 2, artist: "x", title: "t2", note: "wrong producer credit", verification: "invented" },
+    { index: 3, artist: "x", title: "t3", note: "from 2011", verification: "true" },
+  ] },
+  { id: "dead", error: "boom" },
+];
+const gCards = [
+  { id: "a", card: { tracks: [
+    { ref: "r0", shownReleaseDate: "1992-05-01" },
+    { ref: "r1" }, // no persisted date -> cache fallback
+    { ref: "r2", shownReleaseDate: "2001-01-01" },
+    { ref: "r3", shownReleaseDate: "2011-01-01" },
+  ] } },
+];
+const g = groundRun(gVerdicts, gCards, new Map([["r1", "1964-01-01"]]));
+assert.strictEqual(g.rows.length, 3, "only invented notes are grounded");
+assert.deepStrictEqual(
+  g.rows.map((r: any) => r.status),
+  ["grounded", "mismatch", "no-year-in-note"]
+);
+assert.deepStrictEqual(g.counts, { grounded: 1, mismatch: 1, "no-year-in-note": 1 });
 
 console.log(renderReliability(rel) + "\n");
 console.log("[selftest] all assertions passed");

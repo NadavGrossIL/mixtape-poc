@@ -1,0 +1,1202 @@
+[
+  {
+    "id": "niche-city-pop",
+    "category": "deep-niche",
+    "prompt": "japanese city pop deep cuts from the early 80s",
+    "card": {
+      "title": "Neon Tokyo, After Hours",
+      "vibe": "For the drive home when the city lights blur into memory, 1980-84.",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "0Xr6bcpKed4l8qkT2W3uaA",
+          "artist": "Minako Yoshida",
+          "title": "TORNADO",
+          "note": "1980 opener off MONOCHROME, all whip-crack funk guitar and synth stabs to kick the tape awake.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0Xr6bcpKed4l8qkT2W3uaA",
+          "spotifyUri": "spotify:track:0Xr6bcpKed4l8qkT2W3uaA",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bb14218d23418f5d83bb5321",
+          "matchedName": "Minako Yoshida — TORNADO"
+        },
+        {
+          "ref": "7KYzARBusZhyZ6jygZDmVr",
+          "artist": "Anri",
+          "title": "SHYNESS BOY",
+          "note": "Buried on Timely!! behind the singles, but the chorus hook is stickier than anything on the radio that year.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7KYzARBusZhyZ6jygZDmVr",
+          "spotifyUri": "spotify:track:7KYzARBusZhyZ6jygZDmVr",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851cfd93d36fe2365f9436587d1",
+          "matchedName": "Anri — SHYNESS BOY"
+        },
+        {
+          "ref": "5IrpeBtpVtEP4lCWGJ2epL",
+          "artist": "Momoko Kikuchi",
+          "title": "Blind Curve",
+          "note": "1984 deep cut from OCEAN SIDE, the bassline takes the corner faster than the lyrics do.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5IrpeBtpVtEP4lCWGJ2epL",
+          "spotifyUri": "spotify:track:5IrpeBtpVtEP4lCWGJ2epL",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485179095a38cf59d0ae5c4f6007",
+          "matchedName": "Momoko Kikuchi — Blind Curve"
+        },
+        {
+          "ref": "7fgmo2cHGzWLexkRhBeECj",
+          "artist": "Anri",
+          "title": "WINDY SUMMER",
+          "note": "The horn stabs on this 1983 album cut are the sound of a convertible top coming down.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7fgmo2cHGzWLexkRhBeECj",
+          "spotifyUri": "spotify:track:7fgmo2cHGzWLexkRhBeECj",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851cfd93d36fe2365f9436587d1",
+          "matchedName": "Anri — WINDY SUMMER"
+        },
+        {
+          "ref": "6T0a8AFfS62waTXaTAIhWR",
+          "artist": "Momoko Kikuchi",
+          "title": "Ocean Side",
+          "note": "Title track and the tape's peak, a shimmering Kadomatsu-produced wall of chorused guitar.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6T0a8AFfS62waTXaTAIhWR",
+          "spotifyUri": "spotify:track:6T0a8AFfS62waTXaTAIhWR",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485179095a38cf59d0ae5c4f6007",
+          "matchedName": "Momoko Kikuchi — Ocean Side"
+        },
+        {
+          "ref": "2wKsVeNrzorCLCix24ljAU",
+          "artist": "Minako Yoshida",
+          "title": "MIDNIGHT DRIVER",
+          "note": "Pulls the tempo back into a slow highway groove, the come-down after the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2wKsVeNrzorCLCix24ljAU",
+          "spotifyUri": "spotify:track:2wKsVeNrzorCLCix24ljAU",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bb14218d23418f5d83bb5321",
+          "matchedName": "Minako Yoshida — MIDNIGHT DRIVER"
+        },
+        {
+          "ref": "11x1qIGquHDFn1HuzZpUtC",
+          "artist": "Junko Ohashi",
+          "title": "I LOVE YOU SO",
+          "note": "A 1984 ballad from MAGICAL that trades disco snap for a long, patient fade.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/11x1qIGquHDFn1HuzZpUtC",
+          "spotifyUri": "spotify:track:11x1qIGquHDFn1HuzZpUtC",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851aaf57d8677f56a223972631d",
+          "matchedName": "Junko Ohashi — I LOVE YOU SO"
+        },
+        {
+          "ref": "49vIvmsneQwxyFTdmCQzmV",
+          "artist": "Junko Ohashi",
+          "title": "テレフォン・ナンバー",
+          "note": "Closes the tape on a dial tone of an outro, a number you never actually call.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/49vIvmsneQwxyFTdmCQzmV",
+          "spotifyUri": "spotify:track:49vIvmsneQwxyFTdmCQzmV",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851aaf57d8677f56a223972631d",
+          "matchedName": "Junko Ohashi — テレフォン・ナンバー"
+        }
+      ]
+    }
+  },
+  {
+    "id": "niche-croydon-dubstep",
+    "category": "deep-niche",
+    "prompt": "early Croydon-scene UK dubstep, strictly pre-2010",
+    "card": {
+      "title": "Big Apple, Bass Weight",
+      "vibe": "For the Croydon massive who queued outside Big Apple Records before the wobble had a name.",
+      "accent": "forest",
+      "tracks": [
+        {
+          "ref": "6mZfaJ1FGUpHv72WbCgBt0",
+          "artist": "Horsepower Productions",
+          "title": "Gorgon Sound",
+          "note": "2003 South London 2-step-into-dubstep blueprint, the sound before the scene had its name.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6mZfaJ1FGUpHv72WbCgBt0",
+          "spotifyUri": "spotify:track:6mZfaJ1FGUpHv72WbCgBt0",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485156a0b472c8db26ff2dd29b73",
+          "matchedName": "Horsepower Productions — Gorgon Sound"
+        },
+        {
+          "ref": "6RBVvIkzX7r3ipQ40sujfN",
+          "artist": "Digital Mystikz",
+          "title": "Give Jah Glory",
+          "note": "DMZ's own Tempa cut from 2005, Mala's sub-bass sermon straight off the Croydon dubplate.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6RBVvIkzX7r3ipQ40sujfN",
+          "spotifyUri": "spotify:track:6RBVvIkzX7r3ipQ40sujfN",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514a7f58321072291d2be7f106",
+          "matchedName": "Digital Mystikz — Give Jah Glory"
+        },
+        {
+          "ref": "5HCoPILKbifSXhazF6WDNw",
+          "artist": "Loefah",
+          "title": "System",
+          "note": "Half-step minimalism from Tectonic Plates Vol.1, the stripped-back template every DMZ selector chased.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5HCoPILKbifSXhazF6WDNw",
+          "spotifyUri": "spotify:track:5HCoPILKbifSXhazF6WDNw",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514437c1431f978561328fe9d7",
+          "matchedName": "Loefah — System"
+        },
+        {
+          "ref": "2slj0H5ogdshy28BZvYl1O",
+          "artist": "Digital Mystikz",
+          "title": "Molten",
+          "note": "Same 2006 comp, thicker and darker, the bassline that shook Third Base's sound system.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2slj0H5ogdshy28BZvYl1O",
+          "spotifyUri": "spotify:track:2slj0H5ogdshy28BZvYl1O",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514437c1431f978561328fe9d7",
+          "matchedName": "Digital Mystikz — Molten"
+        },
+        {
+          "ref": "5wq3Dw261iQsVAHbD3RNOO",
+          "artist": "Skream, Loefah",
+          "title": "I - Loefah Remix",
+          "note": "Two Croydon originators trading dubplates, Skream's tune rebuilt in Loefah's skeletal half-time.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5wq3Dw261iQsVAHbD3RNOO",
+          "spotifyUri": "spotify:track:5wq3Dw261iQsVAHbD3RNOO",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485180e687a5cf5202fa59666ae3",
+          "matchedName": "Skream, Loefah — I - Loefah Remix"
+        },
+        {
+          "ref": "2H9ZUD7Z5SoLqHcePi2htf",
+          "artist": "Benga",
+          "title": "26 Basslines",
+          "note": "From Diary of an Afro Warrior, 2008, the wobble that dragged the genre into daylight.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2H9ZUD7Z5SoLqHcePi2htf",
+          "spotifyUri": "spotify:track:2H9ZUD7Z5SoLqHcePi2htf",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b05f05460ff2cc2effbf9265",
+          "matchedName": "Benga — 26 Basslines"
+        },
+        {
+          "ref": "7b4n7QwjEo69szisxNK4By",
+          "artist": "Plastician",
+          "title": "Japan - Original Mix",
+          "note": "Big Apple Records' own don, 2007, all clipped drums and cold-war siren tension.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7b4n7QwjEo69szisxNK4By",
+          "spotifyUri": "spotify:track:7b4n7QwjEo69szisxNK4By",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485195cac779ea6a65f7a77b52e1",
+          "matchedName": "Plastician — Japan - Original Mix"
+        },
+        {
+          "ref": "0PfR5qCmwobwbpXL3vaqPm",
+          "artist": "Mala",
+          "title": "Changes",
+          "note": "2007 closer, Mala at his most spacious, the comedown after a night in the Rhythm Division basement.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0PfR5qCmwobwbpXL3vaqPm",
+          "spotifyUri": "spotify:track:0PfR5qCmwobwbpXL3vaqPm",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bdbfe0cd8182d6d3a83e9988",
+          "matchedName": "Mala — Changes"
+        }
+      ]
+    }
+  },
+  {
+    "id": "nonenglish-hebrew-rock",
+    "category": "non-english",
+    "prompt": "israeli rock classics from the 90s",
+    "card": {
+      "title": "Tel Aviv Rock, 1990s",
+      "vibe": "For the generation that blasted Galgalatz on the way to the beach",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "282wgtQaJ0ElJrxiCoVv8n",
+          "artist": "Mashina",
+          "title": "אחכה לך בשדות",
+          "note": "Opens with that jangly new-wave guitar hook Mashina rode straight off their 1990 album.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/282wgtQaJ0ElJrxiCoVv8n",
+          "spotifyUri": "spotify:track:282wgtQaJ0ElJrxiCoVv8n",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f1449ab94d2df884bfa2b133",
+          "matchedName": "Mashina — אחכה לך בשדות"
+        },
+        {
+          "ref": "69VsGXE2ZtYK8P3SjfbHSH",
+          "artist": "Teapacks",
+          "title": "זמנים קטנים",
+          "note": "1993 Teapacks before the Eurovision fame, all scrappy guitars and sardonic Israeli wit.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/69VsGXE2ZtYK8P3SjfbHSH",
+          "spotifyUri": "spotify:track:69VsGXE2ZtYK8P3SjfbHSH",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513d09ee538cda5239f501655c",
+          "matchedName": "Teapacks — זמנים קטנים"
+        },
+        {
+          "ref": "3yWWNB1ESnafJRbTXOJ3sI",
+          "artist": "Hayehudim",
+          "title": "קח אותי",
+          "note": "Off Hayehudim's 1995 debut Metziut Nifredet, the record that launched Aviv Geffen's brother-in-arms band.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3yWWNB1ESnafJRbTXOJ3sI",
+          "spotifyUri": "spotify:track:3yWWNB1ESnafJRbTXOJ3sI",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048512837363cf9e29392d4bf836c",
+          "matchedName": "Hayehudim — קח אותי"
+        },
+        {
+          "ref": "39i4D9qj29lezHYc6hk6aP",
+          "artist": "Knesiyat Hasechel",
+          "title": "Lemaya Yesh Ekdach (Maya Has A Gun)",
+          "note": "1999 grunge-soaked peak — Aviv Geffen's other project, all distortion and teenage nihilism.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/39i4D9qj29lezHYc6hk6aP",
+          "spotifyUri": "spotify:track:39i4D9qj29lezHYc6hk6aP",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485176aa3d706b360b7fefab3d25",
+          "matchedName": "Knesiyat Hasechel — Lemaya Yesh Ekdach (Maya Has A Gun)"
+        },
+        {
+          "ref": "1UqARS50UENashmHmp7gmQ",
+          "artist": "Berry Sakharof",
+          "title": "חלליות",
+          "note": "1991's Hakol O Klum turned Israeli rock industrial and cold — this track still hits like a siren.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1UqARS50UENashmHmp7gmQ",
+          "spotifyUri": "spotify:track:1UqARS50UENashmHmp7gmQ",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048510b319941cc20e0d09860292a",
+          "matchedName": "Berry Sakharof — חלליות"
+        },
+        {
+          "ref": "2wuXk3gEzfgeV1qEcEmuRB",
+          "artist": "Aviv Geffen",
+          "title": "אור הירח",
+          "note": "The 1992 single that made a teenage Geffen the voice of a whole disillusioned generation.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2wuXk3gEzfgeV1qEcEmuRB",
+          "spotifyUri": "spotify:track:2wuXk3gEzfgeV1qEcEmuRB",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c052af0e46ece3f949555c47",
+          "matchedName": "Aviv Geffen — אור הירח"
+        },
+        {
+          "ref": "08QHMZblHgn2Sx0RET5x2e",
+          "artist": "Shalom Hanoch",
+          "title": "לילה",
+          "note": "The godfather of Israeli rock, still weary and electric on this 1992 late-night ballad.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/08QHMZblHgn2Sx0RET5x2e",
+          "spotifyUri": "spotify:track:08QHMZblHgn2Sx0RET5x2e",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851d232422872b578e3f384c944",
+          "matchedName": "Shalom Hanoch — לילה"
+        },
+        {
+          "ref": "2TwvrGEg8qLj2TIYd5PmpQ",
+          "artist": "Ehud Banai",
+          "title": "דוד ושאול",
+          "note": "Closing with Banai's 1992 biblical-desert acoustic tale, the comedown after the noise.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2TwvrGEg8qLj2TIYd5PmpQ",
+          "spotifyUri": "spotify:track:2TwvrGEg8qLj2TIYd5PmpQ",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485145987f2ae09e5780db6e6251",
+          "matchedName": "Ehud Banai — דוד ושאול - Remastered"
+        }
+      ]
+    }
+  },
+  {
+    "id": "nonenglish-french-chanson",
+    "category": "non-english",
+    "prompt": "french chanson for a rainy sunday morning",
+    "card": {
+      "title": "Pluie et Café au Lit",
+      "vibe": "For the mornings you let the rain do the talking and stay under the covers.",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "0Yg1hSAUgd2AAneReFOVzS",
+          "artist": "Françoise Hardy",
+          "title": "Tous les garçons et les filles - Stereo Mix",
+          "note": "Her 1962 breakout, the sound of pulling back curtains to grey Paris light.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0Yg1hSAUgd2AAneReFOVzS",
+          "spotifyUri": "spotify:track:0Yg1hSAUgd2AAneReFOVzS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511a1679a314d4c3855881ed01",
+          "matchedName": "Françoise Hardy — Tous les garçons et les filles - Stereo Mix"
+        },
+        {
+          "ref": "2tSpxPGywYcnfanQIT30gs",
+          "artist": "Yves Montand",
+          "title": "Sous le ciel de Paris",
+          "note": "A 1955 postcard of the Seine under clouds, unhurried and warm as first coffee.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2tSpxPGywYcnfanQIT30gs",
+          "spotifyUri": "spotify:track:2tSpxPGywYcnfanQIT30gs",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485148e53f4073be771be0016224",
+          "matchedName": "Yves Montand — Sous le ciel de Paris"
+        },
+        {
+          "ref": "6rqUOLt9dpfMANLMKTzoWj",
+          "artist": "Françoise Hardy",
+          "title": "Le temps de l'amour - Stereo Mix",
+          "note": "That yé-yé shuffle keeps the momentum going without ever raising its voice.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6rqUOLt9dpfMANLMKTzoWj",
+          "spotifyUri": "spotify:track:6rqUOLt9dpfMANLMKTzoWj",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511a1679a314d4c3855881ed01",
+          "matchedName": "Françoise Hardy — Le temps de l'amour - Stereo Mix"
+        },
+        {
+          "ref": "0Y04xGwKImCqVSFZQI5All",
+          "artist": "Serge Gainsbourg",
+          "title": "La chanson de Prévert",
+          "note": "1961 Gainsbourg mourning a song the way you mourn a summer, dead leaves and all.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0Y04xGwKImCqVSFZQI5All",
+          "spotifyUri": "spotify:track:0Y04xGwKImCqVSFZQI5All",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ee657a3edbe893e3567e8fcb",
+          "matchedName": "Serge Gainsbourg — La chanson de Prévert"
+        },
+        {
+          "ref": "1tvk2e5SORX6sYVgK4XpFo",
+          "artist": "Jacques Brel",
+          "title": "Quand on n'a que l'amour",
+          "note": "Brel's original 1957 recording, the emotional high point where the strings finally swell.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1tvk2e5SORX6sYVgK4XpFo",
+          "spotifyUri": "spotify:track:1tvk2e5SORX6sYVgK4XpFo",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c8286f57498964e0ca9ebbc7",
+          "matchedName": "Jacques Brel — Quand on n'a que l'amour"
+        },
+        {
+          "ref": "1AGcJROYcL6gN8op97wyR2",
+          "artist": "Yves Montand",
+          "title": "Les feuilles mortes",
+          "note": "Autumn Leaves in its native tongue, Montand letting each syllable fall slow as rain.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1AGcJROYcL6gN8op97wyR2",
+          "spotifyUri": "spotify:track:1AGcJROYcL6gN8op97wyR2",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ea06ef55836c5502358a88d7",
+          "matchedName": "Yves Montand — Les feuilles mortes"
+        },
+        {
+          "ref": "0rdzU1Z0YT1gyFpMFKh1gu",
+          "artist": "Barbara",
+          "title": "Nantes",
+          "note": "A father's deathbed telegram turned into six aching minutes, the quiet centerpiece of her catalog.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0rdzU1Z0YT1gyFpMFKh1gu",
+          "spotifyUri": "spotify:track:0rdzU1Z0YT1gyFpMFKh1gu",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048515cc1a22f987399a3ba478789",
+          "matchedName": "Barbara — Nantes"
+        },
+        {
+          "ref": "5MeRp8hOuqB490UWMJ7ber",
+          "artist": "Françoise Hardy",
+          "title": "Il n'y a pas d'amour heureux - Remasterisé en 2016",
+          "note": "Aragon's poem set to a hush, the last light before you finally get out of bed.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5MeRp8hOuqB490UWMJ7ber",
+          "spotifyUri": "spotify:track:5MeRp8hOuqB490UWMJ7ber",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ad0f52857cdd37f84ecbf3db",
+          "matchedName": "Françoise Hardy — Il n'y a pas d'amour heureux - Remasterisé en 2016"
+        }
+      ]
+    }
+  },
+  {
+    "id": "decade-80s-onehit",
+    "category": "decade-specific",
+    "prompt": "one-hit wonders of the 1980s",
+    "card": {
+      "title": "One and Done: 1980s",
+      "vibe": "For every band that caught lightning once and let it go — spin it loud.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "1omReVeoNf8T9krEhWUhBY",
+          "artist": "Men Without Hats",
+          "title": "The Safety Dance",
+          "note": "1982 synth stomp born from an argument over pogo dancing at a club — opens the set with a dare.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1omReVeoNf8T9krEhWUhBY",
+          "spotifyUri": "spotify:track:1omReVeoNf8T9krEhWUhBY",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b7cfb56355c0eb66455d45e6",
+          "matchedName": "Men Without Hats — The Safety Dance"
+        },
+        {
+          "ref": "6iX1f3r7oUJnMbGgQ2gx1j",
+          "artist": "Tommy Tutone",
+          "title": "867-5309 / Jenny",
+          "note": "That phone number got so famous real people had it disconnected for years.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6iX1f3r7oUJnMbGgQ2gx1j",
+          "spotifyUri": "spotify:track:6iX1f3r7oUJnMbGgQ2gx1j",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851de364a9a587331dbf00aaae7",
+          "matchedName": "Tommy Tutone — 867-5309 / Jenny"
+        },
+        {
+          "ref": "5b6v3PGTEXnOEh4hy9aPhS",
+          "artist": "Toni Basil",
+          "title": "Mickey",
+          "note": "A former cheerleader-choreographer turns a chant into a No. 1 hit and pure sugar rush.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5b6v3PGTEXnOEh4hy9aPhS",
+          "spotifyUri": "spotify:track:5b6v3PGTEXnOEh4hy9aPhS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514ed811465a94f3cd506fb7ea",
+          "matchedName": "Toni Basil — Mickey"
+        },
+        {
+          "ref": "2WfaOiMkCvy7F5fcp2zZ8L",
+          "artist": "a-ha",
+          "title": "Take on Me",
+          "note": "The synth riff took three tries and a rotoscoped video to finally hit No. 1 in '85.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2WfaOiMkCvy7F5fcp2zZ8L",
+          "spotifyUri": "spotify:track:2WfaOiMkCvy7F5fcp2zZ8L",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e8dd4db47e7177c63b0b7d53",
+          "matchedName": "a-ha — Take on Me"
+        },
+        {
+          "ref": "0DfG1ltJnZyq4Tx3ZLL7ZU",
+          "artist": "Falco",
+          "title": "Rock Me Amadeus",
+          "note": "An Austrian rapping about Mozart topped the Billboard Hot 100 — still the only German-language No. 1 there.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0DfG1ltJnZyq4Tx3ZLL7ZU",
+          "spotifyUri": "spotify:track:0DfG1ltJnZyq4Tx3ZLL7ZU",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851731d2eb04541bef9e4434d4e",
+          "matchedName": "Falco — Rock Me Amadeus"
+        },
+        {
+          "ref": "2IJftBfq7pJ43tfnOR0RB3",
+          "artist": "Nena",
+          "title": "99 Luftballons",
+          "note": "Cold War paranoia disguised as a bubblegum single, sung entirely in German and still a smash.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2IJftBfq7pJ43tfnOR0RB3",
+          "spotifyUri": "spotify:track:2IJftBfq7pJ43tfnOR0RB3",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517e51ffd6a2e8f77ffd56bb8f",
+          "matchedName": "Nena — 99 Luftballons"
+        },
+        {
+          "ref": "3MrWxJaD2AT0W9DjWF64Vm",
+          "artist": "Dexys Midnight Runners",
+          "title": "Come On Eileen",
+          "note": "Dungarees, fiddles, and a key change so joyous it buried the rest of their catalog.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3MrWxJaD2AT0W9DjWF64Vm",
+          "spotifyUri": "spotify:track:3MrWxJaD2AT0W9DjWF64Vm",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518bd8adbdc4727d9080240905",
+          "matchedName": "Dexys Midnight Runners — Come On Eileen"
+        },
+        {
+          "ref": "4EfZ2eaFjn1MQbKZD8urIz",
+          "artist": "Timbuk 3",
+          "title": "The Future's So Bright, I Gotta Wear Shades",
+          "note": "A closing line that's secretly sarcastic about nuclear anxiety, wrapped in the sunniest hook of '86.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4EfZ2eaFjn1MQbKZD8urIz",
+          "spotifyUri": "spotify:track:4EfZ2eaFjn1MQbKZD8urIz",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851902dfb3533c4a94e94e79bbc",
+          "matchedName": "Timbuk 3 — The Future's So Bright, I Gotta Wear Shades"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mood-train-window",
+    "category": "mood-only",
+    "prompt": "songs for staring out a train window",
+    "card": {
+      "title": "Static Between Stations",
+      "vibe": "For anyone who'd rather watch the world blur than talk about it.",
+      "accent": "cobalt",
+      "tracks": [
+        {
+          "ref": "7bzzC7QIfflM9eEj2aqaYX",
+          "artist": "Fleet Foxes",
+          "title": "Blue Ridge Mountains",
+          "note": "That opening acoustic figure feels like the platform pulling away for good.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7bzzC7QIfflM9eEj2aqaYX",
+          "spotifyUri": "spotify:track:7bzzC7QIfflM9eEj2aqaYX",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513818b4c636e2a7fdea3bf965",
+          "matchedName": "Fleet Foxes — Blue Ridge Mountains"
+        },
+        {
+          "ref": "3BXHtKq2kcl2ogcw4oKJjO",
+          "artist": "Beach House",
+          "title": "Myth",
+          "note": "Victoria Legrand's organ swell is basically fog rolling past the glass.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3BXHtKq2kcl2ogcw4oKJjO",
+          "spotifyUri": "spotify:track:3BXHtKq2kcl2ogcw4oKJjO",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517f43535a05f9e667ad586011",
+          "matchedName": "Beach House — Myth"
+        },
+        {
+          "ref": "33HRECrmuelZxOpid6XTNX",
+          "artist": "Slowdive",
+          "title": "Alison",
+          "note": "Souvlaki's guitars smear like raindrops racing sideways down the window.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/33HRECrmuelZxOpid6XTNX",
+          "spotifyUri": "spotify:track:33HRECrmuelZxOpid6XTNX",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f6e31941d10e4819d290af41",
+          "matchedName": "Slowdive — Alison"
+        },
+        {
+          "ref": "1LzNfuep1bnAUR9skqdHCK",
+          "artist": "Mazzy Star",
+          "title": "Fade Into You",
+          "note": "Hope Sandoval's whisper hits right as the train clears the tunnel into light.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1LzNfuep1bnAUR9skqdHCK",
+          "spotifyUri": "spotify:track:1LzNfuep1bnAUR9skqdHCK",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485189a392107ebd79818022b3ea",
+          "matchedName": "Mazzy Star — Fade Into You"
+        },
+        {
+          "ref": "0oxYB9GoOIDrdzniNdKC44",
+          "artist": "Slowdive",
+          "title": "When the Sun Hits",
+          "note": "The wall of reverb at 1:40 is the closest a song gets to full speed.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0oxYB9GoOIDrdzniNdKC44",
+          "spotifyUri": "spotify:track:0oxYB9GoOIDrdzniNdKC44",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f6e31941d10e4819d290af41",
+          "matchedName": "Slowdive — When the Sun Hits"
+        },
+        {
+          "ref": "35KiiILklye1JRRctaLUb4",
+          "artist": "Bon Iver",
+          "title": "Holocene",
+          "note": "Justin Vernon's line about feeling 'not too or too tall' is peak window-seat philosophy.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/35KiiILklye1JRRctaLUb4",
+          "spotifyUri": "spotify:track:35KiiILklye1JRRctaLUb4",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514b6b1547455bbecb9f6bba64",
+          "matchedName": "Bon Iver — Holocene"
+        },
+        {
+          "ref": "7l5nkTZpoD93OkynN0gcon",
+          "artist": "Mazzy Star",
+          "title": "Into Dust",
+          "note": "Six minutes of slow fade that matches a landscape thinning into dusk.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7l5nkTZpoD93OkynN0gcon",
+          "spotifyUri": "spotify:track:7l5nkTZpoD93OkynN0gcon",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485189a392107ebd79818022b3ea",
+          "matchedName": "Mazzy Star — Into Dust"
+        },
+        {
+          "ref": "20AC70RUlVz6A6dCcQ5tRS",
+          "artist": "Bon Iver",
+          "title": "Re: Stacks",
+          "note": "That last line, 'this is not the sound of a new man,' as the doors finally open.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/20AC70RUlVz6A6dCcQ5tRS",
+          "spotifyUri": "spotify:track:20AC70RUlVz6A6dCcQ5tRS",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bf7c317a63c4f128b8823406",
+          "matchedName": "Bon Iver — Re: Stacks"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mood-first-warm-day",
+    "category": "mood-only",
+    "prompt": "music that feels like the first warm day of spring",
+    "card": {
+      "title": "First Warm Day",
+      "vibe": "For the day you finally leave the jacket at home",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "5dUFfk2cwD8GiJPS03mYN0",
+          "artist": "Vampire Weekend",
+          "title": "Campus",
+          "note": "That 'in the afternoon, you're my Northern Star' line is basically spring quad energy in one lyric.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5dUFfk2cwD8GiJPS03mYN0",
+          "spotifyUri": "spotify:track:5dUFfk2cwD8GiJPS03mYN0",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517749a08ddab9edbe427e9876",
+          "matchedName": "Vampire Weekend — Campus"
+        },
+        {
+          "ref": "3Ck96jIZdVzpWbbZ6mojsE",
+          "artist": "Fleet Foxes",
+          "title": "Mykonos",
+          "note": "Those horns kick in around 1:50 like the sun finally breaking through clouds.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3Ck96jIZdVzpWbbZ6mojsE",
+          "spotifyUri": "spotify:track:3Ck96jIZdVzpWbbZ6mojsE",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514a8854d880d67850e1c7b98c",
+          "matchedName": "Fleet Foxes — Mykonos"
+        },
+        {
+          "ref": "2DrGEaqoruCSn0FffWCf5O",
+          "artist": "Vampire Weekend",
+          "title": "A-Punk",
+          "note": "Under two minutes of pure sprint-outside-without-a-coat energy, marimba and all.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2DrGEaqoruCSn0FffWCf5O",
+          "spotifyUri": "spotify:track:2DrGEaqoruCSn0FffWCf5O",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517749a08ddab9edbe427e9876",
+          "matchedName": "Vampire Weekend — A-Punk"
+        },
+        {
+          "ref": "6dGnYIeXmHdcikdzNNDMm2",
+          "artist": "The Beatles",
+          "title": "Here Comes The Sun - Remastered 2009",
+          "note": "Written in Clapton's garden after a long English winter — the literal blueprint for this playlist.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6dGnYIeXmHdcikdzNNDMm2",
+          "spotifyUri": "spotify:track:6dGnYIeXmHdcikdzNNDMm2",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851dc30583ba717007b00cceb25",
+          "matchedName": "The Beatles — Here Comes The Sun - Remastered 2009"
+        },
+        {
+          "ref": "4CNL4GBNTdVIU5Nk6hB4LC",
+          "artist": "Van Morrison",
+          "title": "Brown Eyed Girl",
+          "note": "'Standing in the sunlight laughing' — 1967's most bottled-sunshine chorus, still undefeated.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4CNL4GBNTdVIU5Nk6hB4LC",
+          "spotifyUri": "spotify:track:4CNL4GBNTdVIU5Nk6hB4LC",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a145a9479143ec784e2db548",
+          "matchedName": "Van Morrison — Brown Eyed Girl"
+        },
+        {
+          "ref": "39exKIvycQDgs4T6uXdyu0",
+          "artist": "Vampire Weekend",
+          "title": "Harmony Hall",
+          "note": "That looping piano riff feels like walking somewhere with no real destination, just enjoying the air.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/39exKIvycQDgs4T6uXdyu0",
+          "spotifyUri": "spotify:track:39exKIvycQDgs4T6uXdyu0",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a2b1d3e73c66663c01351bcf",
+          "matchedName": "Vampire Weekend — Harmony Hall"
+        },
+        {
+          "ref": "1x9ahz0ALGHgbN9wwDjmre",
+          "artist": "Nina Simone",
+          "title": "Here Comes the Sun",
+          "note": "Her 1971 read slows the Beatles tune into something warmer, like late-afternoon light.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1x9ahz0ALGHgbN9wwDjmre",
+          "spotifyUri": "spotify:track:1x9ahz0ALGHgbN9wwDjmre",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e61aa18bbda3f9c5dbb499b7",
+          "matchedName": "Nina Simone — Here Comes the Sun"
+        },
+        {
+          "ref": "7bzzC7QIfflM9eEj2aqaYX",
+          "artist": "Fleet Foxes",
+          "title": "Blue Ridge Mountains",
+          "note": "Six minutes of acoustic wind-down, perfect for the walk home as the light finally lingers longer.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7bzzC7QIfflM9eEj2aqaYX",
+          "spotifyUri": "spotify:track:7bzzC7QIfflM9eEj2aqaYX",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513818b4c636e2a7fdea3bf965",
+          "matchedName": "Fleet Foxes — Blue Ridge Mountains"
+        }
+      ]
+    }
+  },
+  {
+    "id": "statbait-highest-bpm",
+    "category": "stat-claim-bait",
+    "prompt": "songs with the highest BPM",
+    "card": {
+      "title": "Redline: Highest BPM",
+      "vibe": "For anyone who thinks tempo is a dare, not a suggestion.",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "1UMdbkqX19OiwfExH7gzYA",
+          "artist": "DragonForce",
+          "title": "Through The Fire And Flames",
+          "note": "The Guitar Hero boss track — twin solos ripping at roughly 200 BPM nonstop.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1UMdbkqX19OiwfExH7gzYA",
+          "spotifyUri": "spotify:track:1UMdbkqX19OiwfExH7gzYA",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511f867e23a295217e98674bba",
+          "matchedName": "DragonForce — Through The Fire And Flames"
+        },
+        {
+          "ref": "06gpbrpl7tlksjwYo3JOGk",
+          "artist": "Venetian Snares",
+          "title": "Ultraviolent Junglist",
+          "note": "Amen breaks chopped so fast the jungle skeleton barely survives the edit.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/06gpbrpl7tlksjwYo3JOGk",
+          "spotifyUri": "spotify:track:06gpbrpl7tlksjwYo3JOGk",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b4ed2f27df232eb28e554d22",
+          "matchedName": "Venetian Snares — Ultraviolent Junglist"
+        },
+        {
+          "ref": "6QN0mXlZOwfQoFs5yu55Pg",
+          "artist": "Igorrr",
+          "title": "Camel Dancefloor",
+          "note": "Middle Eastern strings slammed into blast-beat breakcore at a dizzying clip.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6QN0mXlZOwfQoFs5yu55Pg",
+          "spotifyUri": "spotify:track:6QN0mXlZOwfQoFs5yu55Pg",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bee3918143b9d6e5571239b4",
+          "matchedName": "Igorrr — Camel Dancefloor"
+        },
+        {
+          "ref": "1W1GGsMjg2fbXK3lLw71Pf",
+          "artist": "Angerfist",
+          "title": "Yes",
+          "note": "Rotterdam gabber staple, kicks hammering around 180 BPM, mask-and-all intensity.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1W1GGsMjg2fbXK3lLw71Pf",
+          "spotifyUri": "spotify:track:1W1GGsMjg2fbXK3lLw71Pf",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518b8cb7c04ef56bc4ff48ce37",
+          "matchedName": "Angerfist — Yes"
+        },
+        {
+          "ref": "64syMK7oo9VPihJBj1IBGH",
+          "artist": "Napalm Death",
+          "title": "Scum",
+          "note": "The record that made blast beats a genre — some songs clock under 2 seconds.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/64syMK7oo9VPihJBj1IBGH",
+          "spotifyUri": "spotify:track:64syMK7oo9VPihJBj1IBGH",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514c16b131533c69af1f8c7503",
+          "matchedName": "Napalm Death — Scum"
+        },
+        {
+          "ref": "3dfO5e6kvudYYQwWiLbBoo",
+          "artist": "Terrorizer",
+          "title": "Fear Of Napalm",
+          "note": "Pete Sandoval's drumming here is still cited as some of the fastest ever tracked.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3dfO5e6kvudYYQwWiLbBoo",
+          "spotifyUri": "spotify:track:3dfO5e6kvudYYQwWiLbBoo",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513016bdf067e898a1050f9702",
+          "matchedName": "Terrorizer — Fear Of Napalm"
+        },
+        {
+          "ref": "5gXKwH68RrWzpf6DdPa3vM",
+          "artist": "Igorrr",
+          "title": "Cheval",
+          "note": "Baroque harpsichord vs. breakcore blast — tempo lurches like it's fighting itself.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5gXKwH68RrWzpf6DdPa3vM",
+          "spotifyUri": "spotify:track:5gXKwH68RrWzpf6DdPa3vM",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851cc67823edfa84a31d0b4aa26",
+          "matchedName": "Igorrr — Cheval"
+        },
+        {
+          "ref": "3xRiX7Ct3kbDKb7ktZ84ds",
+          "artist": "Venetian Snares",
+          "title": "This Bitter Earth",
+          "note": "Same manic chopping, but the strings turn it into a gorgeous crash landing.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3xRiX7Ct3kbDKb7ktZ84ds",
+          "spotifyUri": "spotify:track:3xRiX7Ct3kbDKb7ktZ84ds",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485115380177c16925a0bd8f5655",
+          "matchedName": "Venetian Snares — This Bitter Earth"
+        }
+      ]
+    }
+  },
+  {
+    "id": "statbait-longest-solos",
+    "category": "stat-claim-bait",
+    "prompt": "the longest guitar solos in rock history",
+    "card": {
+      "title": "Marathon Solos",
+      "vibe": "For anyone who's ever air-guitared past the ten-minute mark, alone in the dark.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "5CQ30WqJwcep0pYcV4AMNc",
+          "artist": "Led Zeppelin",
+          "title": "Stairway to Heaven - Remaster",
+          "note": "Page waits eight minutes before he even plugs into the solo, then never lets go.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5CQ30WqJwcep0pYcV4AMNc",
+          "spotifyUri": "spotify:track:5CQ30WqJwcep0pYcV4AMNc",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c8a11e48c91a982d086afc69",
+          "matchedName": "Led Zeppelin — Stairway to Heaven - Remaster"
+        },
+        {
+          "ref": "40riOy7x9W7GXjyGp4pjAv",
+          "artist": "Eagles",
+          "title": "Hotel California - 2013 Remaster",
+          "note": "Felder and Walsh trade sixteen bars apiece in a twin-guitar coda that still ends every classic rock night.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/40riOy7x9W7GXjyGp4pjAv",
+          "spotifyUri": "spotify:track:40riOy7x9W7GXjyGp4pjAv",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514637341b9f507521afa9a778",
+          "matchedName": "Eagles — Hotel California - 2013 Remaster"
+        },
+        {
+          "ref": "2kkvB3RNRzwjFdGhaUA0tz",
+          "artist": "Derek & The Dominos",
+          "title": "Layla",
+          "note": "Duane Allman's slide answers Clapton for two full minutes before the piano coda even starts.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2kkvB3RNRzwjFdGhaUA0tz",
+          "spotifyUri": "spotify:track:2kkvB3RNRzwjFdGhaUA0tz",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851fbcaf7402f38faac27610efc",
+          "matchedName": "Derek & The Dominos — Layla"
+        },
+        {
+          "ref": "5HNCy40Ni5BZJFw1TKzRsC",
+          "artist": "Pink Floyd",
+          "title": "Comfortably Numb",
+          "note": "Gilmour cut this solo in four takes and it's been voted the greatest ever more than once.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5HNCy40Ni5BZJFw1TKzRsC",
+          "spotifyUri": "spotify:track:5HNCy40Ni5BZJFw1TKzRsC",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b694e89ba937dd2631ff584c",
+          "matchedName": "Pink Floyd — Comfortably Numb"
+        },
+        {
+          "ref": "5EWPGh7jbTNO2wakv8LjUI",
+          "artist": "Lynyrd Skynyrd",
+          "title": "Free Bird",
+          "note": "The studio cut runs over nine minutes and the last four are just Allen Collins refusing to stop.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5EWPGh7jbTNO2wakv8LjUI",
+          "spotifyUri": "spotify:track:5EWPGh7jbTNO2wakv8LjUI",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851128450651c9f0442780d8eb8",
+          "matchedName": "Lynyrd Skynyrd — Free Bird"
+        },
+        {
+          "ref": "3YRCqOhFifThpSRFJ1VWFM",
+          "artist": "Guns N' Roses",
+          "title": "November Rain",
+          "note": "Slash climbs onto a piano-shaped rooftop for a solo that outlasts most entire pop songs.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3YRCqOhFifThpSRFJ1VWFM",
+          "spotifyUri": "spotify:track:3YRCqOhFifThpSRFJ1VWFM",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e44963b8bb127552ac761873",
+          "matchedName": "Guns N' Roses — November Rain"
+        },
+        {
+          "ref": "3bepDVJI8tECicV9bDsSxt",
+          "artist": "Jimi Hendrix",
+          "title": "Machine Gun - Live At Fillmore East, 1970 / 50th Anniversary",
+          "note": "Recorded New Year's Day 1970, Hendrix turns twelve-plus minutes of feedback into a war report.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3bepDVJI8tECicV9bDsSxt",
+          "spotifyUri": "spotify:track:3bepDVJI8tECicV9bDsSxt",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f84a3a90bfe5592d94b8b847",
+          "matchedName": "Jimi Hendrix — Machine Gun - Live At Fillmore East, 1970 / 50th Anniversary"
+        },
+        {
+          "ref": "6PUabSMXmPnZna361Wwmf7",
+          "artist": "Cream",
+          "title": "Crossroads - Live",
+          "note": "Clapton's whole solo clocks barely a minute here, proof the shortest one can still close the set hardest.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6PUabSMXmPnZna361Wwmf7",
+          "spotifyUri": "spotify:track:6PUabSMXmPnZna361Wwmf7",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048515c7731f5acdcb2d02d78b7ee",
+          "matchedName": "Cream — Crossroads - Live"
+        }
+      ]
+    }
+  },
+  {
+    "id": "recent-2025-best",
+    "category": "recent-music",
+    "prompt": "the best songs released in 2025",
+    "card": {
+      "title": "2025: The Loudest Year",
+      "vibe": "For anyone who still believes the best song is always the next one",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "2BwO5K8Q7EPAJSGze3AAh9",
+          "artist": "Sabrina Carpenter",
+          "title": "Manchild",
+          "note": "Title track off Man's Best Friend, the smirking one-liner that opens her boldest era yet.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2BwO5K8Q7EPAJSGze3AAh9",
+          "spotifyUri": "spotify:track:2BwO5K8Q7EPAJSGze3AAh9",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b1863bf95557ea7f357c4947",
+          "matchedName": "Sabrina Carpenter — Manchild"
+        },
+        {
+          "ref": "1G0o3dcY3W17BVg7rlDLdY",
+          "artist": "Charli xcx",
+          "title": "party 4 u",
+          "note": "Brat-era Charli refusing to slow down, a sugar rush built for a room that's already dancing.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1G0o3dcY3W17BVg7rlDLdY",
+          "spotifyUri": "spotify:track:1G0o3dcY3W17BVg7rlDLdY",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851226bb9dc80b9151f4749ae97",
+          "matchedName": "Charli xcx — party 4 u"
+        },
+        {
+          "ref": "1musbempyJAw5gfSKZHXP9",
+          "artist": "Doechii",
+          "title": "Anxiety",
+          "note": "The Alligator Bites Never Heal standout that turned a Doja Cat sample into a Grammy-season anthem.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1musbempyJAw5gfSKZHXP9",
+          "spotifyUri": "spotify:track:1musbempyJAw5gfSKZHXP9",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513de7e97b3e5aa3eaccfc19ec",
+          "matchedName": "Doechii — Anxiety"
+        },
+        {
+          "ref": "6iycYUk3oB0NPMdaDUrN1w",
+          "artist": "Playboi Carti",
+          "title": "EVIL J0RDAN",
+          "note": "MUSIC's bass-cracked centerpiece, the track that made the whole album feel like a system failure.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6iycYUk3oB0NPMdaDUrN1w",
+          "spotifyUri": "spotify:track:6iycYUk3oB0NPMdaDUrN1w",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516b219c8d8462bfe254a20469",
+          "matchedName": "Playboi Carti — EVIL J0RDAN"
+        },
+        {
+          "ref": "3znSvEwBq09We4cxxmwlZM",
+          "artist": "Clipse, Kendrick Lamar, Pharrell Williams, Pusha T, Malice",
+          "title": "Chains & Whips",
+          "note": "Clipse's reunion album stacked with Kendrick and Pharrell, a coke-rap peak a decade in the making.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3znSvEwBq09We4cxxmwlZM",
+          "spotifyUri": "spotify:track:3znSvEwBq09We4cxxmwlZM",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ef854fe1d04279372a96f3d6",
+          "matchedName": "Clipse, Kendrick Lamar, Pharrell Williams, Pusha T, Malice — Chains & Whips"
+        },
+        {
+          "ref": "0FIDCNYYjNvPVimz5icugS",
+          "artist": "The Weeknd, Playboi Carti",
+          "title": "Timeless (feat Playboi Carti)",
+          "note": "Hurry Up Tomorrow's widescreen highlight, two eras of Toronto-and-Atlanta menace colliding.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0FIDCNYYjNvPVimz5icugS",
+          "spotifyUri": "spotify:track:0FIDCNYYjNvPVimz5icugS",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851de79f330bc297af3fae736da",
+          "matchedName": "The Weeknd, Playboi Carti — Timeless (feat Playboi Carti)"
+        },
+        {
+          "ref": "6xV7Be6XEvkSnighmh2Tzj",
+          "artist": "Tyler, The Creator",
+          "title": "Sugar On My Tongue",
+          "note": "Don't Tap the Glass easing off the gas with a loose, funk-soaked groove built for dancing alone.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6xV7Be6XEvkSnighmh2Tzj",
+          "spotifyUri": "spotify:track:6xV7Be6XEvkSnighmh2Tzj",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514b7fbb849ed845ddedcce346",
+          "matchedName": "Tyler, The Creator — Sugar On My Tongue"
+        },
+        {
+          "ref": "4waPZF96vX1Oz5pzH6dB0h",
+          "artist": "Tyler, The Creator, Yebba",
+          "title": "I'll Take Care of You (feat. Yebba)",
+          "note": "Closing note of the tape, Yebba's voice turning the whole year's noise into something tender.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4waPZF96vX1Oz5pzH6dB0h",
+          "spotifyUri": "spotify:track:4waPZF96vX1Oz5pzH6dB0h",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514b7fbb849ed845ddedcce346",
+          "matchedName": "Tyler, The Creator, Yebba — I'll Take Care of You (feat. Yebba)"
+        }
+      ]
+    }
+  },
+  {
+    "id": "recent-2026-indie",
+    "category": "recent-music",
+    "prompt": "new indie releases from 2026 I should know about",
+    "card": {
+      "title": "Indie Class of 2026",
+      "vibe": "For the friend who needs next year's favorites before the year even starts.",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "3DXAC5bKciAE2hhGXX4GMc",
+          "artist": "she's green",
+          "title": "locket",
+          "note": "Off the brand-new 'swallowtail' record — hazy guitar tone that eases the door open.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3DXAC5bKciAE2hhGXX4GMc",
+          "spotifyUri": "spotify:track:3DXAC5bKciAE2hhGXX4GMc",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485121ba3f031aaa1200685c17ed",
+          "matchedName": "she's green — locket"
+        },
+        {
+          "ref": "78StcaU2P13SpqXdhaJRtk",
+          "artist": "Jessie Mazin",
+          "title": "the precipice",
+          "note": "Live-from-a-backyard energy, the kind of raw indie folk take that never leaves you.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/78StcaU2P13SpqXdhaJRtk",
+          "spotifyUri": "spotify:track:78StcaU2P13SpqXdhaJRtk",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485175e2dd026b6d3ee5eeff93c8",
+          "matchedName": "Jessie Mazin — the precipice"
+        },
+        {
+          "ref": "5Gr4JfSnT9VC58slg1GV2p",
+          "artist": "YUMA",
+          "title": "Waiter - single edit",
+          "note": "Fresh single edit that trims the fat and keeps the momentum climbing.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5Gr4JfSnT9VC58slg1GV2p",
+          "spotifyUri": "spotify:track:5Gr4JfSnT9VC58slg1GV2p",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851220e009631c8b9316acc40ef",
+          "matchedName": "YUMA — Waiter - single edit"
+        },
+        {
+          "ref": "2CrCSUqCi4m4iDexkklvmN",
+          "artist": "Death Cab for Cutie",
+          "title": "Punching the Flowers",
+          "note": "From 'I Built You A Tower' — proof the indie vets still have new tricks in 2026.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2CrCSUqCi4m4iDexkklvmN",
+          "spotifyUri": "spotify:track:2CrCSUqCi4m4iDexkklvmN",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511356b24d48cbabc44384e753",
+          "matchedName": "Death Cab for Cutie — Punching the Flowers"
+        },
+        {
+          "ref": "0qWoOHqTirzo59FQ9eoECH",
+          "artist": "beabadoobee, The Marías",
+          "title": "All I Did Was Dream of You (feat. The Marías)",
+          "note": "Two of indie's brightest names on one track — this is the peak of the ride.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0qWoOHqTirzo59FQ9eoECH",
+          "spotifyUri": "spotify:track:0qWoOHqTirzo59FQ9eoECH",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e0cd9495603ed7f6b4867494",
+          "matchedName": "beabadoobee, The Marías — All I Did Was Dream of You (feat. The Marías)"
+        },
+        {
+          "ref": "2sW7X1G7xaNZZX7b92NP6X",
+          "artist": "Malcolm Todd",
+          "title": "Gun To My Head",
+          "note": "Off 'Do That Again,' riding the high with a hook that snaps right back at you.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2sW7X1G7xaNZZX7b92NP6X",
+          "spotifyUri": "spotify:track:2sW7X1G7xaNZZX7b92NP6X",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a1cac678024bb37d83ab012c",
+          "matchedName": "Malcolm Todd — Gun To My Head"
+        },
+        {
+          "ref": "3oYO7MoMAjIKeG15RkKAYn",
+          "artist": "Pil",
+          "title": "Din For Evigt",
+          "note": "A slow-burning deep cut that pulls the tempo down without losing the thread.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3oYO7MoMAjIKeG15RkKAYn",
+          "spotifyUri": "spotify:track:3oYO7MoMAjIKeG15RkKAYn",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a097037c5ec6582574c7adb8",
+          "matchedName": "Pil — Din For Evigt"
+        },
+        {
+          "ref": "1raWhwsG5qRIGhZWNEDG4G",
+          "artist": "Roe Kapara",
+          "title": "Crying On Vacation",
+          "note": "Ends on a bittersweet title that says everything a closer should — packing up, still glowing.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1raWhwsG5qRIGhZWNEDG4G",
+          "spotifyUri": "spotify:track:1raWhwsG5qRIGhZWNEDG4G",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048515817134259342702506384f1",
+          "matchedName": "Roe Kapara — Crying On Vacation"
+        }
+      ]
+    }
+  },
+  {
+    "id": "artist-radiohead-bsides",
+    "category": "artist-specific",
+    "prompt": "essential Radiohead b-sides and rarities",
+    "card": {
+      "title": "The B-Side Basement",
+      "vibe": "For the ones who flip the single over and stay all night.",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "3cMuGOGSaTWbwOurTS4b3Y",
+          "artist": "Radiohead",
+          "title": "Talk Show Host",
+          "note": "Buried on the Street Spirit single until Baz Luhrmann rescued it for Romeo + Juliet.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3cMuGOGSaTWbwOurTS4b3Y",
+          "spotifyUri": "spotify:track:3cMuGOGSaTWbwOurTS4b3Y",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514bb2cf6071587079e3d74947",
+          "matchedName": "Radiohead — Talk Show Host"
+        },
+        {
+          "ref": "7obvmD1HzGaYGIURbzhvaE",
+          "artist": "Radiohead",
+          "title": "Palo Alto",
+          "note": "A No Surprises b-side about Silicon Valley written before anyone said 'tech bro.'",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7obvmD1HzGaYGIURbzhvaE",
+          "spotifyUri": "spotify:track:7obvmD1HzGaYGIURbzhvaE",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513c0b096ff57f306f92c9306a",
+          "matchedName": "Radiohead — Palo Alto"
+        },
+        {
+          "ref": "4CDeqY78NRvHBHLYW6ufnN",
+          "artist": "Radiohead",
+          "title": "Polyethylene (Parts 1 & 2)",
+          "note": "Two half-songs stitched into one Paranoid Android flip side, all grind and no chorus.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4CDeqY78NRvHBHLYW6ufnN",
+          "spotifyUri": "spotify:track:4CDeqY78NRvHBHLYW6ufnN",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bff3434553f08aa1b0a0ab59",
+          "matchedName": "Radiohead — Polyethylene (Parts 1 & 2)"
+        },
+        {
+          "ref": "3AfvMkOfGlqyVfbheF5urG",
+          "artist": "Radiohead",
+          "title": "The Amazing Sounds of Orgy",
+          "note": "Tucked on the Pyramid Song single, the closest thing they have to a stomp-and-holler.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3AfvMkOfGlqyVfbheF5urG",
+          "spotifyUri": "spotify:track:3AfvMkOfGlqyVfbheF5urG",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851960d2e663d8a41aa2191fae1",
+          "matchedName": "Radiohead — The Amazing Sounds of Orgy"
+        },
+        {
+          "ref": "1popzk4gJkgAr6jrM1rL2U",
+          "artist": "Radiohead",
+          "title": "Meeting in the Aisle",
+          "note": "Instrumental Karma Police b-side that just keeps climbing and never resolves.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1popzk4gJkgAr6jrM1rL2U",
+          "spotifyUri": "spotify:track:1popzk4gJkgAr6jrM1rL2U",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a44f6605cf23c03d70fcf504",
+          "matchedName": "Radiohead — Meeting in the Aisle"
+        },
+        {
+          "ref": "5J9LB6XXJVF4kob0hWR8qZ",
+          "artist": "Radiohead",
+          "title": "Fog",
+          "note": "The Knives Out single cut, all bare piano before the strings sneak in.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5J9LB6XXJVF4kob0hWR8qZ",
+          "spotifyUri": "spotify:track:5J9LB6XXJVF4kob0hWR8qZ",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851db5763b82032e977b658fac5",
+          "matchedName": "Radiohead — Fog"
+        },
+        {
+          "ref": "6qAdwuEo0iZJqHHnelNaLy",
+          "artist": "Radiohead",
+          "title": "Lozenge of Love",
+          "note": "1994's My Iron Lung single hid this jangly, almost sunny detour.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6qAdwuEo0iZJqHHnelNaLy",
+          "spotifyUri": "spotify:track:6qAdwuEo0iZJqHHnelNaLy",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048515a8a29922031b3ad4cdf3876",
+          "matchedName": "Radiohead — Lozenge of Love"
+        },
+        {
+          "ref": "62SvkbQm1wMS6KZtbtls1V",
+          "artist": "Radiohead",
+          "title": "True Love Waits - Live in Oslo",
+          "note": "The version that circulated on bootlegs for 20 years before the studio take ever existed.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/62SvkbQm1wMS6KZtbtls1V",
+          "spotifyUri": "spotify:track:62SvkbQm1wMS6KZtbtls1V",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485105a2f9af5f0eaed4835acf54",
+          "matchedName": "Radiohead — True Love Waits - Live in Oslo"
+        }
+      ]
+    }
+  }
+]

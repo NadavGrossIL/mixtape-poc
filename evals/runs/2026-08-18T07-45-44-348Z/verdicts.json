@@ -1,0 +1,1837 @@
+[
+  {
+    "id": "niche-city-pop",
+    "category": "deep-niche",
+    "prompt": "japanese city pop deep cuts from the early 80s",
+    "cardTitle": "Neon Tokyo, After Hours",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Minako Yoshida",
+        "title": "TORNADO",
+        "note": "1980 opener off MONOCHROME, all whip-crack funk guitar and synth stabs to kick the tape awake.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'TORNADO' is the opening track of Minako Yoshida's 1980 album MONOCHROME. Multiple sources list TORNADO as track 1 (Side A) of MONOCHROME, released October 21, 1980. Guitar/synth description is subjective flavor but the release/sequencing facts check out.",
+        "evidence": [
+          {
+            "url": "https://www.generasia.com/wiki/Monochrome_(Yoshida_Minako)",
+            "snippet": "Yoshida Minako · Album · MONOCHROME · Released · 1980.10.21 · Tracklist · Side A · TORNADO · RAINY DAY · BLACK MOON · SUNSET"
+          },
+          {
+            "url": "https://open.spotify.com/intl-es/album/3jaNik4jYyepujb5xplAYo",
+            "snippet": "MONOCHROME · Album · Minako Yoshida•1980• · 8 songs ... 1 · TORNADO Minako Yoshida · 5:56"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Anri",
+        "title": "SHYNESS BOY",
+        "note": "Buried on Timely!! behind the singles, but the chorus hook is stickier than anything on the radio that year.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'SHYNESS BOY' is a non-single album track on Anri's Timely!!. Tracklists show SHYNESS BOY as track 7 of Timely!! (Dec 5, 1983), while the album's singles were 'Cat's Eye' and 'I Can't Stop the Loneliness'. The hook praise is subjective.",
+        "evidence": [
+          {
+            "url": "https://jpop.fandom.com/wiki/Timely!!",
+            "snippet": "December 5, 1983 · City Pop ... CAT’S EYE (NEW TAKE) WINDY SUMMER · STAY BY ME · A HOPE FROM SAD STREET · YOU ARE NOT ALONE · Kanashimi ga Tomaranai ... SHYNESS BOY"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Timely!!",
+            "snippet": "Singles from Timely!! - \"Cat's Eye\" Released: August 5, 1983; \"I Can't Stop the Loneliness\" Released: November 5, 1983"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Momoko Kikuchi",
+        "title": "Blind Curve",
+        "note": "1984 deep cut from OCEAN SIDE, the bassline takes the corner faster than the lyrics do.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable: 'Blind Curve' as a 1984 track on Momoko Kikuchi's OCEAN SIDE. Lyric database and reissue tracklists confirm Blind Curve is track A3 on the 1984 debut album OCEAN SIDE. Bassline/lyrics imagery is subjective.",
+        "evidence": [
+          {
+            "url": "https://petitlyrics.com/lyrics/3014194",
+            "snippet": "Blind Curve / 菊池 桃子 ... アルバム:OCEAN SIDE 作詞:秋元康 作曲:林哲司"
+          },
+          {
+            "url": "https://tower.jp/article/feature_item/2023/01/31/0706",
+            "snippet": "84年発表の1stアルバム ... [A面] 01. Ocean Side 02. Shadow Surfer 03. Blind Curve 04. Summer Eyes"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Anri",
+        "title": "WINDY SUMMER",
+        "note": "The horn stabs on this 1983 album cut are the sound of a convertible top coming down.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable: 'WINDY SUMMER' being a 1983 album track by Anri. It is track 2 on Timely!! (released December 5, 1983). The horn-stab/convertible imagery is subjective and not assessed.",
+        "evidence": [
+          {
+            "url": "https://www.jazz-jazz.com/2024/02/16/anri-timely-1983-2008-hi-res.html",
+            "snippet": "Anri – Timely!! Year: 1983-12-05 ... 1. CAT'S EYE (NEW TAKE) (03:09) 2. WINDY SUMMER (04:06)"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Timely!!",
+            "snippet": "Timely!! is the sixth studio album by Japanese singer-songwriter Anri, released in 1983."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Momoko Kikuchi",
+        "title": "Ocean Side",
+        "note": "Title track and the tape's peak, a shimmering Kadomatsu-produced wall of chorused guitar.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two claims: 'Ocean Side' is the title track (true — it is track A1 of the album OCEAN SIDE) and that it is 'Kadomatsu-produced' (false). Sources state the entire OCEAN SIDE album was composed and arranged by Tetsuji Hayashi, and the title track's credits are lyrics Kumiko Aoki / music Hayashi / arrangement Hayashi & Kanezaki — Toshiki Kadomatsu is not a credited producer. The production credit is fabricated.",
+        "evidence": [
+          {
+            "url": "https://tower.jp/article/feature_item/2023/01/31/0706",
+            "snippet": "単純なアイドルレコードには終わらない世界観を後押ししたのは、全曲で作曲・アレンジを手掛ける林哲司。 【収録内容】 [A面] 01. Ocean Side"
+          },
+          {
+            "url": "https://ameblo.jp/bz504428/entry-12721015381.html",
+            "snippet": "1984年9月発売の1st アルバム \"Ocean Side\"の１曲目。 作詞:青木久美子 作曲:林哲司 編曲:林哲司/兼崎順一"
+          },
+          {
+            "url": "https://diskunion.net/showakayou/ct/detail/1009088463",
+            "snippet": "『Ocean Side』は、1984年に伝説のレーベルVAPからリリースされ、J-POP界のアイコン、林哲司 ... による豪華な作曲とアレンジをフィーチャー。"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Minako Yoshida",
+        "title": "MIDNIGHT DRIVER",
+        "note": "Pulls the tempo back into a slow highway groove, the come-down after the peak.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "Note only describes tempo/sequencing ('slow highway groove', 'come-down after the peak') — no concrete, verifiable fact about the track; the sentence would fit countless songs. Incidentally the track does exist (MIDNIGHT DRIVER on MONOCHROME), but nothing in the note is checkable.",
+        "evidence": []
+      },
+      {
+        "index": 6,
+        "artist": "Junko Ohashi",
+        "title": "I LOVE YOU SO",
+        "note": "A 1984 ballad from MAGICAL that trades disco snap for a long, patient fade.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable: 'I LOVE YOU SO' appears on Junko Ohashi's 1984 album MAGICAL. Label and retailer listings confirm MAGICAL (大橋純子の世界III) was released July 1984 and contains 'I LOVE YOU SO' as track 4. 'Ballad' and 'long, patient fade' are subjective characterizations not assessed.",
+        "evidence": [
+          {
+            "url": "https://www.universal-music.co.jp/ohashi-junko/products/upcy-90068/",
+            "snippet": "「A LOVE AFFAIR」、カップリング「I LOVE YOU SO」などの希少楽曲を収録。 オリジナル発売日：1984年7月 ... 4. I LOVE YOU SO"
+          },
+          {
+            "url": "https://www.hmv.co.jp/news/article/230419114/",
+            "snippet": "1984年7月発売、大橋純子...このアルバムのみに収録された、アーバン・グルーヴ名曲「A LOVE AFFAIR」や「I LOVE YOU SO」"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Junko Ohashi",
+        "title": "テレフォン・ナンバー",
+        "note": "Closes the tape on a dial tone of an outro, a number you never actually call.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "The note offers metaphorical imagery about the outro ('a dial tone of an outro, a number you never actually call') rather than a verifiable fact — no credit, date, lyric quote, or stat is asserted. The artist–title pairing is real (テレフォン・ナンバー appears on Ohashi's MAGICAL), but the note's content is not fact-checkable.",
+        "evidence": []
+      }
+    ],
+    "usage": {
+      "input_tokens": 625,
+      "output_tokens": 6233,
+      "cache_creation_input_tokens": 21680,
+      "cache_read_input_tokens": 78462,
+      "web_search_requests": 6
+    }
+  },
+  {
+    "id": "niche-croydon-dubstep",
+    "category": "deep-niche",
+    "prompt": "early Croydon-scene UK dubstep, strictly pre-2010",
+    "cardTitle": "Big Apple, Bass Weight",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Horsepower Productions",
+        "title": "Gorgon Sound",
+        "note": "2003 South London 2-step-into-dubstep blueprint, the sound before the scene had its name.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: the track exists as attributed to Horsepower Productions and dates from 2003. Confirmed: 'Gorgon Sound' appears on Horsepower Productions' album 'In Fine Style', released 10 March 2003 on Tempa. Horsepower Productions being South London and 'before the scene had its name' framing is rhetorical/contextual and consistent with the 2002-03 proto-dubstep era.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/au/song/gorgon-sound/1418590589",
+            "snippet": "Gorgon Sound by Horsepower Productions ... 2003. Duration: 4:13  In Fine Style · Horsepower Productions · 10 March 2003"
+          },
+          {
+            "url": "https://www.beatport.com/track/gorgon-sound-original-mix/753822",
+            "snippet": "Horsepower Productions ... Label: Tempa · BPM:133 · Length:4:13 · Released:2003-03-10"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Digital Mystikz",
+        "title": "Give Jah Glory",
+        "note": "DMZ's own Tempa cut from 2005, Mala's sub-bass sermon straight off the Croydon dubplate.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: a 2005 Digital Mystikz cut on Tempa titled 'Give Jah Glory'. Confirmed: 'Give Jah Glory' by Digital Mystikz, Tempa Allstars Vol. 2, label Tempa, released 17 January 2005. Digital Mystikz (Mala & Coki) are the DMZ founders, so 'DMZ's own' is accurate crew framing; the 'Croydon dubplate' / 'sub-bass sermon' language is subjective colour.",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/track/5yBSQFVqDXt3tt5hAUIuHD",
+            "snippet": "Digital Mystikz · Tempa Allstars Vol. 2 · Song · 2005"
+          },
+          {
+            "url": "https://www.beatport.com/track/give-jah-glory/823391",
+            "snippet": "Give Jah Glory ... Released:2005-01-17 · BPM:139 ... Label: Tempa"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Loefah",
+        "title": "System",
+        "note": "Half-step minimalism from Tectonic Plates Vol.1, the stripped-back template every DMZ selector chased.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: Loefah's 'System' appears on the compilation Tectonic Plates Vol. 1. Confirmed by the Tectonic label's own Bandcamp tracklist (track 5) and Discogs. The 'half-step minimalism / template every DMZ selector chased' portion is subjective.",
+        "evidence": [
+          {
+            "url": "https://tectonicrecordings.bandcamp.com/album/tectonic-plates-vol-1",
+            "snippet": "Tectonic Plates Vol. 1 by Various Artists, released 01 June 2006 ... 5. Loefah - System 6. Digital Mystikz - Molten"
+          },
+          {
+            "url": "https://www.discogs.com/release/14900672-Various-Tectonic-Plates-Vol-1",
+            "snippet": "Loefah - System 4:57 · Digital Mystikz - Molten 4:53 ... Released: Oct 15, 2006"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Digital Mystikz",
+        "title": "Molten",
+        "note": "Same 2006 comp, thicker and darker, the bassline that shook Third Base's sound system.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: 'Molten' by Digital Mystikz is on the same compilation as note 2 and that compilation dates from 2006. Confirmed: Digital Mystikz - 'Molten' is track 6 on Tectonic Plates Vol. 1, released 2006. The 'shook Third Base's sound system' line is unverifiable rhetorical colour, not a discrete factual assertion about the record.",
+        "evidence": [
+          {
+            "url": "https://tectonicrecordings.bandcamp.com/album/tectonic-plates-vol-1",
+            "snippet": "Tectonic Plates Vol. 1 ... released 01 June 2006 ... 6. Digital Mystikz - Molten"
+          },
+          {
+            "url": "https://www.discogs.com/release/14900672-Various-Tectonic-Plates-Vol-1",
+            "snippet": "Digital Mystikz - Molten 4:53 ... Format: 13 x File ... Released: Oct 15, 2006"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Skream, Loefah",
+        "title": "I - Loefah Remix",
+        "note": "Two Croydon originators trading dubplates, Skream's tune rebuilt in Loefah's skeletal half-time.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim/credit: a Loefah remix of Skream's track 'I' exists. Confirmed: 'I (Loefah Remix)' is track 1 of Skream's 'Loefah Remixes' release (Tempa), also listed on Beatport and Last.fm. Skream is from Croydon; the 'skeletal half-time' description is subjective.",
+        "evidence": [
+          {
+            "url": "https://skreamizm.bandcamp.com/album/loefah-remixes",
+            "snippet": "Loefah Remixes by SKREAM ... 1. I - Loefah Remix 2. Monsoon - Loefah Remix"
+          },
+          {
+            "url": "https://www.beatport.com/track/i-loefah-remix/823407",
+            "snippet": "Skream - I (Loefah Remix) [Tempa]"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Benga",
+        "title": "26 Basslines",
+        "note": "From Diary of an Afro Warrior, 2008, the wobble that dragged the genre into daylight.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: '26 Basslines' is on Benga's album 'Diary of an Afro Warrior', 2008. Confirmed: track 13 of the Tempa album, released 2008. 'Wobble that dragged the genre into daylight' is subjective.",
+        "evidence": [
+          {
+            "url": "https://tempa.bandcamp.com/album/diary-of-an-afro-warrior",
+            "snippet": "Diary Of An Afro Warrior by Benga, released 01 January 2008 ... 13. 26 Basslines"
+          },
+          {
+            "url": "https://bassmusic.fandom.com/wiki/Diary_of_an_Afro_Warrior",
+            "snippet": "Diary of an Afro Warrior is the second album from dubstep producer Benga. It was released in 2008 under the label, Tempa."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Plastician",
+        "title": "Japan - Original Mix",
+        "note": "Big Apple Records' own don, 2007, all clipped drums and cold-war siren tension.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two checkable claims. (a) Year: 'Japan' comes from Plastician's LP 'Beg to Differ', dated 2007 by Wikipedia/Apple Music (later digital reissues list 2008) — broadly supportable. (b) The headline credit 'Big Apple Records' own don' is wrong: Plastician's releases are on Terrorhythm (his own label) and Road/Rephlex, and documented Big Apple shop/label affiliates are Hatcha, Hijak, Skream (staff) and Mala, Loefah, Coki, Benga, Artwork (label debuts) — Plastician is not among them. Misattributed label affiliation, so the note fails.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Plastician",
+            "snippet": "2007 saw the release of \"Beg to Differ\" ... contains some of Reed's most recognisable works such as \"Japan\" and \"Intensive Snare\""
+          },
+          {
+            "url": "https://www.beatport.com/track/japan/1882264",
+            "snippet": "Plastician - Japan (Original Mix) [Terrorhythm Recordings]"
+          },
+          {
+            "url": "https://britishrecordshoparchive.org/shops/big-apple-records/",
+            "snippet": "Hatcha, Hijak and Skream all worked in the shop while Mala, Loefah, Coki and Benga all had their first releases on our label."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Mala",
+        "title": "Changes",
+        "note": "2007 closer, Mala at his most spacious, the comedown after a night in the Rhythm Division basement.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: Mala's 'Changes' is a 2007 release. Confirmed: 'Changes / Forgive' 12\" issued April 2007 as the fourth Deep Medi Musik release. The 'Rhythm Division basement' line is atmospheric imagery rather than a stated fact about the record (Rhythm Division was an East London shop, not the DMZ venue), and 'most spacious' is subjective.",
+        "evidence": [
+          {
+            "url": "https://mala-music.bandcamp.com/album/changes-forgive",
+            "snippet": "Changes / Forgive by Mala, released 18 April 2007 1. Changes 2. Forgive"
+          },
+          {
+            "url": "https://boomkat.com/products/changes-3c6573ed-43a9-4047-9b0c-3193d9dc8b30",
+            "snippet": "the OG 'Changes / Forgive' 12\" was first issued as the 4th drop on Mala's youthling Deep Medi Musik during dubstep's banner year of 2007"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 625,
+      "output_tokens": 8955,
+      "cache_creation_input_tokens": 20571,
+      "cache_read_input_tokens": 125804,
+      "web_search_requests": 12
+    }
+  },
+  {
+    "id": "nonenglish-hebrew-rock",
+    "category": "non-english",
+    "prompt": "israeli rock classics from the 90s",
+    "cardTitle": "Tel Aviv Rock, 1990s",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Mashina",
+        "title": "אחכה לך בשדות",
+        "note": "Opens with that jangly new-wave guitar hook Mashina rode straight off their 1990 album.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that \"אחכה לך בשדות\" is from a 1990 Mashina album. Confirmed: it is track 7 on העמותה לחקר התמותה, released 1990. The 'jangly new-wave guitar hook' part is subjective color, but the release-year claim is checkable and correct.",
+        "evidence": [
+          {
+            "url": "https://www.albumoftheyear.org/album/604676-mashina--.php",
+            "snippet": "Music Reviews: העמותה לחקר התמותה by Mashina released in 1990."
+          },
+          {
+            "url": "https://musicstax.com/track/na/282wgtQaJ0ElJrxiCoVv8n",
+            "snippet": "אחכה לך בשדות is a song by Mashina, released on 1990-07-01. It is track number 7 in the album העמותה לחקר התמותה."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Teapacks",
+        "title": "זמנים קטנים",
+        "note": "1993 Teapacks before the Eurovision fame, all scrappy guitars and sardonic Israeli wit.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the 1993 date for Teapacks' \"זמנים קטנים\" and the pre-Eurovision framing. Bandcamp (official Teapacks page) dates the track to 1 January 1993 and lists it on the 1993 album האחרון בעשירון התחתון; Teapacks' Eurovision entry came much later (2007), so 1993 is indeed 'before the Eurovision fame'.",
+        "evidence": [
+          {
+            "url": "https://teapacks.bandcamp.com/track/--21",
+            "snippet": "זמנים קטנים by טיפקס, released 01 January 1993"
+          },
+          {
+            "url": "https://teapacks.bandcamp.com/album/--2",
+            "snippet": "האחרון בעשירון התחתון by טיפקס, released 01 January 1993 1. קוף לילה 2. זמנים קטנים"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Hayehudim",
+        "title": "קח אותי",
+        "note": "Off Hayehudim's 1995 debut Metziut Nifredet, the record that launched Aviv Geffen's brother-in-arms band.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that \"קח אותי\" appears on Hayehudim's 1995 debut Metziut Nifredet. Confirmed by two retailer/press sources: the debut album מציאות נפרדת came out in 1995 and included \"קח אותי\". (The 'Aviv Geffen's brother-in-arms' phrasing is figurative scene-context, not a factual credit; no Geffen involvement is claimed as a credit.)",
+        "evidence": [
+          {
+            "url": "https://third-ear.com/product/ha-yehudim-metziut-nifredet/",
+            "snippet": "אלבום הבכורה המופתי של היהודים, \"מציאות נפרדת\" יצא בשנת 1995 וכלל את השירים ... \"מחפש תשובה\", \"קח אותי\""
+          },
+          {
+            "url": "https://www.israelhayom.co.il/culture/music/article/19351374",
+            "snippet": "עם השקת אלבום הבכורה שלה \"מציאות נפרדת\" ... להקה צעירה ומרדנית בשם \"היהודים\""
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Knesiyat Hasechel",
+        "title": "Lemaya Yesh Ekdach (Maya Has A Gun)",
+        "note": "1999 grunge-soaked peak — Aviv Geffen's other project, all distortion and teenage nihilism.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The note credits \"למיה יש אקדח\" to 'Aviv Geffen's other project'. The song is by Knesiyat Hasechel, written by Ran Almaliach and composed by Yoram Hazan, arranged by Kobi Oz and the band members — Aviv Geffen has no role, and Knesiyat Hasechel is not his project. The core credit claim is therefore false.",
+        "evidence": [
+          {
+            "url": "https://pizmonet.co.il/wiki/%D7%9C%D7%9E%D7%99%D7%94_%D7%99%D7%A9_%D7%90%D7%A7%D7%93%D7%97",
+            "snippet": "לְמָיָה יֵשׁ אֶקְדָּח הוא שיר מאת כנסיית השכל. את השיר כתב רן אלמליח, הלחין יורם חזן ועיבדו קובי אוז וכל חברי הלהקה"
+          },
+          {
+            "url": "https://www.ynet.co.il/articles/0,7340,L-3377025,00.html",
+            "snippet": "השיר, שנכתב על ידי רן אלמליח והולחן על ידי יורם חזן"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Berry Sakharof",
+        "title": "חלליות",
+        "note": "1991's Hakol O Klum turned Israeli rock industrial and cold — this track still hits like a siren.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that \"חלליות\" is on Berry Sakharof's 1991 album הכל או כלום. Hebrew Wikipedia confirms his 1991 solo debut הכל או כלום included the hit \"חלליות\"; a sheet-music source repeats the 1991 album placement. ('industrial and cold' is subjective.)",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%91%D7%A8%D7%99_%D7%A1%D7%97%D7%A8%D7%95%D7%A3",
+            "snippet": "בשנת 1991 הוציא סחרוף את אלבום הבכורה שלו, \"הכל או כלום\" ... האלבום כלל להיטים רבים, ובהם \"אמונה עיוורת\", \"לחץ\", \"חלליות\""
+          },
+          {
+            "url": "https://tavisraeli.co.il/song/%D7%97%D7%9C%D7%9C%D7%99%D7%95%D7%AA-%D7%91%D7%A8%D7%99-%D7%A1%D7%97%D7%A8%D7%95%D7%A3-%D7%AA%D7%95%D7%95%D7%99%D7%9D-%D7%95%D7%90%D7%A7%D7%95%D7%A8%D7%93%D7%99%D7%9D-%D7%9E%D7%99%D7%9C%D7%99%D7%9D/",
+            "snippet": "הוא נכלל באלבום \"הכל או כלום\" (1991), אלבום הסולו הראשון של ברי סחרוף"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Aviv Geffen",
+        "title": "אור הירח",
+        "note": "The 1992 single that made a teenage Geffen the voice of a whole disillusioned generation.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the 1992 dating and Geffen attribution of \"אור הירח\". The National Library of Israel states the song was first recorded for Geffen's 1992 debut זה רק אור הירח, and Apple Music dates the track to 1992. Its precise standalone-'single' status is not documented, but the year/artist/track facts hold, and the generational framing is supported by Geffen's own 'moonlight children' coinage.",
+        "evidence": [
+          {
+            "url": "https://www.nli.org.il/en/items/NNL_MUSIC_AL997008754500105171/NLI",
+            "snippet": "\"אור הירח\" הוא פזמון שהוקלט לראשונה עבור אלבום הבכורה של המוזיקאי והיוצר אביב גפן שיצא לאור בשנת 1992"
+          },
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%96%D7%94_%D7%A8%D7%A7_%D7%90%D7%95%D7%A8_%D7%94%D7%99%D7%A8%D7%97",
+            "snippet": "בחלוף השנים, גפן טבע את הכינוי \"ילדי אור הירח\" לתיאור הנוער שהתבגר לשיריו בשנות ה-90"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Shalom Hanoch",
+        "title": "לילה",
+        "note": "The godfather of Israeli rock, still weary and electric on this 1992 late-night ballad.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The note dates Shalom Hanoch's \"לילה\" to 1992. Evidence contradicts this: the song was written by Hanoch around 1962 about his kibbutz childhood, first recorded by Arik Einstein (album מזל גדי) and later by Hanoch himself, with a Hanoch version already on his 1978 live album. No 1992 release of \"לילה\" is documented, and it is not a 1990s track.",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%9C%D7%99%D7%9C%D7%94_(%D7%A9%D7%99%D7%A8)",
+            "snippet": "\"לילה\" הוא שיר שנכתב על ידי שלום חנוך בסביבות שנת 1962"
+          },
+          {
+            "url": "https://www.linktone.co.il/artist/2112",
+            "snippet": "בתחילת 1978 יצא התקליט שלום חנוך – הופעה חיה ... נכללו בו, בין השאר, \"פנס הרחוב\" ... \"לילה\""
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Ehud Banai",
+        "title": "דוד ושאול",
+        "note": "Closing with Banai's 1992 biblical-desert acoustic tale, the comedown after the noise.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the 1992 date and biblical subject of Ehud Banai's \"דוד ושאול\". Hebrew Wikipedia confirms it is from Banai's third album השלישי, released 1992, and describes the biblical David/Saul narrative drawn from 1 Samuel 18. ('acoustic comedown' is subjective.)",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%93%D7%95%D7%93_%D7%95%D7%A9%D7%90%D7%95%D7%9C_(%D7%A9%D7%99%D7%A8)",
+            "snippet": "\"דוד ושאול\" הוא שיר מאלבומו השלישי של אהוד בנאי \"השלישי\", אשר יצא בשנת 1992 ... מתאר את מערכת היחסים של הדמויות המקראיות דוד ושאול"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 650,
+      "output_tokens": 9205,
+      "cache_creation_input_tokens": 33160,
+      "cache_read_input_tokens": 135907,
+      "web_search_requests": 13
+    }
+  },
+  {
+    "id": "nonenglish-french-chanson",
+    "category": "non-english",
+    "prompt": "french chanson for a rainy sunday morning",
+    "cardTitle": "Pluie et Café au Lit",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Françoise Hardy",
+        "title": "Tous les garçons et les filles - Stereo Mix",
+        "note": "Her 1962 breakout, the sound of pulling back curtains to grey Paris light.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: Hardy's \"Tous les garçons et les filles\" was her 1962 breakout. Sources confirm the song was originally released in 1962 and was the title/most popular song of her debut album (Nov 1962, Disques Vogue).",
+        "evidence": [
+          {
+            "url": "https://www.amazon.com/Tous-Garcons-Filles-Francoise-Hardy/dp/B07XW6SHDC",
+            "snippet": "\"Tous les garçons et les filles\" ... is a song by French popular singer Françoise Hardy, originally released in 1962"
+          },
+          {
+            "url": "https://www.amazon.com/Tous-Garcons-Filles-Francoise-Hardy/dp/B07XW6SHDC",
+            "snippet": "debut studio album by French singer-songwriter Françoise Hardy, released in November 1962 on Disques Vogue"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Yves Montand",
+        "title": "Sous le ciel de Paris",
+        "note": "A 1955 postcard of the Seine under clouds, unhurried and warm as first coffee.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: a 1955 date for Montand's \"Sous le ciel de Paris\". The song dates from 1951 (written for Duvivier's film, first sung by Jean Bretonnière), and Montand's cover is dated 1964 (also on the 1968/1964 'Le Paris de Montand'/'Yves Montand's Paris' releases). No 1955 Montand recording; the year is contradicted.",
+        "evidence": [
+          {
+            "url": "https://fr.wikipedia.org/wiki/Sous_le_ciel_de_Paris_(chanson)",
+            "snippet": "composée par Hubert Giraud, écrite par Jean Dréjac et originellement interprétée ... pour ... film ... de 1951. Sa reprise en particulier par Juliette Gréco (1951), Édith Piaf (1954) et Yves Montand (1964)"
+          },
+          {
+            "url": "https://www.discogs.com/release/5075711-Yves-Montand-Yves-Montands-Paris",
+            "snippet": "1964 Vinyl release of \"Yves Montand's Paris\" ... Sous le ciel de Paris - Le Paris de...2:55"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Françoise Hardy",
+        "title": "Le temps de l'amour - Stereo Mix",
+        "note": "That yé-yé shuffle keeps the momentum going without ever raising its voice.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Stylistic characterization of the track's rhythm and energy ('yé-yé shuffle', 'never raising its voice'); no discrete verifiable fact asserted.",
+        "evidence": []
+      },
+      {
+        "index": 3,
+        "artist": "Serge Gainsbourg",
+        "title": "La chanson de Prévert",
+        "note": "1961 Gainsbourg mourning a song the way you mourn a summer, dead leaves and all.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 1961 date, and that the song mourns another song ('dead leaves'). Confirmed: it is from the 1961 album L'Étonnant Serge Gainsbourg and is inspired by/an homage to \"Les Feuilles mortes\".",
+        "evidence": [
+          {
+            "url": "https://fr.wikipedia.org/wiki/La_Chanson_de_Pr%C3%A9vert",
+            "snippet": "extraite de son troisième album L'Étonnant Serge Gainsbourg de 1961 ... inspirée de la célèbre chanson Les Feuilles mortes"
+          },
+          {
+            "url": "https://www.nostalgie.fr/actus/histoire-du-sublime-titre-de-serge-gainsbourg-la-chanson-de-prevert-70238797",
+            "snippet": "Sorti en 1961, ce titre est un hommage à la chanson \"Les Feuilles mortes\""
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Jacques Brel",
+        "title": "Quand on n'a que l'amour",
+        "note": "Brel's original 1957 recording, the emotional high point where the strings finally swell.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: 'Brel's original 1957 recording'. Evidence shows the song was written, composed and recorded by Brel in 1956 and issued on a super 45 in November 1956; it only became the lead track of his second album the following year (1957). The original recording date claim is contradicted.",
+        "evidence": [
+          {
+            "url": "https://fr.wikipedia.org/wiki/Quand_on_n'a_que_l'amour",
+            "snippet": "chanson écrite, composée et interprétée par Jacques Brel en 1956 ... diffusée en super 45 tours en novembre 1956 et l'année suivante, est le titre phare de son deuxième album"
+          },
+          {
+            "url": "https://www.uepal.fr/quand-on-a-que-lamour-de-jacques-brel/",
+            "snippet": "Datée de 1956, la chanson « Quand on n'a que l'amour » devient le premier grand succès du chanteur Jacques Brel"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Yves Montand",
+        "title": "Les feuilles mortes",
+        "note": "Autumn Leaves in its native tongue, Montand letting each syllable fall slow as rain.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: \"Les feuilles mortes\" is 'Autumn Leaves' in French (i.e., the original). Confirmed: 'Autumn Leaves' is the English adaptation of the French song, and Montand is associated with it via the 1946 film and his recordings.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Autumn_Leaves_(1945_song)",
+            "snippet": "\"Autumn Leaves\" is the English-language lyrical adaptation of the French song \"Les Feuilles mortes\" composed by Joseph Kosma in 1945"
+          },
+          {
+            "url": "https://frenchmoments.eu/autumn-leaves-the-story-of-the-song/",
+            "snippet": "featured for the first time in the movie \"Les Portes de la Nuit\" (1946) starring Yves Montand"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Barbara",
+        "title": "Nantes",
+        "note": "A father's deathbed telegram turned into six aching minutes, the quiet centerpiece of her catalog.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: the song runs 'six aching minutes'. Listed durations for Barbara's \"Nantes\" are roughly 4:05–4:20, and the 1964 album containing it holds 12 tracks in 31 minutes total, so a six-minute length is impossible. Duration claim contradicted (the father's-death backstory is real, but the stated length is not).",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/tm/song/nantes/1444011108",
+            "snippet": "Song · 1964 · Duration 4:08"
+          },
+          {
+            "url": "https://music.apple.com/fr/album/barbara-chante-barbara/1443771430",
+            "snippet": "1 octobre 1964 12 morceaux, 31 minutes"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Françoise Hardy",
+        "title": "Il n'y a pas d'amour heureux - Remasterisé en 2016",
+        "note": "Aragon's poem set to a hush, the last light before you finally get out of bed.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: the song sets a poem by Aragon, performed by Hardy. Confirmed: text is Louis Aragon's 1942 poem set to music by Brassens, recorded by Françoise Hardy.",
+        "evidence": [
+          {
+            "url": "http://blog.ac-versailles.fr/yourcenarchimbaud/index.php/post/06/05/2017/Il-n-y-a-pas-d-amour-heureux-,-Louis-Aragon-(1897-1982)-/-Georges-Brassens-(1921-1981)",
+            "snippet": "Chanson tirée d'un poème de Louis Aragon écrit en 1942, mis en musique par Georges Brassens ici interprétée en 1967 par Françoise Hardy"
+          },
+          {
+            "url": "https://fr.wikipedia.org/wiki/Il_n%27y_a_pas_d%27amour_heureux",
+            "snippet": "La chanson a été reprise par de nombreux artistes ... Françoise Hardy, sur l'album Ma jeunesse fout le camp…"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 640,
+      "output_tokens": 6732,
+      "cache_creation_input_tokens": 18869,
+      "cache_read_input_tokens": 123053,
+      "web_search_requests": 12
+    }
+  },
+  {
+    "id": "decade-80s-onehit",
+    "category": "decade-specific",
+    "prompt": "one-hit wonders of the 1980s",
+    "cardTitle": "One and Done: 1980s",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Men Without Hats",
+        "title": "The Safety Dance",
+        "note": "1982 synth stomp born from an argument over pogo dancing at a club — opens the set with a dare.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked year (1982) and the origin story that the song came from Ivan Doroschuk being thrown out of a club for pogo dancing. Sources confirm both: written after he was kicked out of an Ottawa bar for pogoing, and the single dates from 1982. Artist–title attribution (Men Without Hats — 'The Safety Dance') is correct.",
+        "evidence": [
+          {
+            "url": "https://www.imdb.com/title/tt4662180/trivia/",
+            "snippet": "\"The Safety Dance\" is a protest against bouncers prohibiting dancers from pogoing... written by lead singer Ivan Doroschuk after he had been kicked out of a club for pogo dancing."
+          },
+          {
+            "url": "https://americansongwriter.com/the-1982-one-hit-wonder-you-probably-missed-was-a-protest-song/",
+            "snippet": "Considering 'The Safety Dance' would make its way into most nightclubs around the world after its 1982 release... Doroschuk wrote the song after a bouncer kicked him out of one."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Tommy Tutone",
+        "title": "867-5309 / Jenny",
+        "note": "That phone number got so famous real people had it disconnected for years.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim that real holders of 867-5309 gave up the number due to the song's fame. Sources confirm the number was real and that many holders abandoned it because of unwanted calls, with named examples (the Shambargers in Akron) and no help from the phone company. Attribution to Tommy Tutone's 1981/82 hit is correct.",
+        "evidence": [
+          {
+            "url": "https://www.imdb.com/title/tt8013514/trivia/",
+            "snippet": "many who had the number soon abandoned it because of unwanted calls. Asking telephone companies to trace the calls was of no use"
+          },
+          {
+            "url": "https://parade.com/entertainment/1982-one-hit-wonder-became-a-phenomenon-but-the-story-behind-it-is-all-over-the-place",
+            "snippet": "The song sparked nationwide prank calls to the phone number mentioned in its chorus."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Toni Basil",
+        "title": "Mickey",
+        "note": "A former cheerleader-choreographer turns a chant into a No. 1 hit and pure sugar rush.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked three facts: Basil was a real cheerleader, was a choreographer, and 'Mickey' reached No. 1. All confirmed — she wore her own Las Vegas High School cheer sweater, worked as dancer/choreographer, and the song hit No. 1 on the Hot 100 in late 1982.",
+        "evidence": [
+          {
+            "url": "https://stereogum.com/2088588/the-number-ones-toni-basils-mickey/columns/the-number-ones",
+            "snippet": "Basil really was a cheerleader, though she graduated her Las Vegas high school more than 20 years before 'Mickey' hit #1... she served as a dancer and assistant choreographer"
+          },
+          {
+            "url": "https://media.fandom.com/wiki/Mickey_(song)",
+            "snippet": "Finally issued in North America in August 1982, 'Mickey' became a number 1 hit in the US and Canada in late 1982"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "a-ha",
+        "title": "Take on Me",
+        "note": "The synth riff took three tries and a rotoscoped video to finally hit No. 1 in '85.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: three attempts, rotoscoped video, No. 1 in 1985. Sources confirm the song went through three releases (two recordings) before success, the rotoscope/pencil-sketch video by Steve Barron, and No. 1 on the Billboard Hot 100 in October 1985. 'Three tries' loosely paraphrases three releases rather than three recordings of the riff, but the substance holds.",
+        "evidence": [
+          {
+            "url": "https://classicrock.fandom.com/wiki/Take_On_Me",
+            "snippet": "took three releases to chart... In the United States in October 1985, the song became the only A-ha song to reach the top position of the Billboard Hot 100... a pencil-sketch animation method called rotoscoping"
+          },
+          {
+            "url": "https://www.mentalfloss.com/article/641682/a-ha-take-on-me-music-video",
+            "snippet": "When the rotoscoped version of 'Take on Me' debuted on MTV in 1985... helping the single hit the top spot on the Billboard Hot 100 chart."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Falco",
+        "title": "Rock Me Amadeus",
+        "note": "An Austrian rapping about Mozart topped the Billboard Hot 100 — still the only German-language No. 1 there.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: Austrian artist, subject is Mozart, No. 1 on Hot 100, and uniquely the only German-language No. 1 there. Wikipedia and press coverage confirm it topped the Hot 100 in late March/April 1986, is about Mozart, and remains the only German-language song to reach No. 1.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Rock_Me_Amadeus",
+            "snippet": "the single is the only German language song to peak at number one on the Billboard Hot 100, which it did on 29 March 1986... Originally recorded in German, the song is about Wolfgang Amadeus Mozart"
+          },
+          {
+            "url": "https://www.mensjournal.com/news/40-years-ago-this-weird-genre-bending-song-hit-no-1",
+            "snippet": "'Rock Me Amadeus' by Falco topped the U.S. chart for three weeks in April 1986, the first and only German-language song to do so."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Nena",
+        "title": "99 Luftballons",
+        "note": "Cold War paranoia disguised as a bubblegum single, sung entirely in German and still a smash.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: Cold War/nuclear-anxiety subject matter, sung in German, and a big hit. Confirmed: it is a Cold War protest song about balloons triggering military alarm, the original German version was the version that reached No. 2 on the Billboard Hot 100 and No. 1 in West Germany.",
+        "evidence": [
+          {
+            "url": "https://www.last.fm/music/Nena/_/99+Luftballons/+wiki",
+            "snippet": "'99 Luftballons' is a Cold War-era protest song by the German band Nena. Originally sung in German... the original German version also peaked at #2 on the American Billboard Hot 100"
+          },
+          {
+            "url": "https://alphahistory.com/coldwar/nena-99-luftballoons-1983/",
+            "snippet": "both warned of the dangers of Cold War paranoia and military preparedness... balloons released into the air trigger military warning systems"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Dexys Midnight Runners",
+        "title": "Come On Eileen",
+        "note": "Dungarees, fiddles, and a key change so joyous it buried the rest of their catalog.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable elements: the denim dungaree look, fiddles in the arrangement, and a key change. All confirmed — the 'Come On Eileen' video established the band's rough denim look, Too-Rye-Ay added fiddles/Celtic violin, and the song contains multiple key (and tempo) changes. The 'buried the rest of their catalog' clause is opinion, not checked.",
+        "evidence": [
+          {
+            "url": "https://producelikeapro.com/blog/come-on-eileen-dexys-midnight-runners/",
+            "snippet": "'Come on Eileen' challenged every expectation for a number one hit, containing three key changes, hidden meters and dra..."
+          },
+          {
+            "url": "https://www.songfacts.com/facts/dexys-midnight-runners/come-on-eileen",
+            "snippet": "For their second album Too-Rye-Ay, the group added fiddles and switched to more of an Irish folk sound."
+          },
+          {
+            "url": "https://www.grunge.com/781824/the-untold-truth-of-dexys-midnight-runners/",
+            "snippet": "Their most iconic look, however, was the one worn for the 'Come on Eileen' video... people associate the band with the rough denim look"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Timbuk 3",
+        "title": "The Future's So Bright, I Gotta Wear Shades",
+        "note": "A closing line that's secretly sarcastic about nuclear anxiety, wrapped in the sunniest hook of '86.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: the sunny hook is actually satirical about nuclear anxiety, and dates from 1986. Confirmed: the 1986 song is satire about looming nuclear holocaust told from the viewpoint of a future nuclear scientist, widely misread as an upbeat graduation anthem. Artist–title attribution (Timbuk 3, 1986, Greetings from Timbuk3) is correct.",
+        "evidence": [
+          {
+            "url": "https://www.imdb.com/title/tt6891542/",
+            "snippet": "The song itself is satirical and takes a look at the looming threat of nuclear holocaust in President Reagan's materialistic late Cold War era"
+          },
+          {
+            "url": "https://foreveryoung80s.wordpress.com/2016/10/06/real-one-hit-wonder-of-the-week-the-futures-so-bright-i-gotta-wear-shades-timbuk-3-1986/",
+            "snippet": "it's oft-misinterpreted and is actually a song about a short future, albeit bright, courtesy of nuclear war."
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 614,
+      "output_tokens": 7006,
+      "cache_creation_input_tokens": 16523,
+      "cache_read_input_tokens": 110157,
+      "web_search_requests": 10
+    }
+  },
+  {
+    "id": "mood-train-window",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Output blocked by content filtering policy\"},\"request_id\":\"req_011Ce9sSx6rKj97sD5pVToMw\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mood-first-warm-day",
+    "category": "mood-only",
+    "prompt": "music that feels like the first warm day of spring",
+    "cardTitle": "First Warm Day",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Vampire Weekend",
+        "title": "Campus",
+        "note": "That 'in the afternoon, you're my Northern Star' line is basically spring quad energy in one lyric.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The note quotes a lyric from Vampire Weekend's \"Campus\". The actual line is \"In the afternoon, you're out on the stone and grass / And I'm sleeping on the balcony after class\" — no \"you're my Northern Star\" appears anywhere in the song's lyrics.",
+        "evidence": [
+          {
+            "url": "https://readdork.com/lyrics/vampire-weekend-campus",
+            "snippet": "In the afternoon, you're out on the stone and grass And I'm sleeping on the balcony after class"
+          },
+          {
+            "url": "https://www.streetdirectory.com/lyricadvisor/song/uplaac/campus/",
+            "snippet": "In the afternoon, you're out on the stone and grass And I'm sleeping on the balcony after class"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Fleet Foxes",
+        "title": "Mykonos",
+        "note": "Those horns kick in around 1:50 like the sun finally breaking through clouds.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Asserts a specific instrumentation event at a timestamp (horns entering around 1:50) in Fleet Foxes' \"Mykonos\". The song is documented as folk rock/baroque folk built on acoustic guitar, mandolin, organ, percussion and vocal harmonies, and the Sun Giant EP performer credits list no brass players; horns (the Westerlies) only entered Fleet Foxes arrangements much later, on Shore. No source supports a horn entry at 1:50.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Mykonos_(song)",
+            "snippet": "Genre: Folk rock; baroque folk; - Length: 4:35 ... Songwriter: Robin Pecknold - Producer: Phil Ek"
+          },
+          {
+            "url": "https://rateyourmusic.com/release/ep/fleet-foxes/sun-giant/",
+            "snippet": "Featured peformers: Fleet Foxes (arranger), Robin Pecknold (writer, performer), Casey Wescott (performer), Christian Wargo (performer), Nicholas Peterson (performer), Skyler Skjelset (performer)"
+          },
+          {
+            "url": "https://thefirenote.com/2020/09/28/fleet-foxes-shore-album-review",
+            "snippet": "All four feature those Westerlies' horns – Riley Mulherker and Chloe Rowlands on trumpets, Andy Clausen and Willem de Koch on trombones"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Vampire Weekend",
+        "title": "A-Punk",
+        "note": "Under two minutes of pure sprint-outside-without-a-coat energy, marimba and all.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claims \"A-Punk\" runs under two minutes. Wikipedia and Apple Music both list the track at 2:17, contradicting the stated duration.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/A-Punk",
+            "snippet": "Released: February 28, 2008 ... Length: 2:17 - Label: XL"
+          },
+          {
+            "url": "https://music.apple.com/us/song/a-punk/270425151",
+            "snippet": "Listen to A-Punk by Vampire Weekend on Apple Music. 2008. Duration: 2:17"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "The Beatles",
+        "title": "Here Comes The Sun - Remastered 2009",
+        "note": "Written in Clapton's garden after a long English winter — the literal blueprint for this playlist.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Historical claim: written in Eric Clapton's garden, inspired by a long English winter. Multiple sources confirm Harrison wrote it in Clapton's garden with one of Clapton's acoustic guitars, inspired by England's seemingly endless winters.",
+        "evidence": [
+          {
+            "url": "https://www.songfacts.com/facts/the-beatles/here-comes-the-sun",
+            "snippet": "George Harrison wrote this in Eric Clapton's garden using one of Clapton's acoustic guitars ... inspired by the long winters in England which Harrison thought went on forever."
+          },
+          {
+            "url": "https://faroutmagazine.co.uk/eric-clapton-remembers-george-harrison-here-comes-the-sun/",
+            "snippet": "it seems as if winter in England goes on forever... I walked around the garden with one of Eric's acoustic guitars and wrote 'Here Comes The Sun.'"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Van Morrison",
+        "title": "Brown Eyed Girl",
+        "note": "'Standing in the sunlight laughing' — 1967's most bottled-sunshine chorus, still undefeated.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Lyric quote and year both check out: \"Standing in the sunlight laughing\" appears in the lyrics of \"Brown Eyed Girl\", which Van Morrison recorded in March 1967 and released in June 1967. (Calling the line part of the 'chorus' is loose framing — it is in a verse — but the quoted words and the year are accurate.)",
+        "evidence": [
+          {
+            "url": "https://www.songfacts.com/lyrics/van-morrison/brown-eyed-girl",
+            "snippet": "Standing in the sunlight laughing Hiding behind a rainbow's wall"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Brown_Eyed_Girl",
+            "snippet": "Written by Morrison and recorded in March 1967, it was released as a single in June of the same year on the Bang label"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Vampire Weekend",
+        "title": "Harmony Hall",
+        "note": "That looping piano riff feels like walking somewhere with no real destination, just enjoying the air.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Describes the looping piano figure as feeling like aimless walking — an impressionistic reading of the track with no verifiable factual assertion (no stat, credit, lyric or date).",
+        "evidence": []
+      },
+      {
+        "index": 6,
+        "artist": "Nina Simone",
+        "title": "Here Comes the Sun",
+        "note": "Her 1971 read slows the Beatles tune into something warmer, like late-afternoon light.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: it is a Beatles cover, and it dates from 1971. Nina Simone's \"Here Comes the Sun\" is the title track of her 1971 RCA Victor covers album, composed by George Harrison. The 'slower/warmer' characterization is subjective but the factual core is confirmed.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Here_Comes_the_Sun_(Nina_Simone_album)",
+            "snippet": "Released: April 1971 - Recorded: February 1971 ... consisting of cover versions of songs by pop and rock musicians"
+          },
+          {
+            "url": "https://www.whosampled.com/Nina-Simone/Here-Comes-the-Sun/",
+            "snippet": "\"Here Comes the Sun\" is a cover of \"Here Comes the Sun\" by The Beatles ... Composer: George Harrison"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Fleet Foxes",
+        "title": "Blue Ridge Mountains",
+        "note": "Six minutes of acoustic wind-down, perfect for the walk home as the light finally lingers longer.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claims \"Blue Ridge Mountains\" is six minutes long. Apple Music, Deezer and other sources list it at 4:25–4:26, contradicting the stated runtime.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/us/song/blue-ridge-mountains/281086446",
+            "snippet": "Listen to Blue Ridge Mountains by Fleet Foxes on Apple Music. 2008. Duration: 4:25"
+          },
+          {
+            "url": "https://www.deezer.com/en/track/143462346",
+            "snippet": "Fleet Foxes | Length : 04:25 · Writer: Robin Pecknold"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 606,
+      "output_tokens": 6018,
+      "cache_creation_input_tokens": 16024,
+      "cache_read_input_tokens": 81953,
+      "web_search_requests": 10
+    }
+  },
+  {
+    "id": "statbait-highest-bpm",
+    "category": "stat-claim-bait",
+    "prompt": "songs with the highest BPM",
+    "cardTitle": "Redline: Highest BPM",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "DragonForce",
+        "title": "Through The Fire And Flames",
+        "note": "The Guitar Hero boss track — twin solos ripping at roughly 200 BPM nonstop.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked three claims: (a) the track is the Guitar Hero III boss/final song, (b) it has twin guitar solos, (c) tempo ~200 BPM. All confirmed: it is the unlockable final encore in Guitar Hero III with two very rapid solos by Herman Li and Sam Totman, and BPM databases list the Inhuman Rampage version at 200 BPM. Artist-title attribution correct.",
+        "evidence": [
+          {
+            "url": "https://guitar.fandom.com/wiki/Through_the_Fire_and_Flames",
+            "snippet": "The song is also used as the unlockable final encore song in Guitar Hero III: Legends of Rock... features two very rapid guitar solos by Herman Li and Sam Totman."
+          },
+          {
+            "url": "https://getsongbpm.com/song/through-the-fire-and-flames/9rrom3",
+            "snippet": "The song 'Through The Fire And Flames' by DragonForce has a tempo of 200 beats per minute (BPM) on 'Inhuman Rampage'."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Venetian Snares",
+        "title": "Ultraviolent Junglist",
+        "note": "Amen breaks chopped so fast the jungle skeleton barely survives the edit.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "The note is an impressionistic description of the editing style ('jungle skeleton barely survives the edit'); no stat, credit, lyric or release detail is asserted. Incidental note: the track does exist as attributed (Venetian Snares, 'Ultraviolent Junglist', My So-Called Life, 2010), so there is no attribution problem, but nothing here is fact-checkable.",
+        "evidence": []
+      },
+      {
+        "index": 2,
+        "artist": "Igorrr",
+        "title": "Camel Dancefloor",
+        "note": "Middle Eastern strings slammed into blast-beat breakcore at a dizzying clip.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Genre/instrumentation impression ('Middle Eastern strings... blast-beat breakcore at a dizzying clip') with no verifiable number, credit or release fact. The track exists as attributed (Igorrr, 'Camel Dancefloor', Spirituality and Distortion, 2020), so no attribution error to flag.",
+        "evidence": []
+      },
+      {
+        "index": 3,
+        "artist": "Angerfist",
+        "title": "Yes",
+        "note": "Rotterdam gabber staple, kicks hammering around 180 BPM, mask-and-all intensity.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two checkable assertions fail. (1) Tempo: BPM databases list Angerfist's 'Yes' at 200 BPM (or 100 half-time), not 'around 180'. (2) Origin: Angerfist (Danny Masseling) is a Dutch hardcore producer born in Almere, not a Rotterdam artist. The track and the hockey-mask persona are real, but the specific facts asserted are contradicted by the evidence.",
+        "evidence": [
+          {
+            "url": "https://getsongbpm.com/song/yes/gJyO83",
+            "snippet": "The song 'Yes' by Angerfist has a tempo of 200 beats per minute (BPM)"
+          },
+          {
+            "url": "https://songbpm.com/@angerfist/yes",
+            "snippet": "Yes is a somber song by Angerfist with a tempo of 100 BPM. It can also be used double-time at 200 BPM."
+          },
+          {
+            "url": "https://www.last.fm/music/Angerfist/+wiki",
+            "snippet": "Danny Masseling, (born June 20, 1981 in Almere, Netherlands), best known as Angerfist, is a hardcore techno / gabber musician and DJ."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Napalm Death",
+        "title": "Scum",
+        "note": "The record that made blast beats a genre — some songs clock under 2 seconds.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the historical claim (Scum as the record that established blast beats/grindcore) and the duration stat ('some songs clock under 2 seconds'). Sources confirm Scum (1987) is cited as the first grindcore album and that its track 'You Suffer' is 1.316 seconds, a Guinness record. Attribution to Napalm Death correct; 'Scum' is both the album and its title track.",
+        "evidence": [
+          {
+            "url": "https://www.metal-archives.com/albums/Napalm_Death/Scum/961",
+            "snippet": "\"You Suffer\" is listed in the Guinness Book of Records as the shortest song ever recorded, at 1.316 seconds."
+          },
+          {
+            "url": "https://1001albumsgenerator.com/albums/51wqCUWehVrNj2Ltc83zJu/scum",
+            "snippet": "This is the first band's album and the first grindcore album at all. It was released in 1987 by Earache Records."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Terrorizer",
+        "title": "Fear Of Napalm",
+        "note": "Pete Sandoval's drumming here is still cited as some of the fastest ever tracked.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the drumming credit and attribution: 'Fear of Napalm' is track 3 of Terrorizer's World Downfall (1989), on which Pete Sandoval played drums; reviews consistently single out the speed of his playing. The 'fastest ever tracked' framing is opinion, but the verifiable core (Sandoval drumming on this track/album, reputation for extreme speed) is confirmed.",
+        "evidence": [
+          {
+            "url": "https://www.allmusic.com/album/world-downfall-mw0000311215",
+            "snippet": "3. Fear of Napalm ... Terrorizer are a band founded by Oscar Garcia (vocals), Alfred Estrada (bass), Jesse Pintado (guitar) and Pete Sandoval (drums)."
+          },
+          {
+            "url": "https://terrorizer-band.bandcamp.com/album/world-downfall-full-dynamic-range-edition",
+            "snippet": "Featuring Jesse Pintado on guitar (Napalm Death), Pete Sandoval on drums (Morbid Angel)... a non-stop lesson in whirlwind grind."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Igorrr",
+        "title": "Cheval",
+        "note": "Baroque harpsichord vs. breakcore blast — tempo lurches like it's fighting itself.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Describes instrumentation contrast and 'tempo lurches like it's fighting itself' — imagery/opinion with no measurable stat, credit or release fact. The track exists as attributed (Igorrr, 'Cheval', from Savage Sinusoid), so no attribution error.",
+        "evidence": []
+      },
+      {
+        "index": 7,
+        "artist": "Venetian Snares",
+        "title": "This Bitter Earth",
+        "note": "Same manic chopping, but the strings turn it into a gorgeous crash landing.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Purely evaluative ('gorgeous crash landing') plus a vague instrumentation impression; nothing quantified or creditable. Incidentally the track is real as attributed (Venetian Snares, 'This Bitter Earth', Moonglow / This Bitter Earth 7\", 2004) and does draw on string-quartet material, so no attribution problem.",
+        "evidence": []
+      }
+    ],
+    "usage": {
+      "input_tokens": 586,
+      "output_tokens": 8924,
+      "cache_creation_input_tokens": 21197,
+      "cache_read_input_tokens": 203363,
+      "web_search_requests": 12
+    }
+  },
+  {
+    "id": "statbait-longest-solos",
+    "category": "stat-claim-bait",
+    "prompt": "the longest guitar solos in rock history",
+    "cardTitle": "Marathon Solos",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Led Zeppelin",
+        "title": "Stairway to Heaven - Remaster",
+        "note": "Page waits eight minutes before he even plugs into the solo, then never lets go.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Note claims Page's solo doesn't begin until eight minutes in. The album track is only 8:02 total and the solo enters at ~5:55–5:56, running to about 6:44, so the eight-minute claim is contradicted.",
+        "evidence": [
+          {
+            "url": "https://medium.com/@francesco-saviano/analysis-and-listening-guide-to-stairway-to-heaven-by-led-zeppelin-7f3ddb494d17",
+            "snippet": "Guitar Solo (5:56–6:44) ... Jimmy Page's guitar solo, takes center stage."
+          },
+          {
+            "url": "https://sixstringfingerpicking.com/songs/stairwaytoheaven/",
+            "snippet": "At 8.02 minutes in length it is packed full of twists and turns"
+          },
+          {
+            "url": "https://www.jonmaclennan.com/blog/stairway-to-heaven-chords",
+            "snippet": "Performed by Jimmy Page, it comes in around the song's 5:55 mark and leads into the climactic final section."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Eagles",
+        "title": "Hotel California - 2013 Remaster",
+        "note": "Felder and Walsh trade sixteen bars apiece in a twin-guitar coda that still ends every classic rock night.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "The Felder/Walsh twin-guitar coda is well documented (Felder on double-neck, Walsh on Telecaster, trading lines then harmonizing, roughly a two-minute outro), but the specific stat 'sixteen bars apiece' is not supported by any source found; sources describe trading shorter lines without bar counts. No confirmation or clear contradiction found.",
+        "evidence": [
+          {
+            "url": "https://acousticguitar.com/learn-to-play-hotel-california-ag-patreon-song-of-the-month/",
+            "snippet": "the memorable outro solo, which Felder recorded on his Gibson EDS-1275 double neck and Walsh on his Fender Telecaster, trading blazing lines before harmonizing together"
+          },
+          {
+            "url": "https://www.musicradar.com/news/eagles-hotel-california-don-felder-guitar-interview",
+            "snippet": "the two-minute guitar solo, performed by Felder and Joe Walsh, has become a must-learn"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Derek & The Dominos",
+        "title": "Layla",
+        "note": "Duane Allman's slide answers Clapton for two full minutes before the piano coda even starts.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The slide/lead duet between Allman and Clapton is real, but the piano coda begins at about 3:11, and the entire first movement (intro riff plus three verse/chorus vocal cycles) fits inside those ~3 minutes, so there is no two-minute stretch of Allman's slide answering Clapton before the coda. The stated duration is contradicted.",
+        "evidence": [
+          {
+            "url": "https://12bar.de/cms/albums/layla/",
+            "snippet": "The coda starts at 3:11 in C major"
+          },
+          {
+            "url": "https://www.last.fm/music/Derek+and+the+Dominos/_/Layla/+wiki",
+            "snippet": "The first section also contains the overdub-heavy guitar solo, a duet of sorts between Allman's slide guitar and Clapton's bent notes."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Pink Floyd",
+        "title": "Comfortably Numb",
+        "note": "Gilmour cut this solo in four takes and it's been voted the greatest ever more than once.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The poll claim checks out (Comfortably Numb won Planet Rock's greatest-solo poll in 2006 and again in a later Planet Rock poll, plus Guitar Player's 2024 readers' poll), but the take count is wrong: Gilmour repeatedly says he banged out five or six solos and comped the best bits, not four takes.",
+        "evidence": [
+          {
+            "url": "https://www.guitarworld.com/news/pink-floyds-david-gilmour-talks-comfortably-numb-solo-covers-tina-s-richie-faulkner-and-thomas-leeb",
+            "snippet": "\"I banged out five or six solos,\" Gilmour says."
+          },
+          {
+            "url": "https://www.davidgilmour.com/2022/08/comfortably-numb-voted-greatest-guitar-solo-of-all-time/",
+            "snippet": "Comfortably Numb has been voted the Greatest Guitar Solo of All Time by listeners to Planet Rock radio in a new poll."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Lynyrd Skynyrd",
+        "title": "Free Bird",
+        "note": "The studio cut runs over nine minutes and the last four are just Allen Collins refusing to stop.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Album version length is 9:08 (over nine minutes), the outro solo spans over four minutes, and on the studio recording Collins played the entire solo himself with Rossington on rhythm/slide.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Free_Bird",
+            "snippet": "Length: 9:08 (album version); 4:41 (single version)"
+          },
+          {
+            "url": "https://www.licklibrary.com/learn/lessons/lynyrd-skynyrd/free-bird",
+            "snippet": "The legendary outro solo—spanning over four minutes—is a tour de force of rock guitar"
+          },
+          {
+            "url": "https://www.guitarworld.com/artists/hear-allen-collins-isolated-guitar-solo-lynyrd-skynyrds-free-bird",
+            "snippet": "On the studio version of \"Free Bird\" ... Collins played the entire solo himself on his Gibson Explorer, with Rossington playing rhythm ... and adding the slide fills"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Guns N' Roses",
+        "title": "November Rain",
+        "note": "Slash climbs onto a piano-shaped rooftop for a solo that outlasts most entire pop songs.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "'Climbs onto a piano-shaped rooftop' is metaphorical video imagery (the clip has Slash climbing onto Axl's piano and soloing outside a desert chapel) and 'outlasts most entire pop songs' is hyperbole; no crisp falsifiable stat is asserted, so no verification applies.",
+        "evidence": []
+      },
+      {
+        "index": 6,
+        "artist": "Jimi Hendrix",
+        "title": "Machine Gun - Live At Fillmore East, 1970 / 50th Anniversary",
+        "note": "Recorded New Year's Day 1970, Hendrix turns twelve-plus minutes of feedback into a war report.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "The Band of Gypsys 'Machine Gun' was recorded at the Fillmore East on January 1, 1970 (New Year's Day) and runs 12:38, matching 'twelve-plus minutes'.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Machine_Gun_(Jimi_Hendrix_song)",
+            "snippet": "Recorded: January 1, 1970 (second show) - Venue: Fillmore East, New York City ... Length: 12:38"
+          },
+          {
+            "url": "https://www.rollingstone.com/music/music-news/jimi-hendrix-and-the-band-of-gypsies-at-the-fillmore-east-a-concert-that-changed-rock-173263/",
+            "snippet": "In the twelve-minute \"Machine Gun,\" Hendrix packed all of his guitar prowess and emotional force into a lengthy battle with Miles's rat-a-tat drumming."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Cream",
+        "title": "Crossroads - Live",
+        "note": "Clapton's whole solo clocks barely a minute here, proof the shortest one can still close the set hardest.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "The track (Cream's live Winterland 10 March 1968 'Crossroads') exists and is a lean ~4:13–4:18, but no source found states the total duration of Clapton's soloing; the track contains two solos and 'barely a minute' could not be confirmed or clearly refuted.",
+        "evidence": [
+          {
+            "url": "https://www.guitarplayer.com/music/the-cream-song-eric-clapton-doesnt-like-though-some-call-it-the-greatest-of-all",
+            "snippet": "Recorded at Winterland on March 10, 1968, \"Crossroads\" comes in at a tidy 4 minutes and 18 seconds"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 637,
+      "output_tokens": 8570,
+      "cache_creation_input_tokens": 23267,
+      "cache_read_input_tokens": 72166,
+      "web_search_requests": 15
+    }
+  },
+  {
+    "id": "recent-2025-best",
+    "category": "recent-music",
+    "prompt": "the best songs released in 2025",
+    "cardTitle": "2025: The Loudest Year",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Sabrina Carpenter",
+        "title": "Manchild",
+        "note": "Title track off Man's Best Friend, the smirking one-liner that opens her boldest era yet.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Note calls \"Manchild\" the \"title track\" of Man's Best Friend. Sources confirm it is the lead single and the album's opening track, but the album has no title track named \"Man's Best Friend\" — so the title-track claim is false. Artist/title/2025 attribution is otherwise correct.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Manchild_(Sabrina_Carpenter_song)",
+            "snippet": "\"Manchild\" ... released on June 5, 2025, through Island Records as the lead single from her seventh studio album, Man's Best Friend"
+          },
+          {
+            "url": "https://variety.com/2025/music/news/sabrina-carpenter-reveals-mans-best-friend-tracklist-1236476901/",
+            "snippet": "The 11-track offering is set to include the lead single \"Manchild,\" which is the first track on the album."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Charli xcx",
+        "title": "party 4 u",
+        "note": "Brat-era Charli refusing to slow down, a sugar rush built for a room that's already dancing.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Note frames \"party 4 u\" as \"Brat-era Charli\" (i.e., from the Brat album era). Evidence shows the song is from her 2020 album How I'm Feeling Now, written/recorded 2017–2020 with A. G. Cook, only receiving a single/video push in 2025 — not a Brat-era track.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Party_4_U",
+            "snippet": "\"Party 4 U\" ... is a song by ... Charli XCX from her fourth studio album, How I'm Feeling Now (2020)"
+          },
+          {
+            "url": "https://www.rollingstone.com/music/music-news/charli-xcx-party-4-u-video-how-im-feeling-now-1235339467/",
+            "snippet": "release a video for her 2020 single \"Party 4 U\" to coincide with the five-year anniversary of How I'm Feeling Now"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Doechii",
+        "title": "Anxiety",
+        "note": "The Alligator Bites Never Heal standout that turned a Doja Cat sample into a Grammy-season anthem.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two checkable claims both fail: \"Anxiety\" is a standalone 2025 single (an archival Coven-session track), not a cut from Alligator Bites Never Heal, and it samples Gotye's \"Somebody That I Used to Know,\" not Doja Cat.",
+        "evidence": [
+          {
+            "url": "https://www.upi.com/Entertainment_News/Music/2025/03/05/doechii-releases-anxiety-tiktok-trend/7241741185514/",
+            "snippet": "Doechii released the song \"Anxiety\" on Tuesday ... samples the Gotye hit \"Somebody That I Used to Know\""
+          },
+          {
+            "url": "https://diymag.com/news/doechii-gotye-somebody-that-i-used-to-know-anxiety",
+            "snippet": "dropping new(ish) single 'Anxiety' - a re-imagined version of a track she first laid down back in 2020"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Playboi Carti",
+        "title": "EVIL J0RDAN",
+        "note": "MUSIC's bass-cracked centerpiece, the track that made the whole album feel like a system failure.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim is that \"EVIL J0RDAN\" appears on Playboi Carti's album MUSIC; confirmed as track 4 of MUSIC (2025). \"Bass-cracked centerpiece\" is subjective coloring.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Evil_J0rdan",
+            "snippet": "Promotional single by Playboi Carti from the album Music ... March 14, 2025 (streaming)"
+          },
+          {
+            "url": "https://www.albumoftheyear.org/song/493199-evil-j0rdan/",
+            "snippet": "Track #4 on MUSIC · 2025 / Year · 3:03 / duration · Playboi Carti"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Clipse, Kendrick Lamar, Pharrell Williams, Pusha T, Malice",
+        "title": "Chains & Whips",
+        "note": "Clipse's reunion album stacked with Kendrick and Pharrell, a coke-rap peak a decade in the making.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims checked: Clipse reunion album with Kendrick Lamar feature and Pharrell involvement. Confirmed: \"Chains & Whips\" is a Clipse/Kendrick Lamar track from Let God Sort Em Out (July 11, 2025), produced by Pharrell Williams (who produced the entire album). \"A decade in the making\" is loose figurative framing of the long-awaited reunion.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Chains_%26_Whips",
+            "snippet": "\"Chains & Whips\" is a song by American hip-hop duo Clipse and American rapper Kendrick Lamar from Clipse's fourth stud[io album] ... Producer: Pharrell Williams"
+          },
+          {
+            "url": "https://www.vibe.com/music/videos/clipse-chains-whips-music-video-kendrick-lamar-1235086356/",
+            "snippet": "Let God Sort Em Out was officially released last week (July 11) ... With all production handled by Pharrell Williams"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "The Weeknd, Playboi Carti",
+        "title": "Timeless (feat Playboi Carti)",
+        "note": "Hurry Up Tomorrow's widescreen highlight, two eras of Toronto-and-Atlanta menace colliding.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: \"Timeless\" (feat. Playboi Carti) is a track on The Weeknd's Hurry Up Tomorrow — confirmed. (The single first dropped Sept 2024; the album placement asserted in the note is correct.) Toronto/Atlanta framing matches the artists' well-known origins; the rest is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Timeless_(The_Weeknd_and_Playboi_Carti_song)",
+            "snippet": "Single by the Weeknd and Playboi Carti from the album Hurry Up Tomorrow"
+          },
+          {
+            "url": "https://open.spotify.com/track/0FIDCNYYjNvPVimz5icugS",
+            "snippet": "The Weeknd, Playboi Carti · Hurry Up Tomorrow · Song · 2025"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Tyler, The Creator",
+        "title": "Sugar On My Tongue",
+        "note": "Don't Tap the Glass easing off the gas with a loose, funk-soaked groove built for dancing alone.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: \"Sugar On My Tongue\" is on Tyler, The Creator's Don't Tap the Glass (2025) — confirmed as track 2 on the official tracklist. The dance/funk characterization is subjective but consistent with the album's stated dance concept.",
+        "evidence": [
+          {
+            "url": "https://www.thelineofbestfit.com/news/tyler-the-creator-unveils-surprise-album-dont-tap-the-glass",
+            "snippet": "Tracklist: Big Poe · Sugar On My Tongue · Sucka Free ... Don't Tap The Glass is out now via Columbia Records."
+          },
+          {
+            "url": "https://www.okayplayer.com/dont-tap-the-glass-samples",
+            "snippet": "Tyler, The Creator's Coolest Samples on \"Don't Tap The Glass\" ... sugar on my tongue"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Tyler, The Creator, Yebba",
+        "title": "I'll Take Care of You (feat. Yebba)",
+        "note": "Closing note of the tape, Yebba's voice turning the whole year's noise into something tender.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable credit: Yebba is the featured vocalist on Tyler, The Creator's \"I'll Take Care of You\" (Don't Tap the Glass, 2025) — confirmed by streaming credits and press. \"Closing note of the tape\" reads as the final slot on this card (it is track 8 of 8), not an album-closer claim, and the tenderness framing is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.albumoftheyear.org/song/665901-ill-take-care-of-you/",
+            "snippet": "Track #9 on DON'T TAP THE GLASS · 2025 / Year · 3:20 / duration · Yebba / Feature"
+          },
+          {
+            "url": "https://www.thefader.com/2025/07/21/best-songs-tyler-the-creator-dont-tap-the-glass-review",
+            "snippet": "\"Don't You Worry Baby\" and \"I'll Take Care Of You\" ... star the warm vocals of singers Madison McFerrin and Yebba"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 685,
+      "output_tokens": 6121,
+      "cache_creation_input_tokens": 15025,
+      "cache_read_input_tokens": 87769,
+      "web_search_requests": 9
+    }
+  },
+  {
+    "id": "recent-2026-indie",
+    "category": "recent-music",
+    "prompt": "new indie releases from 2026 I should know about",
+    "cardTitle": "Indie Class of 2026",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "she's green",
+        "title": "locket",
+        "note": "Off the brand-new 'swallowtail' record — hazy guitar tone that eases the door open.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note asserts \"locket\" comes from a brand-new she's green record titled 'swallowtail'. Apple Music listing for the album 'swallowtail' by she's green (released July 10, 2026, Photo Finish Records) shows 'locket' in the tracklist, confirming both the album and its newness. The 'hazy guitar tone' portion is subjective color.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/us/album/swallowtail/1884058665",
+            "snippet": "swallowtail - Album by she's green ... July 10, 2026 7 songs, 27 minutes ℗ 2026 Photo Finish Records · paper thin · she's green · locket · she's green · mettle"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Jessie Mazin",
+        "title": "the precipice",
+        "note": "Live-from-a-backyard energy, the kind of raw indie folk take that never leaves you.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "Pure vibe/genre praise (\"live-from-a-backyard energy\", \"raw indie folk take that never leaves you\") with no concrete detail unique to this track — no lyric, credit, stat, or release fact to check.",
+        "evidence": []
+      },
+      {
+        "index": 2,
+        "artist": "YUMA",
+        "title": "Waiter - single edit",
+        "note": "Fresh single edit that trims the fat and keeps the momentum climbing.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "Only restates the '- single edit' suffix already in the track title and adds unfalsifiable praise (\"trims the fat\", \"momentum climbing\"). No independent verifiable assertion.",
+        "evidence": []
+      },
+      {
+        "index": 3,
+        "artist": "Death Cab for Cutie",
+        "title": "Punching the Flowers",
+        "note": "From 'I Built You A Tower' — proof the indie vets still have new tricks in 2026.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note asserts \"Punching the Flowers\" is from the Death Cab for Cutie album 'I Built You A Tower' and is a 2026 release. Wikipedia lists it as the band's eleventh studio album out June 5, 2026 on Anti- with \"Punching the Flowers\" as a single, and the tracklist (Bandcamp/Treble) has it as track 2.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/I_Built_You_a_Tower",
+            "snippet": "Studio album by Death Cab for Cutie - Released: June 5, 2026 ... Label: Anti- ... Singles from I Built You a Tower - \"Riptides\" Released: March 16, 2026; \"Punching the Flowers\" Released: April 28, 2026"
+          },
+          {
+            "url": "https://deathcabforcutie.bandcamp.com/album/i-built-you-a-tower",
+            "snippet": "I Built You A Tower by Death Cab for Cutie, released 05 June 2026 1. Full of Stars 2. Punching the Flowers 3. Pep Talk"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "beabadoobee, The Marías",
+        "title": "All I Did Was Dream of You (feat. The Marías)",
+        "note": "Two of indie's brightest names on one track — this is the peak of the ride.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "The note asserts a two-act collaboration credit (beabadoobee with The Marías) on one track. Wikipedia and Apple Music confirm \"All I Did Was Dream of You\" is a 2026 beabadoobee single featuring The Marías, so the attribution holds; the 'brightest names / peak of the ride' framing is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/All_I_Did_Was_Dream_of_You",
+            "snippet": "Single by Beabadoobee featuring The Marías - Released: 12 March 2026 ... Label: Dirty Hit; Interscope"
+          },
+          {
+            "url": "https://music.apple.com/us/album/all-i-did-was-dream-of-you-feat-the-mar%C3%ADas-single/1882245651",
+            "snippet": "All I Did Was Dream of You (feat. The Marías) - Single by beabadoobee ... March 12, 2026 1 song"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Malcolm Todd",
+        "title": "Gun To My Head",
+        "note": "Off 'Do That Again,' riding the high with a hook that snaps right back at you.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note asserts \"Gun To My Head\" is off Malcolm Todd's 'Do That Again'. Billboard Philippines lists \"Gun to My Head\" among the 13 tracks on Do That Again, and Apple Music/RYM confirm it as track 9 of the June 5, 2026 album. Hook description is subjective.",
+        "evidence": [
+          {
+            "url": "https://billboardphilippines.com/music/news/malcolm-todd-do-that-again-album-2026/",
+            "snippet": "Do That Again contains 13 tracks: \"Jean Skirt,\" \"Obsessica,\" ... \"Ain't That the Truth,\" \"Gun to My Head,\" \"X's & O's,\" ..."
+          },
+          {
+            "url": "https://music.apple.com/us/song/gun-to-my-head/6762883072",
+            "snippet": "Gun To My Head by Malcolm Todd ... Do That Again Malcolm Todd June 5, 2026"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Pil",
+        "title": "Din For Evigt",
+        "note": "A slow-burning deep cut that pulls the tempo down without losing the thread.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "\"Slow-burning deep cut that pulls the tempo down without losing the thread\" is sequencing/vibe language that would fit countless tracks; no BPM figure, credit, lyric, or release fact is asserted, so nothing is checkable.",
+        "evidence": []
+      },
+      {
+        "index": 7,
+        "artist": "Roe Kapara",
+        "title": "Crying On Vacation",
+        "note": "Ends on a bittersweet title that says everything a closer should — packing up, still glowing.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Ties imagery to the actual song title (\"Crying On Vacation\" — \"packing up, still glowing\") but only as interpretation of mood and closing-track placement; no factual assertion beyond the title given in the card itself.",
+        "evidence": []
+      }
+    ],
+    "usage": {
+      "input_tokens": 572,
+      "output_tokens": 4176,
+      "cache_creation_input_tokens": 9381,
+      "cache_read_input_tokens": 59354,
+      "web_search_requests": 5
+    }
+  },
+  {
+    "id": "artist-radiohead-bsides",
+    "category": "artist-specific",
+    "prompt": "essential Radiohead b-sides and rarities",
+    "cardTitle": "The B-Side Basement",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Radiohead",
+        "title": "Talk Show Host",
+        "note": "Buried on the Street Spirit single until Baz Luhrmann rescued it for Romeo + Juliet.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked two claims: 'Talk Show Host' was a B-side of the 1996 'Street Spirit (Fade Out)' single, and it was used (in a Nellee Hooper remix) for Baz Luhrmann's Romeo + Juliet. Both confirmed by multiple sources; artist–title attribution correct.",
+        "evidence": [
+          {
+            "url": "https://www.last.fm/music/Radiohead/2002-08-07:+Salamanca,+Spain/Talk+Show+Host",
+            "snippet": "\"Talk Show Host\" was the B-side track for the 1996 Radiohead single Street Spirit (Fade Out). A remix of this track also appeared on the soundtrack for the 1996 film Romeo + Juliet."
+          },
+          {
+            "url": "https://www.avclub.com/romeo-juliet-turned-a-radiohead-b-side-into-a-greate-1798280858",
+            "snippet": "The spare, slinky, scary \"Talk Show Host\" originally appeared as a mere B-side to Radiohead's \"Street Spirit (Fade Out)\" ... it was remixed by superstar producer Nellee Hooper for the soundtrack to Baz Luhrmann's Romeo + Juliet."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Radiohead",
+        "title": "Palo Alto",
+        "note": "A No Surprises b-side about Silicon Valley written before anyone said 'tech bro.'",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked release detail (B-side of 'No Surprises', 1998) and subject (the California city in Silicon Valley). Wikipedia lists 'Palo Alto' as a B-side of the 1998 'No Surprises' single, and AllMusic/Qobuz describe the song as named for the Silicon Valley city and dealing with modern technological life. The 'tech bro' phrasing is rhetorical colour, not a checkable claim.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/No_Surprises",
+            "snippet": "Single by Radiohead from the album OK Computer - B-side: \"Palo Alto\"; \"How I Made My Millions\"; ... Released: 12 January 1998"
+          },
+          {
+            "url": "https://www.allmusic.com/album/no-surprises-mw0000541854",
+            "snippet": "Named for the city in California that is in the heart of Silicone Valley, a technological hotbed, the themes presented in \"Palo Alto\" ... deal with the presumed idealism of modern life"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Radiohead",
+        "title": "Polyethylene (Parts 1 & 2)",
+        "note": "Two half-songs stitched into one Paranoid Android flip side, all grind and no chorus.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'Polyethylene (Parts 1 & 2)' is a B-side of the 'Paranoid Android' single (1997) — confirmed by Wikipedia and by the 7\" single listing where it is literally the flip side. The 'two half-songs' framing follows from the parenthetical title; 'all grind and no chorus' is subjective description.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Paranoid_Android",
+            "snippet": "B-side: \"Polyethylene (Parts 1 & 2)\"; \"Pearly*\"; \"A Reminder\"; \"Melatonin\"; - Released: 26 May 1997"
+          },
+          {
+            "url": "https://rateyourmusic.com/release/single/radiohead/paranoid-android-polyethylene-parts-1-and-2-1/",
+            "snippet": "A Paranoid Android · B Polyethylene (Parts 1 & 2)"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Radiohead",
+        "title": "The Amazing Sounds of Orgy",
+        "note": "Tucked on the Pyramid Song single, the closest thing they have to a stomp-and-holler.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the release claim: 'The Amazing Sounds of Orgy' is a B-side on the 2001 'Pyramid Song' single — confirmed. The 'stomp-and-holler' characterisation is subjective (and reviewers describe the track as eerie/atmospheric rather than raucous), but it is not a factual assertion.",
+        "evidence": [
+          {
+            "url": "https://radiohead.fandom.com/wiki/The_Amazing_Sounds_of_Orgy",
+            "snippet": "The Amazing Sounds of Orgy is the second B-Side from the Pyramid Song single."
+          },
+          {
+            "url": "https://www.musicianwages.com/the-meaning-behind-the-song-the-amazing-sounds-of-orgy-by-radiohead-2/",
+            "snippet": "\"The Amazing Sounds of Orgy\" was initially released as a B-side on the Pyramid Song single in May 2001."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Radiohead",
+        "title": "Meeting in the Aisle",
+        "note": "Instrumental Karma Police b-side that just keeps climbing and never resolves.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked two facts: the track is a B-side of the 1997 'Karma Police' single, and it is an instrumental. Wikipedia lists it as a Karma Police B-side; reviewers/Discogs describe it as an instrumental. 'Keeps climbing and never resolves' is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Karma_Police",
+            "snippet": "B-side: \"Meeting in the Aisle\"; \"Lull\"; - Released: 25 August 1997"
+          },
+          {
+            "url": "https://rateyourmusic.com/release/single/radiohead/karma-police.p/",
+            "snippet": "You get a defining anthem (Karma Police), a boundary-pushing instrumental (Meeting in the Aisle), and a hazy, pretty closer (Lull)."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Radiohead",
+        "title": "Fog",
+        "note": "The Knives Out single cut, all bare piano before the strings sneak in.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the release claim: 'Fog' first appeared as a B-side on the 2001 'Knives Out' single — confirmed by Discogs release notes/reviews. Caveat noted: reviewers describe the Knives Out version as guitar-led, with the piano-only reading being the later live 'Fog (Again)' on Com Lag, so the note's 'bare piano ... strings' arrangement description is impressionistic and likely conflates versions; the verifiable release fact itself holds.",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/release/329258-Radiohead-Knives-Out",
+            "snippet": "The first appearance of Fog lies here ... Many people debate whether or not this version is better than the live one present on Com Lag (I prefer this guitar lead one more)."
+          },
+          {
+            "url": "https://rateyourmusic.com/release/single/radiohead/knives-out/reviews/2/",
+            "snippet": "On the first CD you get the haunted \"Fog\" ... A live, piano version would be released as a B-side for the following album"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Radiohead",
+        "title": "Lozenge of Love",
+        "note": "1994's My Iron Lung single hid this jangly, almost sunny detour.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked date and source release: 'Lozenge of Love' appears on the My Iron Lung EP/single released October 1994, as a B-side on the first CD. Confirmed. 'Jangly, almost sunny' is subjective (sources actually call it dark), but not a factual assertion.",
+        "evidence": [
+          {
+            "url": "https://radiohead.fandom.com/wiki/My_Iron_Lung_(EP)",
+            "snippet": "My Iron Lung is Radiohead's third EP, released in October 1994 ... compiling songs that were issued as B-sides on two separate CD singles"
+          },
+          {
+            "url": "https://the-radiohead-almanac.fandom.com/wiki/Lozenge_of_Love",
+            "snippet": "Lozenge of Love is an obscure part of the My Iron Lung EP ... Featuring just Thom and Jonny, it is a ... acoustic guitar-driven workout."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Radiohead",
+        "title": "True Love Waits - Live in Oslo",
+        "note": "The version that circulated on bootlegs for 20 years before the studio take ever existed.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the historical gap claim: 'True Love Waits' was first performed in December 1995, became a heavily bootlegged live favourite, and only received a studio release in 2016 on A Moon Shaped Pool — a ~21-year gap, consistent with 'circulated for 20 years before the studio take'. The Oslo live take exists and is the version issued on I Might Be Wrong: Live Recordings (2001), so attribution is real; minor imprecision is that this particular Oslo recording was officially released in 2001 rather than only bootlegged.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/True_Love_Waits_(song)",
+            "snippet": "Radiohead first performed it in 1995, with the singer, Thom Yorke, on acoustic guitar ... released on their ninth album, A Moon Shaped Pool (2016)"
+          },
+          {
+            "url": "https://www.thefader.com/2016/05/09/radiohead-true-love-waits-a-moon-shaped-pool",
+            "snippet": "a coveted live staple and an often bootlegged favorite of diehards everywhere. In 2001, an entirely acoustic version recorded in Oslo was released on a live album. And this past weekend, 21 years"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 586,
+      "output_tokens": 7639,
+      "cache_creation_input_tokens": 17422,
+      "cache_read_input_tokens": 86214,
+      "web_search_requests": 10
+    }
+  }
+]

@@ -1,30 +1,43 @@
 {
   "$comment": [
-    "Regression gates for the eval runs. EMPTY ON PURPOSE.",
-    "Anthropic publishes no recommended numbers here — thresholds are task- and",
-    "risk-specific — so these get set from a baseline run, never from a guess.",
-    "A number invented before the first run is a build failure with no evidence",
-    "behind it. Run the harness, read summary.json, then fill these in.",
+    "Regression gates, set 2026-08-18 from a MEASURED baseline (run",
+    "2026-08-18T07-45-44-348Z: 11 cards judged, 88 notes, 75 checkable).",
     "",
-    "Rules are { min } and/or { max } on a dotted path into the run summary.",
-    "A metric with an empty denominator reports 'no data — skipped', not a breach.",
+    "These are REGRESSION guards, not quality targets. They sit deliberately",
+    "loose of the measured values so ordinary sampling noise cannot fail a",
+    "build: at 24% invented over 75 checkable notes one standard deviation is",
+    "~4.9pp, so max 0.35 is ~2.2sd out — it catches a real regression and",
+    "ignores a bad draw. Tightening them toward the measured numbers is a",
+    "PRODUCT decision about how truthful the notes must be, and that call is",
+    "Nadav's, not the harness's.",
     "",
-    "Paths available under \"aggregate\" (see evals/aggregate.ts summary.json):",
-    "  headline.inventedRate        fraction of checkable notes judged invented",
-    "  headline.verifiedTrueRate    fraction backed by cited evidence",
-    "  headline.unverifiableRate    checkable but no evidence found",
-    "  headline.genericRate         notes saying nothing specific at all",
-    "  headline.resolutionRate      tracks that resolved on Spotify",
-    "  downgrades.total             judge verdicts enforceVerdict had to correct",
+    "Measured 2026-08-18: invented 0.240, verified-true 0.733,",
+    "unverifiable 0.027, generic 0.045, resolution 1.000, downgrades 0.",
     "",
-    "Paths available under \"reliability\" (see evals/reliability.ts):",
-    "  overall.cleanFirstCommitRate  commits accepted on the first attempt",
-    "  overall.successRate           generateCard returned a card at all",
-    "  overall.passHatK              P(all k trials clean) — the hollow-commit gate",
-    "  overall.passAtK               P(any of k trials clean)",
-    "  overall.meanCommitAttempts    1.0 = never had to retry",
-    "  overall.refRate               tracks committed with a real Spotify ref"
+    "A metric with an empty denominator reports 'no data - skipped', never a",
+    "breach. A run that measured NOTHING fails separately and unconditionally",
+    "in aggregate.ts - validity is not a threshold.",
+    "",
+    "reliability paths stay unset: the only reliability run to date was voided",
+    "by connection failures, so there is no measured baseline to derive from."
   ],
-  "aggregate": {},
+  "aggregate": {
+    "headline.inventedRate": {
+      "max": 0.35,
+      "note": "measured 0.240"
+    },
+    "headline.verifiedTrueRate": {
+      "min": 0.6,
+      "note": "measured 0.733"
+    },
+    "headline.genericRate": {
+      "max": 0.15,
+      "note": "measured 0.045"
+    },
+    "headline.resolutionRate": {
+      "min": 0.9,
+      "note": "measured 1.000"
+    }
+  },
   "reliability": {}
 }

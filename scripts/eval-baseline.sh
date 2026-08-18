@@ -85,7 +85,13 @@ say "next: put the measured numbers into evals/thresholds.json so they become ga
 # exit long before this line, so they keep their retry.
 PLIST="$HOME/Library/LaunchAgents/com.nadav.mixtape-eval-baseline.plist"
 if [ -f "$PLIST" ]; then
-  launchctl bootout "gui/$(id -u)/com.nadav.mixtape-eval-baseline" 2>/dev/null
+  # Order matters, and it bit us on the first run: `launchctl bootout` of the
+  # job you are RUNNING INSIDE kills your own process group, so anything after
+  # it never happens. On 2026-08-17 that left the plist on disk with the job
+  # unloaded — invisible until the next login, when launchd would reload it and
+  # silently re-bill a 3.5h eval. So remove the file and log FIRST; bootout is
+  # last precisely because it does not return.
   rm -f "$PLIST"
   say "schedule removed — this was a one-shot. Re-run by hand: bash scripts/eval-baseline.sh"
+  launchctl bootout "gui/$(id -u)/com.nadav.mixtape-eval-baseline" 2>/dev/null
 fi

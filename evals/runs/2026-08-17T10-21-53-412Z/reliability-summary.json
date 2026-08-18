@@ -1,0 +1,41 @@
+{
+  "model": "claude-sonnet-5",
+  "trialsPerPrompt": 5,
+  "prompts": 1,
+  "overall": {
+    "trials": 5,
+    "cleanFirstCommits": 2,
+    "cleanFirstCommitRate": 0.4,
+    "successRate": 0.4,
+    "passAtK": 1,
+    "passHatK": 0,
+    "k": 5,
+    "meanCommitAttempts": 0.6,
+    "refRate": 1,
+    "meanMs": 445573
+  },
+  "firstCommitGaps": {
+    "track 1 had a missing or placeholder artist, title or note": 1
+  },
+  "perPrompt": [
+    {
+      "id": "app-fastest-rap",
+      "category": "app-example",
+      "trials": 5,
+      "clean": 2,
+      "succeeded": 2,
+      "cleanFirstCommitRate": 0.4,
+      "passAtK": 1,
+      "passHatK": 0,
+      "gaps": [
+        "track 1 had a missing or placeholder artist, title or note"
+      ],
+      "errors": [
+        "terminated",
+        "terminated",
+        "terminated"
+      ]
+    }
+  ],
+  "checks": []
+}

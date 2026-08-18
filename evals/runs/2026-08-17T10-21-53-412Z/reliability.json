@@ -1,0 +1,77 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy",
+    "trials": [
+      {
+        "ok": false,
+        "error": "terminated",
+        "commits": [],
+        "commitAttempts": 0,
+        "firstGap": null,
+        "cleanFirstCommit": false,
+        "trackCount": 0,
+        "refCount": 0,
+        "ms": 674003
+      },
+      {
+        "ok": false,
+        "error": "terminated",
+        "commits": [
+          {
+            "attempt": 1,
+            "gap": "track 1 had a missing or placeholder artist, title or note"
+          }
+        ],
+        "commitAttempts": 1,
+        "firstGap": "track 1 had a missing or placeholder artist, title or note",
+        "cleanFirstCommit": false,
+        "trackCount": 0,
+        "refCount": 0,
+        "ms": 618454
+      },
+      {
+        "ok": false,
+        "error": "terminated",
+        "commits": [],
+        "commitAttempts": 0,
+        "firstGap": null,
+        "cleanFirstCommit": false,
+        "trackCount": 0,
+        "refCount": 0,
+        "ms": 498679
+      },
+      {
+        "ok": true,
+        "commits": [
+          {
+            "attempt": 1,
+            "gap": null
+          }
+        ],
+        "commitAttempts": 1,
+        "firstGap": null,
+        "cleanFirstCommit": true,
+        "trackCount": 8,
+        "refCount": 8,
+        "ms": 352883
+      },
+      {
+        "ok": true,
+        "commits": [
+          {
+            "attempt": 1,
+            "gap": null
+          }
+        ],
+        "commitAttempts": 1,
+        "firstGap": null,
+        "cleanFirstCommit": true,
+        "trackCount": 8,
+        "refCount": 8,
+        "ms": 83846
+      }
+    ]
+  }
+]

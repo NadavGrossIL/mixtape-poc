@@ -1,0 +1,320 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy",
+    "error": "terminated"
+  },
+  {
+    "id": "app-2am-drive",
+    "category": "app-example",
+    "prompt": "songs that sound like driving home at 2am",
+    "card": {
+      "title": "2AM Empty Highway",
+      "vibe": "For the drive when the radio's low and the city's asleep but you're not.",
+      "accent": "cobalt",
+      "tracks": [
+        {
+          "ref": "02gySWUFk5JT4gMguGAhdO",
+          "artist": "Miami Nights 1984",
+          "title": "Ocean Drive",
+          "note": "Analog synth wash that feels like streetlights blurring past the windshield.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/02gySWUFk5JT4gMguGAhdO",
+          "spotifyUri": "spotify:track:02gySWUFk5JT4gMguGAhdO",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851674dce9398ee42d991cdf0cd",
+          "matchedName": "Miami Nights 1984 — Ocean Drive"
+        },
+        {
+          "ref": "6mB9A9YLbY4jxpKX5EYAnT",
+          "artist": "The Midnight",
+          "title": "Sunset",
+          "note": "Sax solo hits right when the highway opens up and empties out.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6mB9A9YLbY4jxpKX5EYAnT",
+          "spotifyUri": "spotify:track:6mB9A9YLbY4jxpKX5EYAnT",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485166f27b0ef0b92099a1927721",
+          "matchedName": "The Midnight — Sunset"
+        },
+        {
+          "ref": "75IQVo8hqI1iwVZyvkN2VT",
+          "artist": "Men I Trust",
+          "title": "Show Me How",
+          "note": "That woozy bassline is basically cruise control for your heartbeat.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/75IQVo8hqI1iwVZyvkN2VT",
+          "spotifyUri": "spotify:track:75IQVo8hqI1iwVZyvkN2VT",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851deeb617204bc14f4ee87b057",
+          "matchedName": "Men I Trust — Show Me How"
+        },
+        {
+          "ref": "0LtOwyZoSNZKJWHqjzADpW",
+          "artist": "Tame Impala",
+          "title": "Feels Like We Only Go Backwards",
+          "note": "The one where you accidentally speed up without noticing the odometer.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0LtOwyZoSNZKJWHqjzADpW",
+          "spotifyUri": "spotify:track:0LtOwyZoSNZKJWHqjzADpW",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851370c12f82872c9cfaee80193",
+          "matchedName": "Tame Impala — Feels Like We Only Go Backwards"
+        },
+        {
+          "ref": "0VjIjW4GlUZAMYd2vXMi3b",
+          "artist": "The Weeknd",
+          "title": "Blinding Lights",
+          "note": "171 BPM peak — the moment you floor it past the last exit.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0VjIjW4GlUZAMYd2vXMi3b",
+          "spotifyUri": "spotify:track:0VjIjW4GlUZAMYd2vXMi3b",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518863bc11d2aa12b54f5aeb36",
+          "matchedName": "The Weeknd — Blinding Lights"
+        },
+        {
+          "ref": "6COsFwxCkIpXBYw4iiVWH4",
+          "artist": "Timecop1983",
+          "title": "On the Run",
+          "note": "Named exactly for this feeling, arpeggios ticking like passed mile markers.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6COsFwxCkIpXBYw4iiVWH4",
+          "spotifyUri": "spotify:track:6COsFwxCkIpXBYw4iiVWH4",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a116c0fd702730e643795964",
+          "matchedName": "Timecop1983 — On the Run"
+        },
+        {
+          "ref": "7eqoqGkKwgOaWNNHx90uEZ",
+          "artist": "Frank Ocean",
+          "title": "Nights",
+          "note": "The beat switch at 3:11 hits like crossing into your own zip code.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7eqoqGkKwgOaWNNHx90uEZ",
+          "spotifyUri": "spotify:track:7eqoqGkKwgOaWNNHx90uEZ",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c5649add07ed3720be9d5526",
+          "matchedName": "Frank Ocean — Nights"
+        },
+        {
+          "ref": "3BXHtKq2kcl2ogcw4oKJjO",
+          "artist": "Beach House",
+          "title": "Myth",
+          "note": "Reverb-soaked closer for the driveway, engine ticking as it cools.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3BXHtKq2kcl2ogcw4oKJjO",
+          "spotifyUri": "spotify:track:3BXHtKq2kcl2ogcw4oKJjO",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517f43535a05f9e667ad586011",
+          "matchedName": "Beach House — Myth"
+        }
+      ]
+    }
+  },
+  {
+    "id": "app-hebrew-indie",
+    "category": "app-example",
+    "prompt": "hebrew indie that deserves a bigger audience",
+    "error": "terminated"
+  },
+  {
+    "id": "app-90s-roadtrip",
+    "category": "app-example",
+    "prompt": "90s hip-hop for a newborn's first road trip",
+    "card": {
+      "title": "Lullaby Lowrider",
+      "vibe": "For the tiny co-pilot on their first ride, from a crate of golden-era gold.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "26q6YTrXt9l8qshIveiTX9",
+          "artist": "Digable Planets",
+          "title": "Rebirth Of Slick (Cool Like Dat)",
+          "note": "That upright-bass loop is basically a car-seat rock built into a beat, from '93.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/26q6YTrXt9l8qshIveiTX9",
+          "spotifyUri": "spotify:track:26q6YTrXt9l8qshIveiTX9",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c9f6a742f2337f938e89f599",
+          "matchedName": "Digable Planets — Rebirth Of Slick (Cool Like Dat)"
+        },
+        {
+          "ref": "7kpeL1x9j7uKgPx6rVz7D7",
+          "artist": "A Tribe Called Quest",
+          "title": "Can I Kick It?",
+          "note": "Lou Reed sample rolling under Tip's voice, easiest bounce on the highway.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7kpeL1x9j7uKgPx6rVz7D7",
+          "spotifyUri": "spotify:track:7kpeL1x9j7uKgPx6rVz7D7",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b1ddb9f5f519e0d37bc94a53",
+          "matchedName": "A Tribe Called Quest — Can I Kick It?"
+        },
+        {
+          "ref": "792UwI6utk5DMQUT1KXa5E",
+          "artist": "De La Soul",
+          "title": "Me Myself and I",
+          "note": "Funkadelic bassline from '89 that still makes a stroller feel like a Cadillac.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/792UwI6utk5DMQUT1KXa5E",
+          "spotifyUri": "spotify:track:792UwI6utk5DMQUT1KXa5E",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485143693c2f01ae89613c880ed5",
+          "matchedName": "De La Soul — Me Myself and I"
+        },
+        {
+          "ref": "2pMAmZdHfQHyqJCXJbfhK3",
+          "artist": "Outkast",
+          "title": "Southernplayalisticadillacmuzik",
+          "note": "Literally a car song, Big Boi and Dre idling in a candy-painted Caddy.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2pMAmZdHfQHyqJCXJbfhK3",
+          "spotifyUri": "spotify:track:2pMAmZdHfQHyqJCXJbfhK3",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851aa769e35e297a20f214d0c64",
+          "matchedName": "Outkast — Southernplayalisticadillacmuzik"
+        },
+        {
+          "ref": "7nYvUtkQMx1v80S2FH2s9J",
+          "artist": "Warren G, Nate Dogg",
+          "title": "Regulate",
+          "note": "The G-funk cruising anthem, Nate Dogg's hook was made for a windows-down peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7nYvUtkQMx1v80S2FH2s9J",
+          "spotifyUri": "spotify:track:7nYvUtkQMx1v80S2FH2s9J",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f6b9b62ea130943d371b69ef",
+          "matchedName": "Warren G, Nate Dogg — Regulate"
+        },
+        {
+          "ref": "4GdB5M7GbwLZLouktYocFC",
+          "artist": "Outkast",
+          "title": "SpottieOttieDopaliscious",
+          "note": "Six minutes of horns and molasses tempo, the exhale right after the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4GdB5M7GbwLZLouktYocFC",
+          "spotifyUri": "spotify:track:4GdB5M7GbwLZLouktYocFC",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e2352cc20602d45e9a0e7617",
+          "matchedName": "Outkast — SpottieOttieDopaliscious"
+        },
+        {
+          "ref": "0eEXcw3JLVXcRxYrVYMy68",
+          "artist": "A Tribe Called Quest",
+          "title": "Electric Relaxation",
+          "note": "Ronnie Foster keys so soft they could double as a white-noise machine.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0eEXcw3JLVXcRxYrVYMy68",
+          "spotifyUri": "spotify:track:0eEXcw3JLVXcRxYrVYMy68",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b1ddb9f5f519e0d37bc94a53",
+          "matchedName": "A Tribe Called Quest — Electric Relaxation"
+        },
+        {
+          "ref": "0Q0IVlqMV64kNLlwjPj0Hl",
+          "artist": "Fugees, Ms. Lauryn Hill",
+          "title": "Killing Me Softly With His Song",
+          "note": "Lauryn's voice as the last lullaby before everyone in the backseat drifts off.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0Q0IVlqMV64kNLlwjPj0Hl",
+          "spotifyUri": "spotify:track:0Q0IVlqMV64kNLlwjPj0Hl",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048515b7865be7f7fcc05faec6137",
+          "matchedName": "Fugees, Ms. Lauryn Hill — Killing Me Softly With His Song"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mainstream-pop-anthems",
+    "category": "mainstream-safe",
+    "prompt": "the biggest pop anthems of the 2010s",
+    "error": "terminated"
+  },
+  {
+    "id": "mainstream-classic-rock",
+    "category": "mainstream-safe",
+    "prompt": "classic rock everyone knows the words to",
+    "card": {
+      "title": "Every Word, Every Time",
+      "vibe": "For every backseat, bonfire, and bar singalong that never needed the lyrics sheet.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "4bEb3KE4mSKlTFjtWJQBqO",
+          "artist": "Fleetwood Mac",
+          "title": "Don't Stop - 2004 Remaster",
+          "note": "Piano intro that gets every hand clapping before the first verse even lands.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4bEb3KE4mSKlTFjtWJQBqO",
+          "spotifyUri": "spotify:track:4bEb3KE4mSKlTFjtWJQBqO",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485157df7ce0eac715cf70e519a7",
+          "matchedName": "Fleetwood Mac — Don't Stop - 2004 Remaster"
+        },
+        {
+          "ref": "77NNZQSqzLNqh2A9JhLRkg",
+          "artist": "Journey",
+          "title": "Don't Stop Believin'",
+          "note": "Streetlight people, small town girl — the most-downloaded catalog song of the digital era.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/77NNZQSqzLNqh2A9JhLRkg",
+          "spotifyUri": "spotify:track:77NNZQSqzLNqh2A9JhLRkg",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048510f6ce5c138493ac768d9afc8",
+          "matchedName": "Journey — Don't Stop Believin'"
+        },
+        {
+          "ref": "37ZJ0p5Jm13JPevGcx4SkF",
+          "artist": "Bon Jovi",
+          "title": "Livin' On A Prayer",
+          "note": "That key change into 'ohhh we're halfway there' turns any room into a choir.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/37ZJ0p5Jm13JPevGcx4SkF",
+          "spotifyUri": "spotify:track:37ZJ0p5Jm13JPevGcx4SkF",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511336b31b6a1799f0de5807ac",
+          "matchedName": "Bon Jovi — Livin' On A Prayer"
+        },
+        {
+          "ref": "7snQQk1zcKl8gZ92AnueZW",
+          "artist": "Guns N' Roses",
+          "title": "Sweet Child O' Mine",
+          "note": "Slash's opening riff is basically a national anthem for anyone who's picked up a guitar.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7snQQk1zcKl8gZ92AnueZW",
+          "spotifyUri": "spotify:track:7snQQk1zcKl8gZ92AnueZW",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485121ebf49b3292c3f0f575f0f5",
+          "matchedName": "Guns N' Roses — Sweet Child O' Mine"
+        },
+        {
+          "ref": "5CQ30WqJwcep0pYcV4AMNc",
+          "artist": "Led Zeppelin",
+          "title": "Stairway to Heaven - Remaster",
+          "note": "Eight minutes long and somehow the whole bar still knows when the solo hits.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5CQ30WqJwcep0pYcV4AMNc",
+          "spotifyUri": "spotify:track:5CQ30WqJwcep0pYcV4AMNc",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c8a11e48c91a982d086afc69",
+          "matchedName": "Led Zeppelin — Stairway to Heaven - Remaster"
+        },
+        {
+          "ref": "08mG3Y1vljYA6bvDt4Wqkj",
+          "artist": "AC/DC",
+          "title": "Back In Black",
+          "note": "That opening riff has closed out more karaoke nights than any song in history.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/08mG3Y1vljYA6bvDt4Wqkj",
+          "spotifyUri": "spotify:track:08mG3Y1vljYA6bvDt4Wqkj",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ff191d7fbdb5a13eaf84132b",
+          "matchedName": "AC/DC — Back In Black"
+        },
+        {
+          "ref": "40riOy7x9W7GXjyGp4pjAv",
+          "artist": "Eagles",
+          "title": "Hotel California - 2013 Remaster",
+          "note": "You can checkout any time you like — but you're humming it for the rest of the week.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/40riOy7x9W7GXjyGp4pjAv",
+          "spotifyUri": "spotify:track:40riOy7x9W7GXjyGp4pjAv",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514637341b9f507521afa9a778",
+          "matchedName": "Eagles — Hotel California - 2013 Remaster"
+        },
+        {
+          "ref": "2JiDi0qAXsPwhPqA2qaKGt",
+          "artist": "Queen",
+          "title": "Bohemian Rhapsody",
+          "note": "The Wayne's World headbang scene proved this closer works in literally any car, any decade.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2JiDi0qAXsPwhPqA2qaKGt",
+          "spotifyUri": "spotify:track:2JiDi0qAXsPwhPqA2qaKGt",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851fdab4a163ab9f6db72c952ee",
+          "matchedName": "Queen — Bohemian Rhapsody"
+        }
+      ]
+    }
+  }
+]

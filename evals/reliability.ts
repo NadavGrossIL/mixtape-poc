@@ -84,6 +84,11 @@ async function runTrial(prompt: string): Promise<any> {
     return {
       ok: false,
       error: err?.message || String(err),
+      // The message alone was not enough to diagnose the 2026-08-17 baseline:
+      // "terminated" is undici's opaque stream-abort and says nothing about
+      // which layer gave up. The class name distinguishes an SDK timeout from
+      // a connection drop from an API error without another paid run.
+      errorClass: err?.constructor?.name || err?.name || "unknown",
       commits,
       commitAttempts: commits.length,
       firstGap: commits[0]?.gap ?? null,
@@ -97,37 +102,64 @@ async function runTrial(prompt: string): Promise<any> {
 }
 
 // Pure over recorded trials — no I/O, so selftest.ts can pin the numbers.
+//
+// The denominator is the load-bearing decision here, and the first baseline
+// got it wrong. A trial whose connection died before the model ever called
+// create_mixtape has NOT produced a dirty commit — it has produced no commit,
+// and folding it in as "unclean" blames the model for a dropped socket. On
+// 2026-08-17 that read as 2/5 clean and pass^k = 0, which says "the schema
+// regressed"; of the trials that actually reached a commit it was 2/3, which
+// says "the network is flaky". Opposite conclusions, same data.
+//
+// So: cleanliness is measured over COMMITTED trials, and trials that never
+// committed are reported separately as an infrastructure signal.
 function summarizeTrials(entries: any[], trials: number) {
+  const stats = (list: any[]) => {
+    const n = list.length;
+    const committed = list.filter((t: any) => t.commitAttempts > 0);
+    const c = committed.length;
+    const clean = list.filter((t: any) => t.cleanFirstCommit).length;
+    const k = Math.min(trials, c || 1);
+    return { n, c, clean, k, ok: list.filter((t: any) => t.ok).length };
+  };
+  const rate = (num: number, den: number) =>
+    den ? Number((num / den).toFixed(4)) : null;
+
   const perPrompt = entries.map((e: any) => {
-    const n = e.trials.length;
-    const clean = e.trials.filter((t: any) => t.cleanFirstCommit).length;
-    const ok = e.trials.filter((t: any) => t.ok).length;
+    const { n, c, clean, k, ok } = stats(e.trials);
     return {
       id: e.id,
       category: e.category,
       trials: n,
+      committed: c,
+      neverCommitted: n - c,
       clean,
       succeeded: ok,
-      cleanFirstCommitRate: n ? Number((clean / n).toFixed(4)) : null,
-      passAtK: passAtK(n, clean, Math.min(trials, n)),
-      passHatK: passHatK(n, clean, Math.min(trials, n)),
+      cleanFirstCommitRate: rate(clean, c),
+      passAtK: c ? passAtK(c, clean, k) : null,
+      passHatK: c ? passHatK(c, clean, k) : null,
       gaps: e.trials.filter((t: any) => t.firstGap).map((t: any) => t.firstGap),
       errors: e.trials.filter((t: any) => !t.ok).map((t: any) => t.error),
     };
   });
 
   const all = entries.flatMap((e: any) => e.trials);
-  const n = all.length;
-  const clean = all.filter((t: any) => t.cleanFirstCommit).length;
-  const ok = all.filter((t: any) => t.ok).length;
-  const k = Math.min(trials, n || 1);
+  const { n, c, clean, k, ok } = stats(all);
   const totalTracks = all.reduce((s: number, t: any) => s + t.trackCount, 0);
   const totalRefs = all.reduce((s: number, t: any) => s + t.refCount, 0);
-  const attempts = all.reduce((s: number, t: any) => s + t.commitAttempts, 0);
+  const attempts = all
+    .filter((t: any) => t.commitAttempts > 0)
+    .reduce((s: number, t: any) => s + t.commitAttempts, 0);
 
   // Every distinct rejection reason, with counts — the "why" behind a breach.
   const gapCounts: Record<string, number> = {};
   for (const t of all) if (t.firstGap) gapCounts[t.firstGap] = (gapCounts[t.firstGap] || 0) + 1;
+  // And every distinct failure class — the "why" behind missing data.
+  const errCounts: Record<string, number> = {};
+  for (const t of all) if (!t.ok) {
+    const key = `${t.errorClass || "unknown"}: ${t.error}`;
+    errCounts[key] = (errCounts[key] || 0) + 1;
+  }
 
   return {
     model: curator.MODEL,
@@ -135,17 +167,23 @@ function summarizeTrials(entries: any[], trials: number) {
     prompts: entries.length,
     overall: {
       trials: n,
+      committed: c,
+      neverCommitted: n - c,
       cleanFirstCommits: clean,
-      cleanFirstCommitRate: n ? Number((clean / n).toFixed(4)) : null,
-      successRate: n ? Number((ok / n).toFixed(4)) : null,
-      passAtK: n ? passAtK(n, clean, k) : null,
-      passHatK: n ? passHatK(n, clean, k) : null,
+      // Over COMMITTED trials — see the note above.
+      cleanFirstCommitRate: rate(clean, c),
+      successRate: rate(ok, n),
+      passAtK: c ? passAtK(c, clean, k) : null,
+      passHatK: c ? passHatK(c, clean, k) : null,
       k,
-      meanCommitAttempts: n ? Number((attempts / n).toFixed(4)) : null,
-      refRate: totalTracks ? Number((totalRefs / totalTracks).toFixed(4)) : null,
+      // Over committed trials too: a trial with 0 attempts would drag the mean
+      // below 1.0, which is meaningless (you cannot commit less than once).
+      meanCommitAttempts: rate(attempts, c),
+      refRate: rate(totalRefs, totalTracks),
       meanMs: n ? Math.round(all.reduce((s: number, t: any) => s + t.ms, 0) / n) : null,
     },
     firstCommitGaps: gapCounts,
+    failures: errCounts,
     perPrompt,
   };
 }
@@ -161,7 +199,11 @@ function renderReliability(s: any): string {
     `Trials     : ${s.prompts} prompts x ${s.trialsPerPrompt} = ${o.trials} live runs ` +
       `(mean ${o.meanMs}ms)`,
     "",
-    `First-commit clean : ${o.cleanFirstCommits}/${o.trials}  (${pct(o.cleanFirstCommitRate)})`,
+    `Reached a commit   : ${o.committed}/${o.trials}` +
+      (o.neverCommitted
+        ? `   (${o.neverCommitted} never did — infrastructure, not the model)`
+        : ""),
+    `First-commit clean : ${o.cleanFirstCommits}/${o.committed}  (${pct(o.cleanFirstCommitRate)} of COMMITTED trials)`,
     `  pass@${o.k}  (ever clean)   : ${pct(o.passAtK)}`,
     `  pass^${o.k}  (always clean) : ${pct(o.passHatK)}   <- the hollow-commit gate`,
     `Card returned      : ${pct(o.successRate)}`,
@@ -169,6 +211,15 @@ function renderReliability(s: any): string {
     `Tracks with a ref  : ${pct(o.refRate)}`,
     "",
   ];
+
+  const fails = Object.entries(s.failures || {});
+  if (fails.length) {
+    lines.push("Failures (these cost data, not quality):");
+    for (const [reason, count] of fails.sort((a, b) => (b[1] as number) - (a[1] as number))) {
+      lines.push(`  ${String(count).padStart(3)}x  ${reason}`);
+    }
+    lines.push("");
+  }
 
   const gaps = Object.entries(s.firstCommitGaps);
   if (gaps.length) {
@@ -187,7 +238,7 @@ function renderReliability(s: any): string {
   for (const p of s.perPrompt) {
     lines.push(
       p.id.slice(0, W - 1).padEnd(W) +
-        `${p.clean}/${p.trials}`.padStart(10) +
+        `${p.clean}/${p.committed}`.padStart(10) +
         pct(p.passHatK).padStart(10) +
         (p.gaps.length ? `  ${p.gaps.length}` : "")
     );
@@ -254,6 +305,19 @@ async function main() {
   writeJson(summaryPath, { ...summary, checks });
   console.log(`\n[reliability] wrote ${path.relative(REPO_ROOT, summaryPath)}`);
 
+  // Validity comes before quality. If no trial ever reached a commit there is
+  // nothing to be clean or dirty ABOUT, and every rate above is null — which
+  // the threshold layer correctly reports as "skipped" rather than a breach.
+  // Correct per metric, disastrous per run: the 2026-08-17 baseline exited 0
+  // having measured nothing at all. A run that produced no data is a failed
+  // run regardless of configuration, so it fails here and not by opinion.
+  if (summary.overall.committed === 0) {
+    console.error(
+      `\n[reliability] NO DATA: ${summary.overall.trials} trials, none reached a commit. ` +
+        `Nothing was measured — see the failures above.`
+    );
+    process.exit(1);
+  }
   if (checks.some((c) => !c.ok)) process.exit(1);
 }
 

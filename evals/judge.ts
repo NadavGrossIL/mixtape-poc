@@ -265,7 +265,16 @@ async function main() {
     `[judge] ${cards.length} cards, model ${JUDGE_MODEL} (${done.size} already judged${retriable ? `, ${retriable} failed — retrying` : ""})`
   );
 
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    // The judge batches all 8 notes into ONE call with up to 15 web searches
+    // and 16k output tokens, which does not fit in the SDK's 10-minute
+    // default: on 2026-08-17 every card died with "Request timed out." after
+    // ~28 minutes, i.e. 10 minutes x three attempts. Retries are cut to 1 so
+    // the worst case stays bounded (60 min/card) instead of 90.
+    timeout: 30 * 60 * 1000,
+    maxRetries: 1,
+  });
   const results = existing;
 
   for (const [i, entry] of cards.entries()) {

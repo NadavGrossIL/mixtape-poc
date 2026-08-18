@@ -11,7 +11,7 @@
 import assert from "node:assert";
 import path from "node:path";
 import { enforceVerdict, doneIds, upsert } from "./judge.ts";
-import { aggregateRun, renderSummary } from "./aggregate.ts";
+import { aggregateRun, renderSummary, noDataReason } from "./aggregate.ts";
 import { passAtK, passHatK, checkThresholds, renderChecks } from "./metrics.ts";
 import { summarizeTrials, renderReliability } from "./reliability.ts";
 
@@ -226,23 +226,66 @@ const trialEntries = [
 
 const rel = summarizeTrials(trialEntries, 3);
 assert.strictEqual(rel.overall.trials, 6);
+
+// The denominator fix. One trial died before committing anything, so it is
+// excluded from cleanliness rather than counted against the model: 4 clean of
+// the 5 that COMMITTED (0.8), not 4 of 6 (0.6667). Getting this wrong is what
+// made the first baseline read as a schema regression instead of a flaky link.
+assert.strictEqual(rel.overall.committed, 5);
+assert.strictEqual(rel.overall.neverCommitted, 1);
 assert.strictEqual(rel.overall.cleanFirstCommits, 4);
-assert.strictEqual(rel.overall.cleanFirstCommitRate, 0.6667);
-assert.strictEqual(rel.overall.successRate, 0.8333, "5 of 6 returned a card");
-assert.strictEqual(rel.overall.passHatK, 0.2, "C(4,3)/C(6,3) = 4/20");
-assert.strictEqual(rel.overall.meanCommitAttempts, 1);
+assert.strictEqual(rel.overall.cleanFirstCommitRate, 0.8, "4 clean of 5 committed");
+assert.strictEqual(rel.overall.successRate, 0.8333, "5 of 6 returned a card — over ALL trials");
+assert.strictEqual(rel.overall.passHatK, 0.4, "C(4,3)/C(5,3) = 4/10");
+assert.strictEqual(rel.overall.passAtK, 1, "only 1 dirty commit — can't fill 3 draws");
+// Mean attempts over committed trials only: (1+1+1+2+1)/5. Including the
+// never-committed trial would give 6/6 = 1.0, implying "never retried" when a
+// retry demonstrably happened.
+assert.strictEqual(rel.overall.meanCommitAttempts, 1.2);
 assert.strictEqual(rel.overall.refRate, 0.85, "34 refs over 40 committed tracks");
-assert.strictEqual(rel.overall.meanMs, 2083);
+assert.strictEqual(rel.overall.meanMs, 2083, "mean latency spans ALL trials, failures included");
 
 // A trial that threw before ever committing must not count as clean.
 assert.strictEqual(rel.perPrompt[1]!.clean, 1);
+assert.strictEqual(rel.perPrompt[1]!.committed, 2);
+assert.strictEqual(rel.perPrompt[1]!.neverCommitted, 1);
 assert.strictEqual(rel.perPrompt[1]!.succeeded, 2);
+assert.strictEqual(rel.perPrompt[1]!.cleanFirstCommitRate, 0.5);
 assert.strictEqual(rel.perPrompt[0]!.passHatK, 1, "3/3 clean");
-assert.strictEqual(rel.perPrompt[1]!.passHatK, 0, "1 clean can't fill 3 draws");
+assert.strictEqual(rel.perPrompt[1]!.passHatK, 0, "1 clean can't fill 2 draws");
 assert.deepStrictEqual(rel.firstCommitGaps, {
   "only 1 of the 8 track slots were filled in": 1,
 });
+// Failures are grouped by class + message so a future run diagnoses itself.
+assert.deepStrictEqual(rel.failures, { "unknown: overloaded": 1 });
 assert.deepStrictEqual(rel.perPrompt[1]!.errors, ["overloaded"]);
+
+// Every trial dying before a commit means there is nothing to measure at all.
+const allDead = summarizeTrials(
+  [{ id: "x", category: "c", trials: [
+    { ok: false, error: "terminated", cleanFirstCommit: false, firstGap: null, commitAttempts: 0, trackCount: 0, refCount: 0, ms: 600000 },
+    { ok: false, error: "terminated", cleanFirstCommit: false, firstGap: null, commitAttempts: 0, trackCount: 0, refCount: 0, ms: 600000 },
+  ] }],
+  2
+);
+assert.strictEqual(allDead.overall.committed, 0);
+assert.strictEqual(allDead.overall.cleanFirstCommitRate, null, "no data, not 0% — 0% would read as a regression");
+assert.strictEqual(allDead.overall.passHatK, null);
+
+// --- noDataReason: a run that measured nothing is a FAILED run -------------
+
+// The 2026-08-17 shape exactly: cards generated, every judge call timed out.
+assert.match(
+  noDataReason({ cards: { prompts: 6, generated: 3, generateErrors: 3, judged: 0, judgeErrors: 3 }, notes: { total: 0 } })!,
+  /0 of 6 cards were judged \(3 generate error\(s\), 3 judge error\(s\)\)/
+);
+assert.match(noDataReason({ cards: { prompts: 0, judged: 0 }, notes: { total: 0 } })!, /no prompts/);
+assert.match(
+  noDataReason({ cards: { prompts: 2, judged: 2 }, notes: { total: 0 } })!,
+  /2 card\(s\) judged but 0 notes/
+);
+// The fixture run DID measure something, so it must not trip the gate.
+assert.strictEqual(noDataReason(summary), null);
 
 console.log(renderReliability(rel) + "\n");
 console.log("[selftest] all assertions passed");

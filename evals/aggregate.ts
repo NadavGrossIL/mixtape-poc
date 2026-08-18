@@ -130,6 +130,19 @@ function aggregateRun(runDir: string) {
   };
 }
 
+// Why this run cannot be read as a measurement, or null if it can.
+function noDataReason(s: any): string | null {
+  if (!s.cards.prompts) return "no prompts in the run";
+  if (!s.cards.judged) {
+    return (
+      `0 of ${s.cards.prompts} cards were judged ` +
+      `(${s.cards.generateErrors} generate error(s), ${s.cards.judgeErrors} judge error(s))`
+    );
+  }
+  if (!s.notes.total) return `${s.cards.judged} card(s) judged but 0 notes came back`;
+  return null;
+}
+
 function pct(fraction: number | null | undefined): string {
   return fraction == null ? "—" : `${(fraction * 100).toFixed(1)}%`;
 }
@@ -221,8 +234,19 @@ function main() {
   writeJson(summaryPath, { ...summary, checks });
   console.log(`\n[aggregate] wrote ${summaryPath}`);
 
-  // Non-zero exit is the whole point of a gate — a breach has to be able to
-  // fail a command, not just print red text nobody reads.
+  // Validity before quality. Every headline rate divides by a count of notes,
+  // so a run where nothing was judged yields nulls everywhere — which the
+  // threshold layer reports as "skipped", correctly per metric and disastrously
+  // per run. That is exactly how the 2026-08-17 baseline exited 0 after
+  // measuring nothing: 6 prompts in, 3 generate failures, 3 judge timeouts,
+  // 0 notes, all rates null, four green stages. A run that measured nothing is
+  // a failed run whatever the config says, so this is not a threshold.
+  const reason = noDataReason(summary);
+  if (reason) {
+    console.error(`\n[aggregate] NO DATA: ${reason}`);
+    console.error("[aggregate] nothing was measured — the rates above are absences, not results.");
+    process.exit(1);
+  }
   if (checks.some((c) => !c.ok)) process.exit(1);
 }
 
@@ -236,4 +260,4 @@ if (import.meta.main) {
 }
 
 // Exported for evals/selftest.ts.
-export { aggregateRun, renderSummary };
+export { aggregateRun, renderSummary, noDataReason };

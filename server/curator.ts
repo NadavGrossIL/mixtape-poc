@@ -492,7 +492,18 @@ async function runCuratorAgent({
   onCommit?: (attempt: number, gap: string | null) => void;
   signal?: AbortSignal;
 }): Promise<Record<string, unknown>> {
-  const client = new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
+  const client = new Anthropic({
+    apiKey: process.env.ANTHROPIC_API_KEY,
+    // Explicit rather than inherited. Each turn is ONE request, so 10 minutes
+    // is already generous — the bound was never the problem. What killed the
+    // 2026-08-17 baseline was streaming sockets dropping mid-turn: a stream
+    // abort surfaces as undici's opaque "terminated", not as a clean timeout,
+    // and the SDK retried twice in silence before throwing. Three retries buys
+    // one more chance at a drop that costs a whole paid run; the timeout is
+    // pinned so a future SDK default can't move it under us.
+    timeout: 10 * 60 * 1000,
+    maxRetries: 3,
+  });
   const messages: Anthropic.MessageParam[] = [
     { role: "user", content: userContent },
   ];

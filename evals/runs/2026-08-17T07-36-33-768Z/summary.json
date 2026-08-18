@@ -1,0 +1,47 @@
+{
+  "runDir": "/Users/nadavgross/Projects/mixtape-poc/evals/runs/2026-08-17T07-36-33-768Z",
+  "generatedAt": "2026-08-18T06:23:08.591Z",
+  "cards": {
+    "prompts": 6,
+    "generated": 3,
+    "generateErrors": 3,
+    "judged": 0,
+    "judgeErrors": 3,
+    "judgeErrorIds": [
+      "app-2am-drive",
+      "app-90s-roadtrip",
+      "mainstream-classic-rock"
+    ]
+  },
+  "notes": {
+    "total": 0,
+    "resolved": 0,
+    "unresolved": 0,
+    "unknownResolution": 0
+  },
+  "outcomes": {
+    "overall": {},
+    "resolved": {},
+    "unresolved": {},
+    "unknown-resolution": {}
+  },
+  "rates": {
+    "overall": {},
+    "resolved": {},
+    "unresolved": {},
+    "unknown-resolution": {}
+  },
+  "headline": {
+    "checkableNotes": 0,
+    "inventedRate": null,
+    "verifiedTrueRate": null,
+    "unverifiableRate": null,
+    "genericRate": null,
+    "resolutionRate": null
+  },
+  "downgrades": {
+    "total": 0,
+    "byReason": {}
+  },
+  "checks": []
+}

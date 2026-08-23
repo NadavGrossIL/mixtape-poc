@@ -5,7 +5,14 @@
 // beta header) lets us emit each track as the model produces it.
 
 import Anthropic from "@anthropic-ai/sdk";
-import { searchCatalog, isSearchCached } from "./spotify.ts";
+import {
+  searchCatalog,
+  isSearchCached,
+  recallByRef,
+  normalize,
+  stripSuffixes,
+  formatClock,
+} from "./spotify.ts";
 
 const MODEL = "claude-sonnet-5";
 const TRACK_COUNT = 8;
@@ -82,7 +89,7 @@ const TRACK_SCHEMA = {
     note: {
       type: "string",
       description:
-        "One specific, concrete reason this track earns its place — a detail, a moment, a stat. Max 18 words. Never generic.",
+        "One concrete reason this track earns its place — a fact a search result showed you, lore you'd stake the tape on, or a vivid image of the sound. No unseen numbers, remembered lyrics, or guessed credits. Max 18 words. Never generic.",
     },
   },
 };
@@ -212,7 +219,7 @@ const ADJUST_TOOL = {
 const SEARCH_TOOL = {
   name: "search_spotify",
   description:
-    "Search Spotify's track catalog. Returns up to 10 real records, each with a ref, artist, title, album and year. " +
+    "Search Spotify's track catalog. Returns up to 10 real records, each with a ref, artist, title, album, year and length when known. " +
     "Every track on the card must come from these results, and the track's ref field must be the row's ref copied exactly. " +
     "Searches are a limited daily resource, so prefer broad searches (an artist, a scene, a sound) that can fill several " +
     "slots at once over one narrow search per track, and never repeat a query you have already run.",
@@ -287,7 +294,10 @@ Rules:
 - Copy the artist and title spelling exactly as the result shows it, and copy that row's "ref" into the track's ref field.
 - Searches cost a limited daily allowance, so never re-run a query you have already run in this conversation, and never search for a record you have already seen in earlier results.
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
-- Notes must feel human and specific, not AI-generic — a detail, a moment, a stat.
+- Notes must feel human and specific, not AI-generic — a catalog fact, a piece of lore, an image of the sound.
+- Every fact in a note must be either something a search result showed you (artist, title, album, year, length) or something so famous you would stake the whole tape on it. Merely pretty sure means leave it out.
+- Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
+- When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
 - Writing the card is a separate step from choosing it: once you commit, fill in all eight track slots (track1 through track8) in that single tool call.`;
 
@@ -296,7 +306,7 @@ const ADJUST_SYSTEM = `${SYSTEM}
 You are adjusting an existing mixtape, not building a new one:
 - Change ONLY what the user's adjustment asks for. Tracks the adjustment does not touch must NOT appear in changes.
 - Never re-emit an unchanged track — omit its index entirely.
-- Replacement notes follow the same rules as new ones: specific, human, never generic.
+- Replacement notes follow the same rules as create_mixtape notes: shown facts, staked lore, or a vivid image of the sound — no guessed specifics. Max 18 words.
 - Keep the DJ-set arc sensible: each replacement must sit right between its neighbors.
 - Tracks marked "resolved": false could not be verified on Spotify — prefer them as swap targets when the user says a track isn't real.
 - Every replacement must come from a search_spotify result, with that row's ref copied into its ref field — same rule as new tracks.
@@ -379,6 +389,212 @@ function diffIncompleteReason(input: Record<string, unknown>): string | null {
     return "it changed nothing — no track replacements and no new title, vibe or accent";
   }
   return null;
+}
+
+// ── note grounding: deterministic claims-vs-shown-rows gate ─────
+//
+// Checks a committed card's notes against the exact search records the model
+// cited (by ref), for the claim shapes those records can refute: years,
+// durations/timestamps, and "title track". Measured on the 2026-08-18
+// baseline: 4 of that run's 18 invented notes are hard catches, and of its 70
+// non-invented notes exactly one matches any pattern here (Free Bird's true
+// "over nine minutes") and passes — 0 false positives observed. Every rule is
+// a no-op when the ref doesn't join or the needed field is null (cache rows
+// written before the field expansion — see trimItem).
+
+// Years a liner note can plausibly assert. Deliberately wider than "valid
+// release years" — a note claiming 2093 should surface as a mismatch, not
+// slip past the regex. Canonical copy: evals/grounding.ts imports this, so
+// the gate and the eval diagnostic can never drift apart.
+const YEAR_RE = /\b(1[89]\d{2}|20\d{2})\b/g;
+
+function extractYears(note: unknown): string[] {
+  return [...String(note ?? "").matchAll(YEAR_RE)].map((m) => m[0]);
+}
+
+const NUMBER_WORDS: Record<string, number> = {
+  one: 1, two: 2, three: 3, four: 4, five: 5, six: 6,
+  seven: 7, eight: 8, nine: 9, ten: 10, eleven: 11, twelve: 12,
+};
+// "six minutes", "six aching minutes", "8 minutes" — at most ONE intervening
+// word (captured, for the idiom check), so a number several words away can't
+// bind to a stray "minutes".
+const WORDED_MINUTES_RE =
+  /\b(one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d{1,2})(?:\s+([a-z]+))?\s+minutes?\b/gi;
+// "1:50" — a clock reading, length or position.
+const CLOCK_RE = /\b(\d{1,2}):([0-5]\d)\b/g;
+
+// A duration pattern next to these words is a POSITION in the track, not its
+// length — "waits eight minutes before the solo" claims a timestamp, and the
+// only thing the row can refute is a timestamp past the track's end.
+// "around" is positional only next to a CLOCK reading ("kick in around 1:50");
+// before a worded quantity it approximates a LENGTH ("around six minutes"),
+// which the ±30s tolerance already absorbs — see the position check below.
+const POSITION_BEFORE = new Set(["at", "by", "waits"]);
+const POSITION_AFTER = new Set(["before", "into", "past", "in"]);
+// Directional words get a strict check INSTEAD of the ±30s tolerance: "under
+// two minutes" vs 2:17 is off by only 17s, but the direction itself is the
+// invention (an observed baseline case).
+const DIRECTIONAL = new Set(["under", "over", "nearly", "almost"]);
+
+function wordBefore(text: string, index: number): string {
+  const m = /([a-z]+)[^a-z]*$/i.exec(text.slice(0, index));
+  return m ? m[1]!.toLowerCase() : "";
+}
+
+function wordAfter(text: string, index: number): string {
+  const m = /^[^a-z]*([a-z]+)/i.exec(text.slice(index));
+  return m ? m[1]!.toLowerCase() : "";
+}
+
+// Every duration-shaped claim in a note, with its position for context words.
+function durationClaims(
+  note: string
+): { text: string; seconds: number; start: number; end: number; kind: "worded" | "clock" }[] {
+  const claims: { text: string; seconds: number; start: number; end: number; kind: "worded" | "clock" }[] = [];
+  for (const m of note.matchAll(WORDED_MINUTES_RE)) {
+    const raw = m[1]!.toLowerCase();
+    // "one more minute of this" is an idiom about the listener, not the track
+    if (raw === "one" && m[2]?.toLowerCase() === "more") continue;
+    const minutes = NUMBER_WORDS[raw] ?? Number(raw);
+    claims.push({
+      text: m[0],
+      seconds: minutes * 60,
+      start: m.index,
+      end: m.index + m[0].length,
+      kind: "worded",
+    });
+  }
+  for (const m of note.matchAll(CLOCK_RE)) {
+    const end = m.index + m[0].length;
+    // "a 2:00 AM confession" is a time of day, not a track length
+    if (/^\s*[ap]\.?m\b/i.test(note.slice(end))) continue;
+    claims.push({
+      text: m[0],
+      seconds: Number(m[1]) * 60 + Number(m[2]),
+      start: m.index,
+      end,
+      kind: "clock",
+    });
+  }
+  return claims;
+}
+
+// Why a committed card's notes can't ship as-is, or null. Returns the reason
+// for the FIRST violating note only — one bounce carries one correction.
+// `lookup` joins a track's ref to the search record the server fetched
+// (production passes spotify's recallByRef; tests inject fixtures).
+function noteGroundingReason(
+  input: Record<string, unknown>,
+  lookup: (ref: string) => any | null
+): string | null {
+  const tracks = toTrackList((input as any).tracks);
+  // The instruction never invites substituting another unverified fact — a
+  // bounced model told "fix the number" would just guess a new number.
+  const fix = "rewrite the note using only facts your search results showed";
+  for (let i = 0; i < tracks.length; i++) {
+    const t = tracks[i];
+    const ref = t?.ref;
+    if (typeof ref !== "string" || !ref || ref === NO_REF) continue;
+    const item = lookup(ref);
+    if (!item) continue;
+    const note = String(t?.note ?? "");
+
+    // 1. Year vs the shown release year. ±1 absorbs reissue-date jitter, and
+    // a year that appears in the row's own title or album name is a NAME, not
+    // a date claim ("1979" by Smashing Pumpkins on a 1995 album).
+    const shownYear = String(item?.album?.release_date || "").slice(0, 4);
+    if (shownYear && Number.isFinite(Number(shownYear))) {
+      for (const y of extractYears(note)) {
+        if (Math.abs(Number(y) - Number(shownYear)) <= 1) continue;
+        if (String(item?.name ?? "").includes(y)) continue;
+        if (String(item?.album?.name ?? "").includes(y)) continue;
+        return `track ${i + 1}'s note says "${y}", but the search result you cited shows ${shownYear} — ${fix}`;
+      }
+    }
+
+    // 2. Duration claims vs the shown length. > 0, not just a number: Spotify
+    // occasionally returns duration_ms 0, and every position claim would flag
+    // against a 0:00 track.
+    if (typeof item?.duration_ms === "number" && item.duration_ms > 0) {
+      const actual = item.duration_ms / 1000;
+      const shown = formatClock(item.duration_ms);
+      for (const c of durationClaims(note)) {
+        const before = wordBefore(note, c.start);
+        const after = wordAfter(note, c.end);
+        if (
+          POSITION_BEFORE.has(before) ||
+          POSITION_AFTER.has(after) ||
+          (c.kind === "clock" && before === "around")
+        ) {
+          // a position is only refutable when it points past the end
+          if (c.seconds > actual) {
+            return `track ${i + 1}'s note puts a moment at "${c.text}", but the search result you cited shows the track is only ${shown} long — ${fix}`;
+          }
+        } else if (DIRECTIONAL.has(before)) {
+          const ok = before === "over" ? actual > c.seconds : actual < c.seconds;
+          if (!ok) {
+            return `track ${i + 1}'s note says "${before} ${c.text}", but the search result you cited shows the track's length as ${shown} — ${fix}`;
+          }
+        } else if (Math.abs(c.seconds - actual) > 30) {
+          // ±30s forgives honest rounding ("six minutes" for 5:41) — nothing more
+          return `track ${i + 1}'s note calls it "${c.text}", but the search result you cited shows the track's length as ${shown} — ${fix}`;
+        }
+      }
+    }
+
+    // 3. "Title track" vs the shown album. Normalized (suffixes stripped) so a
+    // "(Remastered)" album name can't fake a mismatch; album_type catches the
+    // single whose "album" IS the track.
+    if (/title track/i.test(note)) {
+      const albumName = String(item?.album?.name ?? "");
+      const normAlbum = albumName ? normalize(stripSuffixes(albumName)) : "";
+      const normTitle = normalize(stripSuffixes(item?.name ?? ""));
+      if ((item?.album?.album_type ?? null) === "single") {
+        return `track ${i + 1}'s note calls it a "title track", but the search result you cited shows its release is a single, not an album — ${fix}`;
+      }
+      if (normAlbum && normTitle && normAlbum !== normTitle) {
+        return `track ${i + 1}'s note calls it a "title track", but the search result you cited shows the album as "${albumName}", not "${item?.name}" — ${fix}`;
+      }
+    }
+  }
+  return null;
+}
+
+// Compose the completeness gate with the grounding gate for one generate run.
+// A factory so the bounce counter is per-run and the composition is testable
+// without a live agent loop. Round one wires this into generateCard ONLY —
+// adjustCard's replacement notes stay ungated until live FP telemetry is in.
+function makeGroundingGate({
+  hard,
+  lookup,
+}: {
+  hard: (input: Record<string, unknown>) => string | null;
+  lookup: (ref: string) => any | null;
+}): (input: Record<string, unknown>, ctx?: { lastTurn?: boolean }) => string | null {
+  let bounces = 0;
+  return (input, ctx) => {
+    // Hard incompleteness always wins and is never subject to the cap or the
+    // last-turn leniency — a hollow card must not ship however late it is.
+    const hardGap = hard(input);
+    if (hardGap) return hardGap;
+    const violation = noteGroundingReason(input, lookup);
+    if (!violation) return null;
+    // A false positive must degrade to a shipped card, never a dead run: stop
+    // bouncing when the cap is spent OR when no retry turn remains — a
+    // rejection on the forced last turn is a thrown run, not a retry.
+    if (bounces >= 2 || ctx?.lastTurn) {
+      console.warn(
+        `[curator] grounding gate ${ctx?.lastTurn ? "out of turns" : "exhausted"} — accepting: ${violation}`
+      );
+      return null;
+    }
+    bounces++;
+    // The "grounding: " prefix is load-bearing: onCommit telemetry records the
+    // gap string, and evals split grounding bounces from hollow-commit retries
+    // by exactly this prefix.
+    return `grounding: ${violation}`;
+  };
 }
 
 // Scan the accumulated partial JSON of the tool input and return every
@@ -470,7 +686,13 @@ async function runCuratorAgent({
   arrayKey: string;
   // Why this tool call can't be accepted, or null if it can — see
   // cardIncompleteReason. A strict schema validates types, not substance.
-  incompleteReason: (input: Record<string, unknown>) => string | null;
+  // ctx.lastTurn: a rejection on the forced last turn cannot be retried — the
+  // loop below throws instead — so gates with soft rules (grounding) must
+  // accept there rather than kill a paid run over a note nit.
+  incompleteReason: (
+    input: Record<string, unknown>,
+    ctx: { lastTurn: boolean }
+  ) => string | null;
   onItem?: (index: number, item: any) => void;
   // Fires once per final-tool call, with the gap that rejected it (null =
   // accepted). The retry loop below repairs an incomplete commit, which is
@@ -561,7 +783,7 @@ async function runCuratorAgent({
     // incompleteReason. A complete one returns; an incomplete one is
     // answered below with an error result so the model calls again.
     const gap = done
-      ? incompleteReason(done.input as Record<string, unknown>)
+      ? incompleteReason(done.input as Record<string, unknown>, { lastTurn })
       : null;
     if (done) onCommit?.(++commits, gap);
     if (done && !gap) {
@@ -686,7 +908,11 @@ async function generateCard(
     userContent: parts.join("\n\n"),
     finalTool: "create_mixtape",
     arrayKey: "tracks",
-    incompleteReason: cardIncompleteReason,
+    // fresh gate per call — the bounce counter is per-run state
+    incompleteReason: makeGroundingGate({
+      hard: cardIncompleteReason,
+      lookup: recallByRef,
+    }),
     onCommit,
     signal,
     onItem: onTrack
@@ -833,7 +1059,12 @@ export {
   adjustCard,
   MODEL,
   TRACK_COUNT,
+  // canonical shared logic — evals/grounding.ts imports extractYears from here
+  extractYears,
+  noteGroundingReason,
+  makeGroundingGate,
   // exported for tests only
+  SYSTEM,
   extractCompleteTracks,
   toTrackList,
   seedContext,

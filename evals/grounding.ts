@@ -28,23 +28,27 @@
 import fs from "node:fs";
 import path from "node:path";
 import { resolveRunDir, readJson } from "./util.ts";
-
-// Years a liner note can plausibly assert. Deliberately wider than "valid
-// release years" — a note claiming 2093 should surface as a mismatch, not
-// slip past the regex.
-const YEAR_RE = /\b(1[89]\d{2}|20\d{2})\b/g;
-
-function extractYears(note: unknown): string[] {
-  return [...String(note ?? "").matchAll(YEAR_RE)].map((m) => m[0]);
-}
+// The canonical year extractor lives with the product's grounding gate — one
+// regex for both, so gate and diagnostic can never drift apart. curator.ts is
+// side-effect-free at module scope (see selftest.ts), so this import is safe.
+import { extractYears } from "../server/curator.ts";
 
 // One invented note's grounding status against the year the model was shown
 // (searchCatalog shows release_date.slice(0, 4)).
-//   no-year-in-note — nothing for this check to say; the invention is elsewhere
-//   unknown         — no shown year on record for this ref
-//   grounded        — every asserted year is the shown year
-//   partial         — some asserted years match, some don't
-//   mismatch        — no asserted year matches: the model really invented it
+//   no-year-in-note  — nothing for this check to say; the invention is elsewhere
+//   unknown          — no shown year on record for this ref
+//   grounded         — every asserted year is exactly the shown year
+//   within-tolerance — every asserted year is within ±1 of the shown year but
+//                      not all exact: the product gate's reissue-jitter window,
+//                      kept distinct so "mismatch must stay 0" still gates on
+//                      exact disagreement, not on years the gate allows
+//   partial          — some asserted years are within ±1, some aren't
+//   mismatch         — no asserted year is even within ±1: really invented
+//
+// Deliberately NOT here: the gate's title/album-name-year exclusion ("1979" by
+// Smashing Pumpkins). This diagnostic joins only ref -> release_date, has no
+// row name to check against, and a name-year surfacing as mismatch is exactly
+// the disagreement it exists to report.
 function groundNote(
   note: unknown,
   shownReleaseDate: unknown
@@ -57,9 +61,18 @@ function groundNote(
   if (noteYears.length === 0) status = "no-year-in-note";
   else if (!shownYear) status = "unknown";
   else {
-    const hits = noteYears.filter((y) => y === shownYear).length;
+    const exact = noteYears.filter((y) => y === shownYear).length;
+    const near = noteYears.filter(
+      (y) => Math.abs(Number(y) - Number(shownYear)) <= 1
+    ).length;
     status =
-      hits === noteYears.length ? "grounded" : hits > 0 ? "partial" : "mismatch";
+      exact === noteYears.length
+        ? "grounded"
+        : near === noteYears.length
+          ? "within-tolerance"
+          : near > 0
+            ? "partial"
+            : "mismatch";
   }
   return { status, noteYears, shownYear };
 }

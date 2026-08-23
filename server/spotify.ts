@@ -5,7 +5,9 @@
 //   The add-items request body still uses the "uris" key (verified against
 //   developer.spotify.com/documentation/web-api/reference/add-items-to-playlist).
 // - Dev-mode apps: search max limit=10; track objects no longer include
-//   popularity / external_ids / available_markets — do not reference those.
+//   popularity / available_markets — do not reference those. external_ids.isrc,
+//   duration_ms, track_number, album.album_type and album.total_tracks were
+//   re-verified on the wire against the current /search reference (2026-08-18).
 
 import fs from "node:fs";
 import path from "node:path";
@@ -204,6 +206,15 @@ function formatDuration(seconds: number): string {
   if (seconds < 90) return `${Math.round(seconds)}s`;
   if (seconds < 3600) return `${Math.round(seconds / 60)}m`;
   return `${(seconds / 3600).toFixed(1)}h`;
+}
+
+// Track length as "M:SS" — the shape a liner note quotes. formatDuration above
+// is for waits ("4m" would round 4:08 and 4:52 to the same string, which is
+// useless against a ±30s grounding check).
+function formatClock(ms: number): string {
+  const total = Math.round(ms / 1000);
+  const s = total % 60;
+  return `${Math.floor(total / 60)}:${String(s).padStart(2, "0")}`;
 }
 
 // Decide what a 429 actually was. Pure, so the branch that matters most can be
@@ -436,8 +447,14 @@ function refOf(item: any): string {
   return String(item?.uri || "").split(":").pop() || "";
 }
 
-// Keep only the fields the resolver and the card actually read — the cache is
-// persisted, and whole Spotify item objects would bloat it for nothing.
+// Keep only the fields the resolver, the card, and the note-grounding gate
+// actually read — the cache is persisted, and whole Spotify item objects would
+// bloat it for nothing.
+//
+// Cache entries written before a field was added simply lack it, so every
+// consumer must treat a missing field as null. No version bump, no
+// invalidation: the 7-day TTL self-heals, and invalidating would re-spend the
+// daily quota that already paid for these entries.
 function trimItem(item: any): any {
   const images = item?.album?.images || [];
   return {
@@ -445,9 +462,14 @@ function trimItem(item: any): any {
     uri: item?.uri,
     artists: (item?.artists || []).map((a: any) => ({ name: a?.name })),
     external_urls: { spotify: item?.external_urls?.spotify || null },
+    duration_ms: item?.duration_ms ?? null,
+    isrc: item?.external_ids?.isrc ?? null,
+    track_number: item?.track_number ?? null,
     album: {
       name: item?.album?.name || "",
       release_date: item?.album?.release_date || "",
+      album_type: item?.album?.album_type ?? null,
+      total_tracks: item?.album?.total_tracks ?? null,
       // smallest only — that is the one resolveTrack picks for album art
       images: images.length ? [{ url: images[images.length - 1].url }] : [],
     },
@@ -753,17 +775,34 @@ async function resolveTrack<T extends { artist: string; title: string; ref?: str
 //
 // `ref` is the point of this shape: the model quotes it back on the track it
 // commits, and resolution becomes a lookup instead of a second search.
-async function searchCatalog(
-  query: string
-): Promise<{ ref: string; artist: string; title: string; album: string; year: string }[]> {
-  const items = await searchTracks(query);
-  return items.map((item: any) => ({
+// One cached record → one model-visible row. Pure, exported for tests.
+// Adding a key to this tool_result JSON touches no tool schema, so the
+// compiled-grammar cache is unaffected.
+function catalogRow(item: any): {
+  ref: string;
+  artist: string;
+  title: string;
+  album: string;
+  year: string;
+  length?: string;
+} {
+  return {
     ref: refOf(item),
     artist: (item.artists || []).map((a: any) => a.name).join(", "),
     title: item.name,
     album: item.album?.name || "",
     year: String(item.album?.release_date || "").slice(0, 4),
-  }));
+    // Omit — never null — on cache rows that predate the duration_ms field: a
+    // literal "length": null is a value the model could parrot into a note.
+    ...(typeof item.duration_ms === "number"
+      ? { length: formatClock(item.duration_ms) }
+      : {}),
+  };
+}
+
+async function searchCatalog(query: string): Promise<ReturnType<typeof catalogRow>[]> {
+  const items = await searchTracks(query);
+  return items.map(catalogRow);
 }
 
 // Resolve all tracks with a small concurrency pool (respects rate limits).
@@ -945,7 +984,10 @@ export {
   rank,
   better,
   trimItem,
+  stripSuffixes,
   formatDuration,
+  formatClock,
+  catalogRow,
   classify429,
   rememberItems,
   recallByTitle,

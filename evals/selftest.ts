@@ -298,6 +298,10 @@ assert.deepStrictEqual(groundNote("this 1992 late-night ballad", "1992-05-01"), 
   noteYears: ["1992"],
   shownYear: "1992",
 });
+// ±1 of the shown year is the product gate's reissue-jitter window — a
+// DISTINCT status, so "mismatch must stay 0" still gates on exact
+// disagreement rather than silently absorbing years the gate allows.
+assert.strictEqual(groundNote("a 2008 anthem", "2007-10-09").status, "within-tolerance");
 // A year the metadata never showed is a real invention.
 assert.strictEqual(groundNote("a 1955 postcard", "1964-01-01").status, "mismatch");
 // Mixed claims stay visible rather than rounding to either side.

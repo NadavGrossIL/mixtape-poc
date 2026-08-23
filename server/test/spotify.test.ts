@@ -293,15 +293,20 @@ test("rememberItems: same track twice is stored once", () => {
 
 // ── trimItem ─────────────────────────────────────────────────
 
-test("trimItem: keeps every field the resolver and card read, drops the rest", () => {
+test("trimItem: keeps every field the resolver, card and grounding gate read, drops the rest", () => {
   const trimmed = trimItem({
     name: "Hello",
     uri: "spotify:track:adele",
     artists: [{ name: "Adele" }],
     external_urls: { spotify: "https://open.spotify.com/track/x" },
+    duration_ms: 295502,
+    track_number: 1,
+    external_ids: { isrc: "GBBKS1500213" },
     album: {
       name: "25",
       release_date: "2015-11-20",
+      album_type: "album",
+      total_tracks: 11,
       images: [{ url: "big" }, { url: "mid" }, { url: "small" }],
     },
     // fields the cache has no reason to persist
@@ -312,7 +317,12 @@ test("trimItem: keeps every field the resolver and card read, drops the rest", (
   assert.strictEqual(trimmed.uri, "spotify:track:adele");
   assert.deepStrictEqual(trimmed.artists, [{ name: "Adele" }]);
   assert.strictEqual(trimmed.external_urls.spotify, "https://open.spotify.com/track/x");
+  assert.strictEqual(trimmed.duration_ms, 295502);
+  assert.strictEqual(trimmed.isrc, "GBBKS1500213");
+  assert.strictEqual(trimmed.track_number, 1);
   assert.strictEqual(trimmed.album.release_date, "2015-11-20");
+  assert.strictEqual(trimmed.album.album_type, "album");
+  assert.strictEqual(trimmed.album.total_tracks, 11);
   // only the smallest image survives — the one resolveTrack picks
   assert.deepStrictEqual(trimmed.album.images, [{ url: "small" }]);
   assert.ok(!("disc_number" in trimmed));
@@ -323,6 +333,52 @@ test("trimItem: survives the sparse objects Spotify actually returns", () => {
   assert.deepStrictEqual(trimmed.artists, []);
   assert.deepStrictEqual(trimmed.album.images, []);
   assert.strictEqual(trimmed.external_urls.spotify, null);
+  // the expanded fields must be EXPLICIT nulls, matching what consumers see
+  // on cache entries written before the expansion
+  assert.strictEqual(trimmed.duration_ms, null);
+  assert.strictEqual(trimmed.isrc, null);
+  assert.strictEqual(trimmed.track_number, null);
+  assert.strictEqual(trimmed.album.album_type, null);
+  assert.strictEqual(trimmed.album.total_tracks, null);
+});
+
+// ── catalogRow / formatClock: what the model is shown per search row ─────
+
+import { catalogRow, formatClock } from "../spotify.ts";
+
+test("formatClock: M:SS with zero-padded seconds", () => {
+  assert.strictEqual(formatClock(248000), "4:08");
+  assert.strictEqual(formatClock(137000), "2:17");
+  assert.strictEqual(formatClock(60000), "1:00");
+  assert.strictEqual(formatClock(548000), "9:08");
+});
+
+test("catalogRow: shows length when duration_ms is present", () => {
+  const row = catalogRow({
+    name: "Nantes",
+    uri: "spotify:track:nantes1",
+    artists: [{ name: "Beirut" }],
+    duration_ms: 248000,
+    album: { name: "The Flying Club Cup", release_date: "2007-10-09" },
+  });
+  assert.strictEqual(row.ref, "nantes1");
+  assert.strictEqual(row.artist, "Beirut");
+  assert.strictEqual(row.album, "The Flying Club Cup");
+  assert.strictEqual(row.year, "2007");
+  assert.strictEqual(row.length, "4:08");
+});
+
+test("catalogRow: OMITS length on stale cache rows — never shows null", () => {
+  // a literal "length": null is a value the model could parrot into a note
+  const row = catalogRow({
+    name: "Old Row",
+    uri: "spotify:track:old1",
+    artists: [{ name: "A" }],
+    duration_ms: null,
+    album: { name: "X", release_date: "1999-01-01" },
+  });
+  assert.ok(!("length" in row));
+  assert.ok(!("length" in catalogRow({ name: "Y", uri: "spotify:track:y1" })));
 });
 
 // ── refs: resolution without a second search ─────────────────

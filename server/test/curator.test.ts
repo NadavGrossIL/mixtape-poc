@@ -350,6 +350,387 @@ test("TRACK_SCHEMA: ref's description names the sentinel it documents", () => {
   assert.strictEqual(TRACK_SCHEMA.properties.ref.type, "string");
 });
 
+// ── noteGroundingReason: the deterministic grounding gate ────
+//
+// Fixture values are lifted from the 2026-08-18 baseline corpus: the FLAG
+// cases are that run's real invented duration/title-track notes, and the PASS
+// cases are its real verified-TRUE notes that match the same regex patterns —
+// the run's only true-note pattern match (Free Bird) must never regress into
+// a bounce, or the gate kills exactly the notes the product wants.
+
+import { noteGroundingReason, extractYears } from "../curator.ts";
+
+const ROWS: Record<string, any> = {
+  nantes: {
+    name: "Nantes",
+    uri: "spotify:track:nantes",
+    artists: [{ name: "Beirut" }],
+    duration_ms: 248000,
+    album: { name: "The Flying Club Cup", release_date: "2007-10-09", album_type: "album" },
+  },
+  apunk: {
+    name: "A-Punk",
+    uri: "spotify:track:apunk",
+    artists: [{ name: "Vampire Weekend" }],
+    duration_ms: 137000,
+    album: { name: "Vampire Weekend", release_date: "2008-01-29", album_type: "album" },
+  },
+  blueridge: {
+    name: "Blue Ridge Mountains",
+    uri: "spotify:track:blueridge",
+    artists: [{ name: "Fleet Foxes" }],
+    duration_ms: 265000,
+    album: { name: "Fleet Foxes", release_date: "2008-06-03", album_type: "album" },
+  },
+  manchild: {
+    name: "Manchild",
+    uri: "spotify:track:manchild",
+    artists: [{ name: "Sabrina Carpenter" }],
+    duration_ms: 213000,
+    album: { name: "Man's Best Friend", release_date: "2025-08-29", album_type: "album" },
+  },
+  freebird: {
+    name: "Free Bird",
+    uri: "spotify:track:freebird",
+    artists: [{ name: "Lynyrd Skynyrd" }],
+    duration_ms: 548000,
+    album: { name: "(Pronounced 'Leh-'nerd 'Skin-'nerd)", release_date: "1973-08-13", album_type: "album" },
+  },
+  stairway: {
+    name: "Stairway to Heaven",
+    uri: "spotify:track:stairway",
+    artists: [{ name: "Led Zeppelin" }],
+    duration_ms: 482000,
+    album: { name: "Led Zeppelin IV", release_date: "1971-11-08", album_type: "album" },
+  },
+  layla: {
+    name: "Layla",
+    uri: "spotify:track:layla",
+    artists: [{ name: "Derek & The Dominos" }],
+    duration_ms: 313000,
+    album: { name: "The Very Best of Eric Clapton", release_date: "2001-01-01", album_type: "album" },
+  },
+  mykonos: {
+    name: "Mykonos",
+    uri: "spotify:track:mykonos",
+    artists: [{ name: "Fleet Foxes" }],
+    duration_ms: 271000,
+    album: { name: "Sun Giant", release_date: "2008-04-08", album_type: "album" },
+  },
+  sp1979: {
+    name: "1979",
+    uri: "spotify:track:sp1979",
+    artists: [{ name: "The Smashing Pumpkins" }],
+    duration_ms: 265000,
+    album: { name: "Mellon Collie and the Infinite Sadness", release_date: "1995-10-23", album_type: "album" },
+  },
+  montand: {
+    name: "La bicyclette",
+    uri: "spotify:track:montand",
+    artists: [{ name: "Yves Montand" }],
+    duration_ms: 152000,
+    album: { name: "Les plus belles chansons", release_date: "1964-01-01", album_type: "album" },
+  },
+  hanoch: {
+    name: "Lo Yode'a Eich Lomar Lach",
+    uri: "spotify:track:hanoch",
+    artists: [{ name: "Shalom Hanoch" }],
+    duration_ms: 300000,
+    album: { name: "Line HaLayla", release_date: "1992-05-01", album_type: "album" },
+  },
+  vu69: {
+    name: "What Goes On",
+    uri: "spotify:track:vu69",
+    artists: [{ name: "The Velvet Underground" }],
+    duration_ms: 520000,
+    album: { name: "1969: The Velvet Underground Live", release_date: "1974-09-01", album_type: "album" },
+  },
+  // a cache row written before the field expansion: no duration_ms at all
+  stale: {
+    name: "Some Old Row",
+    uri: "spotify:track:stale",
+    artists: [{ name: "A" }],
+    album: { name: "Old Album", release_date: "1999-01-01" },
+  },
+  // Spotify occasionally returns duration_ms 0 — must behave like missing
+  zerodur: {
+    name: "Zero Length",
+    uri: "spotify:track:zerodur",
+    artists: [{ name: "A" }],
+    duration_ms: 0,
+    album: { name: "Zeroes", release_date: "2010-01-01", album_type: "album" },
+  },
+};
+
+const lookup = (ref: string) => ROWS[ref] ?? null;
+const gTrack = (ref: string, note: string) => ({ ref, artist: "A", title: "T", note });
+const gInput = (tracks: unknown[]) => ({ tracks: keyed(tracks) });
+
+test("grounding FLAGS: 'six aching minutes' vs 4:08 (Nantes)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("nantes", "A father's deathbed telegram turned into six aching minutes of Beirut's saddest brass")]),
+    lookup
+  );
+  assert.match(String(r), /track 1/);
+  assert.match(String(r), /six aching minutes/);
+  assert.match(String(r), /4:08/);
+  assert.match(String(r), /only facts your search results showed/);
+});
+
+test("grounding FLAGS: 'under two minutes' vs 2:17 (A-Punk) — direction beats the ±30s tolerance", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("apunk", "Under two minutes of pure sprint-outside-without-a-coat energy")]),
+    lookup
+  );
+  assert.match(String(r), /under two minutes/i);
+  assert.match(String(r), /2:17/);
+});
+
+test("grounding FLAGS: 'six minutes' vs 4:25 (Blue Ridge Mountains)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("blueridge", "Six minutes of acoustic wind-down for the drive home")]),
+    lookup
+  );
+  assert.match(String(r), /Six minutes/);
+  assert.match(String(r), /4:25/);
+});
+
+test("grounding FLAGS: 'title track' when the album is not the title (Manchild)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("manchild", "The album's title track, all swagger and strut")]),
+    lookup
+  );
+  assert.match(String(r), /title track/);
+  assert.match(String(r), /Man's Best Friend/);
+});
+
+test("grounding PASSES the run's one true duration note: 'over nine minutes' (Free Bird)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("freebird", "Runs over nine minutes and earns every second of the climb")]),
+    lookup
+  );
+  assert.strictEqual(r, null);
+});
+
+test("grounding PASSES a position claim inside the track (Stairway, 8:00 of 8:02)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("stairway", "Page waits eight minutes before he even plugs into the solo")]),
+    lookup
+  );
+  assert.strictEqual(r, null);
+});
+
+test("grounding PASSES the 'for two full minutes before' position form (Layla)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("layla", "The slide answers Clapton for two full minutes before the piano coda")]),
+    lookup
+  );
+  assert.strictEqual(r, null);
+});
+
+test("grounding PASSES a clock timestamp inside the track (Mykonos, 1:50 of 4:31)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("mykonos", "Those horns kick in around 1:50 and rearrange the whole song")]),
+    lookup
+  );
+  assert.strictEqual(r, null);
+});
+
+test("grounding: year rules — equal, off-by-one, and named-in-title all pass", () => {
+  // faithfully repeating the shown year (the judge-definition floor)
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("hanoch", "This 1992 late-night ballad closes the bar")]), lookup),
+    null
+  );
+  // ±1 absorbs reissue-date jitter
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("nantes", "A 2008 brass anthem for leaving town")]), lookup),
+    null
+  );
+  // the "1979"-by-Smashing-Pumpkins class: the year IS the track's name
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("sp1979", "1979 bottles teenage boredom into one synth loop")]), lookup),
+    null
+  );
+  // ...and the year appearing in the ALBUM name is a name too
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("vu69", "Cut live in 1969, all nerve and drone")]), lookup),
+    null
+  );
+});
+
+test("grounding: no ref, unknown ref, and null fields are all no-ops", () => {
+  // no ref / the NO_REF sentinel — nothing to join against
+  assert.strictEqual(
+    noteGroundingReason(gInput([{ artist: "A", title: "T", note: "a 1955 postcard" }]), lookup),
+    null
+  );
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack(NO_REF, "a 1955 postcard")]), lookup),
+    null
+  );
+  // ref the lookup does not know
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("nosuchref", "a 1955 postcard")]), lookup),
+    null
+  );
+  // stale cache row: duration_ms missing, so the duration rule must not fire
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("stale", "Six aching minutes of tape hiss")]), lookup),
+    null
+  );
+});
+
+test("grounding FLAGS a year the shown metadata refutes (1955 vs 1964)", () => {
+  const r = noteGroundingReason(
+    gInput([gTrack("montand", "A 1955 postcard from the Left Bank in waltz time")]),
+    lookup
+  );
+  assert.match(String(r), /"1955"/);
+  assert.match(String(r), /1964/);
+  assert.match(String(r), /track 1/);
+});
+
+test("grounding names the FIRST violating note by its track number", () => {
+  const r = noteGroundingReason(
+    gInput([
+      gTrack("freebird", "Runs over nine minutes and earns every second of the climb"),
+      gTrack("apunk", "Under two minutes of pure sprint energy"),
+    ]),
+    lookup
+  );
+  assert.match(String(r), /track 2/);
+});
+
+test("grounding: time-of-day clocks, '-minutes in' positions and idioms are not length claims", () => {
+  // "2:00 AM" is a time of day — as a length it would flag against 4:25
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("blueridge", "A 2:00 AM confession in falsetto")]), lookup),
+    null
+  );
+  // trailing "in" marks a position — 2:00 into an 8:02 track is fine, though
+  // the ±30s length check would have flagged it
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([gTrack("stairway", "Two minutes in, the recorders give way to guitar")]),
+      lookup
+    ),
+    null
+  );
+  // "one more minute" is about the listener, not the track (would flag vs 2:17)
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([gTrack("apunk", "One more minute of this and the night resets")]),
+      lookup
+    ),
+    null
+  );
+});
+
+test("grounding: 'around' + worded minutes is a LENGTH claim, and 0ms rows are no-ops", () => {
+  // "around six minutes" approximates a length — off by 95s is still off
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("blueridge", "Around six minutes of slow burn")]), lookup)),
+    /4:25/
+  );
+  // ...while "around" next to a CLOCK stays positional (see the Mykonos pass)
+  // and a 0-duration row refutes nothing — not even a position claim
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("zerodur", "Those horns kick in around 1:50")]), lookup),
+    null
+  );
+});
+
+// ── makeGroundingGate: the composed per-run gate generateCard wires in ──
+
+import { makeGroundingGate, SYSTEM } from "../curator.ts";
+
+// a complete, otherwise-clean card whose track 1 carries the note under test
+const BAD_NOTE =
+  "A father's deathbed telegram turned into six aching minutes of Beirut's saddest brass";
+const gateCard = (note: string) => ({
+  title: "t",
+  vibe: "v",
+  accent: "ember",
+  tracks: keyed(
+    Array.from({ length: TRACK_COUNT }, (_, i) =>
+      i === 0
+        ? { ref: "nantes", artist: "Beirut", title: "Nantes", note }
+        : { ref: "none", artist: `Artist ${i}`, title: `Title ${i}`, note: `a fine pick ${i}` }
+    )
+  ),
+});
+
+function withWarnCapture<T>(fn: () => T): { result: T; warns: string[] } {
+  const warns: string[] = [];
+  const orig = console.warn;
+  console.warn = (msg: unknown) => {
+    warns.push(String(msg));
+  };
+  try {
+    return { result: fn(), warns };
+  } finally {
+    console.warn = orig;
+  }
+}
+
+test("gate: a violation bounces with the load-bearing 'grounding: ' prefix", () => {
+  const gate = makeGroundingGate({ hard: cardIncompleteReason, lookup });
+  assert.match(String(gate(gateCard(BAD_NOTE), { lastTurn: false })), /^grounding: /);
+  // and a clean card passes straight through
+  assert.strictEqual(
+    gate(gateCard("Brass that swells like a tide coming in"), { lastTurn: false }),
+    null
+  );
+});
+
+test("gate: third violation is accepted and warned — and a NEW gate starts fresh", () => {
+  const gate = makeGroundingGate({ hard: cardIncompleteReason, lookup });
+  assert.match(String(gate(gateCard(BAD_NOTE), { lastTurn: false })), /^grounding: /);
+  assert.match(String(gate(gateCard(BAD_NOTE), { lastTurn: false })), /^grounding: /);
+  const third = withWarnCapture(() => gate(gateCard(BAD_NOTE), { lastTurn: false }));
+  assert.strictEqual(third.result, null);
+  assert.strictEqual(third.warns.length, 1);
+  assert.match(third.warns[0]!, /grounding gate exhausted/);
+  // per-run state: an exhausted gate must not bleed into the next run
+  const fresh = makeGroundingGate({ hard: cardIncompleteReason, lookup });
+  assert.match(String(fresh(gateCard(BAD_NOTE), { lastTurn: false })), /^grounding: /);
+});
+
+test("gate: the forced last turn accepts a grounding-only gap instead of killing the run", () => {
+  const gate = makeGroundingGate({ hard: cardIncompleteReason, lookup });
+  const { result, warns } = withWarnCapture(() => gate(gateCard(BAD_NOTE), { lastTurn: true }));
+  assert.strictEqual(result, null);
+  assert.strictEqual(warns.length, 1);
+  assert.match(warns[0]!, /out of turns/);
+  // the leniency did not burn a bounce — a later normal turn still corrects
+  assert.match(String(gate(gateCard(BAD_NOTE), { lastTurn: false })), /^grounding: /);
+});
+
+test("gate: hard incompleteness always wins — no cap, no last-turn leniency", () => {
+  const gate = makeGroundingGate({ hard: cardIncompleteReason, lookup });
+  const hollow = { title: "t", vibe: "v", accent: "ember", tracks: {} };
+  assert.match(String(gate(hollow, { lastTurn: true })), /no tracks/);
+  // exhaust the grounding cap; hard gaps must still reject
+  gate(gateCard(BAD_NOTE), { lastTurn: false });
+  gate(gateCard(BAD_NOTE), { lastTurn: false });
+  assert.match(String(gate(hollow, { lastTurn: false })), /no tracks/);
+});
+
+test("layer-1 wording is pinned against drive-by reverts", () => {
+  // the grounding rules live in prose the schema can't carry — a silent
+  // revert of either string reopens the 24% invented-note baseline
+  assert.ok(SYSTEM.includes("stake the whole tape"));
+  assert.ok(SYSTEM.includes("(artist, title, album, year, length)"));
+  assert.ok(TRACK_SCHEMA.properties.note.description.includes("No unseen numbers"));
+});
+
+test("extractYears: canonical regex, bit-identical to the eval diagnostic's", () => {
+  // evals/grounding.ts imports this exact function — selftest.ts asserts the
+  // same boundaries there, so the two can only move together.
+  assert.deepStrictEqual(extractYears("from 1971 to 2026, not 1799 or 20261"), ["1971", "2026"]);
+});
+
 test("NO_REF is not something isFilled would reject as a stub", () => {
   // cardIncompleteReason must accept a legitimately-unverified track rather
   // than looping the model forever when Spotify is down

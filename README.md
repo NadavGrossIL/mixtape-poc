@@ -73,13 +73,31 @@ dev-only). Required env vars on the host:
 | `HOST` | `0.0.0.0` |
 | `CLIENT_URL` | `/` |
 | `SPOTIFY_REDIRECT_URI` | `https://<app-host>/callback` — must also be registered in the Spotify dashboard |
-| `APP_SECRET` | owner key; gates every request behind a cookie (required off-loopback) |
+| `APP_SECRET` | shared key; gates every request behind a cookie (required off-loopback) |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `ANTHROPIC_API_KEY` | as in local dev |
-| `SPOTIFY_REFRESH_TOKEN` | paste from `server/.tokens.json` after one login — survives the host's ephemeral disk |
+| `SPOTIFY_REFRESH_TOKEN` | the OWNER's token — paste from `server/.tokens.json` after one login; survives the host's ephemeral disk and powers catalog search |
+| `DAILY_GENERATIONS_PER_USER` | optional, default 25 — per-account generate/adjust cap (Anthropic spend and Spotify's daily quota are shared by everyone) |
 
 Log in once (from any device — the callback is same-origin in production),
-copy `refresh_token` from `.tokens.json` into the env var, and the server
-re-auths itself on every cold start from then on.
+copy the owner `refresh_token` from `.tokens.json` into the env var, and the
+server re-auths itself on every cold start from then on.
+
+## Sharing with friends
+
+Friends use their own Spotify accounts: playlists save to their library and
+the seed picker reads their playlists. Two one-time steps per friend:
+
+1. Spotify dashboard → the app → **User Management** → add their name and
+   the email on their Spotify account. Dev-mode apps are capped at **5
+   allowlisted users, permanently** — choose wisely.
+2. Send them the app URL and the `APP_SECRET`.
+
+They enter the key, hit connect, approve on Spotify, and an HMAC-signed
+cookie (`mixtape_user`) remembers them per browser. The token store
+(`server/.tokens.json`, keyed by Spotify user id) lives on the ephemeral
+disk, so a redeploy logs everyone out — reconnecting is one click, since
+Spotify remembers the consent. Catalog search always runs on the owner
+token; only `/me`-scoped calls (playlists, seeds, saves) use the caller's.
 
 ## Tests
 
@@ -166,5 +184,7 @@ thing a schema checks.
 
 Spotify dev-mode apps are capped at 5 allowlisted users, permanently, for
 individual developers — so "sign in with Spotify" can never be this app's
-growth path. The intended production shape is owner-generates /
-anyone-views-the-shared-card. Details in the architecture review.
+growth path. Multi-user login exists (see "Sharing with friends") but only
+inside that cap; the production shape for everyone else remains
+owner-generates / anyone-views-the-shared-card. Details in the architecture
+review.

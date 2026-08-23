@@ -11,6 +11,7 @@ import type { Request, Response } from "express";
 import * as spotify from "./spotify.ts";
 import * as curator from "./curator.ts";
 import * as logbook from "./logbook.ts";
+import { signUser, verifyUser } from "./session.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
 // startup config warnings below are readable from the browser.
@@ -48,10 +49,11 @@ if (!curator.anthropicConfigured()) {
 
 // ── owner gate ───────────────────────────────────────────────
 
-// This server proxies two private credentials (Anthropic key, Spotify tokens)
-// with no per-request auth. Locally the loopback bind is the protection;
-// deployed, APP_SECRET turns on a cookie gate so only the owner gets in.
-// The cookie carries a hash of the secret, never the secret itself.
+// This server proxies two private credentials (Anthropic key, Spotify tokens).
+// Locally the loopback bind is the protection; deployed, APP_SECRET turns on
+// a cookie gate so only people who were given the shared key get in. WHO they
+// are is a separate question, answered by the Spotify session cookie below.
+// The gate cookie carries a hash of the secret, never the secret itself.
 const APP_SECRET = process.env.APP_SECRET || "";
 const GATE_COOKIE = "mixtape_gate";
 const GATE_TOKEN = APP_SECRET
@@ -64,11 +66,16 @@ function timingSafeMatch(a: unknown, b: unknown): boolean {
   return ba.length === bb.length && crypto.timingSafeEqual(ba, bb);
 }
 
-function hasGateCookie(req: Request): boolean {
+function readCookie(req: Request, name: string): string | null {
   const pair = String(req.headers.cookie || "")
     .split(/;\s*/)
-    .find((c) => c.startsWith(`${GATE_COOKIE}=`));
-  return Boolean(pair) && timingSafeMatch(pair!.slice(GATE_COOKIE.length + 1), GATE_TOKEN);
+    .find((c) => c.startsWith(`${name}=`));
+  return pair ? pair.slice(name.length + 1) : null;
+}
+
+function hasGateCookie(req: Request): boolean {
+  const value = readCookie(req, GATE_COOKIE);
+  return value !== null && timingSafeMatch(value, GATE_TOKEN);
 }
 
 const GATE_PAGE = `<!doctype html>
@@ -76,7 +83,7 @@ const GATE_PAGE = `<!doctype html>
 <title>mixtape</title>
 <body style="margin:0;min-height:100vh;display:grid;place-items:center;background:#111;font-family:system-ui">
 <form method="post" action="/gate" style="display:grid;gap:12px;width:min(280px,80vw)">
-<input type="password" name="secret" placeholder="owner key" autofocus
+<input type="password" name="secret" placeholder="secret key" autofocus
   style="padding:12px;border-radius:8px;border:1px solid #444;background:#1c1c1c;color:#eee;font-size:16px">
 <button style="padding:12px;border-radius:8px;border:0;background:#eee;color:#111;font-size:16px">enter</button>
 </form>`;
@@ -98,10 +105,67 @@ if (APP_SECRET) {
     // check (issued only to a gated /auth/login) already gates it.
     if (req.path === "/callback" || hasGateCookie(req)) return next();
     if (req.path.startsWith("/api/") || req.path.startsWith("/auth/")) {
-      return res.status(401).json({ error: "Locked — reload the page and enter the owner key." });
+      return res.status(401).json({ error: "Locked — reload the page and enter the secret key." });
     }
     res.status(401).type("html").send(GATE_PAGE);
   });
+}
+
+// ── who is this browser? ─────────────────────────────────────
+
+// Friends log in with their own Spotify accounts (each added to the app's
+// allowlist in the Spotify dashboard — dev mode caps that list at 5). After
+// the OAuth callback identifies the account, an HMAC-signed cookie remembers
+// it, so login is once per browser. The gate cookie answers "may you enter";
+// this one answers "whose Spotify is this".
+const SESSION_COOKIE = "mixtape_user";
+// short-lived carrier for the OAuth state, set by /auth/login, checked and
+// cleared by /callback
+const OAUTH_COOKIE = "mixtape_oauth";
+// APP_SECRET is the natural signing key. Local dev (no APP_SECRET) falls
+// back to the Spotify client secret, then to a per-boot random key — which
+// only means re-login after a restart, harmless on loopback.
+const SESSION_KEY =
+  APP_SECRET ||
+  process.env.SPOTIFY_CLIENT_SECRET ||
+  crypto.randomBytes(32).toString("hex");
+
+function callerUser(req: Request): string | null {
+  return verifyUser(readCookie(req, SESSION_COOKIE), SESSION_KEY);
+}
+
+// The caller's Spotify user id, or null AFTER sending the 401 — so routes
+// can bail with a plain `if (!user) return`.
+function requireSpotifyUser(req: Request, res: Response): string | null {
+  const user = callerUser(req);
+  if (user && spotify.isLoggedIn(user)) return user;
+  res.status(401).json({ error: "Not logged in to Spotify." });
+  return null;
+}
+
+// ── per-user daily cap ───────────────────────────────────────
+
+// Generation spends two budgets SHARED by every user: the Anthropic key and
+// Spotify's per-developer-account daily search quota (low hundreds of
+// searches/day — one enthusiastic friend could lock the whole app out for
+// ~19h). In-memory is enough: it resets on redeploy, which at friends scale
+// is a feature, not a bug.
+const DAILY_CAP = Number(process.env.DAILY_GENERATIONS_PER_USER) || 25;
+const generationsToday = new Map<string, { day: string; count: number }>();
+
+function today(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+function underDailyCap(user: string): boolean {
+  const entry = generationsToday.get(user);
+  return !entry || entry.day !== today() || entry.count < DAILY_CAP;
+}
+
+function countGeneration(user: string) {
+  const entry = generationsToday.get(user);
+  if (entry && entry.day === today()) entry.count += 1;
+  else generationsToday.set(user, { day: today(), count: 1 });
 }
 
 // ── auth ─────────────────────────────────────────────────────
@@ -130,6 +194,16 @@ app.get("/auth/login", (req, res) => {
   evictStaleStates();
   const state = spotify.makeState();
   pendingStates.set(state, Date.now());
+  // The state also rides a short-lived cookie so /callback can check that it
+  // came back on the SAME browser that started the login — otherwise a forged
+  // callback link could attach an attacker's Spotify account to a victim's
+  // session (login CSRF). SameSite=Lax still sends it on the top-level
+  // redirect back from accounts.spotify.com.
+  res.setHeader(
+    "Set-Cookie",
+    `${OAUTH_COOKIE}=${state}; Path=/; HttpOnly; SameSite=Lax; Max-Age=600` +
+      (req.secure ? "; Secure" : "")
+  );
   res.redirect(spotify.authorizeUrl(state));
 });
 
@@ -146,9 +220,18 @@ app.get("/callback", async (req, res) => {
   if (!state || !pendingStates.has(state as string)) {
     return res.status(400).send("State mismatch — restart the login flow.");
   }
+  if (readCookie(req, OAUTH_COOKIE) !== state) {
+    return res.status(400).send("State mismatch — restart the login flow.");
+  }
   pendingStates.delete(state as string);
   try {
-    await spotify.exchangeCode(code as string);
+    const { userId, displayName } = await spotify.exchangeCode(code as string);
+    res.setHeader("Set-Cookie", [
+      `${SESSION_COOKIE}=${signUser(userId, SESSION_KEY)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
+        (req.secure ? "; Secure" : ""),
+      `${OAUTH_COOKIE}=; Path=/; HttpOnly; Max-Age=0`,
+    ]);
+    console.log(`[auth] ${displayName || userId} connected their Spotify`);
     res.redirect(CLIENT_URL);
   } catch (err: any) {
     console.error("[auth] token exchange failed:", err.message);
@@ -157,7 +240,9 @@ app.get("/callback", async (req, res) => {
 });
 
 app.get("/auth/status", (req, res) => {
-  res.json({ loggedIn: spotify.isLoggedIn() });
+  const user = callerUser(req);
+  const loggedIn = Boolean(user && spotify.isLoggedIn(user));
+  res.json({ loggedIn, name: loggedIn ? spotify.getDisplayName(user!) : null });
 });
 
 // ── api ──────────────────────────────────────────────────────
@@ -205,13 +290,12 @@ app.get("/api/logs/stream", (req, res) => {
   });
 });
 
-// The user's playlists, for the "in the spirit of" seed picker.
+// The caller's playlists, for the "in the spirit of" seed picker.
 app.get("/api/playlists", async (req, res) => {
-  if (!spotify.isLoggedIn()) {
-    return res.status(401).json({ error: "Not logged in to Spotify." });
-  }
+  const user = requireSpotifyUser(req, res);
+  if (!user) return;
   try {
-    res.json({ playlists: await spotify.listPlaylists() });
+    res.json({ playlists: await spotify.listPlaylists(user) });
   } catch (err: any) {
     console.error("[playlists] failed:", err.message);
     if (err.status === 401) {
@@ -248,9 +332,14 @@ app.post("/api/generate/stream", async (req, res) => {
       .status(500)
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
   }
-  if (!spotify.isLoggedIn()) {
-    return res.status(401).json({ error: "Not logged in to Spotify." });
+  const user = requireSpotifyUser(req, res);
+  if (!user) return;
+  if (!underDailyCap(user)) {
+    return res.status(429).json({
+      error: `Daily mixtape limit reached (${DAILY_CAP}/day) — try again tomorrow.`,
+    });
   }
+  countGeneration(user);
   sseInit(res);
   // Client abort (STOP) must stop the paid upstream work too. `close` also
   // fires after a normal end — writableEnded distinguishes the two.
@@ -263,7 +352,7 @@ app.post("/api/generate/stream", async (req, res) => {
       null;
     if (seedId) {
       sseSend(res, "seeding", { name: seedName });
-      const { tracks, total } = await spotify.getSeedTracks(seedId);
+      const { tracks, total } = await spotify.getSeedTracks(seedId, user);
       if (tracks.length === 0) {
         sseSend(res, "error", {
           message: "Couldn't read that playlist — it may be empty.",
@@ -340,9 +429,14 @@ app.post("/api/adjust/stream", async (req, res) => {
       .status(500)
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
   }
-  if (!spotify.isLoggedIn()) {
-    return res.status(401).json({ error: "Not logged in to Spotify." });
+  const user = requireSpotifyUser(req, res);
+  if (!user) return;
+  if (!underDailyCap(user)) {
+    return res.status(429).json({
+      error: `Daily mixtape limit reached (${DAILY_CAP}/day) — try again tomorrow.`,
+    });
   }
+  countGeneration(user);
   sseInit(res);
   // Same disconnect handling as /api/generate/stream.
   const abort = new AbortController();
@@ -412,9 +506,8 @@ app.post("/api/playlist", async (req, res) => {
   if (!title || !Array.isArray(uris) || uris.length === 0) {
     return res.status(400).json({ error: "Missing title or uris" });
   }
-  if (!spotify.isLoggedIn()) {
-    return res.status(401).json({ error: "Not logged in to Spotify." });
-  }
+  const user = requireSpotifyUser(req, res);
+  if (!user) return;
   // With Accept: text/event-stream, the two real steps (creating playlist →
   // adding N tracks) stream as SSE events; otherwise plain JSON as before.
   const wantsStream = String(req.headers.accept || "").includes("text/event-stream");
@@ -427,16 +520,21 @@ app.post("/api/playlist", async (req, res) => {
           description: `made from prompt: ${prompt || ""}`.trim(),
           uris,
         },
-        (event, data) => sseSend(res, event, data)
+        (event, data) => sseSend(res, event, data),
+        user
       );
       sseSend(res, "done", { playlistUrl });
       return res.end();
     }
-    const playlistUrl = await spotify.createPlaylist({
-      name: title,
-      description: `made from prompt: ${prompt || ""}`.trim(),
-      uris,
-    });
+    const playlistUrl = await spotify.createPlaylist(
+      {
+        name: title,
+        description: `made from prompt: ${prompt || ""}`.trim(),
+        uris,
+      },
+      undefined,
+      user
+    );
     res.json({ playlistUrl });
   } catch (err: any) {
     console.error("[playlist] failed:", err.message);

@@ -44,39 +44,91 @@ function credentialsConfigured(): boolean {
 }
 
 // ── token persistence ────────────────────────────────────────
+//
+// One file, many users: friends log in with their own Spotify accounts
+// (each added to the app's dashboard allowlist — dev mode caps that list at
+// 5 accounts, permanently). Keys are Spotify user ids, plus the reserved
+// key "owner" for the account bootstrapped from SPOTIFY_REFRESH_TOKEN —
+// the identity for catalog search and for anything that runs outside a
+// request (evals, scripts).
+
+const OWNER = "owner";
 
 interface StoredTokens {
   access_token: string | null;
   refresh_token: string;
   expires_at: number;
+  display_name?: string | null;
 }
 
-function loadTokens(): StoredTokens | null {
+interface TokenStore {
+  users: Record<string, StoredTokens>;
+}
+
+// Pure, exported for tests. Accepts both shapes: the current {users: {...}}
+// and the pre-multi-user flat record, which belonged to the owner.
+function parseTokenStore(parsed: unknown): TokenStore {
+  const p = parsed as any;
+  if (p && typeof p === "object" && p.users && typeof p.users === "object") {
+    return { users: p.users };
+  }
+  if (p && typeof p === "object" && typeof p.refresh_token === "string") {
+    return { users: { [OWNER]: p } };
+  }
+  return { users: {} };
+}
+
+function loadStore(): TokenStore {
   try {
-    return JSON.parse(fs.readFileSync(TOKENS_PATH, "utf8"));
+    return parseTokenStore(JSON.parse(fs.readFileSync(TOKENS_PATH, "utf8")));
   } catch {
-    // No token file (fresh container, ephemeral disk wiped on redeploy):
+    return { users: {} };
+  }
+}
+
+function loadTokens(user: string): StoredTokens | null {
+  const stored = loadStore().users[user];
+  if (stored) return stored;
+  if (user === OWNER) {
+    // No owner entry (fresh container, ephemeral disk wiped on redeploy):
     // bootstrap from SPOTIFY_REFRESH_TOKEN so a deployed server comes back
     // logged in. expires_at 0 forces a refresh on first use.
     const refresh = process.env.SPOTIFY_REFRESH_TOKEN || "";
     if (refresh && !PLACEHOLDER_RE.test(refresh)) {
       return { access_token: null, refresh_token: refresh, expires_at: 0 };
     }
-    return null;
   }
+  return null;
 }
 
-function saveTokens(tokens: StoredTokens) {
-  // temp-then-rename: a crash mid-write must never corrupt .tokens.json
-  // (a corrupt file silently reads as logged-out)
+function saveTokens(user: string, tokens: StoredTokens) {
+  // Read-modify-write of the whole store, all synchronous — no await point
+  // for another user's save to interleave with. temp-then-rename: a crash
+  // mid-write must never corrupt .tokens.json (a corrupt file silently
+  // reads as everyone-logged-out).
+  const store = loadStore();
+  store.users[user] = tokens;
   const tmp = `${TOKENS_PATH}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(tokens, null, 2), { mode: 0o600 });
+  fs.writeFileSync(tmp, JSON.stringify(store, null, 2), { mode: 0o600 });
   fs.renameSync(tmp, TOKENS_PATH);
 }
 
-function isLoggedIn(): boolean {
-  const t = loadTokens();
+function isLoggedIn(user: string = OWNER): boolean {
+  const t = loadTokens(user);
   return Boolean(t && t.refresh_token);
+}
+
+function getDisplayName(user: string): string | null {
+  return loadTokens(user)?.display_name ?? null;
+}
+
+// The identity catalog search runs as. Search results are user-agnostic, so
+// any logged-in account works; preferring the owner keeps deployed behavior
+// (the env-bootstrapped token), and the fallback keeps local dev working
+// when someone logged in through the browser without setting the env var.
+function catalogUser(): string {
+  if (isLoggedIn(OWNER)) return OWNER;
+  return Object.keys(loadStore().users)[0] || OWNER;
 }
 
 // ── OAuth (authorization code flow) ──────────────────────────
@@ -115,21 +167,38 @@ async function tokenRequest(body: Record<string, string>): Promise<any> {
   return res.json();
 }
 
-async function exchangeCode(code: string) {
+async function exchangeCode(
+  code: string
+): Promise<{ userId: string; displayName: string | null }> {
   const data = await tokenRequest({
     grant_type: "authorization_code",
     code,
     redirect_uri: REDIRECT_URI,
   });
-  saveTokens({
+  // /me tells us WHO just logged in — the token store and the session
+  // cookie are both keyed by the Spotify user id. Direct fetch rather than
+  // spotifyFetch: that helper only serves already-stored users.
+  const res = await fetch(`${API}/me`, {
+    headers: { Authorization: `Bearer ${data.access_token}` },
+  });
+  if (!res.ok) {
+    throw new Error(`Spotify /me failed after login: ${res.status}`);
+  }
+  const me = await res.json();
+  const userId = String(me?.id || "");
+  if (!userId) throw new Error("Spotify /me returned no user id");
+  const displayName = me?.display_name || null;
+  saveTokens(userId, {
     access_token: data.access_token,
     refresh_token: data.refresh_token,
     expires_at: Date.now() + data.expires_in * 1000,
+    display_name: displayName,
   });
+  return { userId, displayName };
 }
 
-async function refreshAccessToken(): Promise<StoredTokens> {
-  const tokens = loadTokens();
+async function refreshAccessToken(user: string): Promise<StoredTokens> {
+  const tokens = loadTokens(user);
   if (!tokens || !tokens.refresh_token) {
     throw new Error("Not logged in to Spotify");
   }
@@ -137,35 +206,41 @@ async function refreshAccessToken(): Promise<StoredTokens> {
     grant_type: "refresh_token",
     refresh_token: tokens.refresh_token,
   });
-  saveTokens({
+  saveTokens(user, {
+    ...tokens,
     access_token: data.access_token,
     // Spotify may or may not rotate the refresh token
     refresh_token: data.refresh_token || tokens.refresh_token,
     expires_at: Date.now() + data.expires_in * 1000,
   });
-  return loadTokens()!;
+  return loadTokens(user)!;
 }
 
-// Single-flight: concurrent resolver workers seeing an expired token must
-// share ONE refresh. Parallel refreshes race on .tokens.json (last-write-wins
-// can persist a stale refresh_token when Spotify rotates it → silent logout).
-let refreshInFlight: Promise<StoredTokens> | null = null;
-function refreshOnce(): Promise<StoredTokens> {
-  refreshInFlight ||= refreshAccessToken().finally(() => {
-    refreshInFlight = null;
-  });
-  return refreshInFlight;
+// Single-flight PER USER: concurrent resolver workers seeing an expired
+// token must share ONE refresh. Parallel refreshes race on .tokens.json
+// (last-write-wins can persist a stale refresh_token when Spotify rotates
+// it → silent logout).
+const refreshInFlight = new Map<string, Promise<StoredTokens>>();
+function refreshOnce(user: string): Promise<StoredTokens> {
+  let inflight = refreshInFlight.get(user);
+  if (!inflight) {
+    inflight = refreshAccessToken(user).finally(() => {
+      refreshInFlight.delete(user);
+    });
+    refreshInFlight.set(user, inflight);
+  }
+  return inflight;
 }
 
-async function getAccessToken(): Promise<string> {
-  let tokens = loadTokens();
+async function getAccessToken(user: string = OWNER): Promise<string> {
+  let tokens = loadTokens(user);
   if (!tokens || !tokens.refresh_token) {
     const err: HttpError = new Error("Not logged in to Spotify");
     err.status = 401;
     throw err;
   }
   if (!tokens.access_token || Date.now() > tokens.expires_at - 30_000) {
-    tokens = await refreshOnce();
+    tokens = await refreshOnce(user);
   }
   return tokens.access_token!;
 }
@@ -254,12 +329,15 @@ async function spotifyFetch(
   options: RequestInit & { headers?: Record<string, string> } = {},
   // Separate flags: a request that already spent its 401 retry must still be
   // allowed its rate-limit retry, and vice versa.
-  retried: { auth?: boolean; rate?: boolean } = {}
+  retried: { auth?: boolean; rate?: boolean } = {},
+  // whose token to call with — /me endpoints are per-user; catalog search
+  // stays on catalogUser() (quota is charged per developer app either way)
+  user: string = OWNER
 ): Promise<any> {
   const blocked = quotaBlockedFor();
   if (blocked > 0) throw quotaError(blocked);
 
-  const token = await getAccessToken();
+  const token = await getAccessToken(user);
   const res = await fetch(`${API}${pathname}`, {
     ...options,
     headers: {
@@ -269,8 +347,8 @@ async function spotifyFetch(
     },
   });
   if (res.status === 401 && !retried.auth) {
-    await refreshOnce();
-    return spotifyFetch(pathname, options, { ...retried, auth: true });
+    await refreshOnce(user);
+    return spotifyFetch(pathname, options, { ...retried, auth: true }, user);
   }
   if (res.status === 429) {
     const body = await res.text().catch(() => "");
@@ -293,7 +371,7 @@ async function spotifyFetch(
         `[spotify] rate-limited on ${pathname} — retrying in ${jittered.toFixed(1)}s`
       );
       await new Promise((resolve) => setTimeout(resolve, jittered * 1000));
-      return spotifyFetch(pathname, options, { ...retried, rate: true });
+      return spotifyFetch(pathname, options, { ...retried, rate: true }, user);
     }
     const err: HttpError = new Error(`Spotify API 429 on ${pathname}: ${body}`);
     err.status = 429;
@@ -579,7 +657,7 @@ async function searchTracks(q: string): Promise<any[]> {
   if (isFresh(hit)) return hit!.items;
 
   const params = new URLSearchParams({ q, type: "track", limit: "10" });
-  const data = await spotifyFetch(`/search?${params}`);
+  const data = await spotifyFetch(`/search?${params}`, {}, {}, catalogUser());
   const items = (data?.tracks?.items || []).map(trimItem);
 
   if (cache.size >= CACHE_MAX_ENTRIES) {
@@ -869,13 +947,13 @@ function sampleTracks<T>(tracks: T[], cap: number = SEED_TRACK_CAP): T[] {
   return out;
 }
 
-// List the user's playlists for the picker. Paginated at 50 (the API max);
+// List the caller's playlists for the picker. Paginated at 50 (the API max);
 // capped at 4 pages — a picker doesn't need more than 200 entries.
-async function listPlaylists() {
+async function listPlaylists(user: string = OWNER) {
   const playlists: { id: string; name: string; total: number | null; owner: string | null }[] = [];
   for (let offset = 0; offset < 200; offset += 50) {
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
-    const data = await spotifyFetch(`/me/playlists?${params}`);
+    const data = await spotifyFetch(`/me/playlists?${params}`, {}, {}, user);
     const items = data?.items || [];
     for (const p of items) {
       if (!p?.id) continue;
@@ -895,13 +973,18 @@ async function listPlaylists() {
 // Fetch a playlist's tracks (artist/title only) to seed the curator.
 // No `fields` trim: the Feb 2026 renames make exact field paths risky, and a
 // wrong fields path silently returns nothing instead of erroring.
-async function getSeedTracks(playlistId: string) {
+// The caller's token, not the owner's — the seed is often one of THEIR
+// private playlists.
+async function getSeedTracks(playlistId: string, user: string = OWNER) {
   const tracks: { artist: string; title: string }[] = [];
   let total: number | null = null;
   for (let offset = 0; offset < SEED_FETCH_MAX; offset += 50) {
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
     const data = await spotifyFetch(
-      `/playlists/${encodeURIComponent(playlistId)}/items?${params}`
+      `/playlists/${encodeURIComponent(playlistId)}/items?${params}`,
+      {},
+      {},
+      user
     );
     total = data?.total ?? total;
     const items = data?.items || [];
@@ -926,31 +1009,46 @@ async function getSeedTracks(playlistId: string) {
 // "creating" (playlist create request) and "adding" (adding N tracks).
 async function createPlaylist(
   { name, description, uris }: { name: string; description: string; uris: string[] },
-  onProgress?: (event: string, data?: any) => void
+  onProgress?: (event: string, data?: any) => void,
+  // the playlist lands in THIS account's library
+  user: string = OWNER
 ): Promise<string | null> {
   // POST /v1/me/playlists — NOT /users/{id}/playlists (removed Feb 2026)
   if (onProgress) onProgress("creating", { name });
-  const playlist = await spotifyFetch("/me/playlists", {
-    method: "POST",
-    body: JSON.stringify({ name, description, public: false }),
-  });
+  const playlist = await spotifyFetch(
+    "/me/playlists",
+    {
+      method: "POST",
+      body: JSON.stringify({ name, description, public: false }),
+    },
+    {},
+    user
+  );
   if (uris.length) {
     // POST /v1/playlists/{id}/items (renamed from /tracks); body key is "uris"
     if (onProgress) onProgress("adding", { count: uris.length });
     try {
-      await spotifyFetch(`/playlists/${playlist.id}/items`, {
-        method: "POST",
-        body: JSON.stringify({ uris }),
-      });
+      await spotifyFetch(
+        `/playlists/${playlist.id}/items`,
+        {
+          method: "POST",
+          body: JSON.stringify({ uris }),
+        },
+        {},
+        user
+      );
     } catch (err) {
       // Best-effort orphan cleanup — otherwise every retry after a failed add
       // leaves another empty playlist. There is no delete endpoint; unfollowing
       // your own playlist removes it. A failed cleanup must not mask the
       // original error.
       try {
-        await spotifyFetch(`/playlists/${playlist.id}/followers`, {
-          method: "DELETE",
-        });
+        await spotifyFetch(
+          `/playlists/${playlist.id}/followers`,
+          { method: "DELETE" },
+          {},
+          user
+        );
       } catch (cleanupErr: any) {
         console.warn(
           `[playlist] cleanup of orphaned ${playlist.id} failed: ${cleanupErr.message}`
@@ -965,6 +1063,8 @@ async function createPlaylist(
 export {
   credentialsConfigured,
   isLoggedIn,
+  getDisplayName,
+  parseTokenStore, // pure, exported for tests
   makeState,
   authorizeUrl,
   exchangeCode,

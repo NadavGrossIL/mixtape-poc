@@ -460,6 +460,72 @@ const ROWS: Record<string, any> = {
     duration_ms: 0,
     album: { name: "Zeroes", release_date: "2010-01-01", album_type: "album" },
   },
+  // 2026-08-23 validation-run corpus: the album-position invention class.
+  // No duration_ms on purpose — these tests isolate the position rule.
+  monochrome2: {
+    name: "City Lights",
+    uri: "spotify:track:monochrome2",
+    artists: [{ name: "A" }],
+    track_number: 2,
+    album: { name: "MONOCHROME", release_date: "1980-01-01", album_type: "album", total_tracks: 8 },
+  },
+  monochrome1: {
+    name: "City Lights",
+    uri: "spotify:track:monochrome1",
+    artists: [{ name: "A" }],
+    track_number: 1,
+    album: { name: "MONOCHROME", release_date: "1980-01-01", album_type: "album", total_tracks: 8 },
+  },
+  lightnup: {
+    name: "Sunset Cruise",
+    uri: "spotify:track:lightnup",
+    artists: [{ name: "A" }],
+    track_number: 4,
+    album: { name: "LIGHT'N UP", release_date: "1982-01-01", album_type: "album", total_tracks: 8 },
+  },
+  ethnix: {
+    name: "Track Three",
+    uri: "spotify:track:ethnix",
+    artists: [{ name: "Ethnix" }],
+    track_number: 3,
+    album: { name: "Ethnix", release_date: "1990-01-01", album_type: "album", total_tracks: 10 },
+  },
+  disquedor: {
+    name: "Chanson Sept",
+    uri: "spotify:track:disquedor",
+    artists: [{ name: "A" }],
+    track_number: 7,
+    album: { name: "Disque d'or", release_date: "1992-01-01", album_type: "album", total_tracks: 14 },
+  },
+  pylon: {
+    name: "Second Song",
+    uri: "spotify:track:pylon",
+    artists: [{ name: "A" }],
+    track_number: 2,
+    album: { name: "Pylon", release_date: "1980-01-01", album_type: "album", total_tracks: 12 },
+  },
+  arcrow: {
+    name: "Funk Cut",
+    uri: "spotify:track:arcrow",
+    artists: [{ name: "A" }],
+    track_number: 5,
+    album: { name: "Whatever Works", release_date: "2001-01-01", album_type: "album", total_tracks: 10 },
+  },
+  // stale cache row: position halves missing entirely
+  noposition: {
+    name: "City Lights",
+    uri: "spotify:track:noposition",
+    artists: [{ name: "A" }],
+    track_number: null,
+    album: { name: "MONOCHROME", release_date: "1980-01-01", album_type: "album", total_tracks: null },
+  },
+  fillmore: {
+    name: "Whipping Post",
+    uri: "spotify:track:fillmore",
+    artists: [{ name: "The Allman Brothers Band" }],
+    track_number: 5,
+    album: { name: "At Fillmore East (Deluxe Edition)", release_date: "1971-07-06", album_type: "album", total_tracks: 14 },
+  },
 };
 
 const lookup = (ref: string) => ROWS[ref] ?? null;
@@ -641,6 +707,84 @@ test("grounding: 'around' + worded minutes is a LENGTH claim, and 0ms rows are n
   );
 });
 
+test("grounding FLAGS album-position claims the shown position refutes", () => {
+  // "Opens" + the album name in the note, shown track 2 of 8
+  const r1 = noteGroundingReason(
+    gInput([gTrack("monochrome2", "Opens MONOCHROME in 1980 and stretches to nearly eight minutes")]),
+    lookup
+  );
+  assert.match(String(r1), /track 2 of 8/);
+  assert.match(String(r1), /only facts your search results showed/);
+  // "Closes" + the album name, shown track 4 of 8
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("lightnup", "Closes LIGHT'N UP, 1982, nearly seven minutes")]), lookup)),
+    /track 4 of 8/
+  );
+  // "Opening cut" + the word "album"
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("ethnix", "Opening cut off Ethnix's 1990 debut album")]), lookup)),
+    /track 3 of 10/
+  );
+  // bare "opener" + the album name
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("disquedor", "1992's Disque D'or opener")]), lookup)),
+    /track 7 of 14/
+  );
+  // the wrong-album form: the note names an album the row does NOT show, so
+  // context comes from the "cut off ..." link, and the position still refutes
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("pylon", "Closing cut off Memories — under two and a half minutes")]), lookup)),
+    /track 2 of 12/
+  );
+});
+
+test("grounding PASSES album-position claims that are true, arc-talk, or unverifiable", () => {
+  // a TRUE opener — same claim, row shows track 1 of 8
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([gTrack("monochrome1", "Opens MONOCHROME in 1980 and stretches to nearly eight minutes")]),
+      lookup
+    ),
+    null
+  );
+  // mixtape-arc language is the arc the prompt itself asks for — no album context
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("arcrow", "all whip-crack funk guitar to kick the tape awake")]), lookup),
+    null
+  );
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("arcrow", "opens the tape hands-up")]), lookup),
+    null
+  );
+  // stale cache row: no track_number/total_tracks to verify against
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([gTrack("noposition", "Opens MONOCHROME in 1980 and stretches to nearly eight minutes")]),
+      lookup
+    ),
+    null
+  );
+  // "closer" with no album context at all: album name absent from the note
+  // and no off/from/on within 3 tokens after the keyword
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([gTrack("fillmore", "The marathon closer: 23:09 of Duane Allman trading licks with Dickey Betts")]),
+      lookup
+    ),
+    null
+  );
+});
+
+test("grounding FLAGS an exact clock inside the old ±30s window (9:19 vs shown 9:08)", () => {
+  // the model sees the row's length, so a clock claim must copy it: ±5s
+  const r = noteGroundingReason(
+    gInput([gTrack("freebird", "All 9:19 on the expanded Pronounced album, and it earns the fade")]),
+    lookup
+  );
+  assert.match(String(r), /"9:19"/);
+  assert.match(String(r), /9:08/);
+});
+
 // ── makeGroundingGate: the composed per-run gate generateCard wires in ──
 
 import { makeGroundingGate, SYSTEM } from "../curator.ts";
@@ -721,7 +865,7 @@ test("layer-1 wording is pinned against drive-by reverts", () => {
   // the grounding rules live in prose the schema can't carry — a silent
   // revert of either string reopens the 24% invented-note baseline
   assert.ok(SYSTEM.includes("stake the whole tape"));
-  assert.ok(SYSTEM.includes("(artist, title, album, year, length)"));
+  assert.ok(SYSTEM.includes("(artist, title, album, year, length, position)"));
   assert.ok(TRACK_SCHEMA.properties.note.description.includes("No unseen numbers"));
 });
 

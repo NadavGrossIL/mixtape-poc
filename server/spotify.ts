@@ -881,17 +881,25 @@ function catalogRow(item: any): {
   album: string;
   year: string;
   length?: string;
+  position?: string;
 } {
+  const trackNo = item.track_number;
+  const totalTracks = item.album?.total_tracks;
   return {
     ref: refOf(item),
     artist: (item.artists || []).map((a: any) => a.name).join(", "),
     title: item.name,
     album: item.album?.name || "",
     year: String(item.album?.release_date || "").slice(0, 4),
-    // Omit — never null — on cache rows that predate the duration_ms field: a
+    // Omit — never null — on cache rows that predate the field expansion: a
     // literal "length": null is a value the model could parrot into a note.
+    // Same rule for position below.
     ...(typeof item.duration_ms === "number"
       ? { length: formatClock(item.duration_ms) }
+      : {}),
+    ...(Number.isInteger(trackNo) && trackNo > 0 &&
+    Number.isInteger(totalTracks) && totalTracks > 0
+      ? { position: `${trackNo} of ${totalTracks}` }
       : {}),
   };
 }

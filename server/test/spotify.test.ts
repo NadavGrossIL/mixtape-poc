@@ -353,32 +353,41 @@ test("formatClock: M:SS with zero-padded seconds", () => {
   assert.strictEqual(formatClock(548000), "9:08");
 });
 
-test("catalogRow: shows length when duration_ms is present", () => {
+test("catalogRow: shows length and position when the fields are present", () => {
   const row = catalogRow({
     name: "Nantes",
     uri: "spotify:track:nantes1",
     artists: [{ name: "Beirut" }],
     duration_ms: 248000,
-    album: { name: "The Flying Club Cup", release_date: "2007-10-09" },
+    track_number: 4,
+    album: { name: "The Flying Club Cup", release_date: "2007-10-09", total_tracks: 13 },
   });
   assert.strictEqual(row.ref, "nantes1");
   assert.strictEqual(row.artist, "Beirut");
   assert.strictEqual(row.album, "The Flying Club Cup");
   assert.strictEqual(row.year, "2007");
   assert.strictEqual(row.length, "4:08");
+  assert.strictEqual(row.position, "4 of 13");
 });
 
-test("catalogRow: OMITS length on stale cache rows — never shows null", () => {
+test("catalogRow: OMITS length/position on stale cache rows — never shows null", () => {
   // a literal "length": null is a value the model could parrot into a note
   const row = catalogRow({
     name: "Old Row",
     uri: "spotify:track:old1",
     artists: [{ name: "A" }],
     duration_ms: null,
-    album: { name: "X", release_date: "1999-01-01" },
+    track_number: null,
+    album: { name: "X", release_date: "1999-01-01", total_tracks: null },
   });
   assert.ok(!("length" in row));
+  assert.ok(!("position" in row));
   assert.ok(!("length" in catalogRow({ name: "Y", uri: "spotify:track:y1" })));
+  // position needs BOTH halves — a track_number without total_tracks is not
+  // "N of ?", it is nothing
+  assert.ok(
+    !("position" in catalogRow({ name: "Z", uri: "spotify:track:z1", track_number: 3, album: {} }))
+  );
 });
 
 // ── refs: resolution without a second search ─────────────────

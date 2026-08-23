@@ -219,7 +219,7 @@ const ADJUST_TOOL = {
 const SEARCH_TOOL = {
   name: "search_spotify",
   description:
-    "Search Spotify's track catalog. Returns up to 10 real records, each with a ref, artist, title, album, year and length when known. " +
+    "Search Spotify's track catalog. Returns up to 10 real records, each with a ref, artist, title, album, year, and length and position when known. " +
     "Every track on the card must come from these results, and the track's ref field must be the row's ref copied exactly. " +
     "Searches are a limited daily resource, so prefer broad searches (an artist, a scene, a sound) that can fill several " +
     "slots at once over one narrow search per track, and never repeat a query you have already run.",
@@ -295,7 +295,7 @@ Rules:
 - Searches cost a limited daily allowance, so never re-run a query you have already run in this conversation, and never search for a record you have already seen in earlier results.
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
 - Notes must feel human and specific, not AI-generic — a catalog fact, a piece of lore, an image of the sound.
-- Every fact in a note must be either something a search result showed you (artist, title, album, year, length) or something so famous you would stake the whole tape on it. Merely pretty sure means leave it out.
+- Every fact in a note must be either something a search result showed you (artist, title, album, year, length, position) or something so famous you would stake the whole tape on it. Merely pretty sure means leave it out.
 - Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
 - When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
@@ -395,7 +395,7 @@ function diffIncompleteReason(input: Record<string, unknown>): string | null {
 //
 // Checks a committed card's notes against the exact search records the model
 // cited (by ref), for the claim shapes those records can refute: years,
-// durations/timestamps, and "title track". Measured on the 2026-08-18
+// durations/timestamps, album position, and "title track". Measured on the 2026-08-18
 // baseline: 4 of that run's 18 invented notes are hard catches, and of its 70
 // non-invented notes exactly one matches any pattern here (Free Bird's true
 // "over nine minutes") and passes — 0 false positives observed. Every rule is
@@ -436,6 +436,29 @@ const POSITION_AFTER = new Set(["before", "into", "past", "in"]);
 // two minutes" vs 2:17 is off by only 17s, but the direction itself is the
 // invention (an observed baseline case).
 const DIRECTIONAL = new Set(["under", "over", "nearly", "almost"]);
+
+// Album-position claim shapes. 5 of the 2026-08-23 validation run's 13
+// invented notes wrongly asserted "opens/closes the album" — the new dominant
+// failure once durations were grounded.
+const OPENER_RE = /\b(?:opens|opener|opening\s+(?:cut|track|song|number))\b/i;
+const CLOSER_RE = /\b(?:closes|closer|closing\s+(?:cut|track|song|number))\b/i;
+
+// An opener/closer keyword only counts as an ALBUM claim with album context —
+// "opens the tape" is the mixtape arc the prompt itself asks for. Context is
+// any of: the word "album", the row's album name in the note, or an
+// off/from/on link within 3 tokens after the keyword (the wrong-album form:
+// "Closing cut off Memories" when the cited row says Pylon).
+function albumPositionContext(note: string, item: any, m: RegExpExecArray): boolean {
+  if (/\balbum\b/i.test(note)) return true;
+  const albumName = normalize(stripSuffixes(item?.album?.name ?? ""));
+  if (albumName && normalize(note).includes(albumName)) return true;
+  const tokens = note
+    .slice(m.index + m[0].length)
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 3);
+  return tokens.some((t) => /^(?:off|from|on)$/i.test(t.replace(/[^a-zA-Z]/g, "")));
+}
 
 function wordBefore(text: string, index: number): string {
   const m = /([a-z]+)[^a-z]*$/i.exec(text.slice(0, index));
@@ -536,14 +559,42 @@ function noteGroundingReason(
           if (!ok) {
             return `track ${i + 1}'s note says "${before} ${c.text}", but the search result you cited shows the track's length as ${shown} — ${fix}`;
           }
-        } else if (Math.abs(c.seconds - actual) > 30) {
-          // ±30s forgives honest rounding ("six minutes" for 5:41) — nothing more
-          return `track ${i + 1}'s note calls it "${c.text}", but the search result you cited shows the track's length as ${shown} — ${fix}`;
+        } else {
+          // Worded minutes keep ±30s — "six minutes" is honest rounding for
+          // 5:41. A clock claim gets ±5s: the model SEES the length now, so
+          // "9:19" against a shown 9:08 is an invention, not rounding
+          // (measured: 2 of the 2026-08-23 run's invented notes sat inside
+          // the old ±30s window on exact clocks).
+          const tolerance = c.kind === "clock" ? 5 : 30;
+          if (Math.abs(c.seconds - actual) > tolerance) {
+            return `track ${i + 1}'s note calls it "${c.text}", but the search result you cited shows the track's length as ${shown} — ${fix}`;
+          }
         }
       }
     }
 
-    // 3. "Title track" vs the shown album. Normalized (suffixes stripped) so a
+    // 3. Album-position claims vs the shown track_number/total_tracks. Skips
+    // entirely without album context (see albumPositionContext) or on rows
+    // that predate the field expansion.
+    const trackNo = item?.track_number;
+    const totalTracks = item?.album?.total_tracks;
+    if (
+      Number.isInteger(trackNo) && trackNo > 0 &&
+      Number.isInteger(totalTracks) && totalTracks > 0
+    ) {
+      for (const { re, wantTrack, what } of [
+        { re: OPENER_RE, wantTrack: 1, what: "opens the album" },
+        { re: CLOSER_RE, wantTrack: totalTracks, what: "closes the album" },
+      ]) {
+        const m = re.exec(note);
+        if (!m || !albumPositionContext(note, item, m)) continue;
+        if (trackNo !== wantTrack) {
+          return `track ${i + 1}'s note says it ${what} ("${m[0]}"), but the search result you cited shows it as track ${trackNo} of ${totalTracks} — ${fix}`;
+        }
+      }
+    }
+
+    // 4. "Title track" vs the shown album. Normalized (suffixes stripped) so a
     // "(Remastered)" album name can't fake a mismatch; album_type catches the
     // single whose "album" IS the track.
     if (/title track/i.test(note)) {

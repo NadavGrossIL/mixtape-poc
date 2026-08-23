@@ -149,14 +149,15 @@
 .logo-accent {
   stroke: var(--accent-soft);
 }
-.slash {
-  color: var(--accent-soft);
-}
 .tagline {
   font-family: "Space Mono", monospace;
   font-size: 12px;
-  color: var(--ink-faint);
+  /* load-bearing now — it IS the value proposition, so it sits a full tier
+     above the caption floor */
+  color: var(--ink-dim);
   margin-top: 6px;
+  max-width: 34em;
+  line-height: 1.5;
 }
 .checking {
   font-family: "Space Mono", monospace;
@@ -255,12 +256,160 @@
   color: var(--ink-dim);
 }
 
+/* token + textarea stack as one visual input object */
+.prompt-stack {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+}
+
 /* mic sits inside the textarea's corner so the stacked mobile layout
    doesn't gain a full-width third button */
 .prompt-wrap {
   position: relative;
   flex: 1;
   display: flex;
+}
+/* with a seed token docked on top, the textarea is the bottom half of a
+   single box: square its top edge and let the token own the top radius */
+.prompt-wrap.has-seed .prompt-input {
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+}
+
+/* ── armed seed: a removable token docked to the prompt box ── */
+.seed-token {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: var(--shell-raised);
+  border: 1px solid var(--line);
+  border-bottom: none;
+  border-radius: 4px 4px 0 0;
+  padding: 8px 6px 8px 12px;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+.seed-token-mark {
+  color: var(--accent-soft);
+  flex-shrink: 0;
+}
+.seed-token-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.seed-token-name {
+  color: var(--ink);
+  font-weight: 700;
+}
+.seed-token-clear {
+  background: transparent;
+  border: none;
+  color: var(--accent-soft);
+  font-family: "Space Mono", monospace;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 6px;
+  flex-shrink: 0;
+  position: relative;
+  border-radius: 4px;
+}
+/* invisible hit-area: full touch target around the small glyph */
+.seed-token-clear::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+.seed-token-clear:hover {
+  color: var(--ink);
+}
+
+/* ── seed entry chip + inline picker panel ── */
+.seed-chip {
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.seed-chip:hover {
+  color: var(--ink);
+  border-color: var(--accent-soft);
+}
+.seed-panel {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.seed-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+}
+.seed-panel-close {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  font-family: "Space Mono", monospace;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 4px;
+  position: relative;
+  border-radius: 4px;
+}
+.seed-panel-close::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+.seed-panel-close:hover {
+  color: var(--ink);
+}
+.seed-explainer {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+.seed-error-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+.seed-retry {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 14px;
+  min-height: 36px;
+  cursor: pointer;
+}
+.seed-retry:hover {
+  color: var(--ink);
+  border-color: var(--ink-faint);
 }
 .prompt-wrap .prompt-input {
   flex: 1;
@@ -345,16 +494,7 @@
   margin-top: 28px;
 }
 
-/* ── seed picker: "in the spirit of" ── */
-.seed-row {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 10px;
-  width: 100%;
-  max-width: 560px;
-  margin-top: 28px;
-}
+/* ── seed picker controls (inside .seed-panel) ── */
 .seed-select {
   width: 100%;
   min-width: 0;
@@ -382,6 +522,10 @@
   font-family: "Space Mono", monospace;
   font-size: 12px;
   color: var(--accent-soft);
+  /* a real touch target, like every other control on the page */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
 }
 
 /* ── example chips ── */
@@ -451,6 +595,10 @@
 }
 .log-line {
   color: var(--ink-dim);
+}
+.log-caption {
+  color: var(--ink-faint);
+  margin-bottom: 2px;
 }
 .log-track {
   color: var(--ink);
@@ -685,6 +833,11 @@
   color: var(--paper-ink);
   white-space: nowrap;
 }
+/* the affordance legend, in two widths — phones get the short one instead
+   of nothing */
+.card-hint-short {
+  display: none;
+}
 .barcode {
   width: 58px;
   height: 24px;
@@ -706,6 +859,12 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
+}
+.refine-caption {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-bottom: -4px; /* sits tight over its own row, not floating between */
 }
 .refine-row {
   display: flex;
@@ -817,21 +976,6 @@
   background: color-mix(in srgb, var(--accent) 12%, transparent);
 }
 
-.brand-switcher {
-  position: fixed;
-  bottom: 10px;
-  right: 10px;
-  font-family: "Space Mono", monospace;
-  font-size: 10px;
-  background: var(--shell);
-  color: var(--ink-faint);
-  border: 1px dashed var(--line);
-  border-radius: 3px;
-  padding: 8px 10px;
-  min-height: 24px;
-  cursor: pointer;
-}
-
 /* ── empty-state deck hero ── */
 .deck-hero {
   margin-top: 30px;
@@ -839,8 +983,13 @@
 }
 .deck {
   display: block;
-  width: min(320px, 80vw);
+  /* garnish, not headline: it must never outrank the input above it */
+  width: min(240px, 68vw);
   height: auto;
+}
+/* on the login gate there is no input to compete with — let it breathe */
+.deck-hero.deck-hero-gate .deck {
+  width: min(320px, 80vw);
 }
 .deck-line {
   stroke: var(--line);
@@ -911,11 +1060,6 @@
     transform: rotate(-0.4deg);
   }
 }
-@keyframes float {
-  50% {
-    transform: translateY(-5px);
-  }
-}
 /* cycle length = dasharray period (26 + 206) for a seamless loop */
 @keyframes tapeflow {
   to {
@@ -927,7 +1071,9 @@
     animation: spin 1.4s linear infinite;
   }
   .deck-hero {
-    animation: lnfade 0.5s ease, float 7s ease-in-out 0.5s infinite;
+    /* reels + tape shimmer are the hero's motion; the whole object holding
+       still keeps it garnish rather than a competing attention source */
+    animation: lnfade 0.5s ease;
   }
   .deck-reel-supply {
     animation: spin 5.2s linear infinite;
@@ -978,8 +1124,12 @@
   .card-body {
     padding: 18px 14px 14px;
   }
-  .card-footer span:first-child {
+  /* swap the legend for its short form instead of dropping it */
+  .card-hint-full {
     display: none;
+  }
+  .card-hint-short {
+    display: inline;
   }
   /* the full wordmark + cassette runs ~460px at desktop size */
   .wordmark {
@@ -1015,20 +1165,11 @@
     font-size: 9.5px;
     letter-spacing: 0.5px;
   }
-  /* phones: cassette right after the scope line so it lands in the first
-     viewport; examples and seed follow (visual order only — DOM and tab
-     order are unchanged, and the hero holds no focusables) */
-  .examples {
-    order: 1;
-  }
-  .seed-row {
-    order: 2;
-  }
+  /* phones: DOM order IS the visual order — input, seed entry, caption,
+     examples, and the decorative deck dead last. Nothing that teaches or
+     acts may lose the fold-fight to decoration. */
   .deck-hero {
     margin-top: 14px;
-  }
-  .deck {
-    width: min(240px, 68vw);
   }
 }
 
@@ -1102,6 +1243,23 @@
   font-family: "Space Mono", monospace;
   font-size: 11px;
   color: var(--ink-faint);
+}
+
+/* who's-used-it strip — one wrapping row of per-friend counters */
+.logs-usage {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 16px;
+  padding: 6px 12px;
+  border-bottom: 1px solid rgba(227, 194, 152, 0.28);
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+
+.logs-usage-row b {
+  color: var(--ink);
+  font-weight: 700;
 }
 
 .logs-title {

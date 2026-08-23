@@ -122,6 +122,24 @@ function getDisplayName(user: string): string | null {
   return loadTokens(user)?.display_name ?? null;
 }
 
+// The owner's Spotify user id — the admin identity for owner-only routes
+// (logs, usage). Resolved lazily from the owner token's /me and cached for
+// the process; a failed resolution is retried on the next call rather than
+// cached, so a transient error can't lock the owner out for the boot.
+let ownerIdCache: string | null = null;
+async function getOwnerId(): Promise<string | null> {
+  if (ownerIdCache) return ownerIdCache;
+  if (!isLoggedIn(OWNER)) return null;
+  try {
+    const me = await spotifyFetch("/me", {}, {}, OWNER);
+    ownerIdCache = String(me?.id || "") || null;
+  } catch (err: any) {
+    console.warn(`[spotify] resolving the owner identity failed: ${err.message}`);
+    return null;
+  }
+  return ownerIdCache;
+}
+
 // The identity catalog search runs as. Search results are user-agnostic, so
 // any logged-in account works; preferring the owner keeps deployed behavior
 // (the env-bootstrapped token), and the fallback keeps local dev working
@@ -1064,6 +1082,7 @@ export {
   credentialsConfigured,
   isLoggedIn,
   getDisplayName,
+  getOwnerId,
   parseTokenStore, // pure, exported for tests
   makeState,
   authorizeUrl,

@@ -19,6 +19,24 @@ interface LogEntry {
   msg: string;
 }
 
+interface UsageRow {
+  id: string;
+  name: string | null;
+  lastSeen: number;
+  logins: number;
+  generations: number;
+  adjusts: number;
+  saves: number;
+}
+
+const ago = (t: number) => {
+  const m = Math.round((Date.now() - t) / 60_000);
+  if (m < 1) return "now";
+  if (m < 60) return `${m}m ago`;
+  if (m < 60 * 24) return `${Math.round(m / 60)}h ago`;
+  return `${Math.round(m / (60 * 24))}d ago`;
+};
+
 // Matches the server ring's capacity — no reason to hold more than the
 // server can ever replay on reconnect.
 const CAPACITY = 500;
@@ -39,6 +57,9 @@ export default function LogConsole() {
   const [problemsOnly, setProblemsOnly] = useState(false);
   // Cleared entries stay cleared: the badge counts problems newer than this.
   const [readSeq, setReadSeq] = useState(0);
+  // Who has been using the app. The server only answers the owner — anyone
+  // else gets a 401 and the strip simply doesn't render.
+  const [users, setUsers] = useState<UsageRow[] | null>(null);
 
   const lastSeqRef = useRef(0);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -76,6 +97,16 @@ export default function LogConsole() {
       source?.close();
     };
   }, []);
+
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/usage")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d: { users?: UsageRow[] } | null) =>
+        setUsers(d && Array.isArray(d.users) ? d.users : null)
+      )
+      .catch(() => setUsers(null));
+  }, [open]);
 
   const shown = useMemo(
     () => (problemsOnly ? entries.filter((e) => e.level !== "info") : entries),
@@ -154,6 +185,17 @@ export default function LogConsole() {
           </button>
         </div>
       </header>
+
+      {users && users.length > 0 && (
+        <div className="logs-usage" aria-label="Who has been using the app">
+          {users.map((u) => (
+            <span key={u.id} className="logs-usage-row">
+              <b>{u.name || u.id}</b> · {u.generations} made · {u.saves} saved ·{" "}
+              {ago(u.lastSeen)}
+            </span>
+          ))}
+        </div>
+      )}
 
       <div
         className="logs-body"

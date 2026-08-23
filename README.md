@@ -99,6 +99,13 @@ disk, so a redeploy logs everyone out — reconnecting is one click, since
 Spotify remembers the consent. Catalog search always runs on the owner
 token; only `/me`-scoped calls (playlists, seeds, saves) use the caller's.
 
+Visibility is asymmetric on purpose: `/api/logs*` and `/api/usage` (who
+logged in / generated / saved, and when — persisted in
+`server/.usage.json`) answer ONLY to the owner — the caller whose Spotify
+id matches the owner token's `/me`. Friends passing the gate get a 401
+there; the log console renders its "who's used it" strip only for the
+owner, and its API is enforced server-side, not hidden client-side.
+
 ## Tests
 
 ```sh

@@ -6,3 +6,4 @@ dist/
 npm-debug.log*
 server/.search-cache.json
 evals/baseline-logs/
+server/.usage.json

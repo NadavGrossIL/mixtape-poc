@@ -11,6 +11,7 @@ import type { Request, Response } from "express";
 import * as spotify from "./spotify.ts";
 import * as curator from "./curator.ts";
 import * as logbook from "./logbook.ts";
+import * as usage from "./usage.ts";
 import { signUser, verifyUser } from "./session.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
@@ -143,6 +144,21 @@ function requireSpotifyUser(req: Request, res: Response): string | null {
   return null;
 }
 
+// ── owner-only routes ────────────────────────────────────────
+
+// The gate lets every friend in; logs and usage must not — they show other
+// people's prompts and activity. The owner is whoever's Spotify id matches
+// the owner token's /me (resolved once, no config). A server with NO owner
+// token configured (fresh local clone) has no users to leak, so it keeps
+// the old gate-only behavior there.
+async function requireOwner(req: Request, res: Response): Promise<boolean> {
+  if (!spotify.isLoggedIn()) return true; // no owner identity configured
+  const ownerId = await spotify.getOwnerId();
+  if (ownerId && callerUser(req) === ownerId) return true;
+  res.status(401).json({ error: "Owner only." });
+  return false;
+}
+
 // ── per-user daily cap ───────────────────────────────────────
 
 // Generation spends two budgets SHARED by every user: the Anthropic key and
@@ -226,6 +242,7 @@ app.get("/callback", async (req, res) => {
   pendingStates.delete(state as string);
   try {
     const { userId, displayName } = await spotify.exchangeCode(code as string);
+    usage.record(userId, displayName, "login");
     res.setHeader("Set-Cookie", [
       `${SESSION_COOKIE}=${signUser(userId, SESSION_KEY)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
         (req.secure ? "; Secure" : ""),
@@ -239,10 +256,13 @@ app.get("/callback", async (req, res) => {
   }
 });
 
-app.get("/auth/status", (req, res) => {
+app.get("/auth/status", async (req, res) => {
   const user = callerUser(req);
   const loggedIn = Boolean(user && spotify.isLoggedIn(user));
-  res.json({ loggedIn, name: loggedIn ? spotify.getDisplayName(user!) : null });
+  // `owner` lets the client show owner-only surfaces (the log console's
+  // usage strip) to the right person; the server still enforces it per route
+  const owner = loggedIn && user === (await spotify.getOwnerId());
+  res.json({ loggedIn, owner, name: loggedIn ? spotify.getDisplayName(user!) : null });
 });
 
 // ── api ──────────────────────────────────────────────────────
@@ -267,15 +287,17 @@ function sseSend(res: Response, event: string, data?: unknown) {
 
 // ── logbook ──────────────────────────────────────────────────
 
-// The server's own log tail, for the owner. Under /api/, so the owner gate
-// covers it; there is nothing here a logged-in owner can't already see.
-app.get("/api/logs", (req, res) => {
+// The server's own log tail — OWNER only, not merely gated: log lines carry
+// every user's prompts and activity.
+app.get("/api/logs", async (req, res) => {
+  if (!(await requireOwner(req, res))) return;
   res.json({ entries: logbook.since(Number(req.query.since) || 0) });
 });
 
 // Live tail. `since` lets a reconnecting client resume without duplicating
 // or dropping lines it already has.
-app.get("/api/logs/stream", (req, res) => {
+app.get("/api/logs/stream", async (req, res) => {
+  if (!(await requireOwner(req, res))) return;
   sseInit(res);
   for (const entry of logbook.since(Number(req.query.since) || 0)) {
     sseSend(res, "log", entry);
@@ -288,6 +310,13 @@ app.get("/api/logs/stream", (req, res) => {
     clearInterval(beat);
     unsubscribe();
   });
+});
+
+// Who has been using the app — per-account login/generation/save counts.
+// OWNER only, same reasoning as the logs.
+app.get("/api/usage", async (req, res) => {
+  if (!(await requireOwner(req, res))) return;
+  res.json({ users: usage.list() });
 });
 
 // The caller's playlists, for the "in the spirit of" seed picker.
@@ -340,6 +369,7 @@ app.post("/api/generate/stream", async (req, res) => {
     });
   }
   countGeneration(user);
+  usage.record(user, spotify.getDisplayName(user), "generation");
   sseInit(res);
   // Client abort (STOP) must stop the paid upstream work too. `close` also
   // fires after a normal end — writableEnded distinguishes the two.
@@ -363,7 +393,8 @@ app.post("/api/generate/stream", async (req, res) => {
       sseSend(res, "seeded", { count: tracks.length, total });
     }
     console.log(
-      `[generate/stream] prompt=${JSON.stringify(prompt)}` +
+      `[generate/stream] (${spotify.getDisplayName(user) || user}) ` +
+        `prompt=${JSON.stringify(prompt)}` +
         (seedId ? ` seed=${seedId}` : "")
     );
     sseSend(res, "curating", { prompt });
@@ -437,12 +468,17 @@ app.post("/api/adjust/stream", async (req, res) => {
     });
   }
   countGeneration(user);
+  usage.record(user, spotify.getDisplayName(user), "adjust");
   sseInit(res);
   // Same disconnect handling as /api/generate/stream.
   const abort = new AbortController();
   res.on("close", () => {
     if (!res.writableEnded) abort.abort();
   });
+  console.log(
+    `[adjust/stream] (${spotify.getDisplayName(user) || user}) ` +
+      `adjustment=${JSON.stringify(adjustment)}`
+  );
   sseSend(res, "adjusting", { adjustment });
   try {
     const diff = await curator.adjustCard(card, adjustment, {
@@ -523,6 +559,10 @@ app.post("/api/playlist", async (req, res) => {
         (event, data) => sseSend(res, event, data),
         user
       );
+      usage.record(user, spotify.getDisplayName(user), "save");
+      console.log(
+        `[playlist] (${spotify.getDisplayName(user) || user}) saved ${JSON.stringify(title)}`
+      );
       sseSend(res, "done", { playlistUrl });
       return res.end();
     }
@@ -534,6 +574,10 @@ app.post("/api/playlist", async (req, res) => {
       },
       undefined,
       user
+    );
+    usage.record(user, spotify.getDisplayName(user), "save");
+    console.log(
+      `[playlist] (${spotify.getDisplayName(user) || user}) saved ${JSON.stringify(title)}`
     );
     res.json({ playlistUrl });
   } catch (err: any) {

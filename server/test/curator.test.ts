@@ -137,6 +137,7 @@ import {
   diffIncompleteReason,
   toTrackList,
   TRACK_COUNT,
+  ADJUST_TOOL,
 } from "../curator.ts";
 
 // the wire shape: {track1: {...}, …}
@@ -257,6 +258,16 @@ test("adjust: a real replacement passes", () => {
     ],
   };
   assert.strictEqual(diffIncompleteReason(diff), null);
+});
+
+test("adjust: replacements use the same track schema as create — ref included", () => {
+  // ADJUST_SYSTEM tells the model to copy a ref into every replacement; a
+  // schema without `ref` (additionalProperties:false) makes that impossible
+  // and silently demotes replacements to fuzzy-search resolution.
+  const trackSchema = (ADJUST_TOOL.input_schema.properties.changes.items as any)
+    .properties.track;
+  assert.strictEqual(trackSchema, TRACK_SCHEMA);
+  assert.ok(TRACK_SCHEMA.required.includes("ref"));
 });
 
 // ── mapPool ──────────────────────────────────────────────────

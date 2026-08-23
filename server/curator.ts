@@ -191,19 +191,7 @@ const ADJUST_TOOL = {
               enum: [0, 1, 2, 3, 4, 5, 6, 7],
               description: "Position of the track being replaced, from the current mixtape JSON.",
             },
-            track: {
-              type: "object",
-              additionalProperties: false,
-              required: ["artist", "title", "note"],
-              properties: {
-                artist: { type: "string", description: "The recording artist's name." },
-                title: { type: "string", description: "The track title." },
-                note: {
-                  type: "string",
-                  description: "Same rules as create_mixtape notes: one specific, concrete reason. Max 18 words.",
-                },
-              },
-            },
+            track: TRACK_SCHEMA,
           },
         },
       },
@@ -818,7 +806,17 @@ async function adjustCard(
     seen.add(c.index);
     changes.push({
       index: c.index,
-      track: { artist: c.track.artist, title: c.track.title, note: c.track.note },
+      track: {
+        // ref flows through to resolveTrack's exact-lookup path, same as a
+        // created track's — dropping it here would silently demote every
+        // replacement to fuzzy search.
+        ...(typeof c.track.ref === "string" && c.track.ref
+          ? { ref: c.track.ref }
+          : {}),
+        artist: c.track.artist,
+        title: c.track.title,
+        note: c.track.note,
+      },
     });
   }
   const diff: AdjustDiff = { changes };
@@ -842,6 +840,7 @@ export {
   cardIncompleteReason,
   diffIncompleteReason,
   TRACK_SCHEMA,
+  ADJUST_TOOL,
   NO_REF,
   mapPool,
   SEARCH_BUDGET,

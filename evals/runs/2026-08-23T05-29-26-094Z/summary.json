@@ -1,0 +1,120 @@
+{
+  "runDir": "/Users/nadavgross/Projects/mixtape-poc/evals/runs/2026-08-23T05-29-26-094Z",
+  "generatedAt": "2026-08-23T06:01:41.221Z",
+  "cards": {
+    "prompts": 18,
+    "generated": 18,
+    "generateErrors": 0,
+    "judged": 7,
+    "judgeErrors": 11,
+    "judgeErrorIds": [
+      "mainstream-classic-rock",
+      "nonenglish-hebrew-rock",
+      "nonenglish-french-chanson",
+      "decade-80s-onehit",
+      "mood-train-window",
+      "mood-first-warm-day",
+      "statbait-highest-bpm",
+      "statbait-longest-solos",
+      "recent-2025-best",
+      "recent-2026-indie",
+      "artist-radiohead-bsides"
+    ]
+  },
+  "notes": {
+    "total": 56,
+    "resolved": 54,
+    "unresolved": 2,
+    "unknownResolution": 0
+  },
+  "outcomes": {
+    "overall": {
+      "specific-true": 49,
+      "generic": 1,
+      "specific-invented": 5,
+      "specific-subjective": 1
+    },
+    "resolved": {
+      "specific-true": 49,
+      "generic": 1,
+      "specific-invented": 3,
+      "specific-subjective": 1
+    },
+    "unresolved": {
+      "specific-invented": 2
+    },
+    "unknown-resolution": {}
+  },
+  "rates": {
+    "overall": {
+      "specific-true": 0.875,
+      "generic": 0.0179,
+      "specific-invented": 0.0893,
+      "specific-subjective": 0.0179
+    },
+    "resolved": {
+      "specific-true": 0.9074,
+      "generic": 0.0185,
+      "specific-invented": 0.0556,
+      "specific-subjective": 0.0185
+    },
+    "unresolved": {
+      "specific-invented": 1
+    },
+    "unknown-resolution": {}
+  },
+  "headline": {
+    "checkableNotes": 54,
+    "inventedRate": 0.0926,
+    "verifiedTrueRate": 0.9074,
+    "unverifiableRate": 0,
+    "genericRate": 0.0179,
+    "resolutionRate": 0.9643
+  },
+  "downgrades": {
+    "total": 0,
+    "byReason": {}
+  },
+  "checks": [
+    {
+      "path": "headline.inventedRate",
+      "actual": 0.0926,
+      "rule": {
+        "max": 0.35,
+        "note": "measured 0.240"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.verifiedTrueRate",
+      "actual": 0.9074,
+      "rule": {
+        "min": 0.6,
+        "note": "measured 0.733"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.genericRate",
+      "actual": 0.0179,
+      "rule": {
+        "max": 0.15,
+        "note": "measured 0.045"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.resolutionRate",
+      "actual": 0.9643,
+      "rule": {
+        "min": 0.9,
+        "note": "measured 1.000"
+      },
+      "ok": true,
+      "reason": null
+    }
+  ]
+}

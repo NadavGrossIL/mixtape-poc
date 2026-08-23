@@ -1,0 +1,1314 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy",
+    "cardTitle": "Speed Demons of Rap",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Twista",
+        "title": "Adrenaline Rush",
+        "note": "The Guinness-era speed record holder who turned rapid-fire syllables into a whole genre.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: Twista was a Guinness-era speed record holder. Confirmed: Twista entered the 1992 Guinness Book as fastest rapper at 11.2 syllables per second. Attribution also checks out: 'Adrenaline Rush' is a real Twista track (track 2 of the 1997 album of the same name). The 'whole genre' framing is subjective coloring.",
+        "evidence": [
+          {
+            "url": "https://www.houstonpress.com/music/10-rappers-in-the-guinness-book-of-world-records-6782599/",
+            "snippet": "Twista: The Chicago native Twista was entered into the 1992 Guinness Book for being the fastest rapper in history, at a rate of 11.2 syllables per second."
+          },
+          {
+            "url": "http://jdub925music.blogspot.com/2012/07/twista-adrenaline-rush-1997.html?m=1",
+            "snippet": "\"Intro\" – 2:04 \"Adrenaline Rush\" (feat. Yung Buk of Psycho Drama) – 3:43 \"Death Before Dishonor\" – 4:30"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Busta Rhymes",
+        "title": "Break Ya Neck",
+        "note": "Off 2001's Genesis, Busta snaps the hook into a machine-gun flow mid-comeback run.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Break Ya Neck' is off 2001's Genesis. Confirmed by Wikipedia: released August 25, 2001 as the second single from Busta Rhymes' fifth studio album Genesis. 'Machine-gun flow' and 'comeback run' are subjective framing, but the release detail is accurate.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Break_Ya_Neck",
+            "snippet": "Single by Busta Rhymes from the album Genesis ... Released: August 25, 2001 ... Producers: Dr. Dre; Scott Storch"
+          },
+          {
+            "url": "https://www.last.fm/music/Busta+Rhymes/Genesis/Break+Ya+Neck",
+            "snippet": "It was released as the second single from his fifth studio album Genesis on August 25, 2001, by Flipmode Entertainment and J Records."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Big Pun, Fat Joe",
+        "title": "Twinz (Deep Cover 98) (feat. Fat Joe)",
+        "note": "Flips Dr. Dre's Deep Cover into a tongue-twisting duet where Pun never fumbles a syllable.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: the track flips Dr. Dre's 'Deep Cover' and is a Big Pun/Fat Joe duet. WhoSampled confirms 'Twinz (Deep Cover 98)' by Big Pun feat. Fat Joe samples Dr. Dre and Snoop Dogg's 'Deep Cover'. 'Never fumbles a syllable' is subjective praise.",
+        "evidence": [
+          {
+            "url": "https://www.whosampled.com/sample/3240/Big-Pun-Fat-Joe-Twinz-(Deep-Cover-98)-Dr.-Dre-Snoop-Dogg-Deep-Cover/",
+            "snippet": "\"Twinz (Deep Cover 98)\" by Big Pun feat. Fat Joe sampled Dr. Dre and Snoop Dogg's \"Deep Cover\"."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Chris Brown, Lil Wayne, Busta Rhymes",
+        "title": "Look At Me Now (feat. Lil' Wayne & Busta Rhymes)",
+        "note": "Busta's closing verse here is the one every friend group has tried and failed to rap.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable core: Busta Rhymes has the closing verse on 'Look At Me Now'. Lyric transcription shows the order Verse 1 (Lil Wayne), Hook, Verse 2 (Chris Brown), Interlude (Busta), Verse 3 (Busta Rhymes) — i.e., Busta closes. Track/feature attribution confirmed by Wikipedia. The 'every friend group has tried' line is subjective.",
+        "evidence": [
+          {
+            "url": "https://chrisbrown.fandom.com/wiki/Look_At_Me_Now",
+            "snippet": "[Verse 2: Chris Brown] ... [Interlude: Busta Rhymes] Ayo, Breezy, let me show you how to keep the dice rollin' ... [Verse 3: Busta Rhymes]"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Look_at_Me_Now_(Chris_Brown_song)",
+            "snippet": "Single by Chris Brown featuring Lil Wayne and Busta Rhymes from the album F.A.M.E."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Eminem, Juice WRLD",
+        "title": "Godzilla (feat. Juice WRLD)",
+        "note": "The record-breaking sprint verse that stole the show off Music To Be Murdered By.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: record-breaking fast verse; song is from Music To Be Murdered By; Juice WRLD featured. Confirmed: the third verse packs 224 words/330 syllables into ~30 seconds (10.65 syllables per second), widely reported as record-breaking, on the album Music to Be Murdered By with a posthumous Juice WRLD appearance; Guinness lists it for fastest rap in a No.1 single.",
+        "evidence": [
+          {
+            "url": "https://www.highsnobiety.com/p/eminem-godzilla-fastest-rap-world-record/",
+            "snippet": "Eminem's third verse on \"Godzilla\" ... around 31 seconds long, comprises 224 words containing 330 syllables, which amounts to 10.65 syllables"
+          },
+          {
+            "url": "https://www.guinnessworldrecords.com/world-records/620871-fastest-rap-in-a-no-1-single",
+            "snippet": "In the third verse of Eminem's ... No.1 single \"Godzilla\", the rapper squeezes 225 words into one 30-second segment"
+          },
+          {
+            "url": "https://www.xxlmag.com/eminem-godzilla-lyrics/",
+            "snippet": "Eminem released \"Godzilla\" when he surprise-dropped his Music to Be Murdered By album on Jan. 31, 2020. It became the first posthumous Juice Wrld song"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Eminem",
+        "title": "Rap God",
+        "note": "Six-plus minutes shifting cadence after cadence until that infamous triplet run breaks the room.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Rap God' runs six-plus minutes and contains a famous rapid-fire run. Sources give the track as roughly 6 minutes 4 seconds, with the celebrated fast section beginning at 4:26 (97 words in 15 seconds). 'Breaks the room' and the 'triplet' characterization are subjective.",
+        "evidence": [
+          {
+            "url": "https://vocal.media/beat/eminem-fastest-rapper-in-the-world",
+            "snippet": "The LP appeared in 2013 when they released Rap God, a 6-minute, a 4-second song"
+          },
+          {
+            "url": "https://www.last.fm/music/Eminem/Rap+God/+wiki",
+            "snippet": "In the verse that begins at 4:26, Eminem raps 97 words in 15 seconds—an average of 6.5 words per second"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Tech N9ne, Eminem, Krizz Kaliko",
+        "title": "Speedom (Wwc2)",
+        "note": "Two of rap's fastest tongues trade bars on this Worldwide Choppers sequel built for velocity.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 'Speedom (WWC2)' is a Worldwide Choppers sequel featuring two elite fast rappers (Tech N9ne and Eminem, plus Krizz Kaliko). Confirmed by HipHopDX and DJBooth: it is the sequel to 'Worldwide Choppers', a three-way match between Tech N9ne, Krizz Kaliko and Eminem, from the album Special Effects.",
+        "evidence": [
+          {
+            "url": "https://hiphopdx.com/editorials/id.2821/title.first-listen-we-decide-who-was-best-on-tech-n9nes-speedom-wwc2-featuring-eminem-krizz-kaliko",
+            "snippet": "he lets loose the highly anticipated sequel to fan favorite \"Worldwide Choppers\" ... a three-way lyrical sparring match between he, Krizz Kaliko and Eminem"
+          },
+          {
+            "url": "https://djbooth.net/songs/2015-04-20-tech-n9ne-speedom-wwc2-eminem-krizz-kaliko/",
+            "snippet": "Track: Speedom (WWC2) Feat. Eminem, Krizz Kaliko Producer: Seven Album: Special Effects"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Tech N9ne",
+        "title": "Worldwide Choppers (feat. Ceza, JL B.Hood, Uso, Yelawolf, Twista, Busta Rhymes, D-Loc and Twisted Insane)",
+        "note": "The ultimate posse cut: nine rappers including Twista and Busta Rhymes stacked verse after verse.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: nine rappers including Twista and Busta Rhymes. Wikipedia credits Tech N9ne featuring eight artists (Busta Rhymes, Ceza, D-Loc, JL B.Hood, Twista, Twisted Insane, U$O, Yelawolf) = nine total performers, with Twista and Busta among them.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Worldwide_Choppers",
+            "snippet": "Single by Tech N9ne featuring Busta Rhymes, Ceza, D-Loc, JL B.Hood, Twista, Twisted Insane, U$O and Yelawolf from the album All 6's and 7's"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 768,
+      "output_tokens": 6858,
+      "cache_creation_input_tokens": 27160,
+      "cache_read_input_tokens": 119761,
+      "web_search_requests": 12
+    }
+  },
+  {
+    "id": "app-2am-drive",
+    "category": "app-example",
+    "prompt": "songs that sound like driving home at 2am",
+    "cardTitle": "2AM on Empty Roads",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Mac DeMarco",
+        "title": "Chamber Of Reflection",
+        "note": "That warped keyboard intro from Salad Days feels like pulling out of the driveway.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked album attribution: 'Chamber of Reflection' is indeed a track on Mac DeMarco's Salad Days (2014). The 'warped keyboard intro' description is subjective color, but the checkable album/artist attribution is confirmed.",
+        "evidence": [
+          {
+            "url": "https://macdemarco.bandcamp.com/album/salad-days",
+            "snippet": "Salad Days by Mac DeMarco, released 01 April 2014 ... 9. Chamber of Reflection"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Washed Out",
+        "title": "Feel It All Around",
+        "note": "Hazy chillwave from Life of Leisure, made for fogged-up windshields and low headlights.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'Feel It All Around' appears on Life of Leisure and is chillwave. Confirmed: track 4 of the 2009 EP, genre listed as chillwave.",
+        "evidence": [
+          {
+            "url": "https://washedout.bandcamp.com/album/life-of-leisure",
+            "snippet": "Life Of Leisure by Washed Out, released 15 September 2009 ... 4. Feel It All Around"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Feel_It_All_Around",
+            "snippet": "Single by Washed Out from the album Life of Leisure ... Genre: Chillwave"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "The Midnight",
+        "title": "Sunset",
+        "note": "Endless Summer's synths glow like dashboard lights on an empty highway.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that The Midnight's 'Sunset' is on the album Endless Summer. Confirmed as track 2 of the 2016 album.",
+        "evidence": [
+          {
+            "url": "https://themidnight.bandcamp.com/album/endless-summer",
+            "snippet": "Endless Summer by The Midnight, released 05 August 2016 1. Endless Summer 2. Sunset 3. Daytona"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Kavinsky",
+        "title": "Nightcall",
+        "note": "The definitive late-night driving anthem, all analog synth and neon menace.",
+        "resolved": true,
+        "classification": "generic",
+        "verification": "not-applicable",
+        "reasoning": "The note offers only an opinion ('definitive late-night driving anthem') plus vague genre descriptors ('analog synth', 'neon menace') that would fit almost any synthwave track. No concrete verifiable assertion, so no search performed.",
+        "evidence": []
+      },
+      {
+        "index": 4,
+        "artist": "M83",
+        "title": "Midnight City",
+        "note": "That saxophone blast on Hurry Up, We're Dreaming hits like city lights rushing at the windshield.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked two facts: the saxophone in 'Midnight City' and the album Hurry Up, We're Dreaming. Both confirmed — the track closes with a saxophone solo (played by James King) and appears on that 2011 album.",
+        "evidence": [
+          {
+            "url": "https://www.songfacts.com/facts/m83/midnight-city",
+            "snippet": "The song ends with a bombastic saxophone solo played by James King of the Los Angeles soul/indie pop band, Fitz and The Tantrums."
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Midnight_City",
+            "snippet": "Single by M83 from the album Hurry Up, We're Dreaming"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Tame Impala",
+        "title": "The Less I Know The Better",
+        "note": "Currents' basslines slink like the road curving under low beams.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "The bassline imagery is subjective, but the note asserts the track is from Currents. Confirmed: 'The Less I Know the Better' is a Currents track (track 7).",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/The_Less_I_Know_the_Better",
+            "snippet": "Single by Tame Impala from the album Currents ... Length: 3:39"
+          },
+          {
+            "url": "https://rateyourmusic.com/release/album/tame-impala/currents.p/",
+            "snippet": "Currents · By Tame Impala ... 7 The Less I Know the Better 3:38"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Tame Impala",
+        "title": "Eventually",
+        "note": "A five-minute comedown from Currents, drums fading like adrenaline after the peak.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the runtime claim ('five-minute') and album. 'Eventually' runs 5:19 on Currents, so 'five-minute' is accurate and the album attribution is correct.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Eventually_(Tame_Impala_song)",
+            "snippet": "Single by Tame Impala from the album Currents ... Length: 5:19"
+          },
+          {
+            "url": "https://rateyourmusic.com/release/album/tame-impala/currents.p/",
+            "snippet": "5 Eventually 5:19"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "The Midnight",
+        "title": "Los Angeles",
+        "note": "Days of Thunder's longest cut, over six minutes to coast the last empty miles home.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two claims: 'Los Angeles' is Days of Thunder's longest cut, and it runs over six minutes. The song is on the EP and runs 6:29 (over six minutes), but it is NOT the longest track — 'WeMoveForward' runs 8:07. The superlative is contradicted by the evidence.",
+        "evidence": [
+          {
+            "url": "https://rateyourmusic.com/release/ep/the-midnight/days-of-thunder/",
+            "snippet": "3 WeMoveForward 8:07 · 4 Days of Thunder 5:24 · 5 Kick Drums & Red Wine 6:21 · 6 Los Angeles 6:29 · Total length: 37:18"
+          },
+          {
+            "url": "https://www.last.fm/music/The+Midnight/Days+of+Thunder/Los+Angeles",
+            "snippet": "It has a running time of six minutes and twenty-nine seconds ... the sixth and final track from their EP Days of Thunder."
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 549,
+      "output_tokens": 4837,
+      "cache_creation_input_tokens": 12018,
+      "cache_read_input_tokens": 91544,
+      "web_search_requests": 10
+    }
+  },
+  {
+    "id": "app-hebrew-indie",
+    "category": "app-example",
+    "prompt": "hebrew indie that deserves a bigger audience",
+    "cardTitle": "Kol Israel, Quietly",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Jane Bordeaux",
+        "title": "איך אפשר",
+        "note": "Off their 2014 self-titled debut, three-part harmonies over acoustic strum like a porch at dusk.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'איך אפשר' appears on Jane Bordeaux's 2014 self-titled debut. Bandcamp confirms release 4 Oct 2014 as track 2 of the self-titled album; the group is a trio, so the three-part-harmony/acoustic imagery is plausible subjective color.",
+        "evidence": [
+          {
+            "url": "https://janebordeauxtlv.bandcamp.com/album/jane-bordeaux",
+            "snippet": "Jane Bordeaux - ג'יין בורדו by Jane Bordeaux, released 04 October 2014 1. על סבון וחיסכון 2. איך אפשר"
+          },
+          {
+            "url": "https://janebordeauxtlv.bandcamp.com/track/--2",
+            "snippet": "איך אפשר by Jane Bordeaux ג'יין בורדו, released 04 October 2014 ... from Jane Bordeaux - ג'יין בורדו"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Lola Marsh",
+        "title": "She's a Rainbow",
+        "note": "Israeli duo turned festival darlings, all vintage twang and a chorus built for widescreen sunsets.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Verified the attribution: 'She's a Rainbow' is Lola Marsh's own single (released May 2016, on debut LP Remember Roses), and Lola Marsh is an Israeli duo from Tel Aviv that toured major summer festivals. Twang/sunset imagery is subjective.",
+        "evidence": [
+          {
+            "url": "https://lolamarsh.bandcamp.com/track/shes-a-rainbow",
+            "snippet": "She's A Rainbow by Lola Marsh, released 09 June 2017 ... Lola Marsh is a fresh folk-Pop duo"
+          },
+          {
+            "url": "https://nvsc.fandom.com/wiki/Lola_Marsh",
+            "snippet": "Their third single, \"She's a Rainbow\", was released in May 2016 ... playing Summer festivals such as Paleo festival"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Riff Cohen",
+        "title": "Dans mon quartier",
+        "note": "French-Hebrew crossover from 'A Paris,' handclaps and horns like a block party in the Belleville of her mind.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked album attribution: 'Dans mon quartier' is a Riff Cohen track on the album 'A Paris', confirmed by JioSaavn and Deezer. Handclaps/horns/Belleville imagery is subjective color.",
+        "evidence": [
+          {
+            "url": "https://www.jiosaavn.com/song/dans-mon-quartier/Ij9cUw1lAnU",
+            "snippet": "Dans mon quartier, from the album A Paris, was released in the year 2013 ... sung by Riff Cohen"
+          },
+          {
+            "url": "https://www.deezer.com/en/track/65724874",
+            "snippet": "Riff Cohen - Dans mon quartier ... This track is on the ... albums: A Paris"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "HaBanot Nechama",
+        "title": "מאה אחוז אור",
+        "note": "From the trio's 2007 debut album, warm girl-group harmonies pushing the tempo up toward the peak.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'מאה אחוז אור' is on HaBanot Nechama's 2007 self-titled debut and that the group is a trio. Both confirmed; the tempo/harmony description is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.flashlyrics.com/lyrics/%D7%94%D7%91%D7%A0%D7%95%D7%AA-%D7%A0%D7%97%D7%9E%D7%94/%D7%9E%D7%90%D7%94-%D7%90%D7%97%D7%95%D7%96-%D7%90%D7%95%D7%A8-39",
+            "snippet": "\"מאה אחוז אור\" is a song by הבנות נחמה. It is track #9 from the album הבנות נחמה that was released in 2007."
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Habanot_Nechama",
+            "snippet": "The group is composed of three female vocalists: Karolina, Dana Adini, and Yael Deckelbaum ... best known for their self-titled, debut album"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Noga Erez",
+        "title": "Vandalist",
+        "note": "From the 2024 album THE VANDALIST, a jagged electronic snarl built for a room that just woke up.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked album/year: 'Vandalist' is track 1 of Noga Erez's THE VANDALIST, released 20 September 2024. Confirmed by Wikipedia and the artist's official store tracklist.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/The_Vandalist",
+            "snippet": "Studio album by Noga Erez - Released: September 20, 2024"
+          },
+          {
+            "url": "https://shop.nogaerez.com/products/the-vandalist-cd-pre-order",
+            "snippet": "THE VANDALIST TRACK LISTING: 1. Vandalist 2. DUMB 3. PC People"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Noga Erez",
+        "title": "DUMB",
+        "note": "Tel Aviv's sharpest producer-vocalist keeps the pulse hot and clipped, barely over two minutes of tension.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims are the Tel Aviv artist attribution and the runtime 'barely over two minutes'. DUMB (track 2 on THE VANDALIST) is listed at 2:16 by multiple databases. 'Sharpest producer-vocalist' is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.albumoftheyear.org/song/514542-dumb/",
+            "snippet": "Track #2 on THE VANDALIST · 2024 / Year · 2:16 / duration"
+          },
+          {
+            "url": "https://www.jiosaavn.com/song/dumb/RVsacDFzeWA",
+            "snippet": "DUMB, from the album THE VANDALIST, was released in the year 2024. The duration of the song is 2:16."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Vaadat Charigim",
+        "title": "Ze Beseder Lefahed",
+        "note": "Tel Aviv shoegazers singing entirely in Hebrew, guitars drenched in reverb from 'The World Is Well Lost.'",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked three claims: 'Ze Beseder Lefahed' is track 4 on 'The World Is Well Lost' (2013); the band are Tel Aviv natives; their lyrics are sung entirely in Hebrew. All confirmed.",
+        "evidence": [
+          {
+            "url": "https://vaadatcharigim1.bandcamp.com/album/the-world-is-well-lost",
+            "snippet": "The World is Well Lost by Vaadat Charigim, released 20 August 2013 ... 4. Ze Beseder Lefahed ... Tel Aviv natives, Vaadat Charigim"
+          },
+          {
+            "url": "https://music.apple.com/il/artist/vaadat-charigim/695160983",
+            "snippet": "The band's lyrics were all sung in Hebrew"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Jane Bordeaux",
+        "title": "רוקדים צמודים",
+        "note": "A slow-dance closer from 'אוקיינוסים,' 2019, the lights-up song for the last two people on the floor.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked album and year: 'רוקדים צמודים' is on Jane Bordeaux's 'אוקיינוסים', released 1 August 2019 (Bandcamp, Apple Music). It sits at track 3 rather than last on the album, but the note's 'slow-dance closer' reads as a last-dance-of-the-night description, and the lyric is explicitly about slow dancing; the checkable album/year facts hold.",
+        "evidence": [
+          {
+            "url": "https://janebordeauxtlv.bandcamp.com/album/--2",
+            "snippet": "אוקיינוסים by Jane Bordeaux ג'יין בורדו, released 01 August 2019 1. פתיחה 2. תנו לנמנם 3. רוקדים צמודים"
+          },
+          {
+            "url": "https://music.apple.com/us/artist/jane-bordeaux/952692140",
+            "snippet": "רוקדים צמודים · אוקיינוסים · 2019"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 684,
+      "output_tokens": 8324,
+      "cache_creation_input_tokens": 18072,
+      "cache_read_input_tokens": 120512,
+      "web_search_requests": 11
+    }
+  },
+  {
+    "id": "app-90s-roadtrip",
+    "category": "app-example",
+    "prompt": "90s hip-hop for a newborn's first road trip",
+    "cardTitle": "Lullaby Lowrider",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "DJ Jazzy Jeff & The Fresh Prince",
+        "title": "Summertime",
+        "note": "1991's official soundtrack for windows down and nowhere to be, off Homebase.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked release year (1991) and parent album (Homebase) for DJ Jazzy Jeff & The Fresh Prince's 'Summertime'. Wikipedia confirms it was released in May 1991 as the lead single from Homebase (1991). The rest ('windows down, nowhere to be') is subjective framing.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Summertime_(DJ_Jazzy_Jeff_%26_the_Fresh_Prince_song)",
+            "snippet": "\"Summertime\" is a song by American hip-hop duo DJ Jazzy Jeff & the Fresh Prince, released in May 1991, by Jive and RCA Records, as the lead single from their fourth studio album, Homebase (1991)."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "A Tribe Called Quest",
+        "title": "Can I Kick It?",
+        "note": "That Lou Reed-sampling bassline strolls instead of struts, easy on tiny ears.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: the bassline of 'Can I Kick It?' samples Lou Reed. Confirmed the track is built on the sliding bass from Lou Reed's 'Walk on the Wild Side'. 'Strolls instead of struts' is subjective color but the sample credit is accurate.",
+        "evidence": [
+          {
+            "url": "https://www.factmag.com/2015/11/18/a-tribe-called-quest-lou-reed-money-can-i-kick-it/",
+            "snippet": "'Can I Kick It' is built around a handful of samples, but most recognisable is the sliding bass part from Lou Reed's 1972 Transformer classic 'Walk on the Wild Side', played by Herbie Flowers."
+          },
+          {
+            "url": "https://www.whosampled.com/sample/120/A-Tribe-Called-Quest-Can-I-Kick-It%3F-Lou-Reed-Walk-on-the-Wild-Side/",
+            "snippet": "Can I Kick It? A Tribe Called Quest · People's Instinctive Travels and the Paths of Rhythm · Jive 1990 · Sample appears at 0:00 (and throughout)"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Digable Planets",
+        "title": "Rebirth Of Slick (Cool Like Dat)",
+        "note": "Butterfly's cool-as-a-fan flow from Reachin', jazzy and unhurried like a Sunday drive.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable elements: the track is off Reachin' and involves Butterfly (Ishmael Butler, credited as Butter Fly). Wikipedia's single infobox confirms the album Reachin' (A New Refutation of Time and Space), songwriter Ishmael Butler and producer Butter Fly. 'Jazzy and unhurried like a Sunday drive' is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Rebirth_of_Slick_(Cool_Like_Dat)",
+            "snippet": "Single by Digable Planets from the album Reachin' (A New Refutation of Time and Space) ... Songwriter(s): Ishmael Butler, Craig Irving, Mariana Vieira - Producer(s): Butter Fly"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "A Tribe Called Quest",
+        "title": "Electric Relaxation",
+        "note": "Midnight Marauders' velvet centerpiece, built to soften a car seat and a fussy mood.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Electric Relaxation' appears on Midnight Marauders. Confirmed by Wikipedia infobox (album: Midnight Marauders) and track listing data (track 8, 1993). 'Velvet centerpiece' and soothing effect are subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Electric_Relaxation",
+            "snippet": "Single by A Tribe Called Quest from the album Midnight Marauders ... Recorded: 1993 ... Producer: A Tribe Called Quest"
+          },
+          {
+            "url": "https://musicstax.com/track/electric-relaxation/32WDVNZXIAuu7EqncTTKjH",
+            "snippet": "It is track number 8 in the album Midnight Marauders."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Warren G, Nate Dogg",
+        "title": "Regulate",
+        "note": "The G-funk cruise anthem, Nate Dogg's hook smooth enough to double as a hum.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: 'Regulate' is G-funk and Nate Dogg performs the hook. Wikipedia lists the genre as G-funk and credits the song to Warren G and Nate Dogg, and the single is billed 'Regulate (feat. Nate Dogg)' with Nate Dogg singing the sung chorus. 'Smooth enough to hum' is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Regulate_(song)",
+            "snippet": "Single by Warren G and Nate Dogg from the album Regulate... G Funk Era and Above the Rim (soundtrack) ... Genre: West Coast hip-hop; gangsta rap; G-funk"
+          },
+          {
+            "url": "https://www.udiscovermusic.com/stories/warren-g-regulate-g-funk-era-album-feature/",
+            "snippet": "The song tells the tale of Warren G and hip-hop crooner Nate Dogg cruising around the Eastside of Long Beach"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Warren G, Nate Dogg",
+        "title": "Do You See",
+        "note": "Same Regulate sessions, same warm synth glide, a quieter cousin for the comedown.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The note treats 'Do You See' as a Warren G/Nate Dogg record from the same Regulate sessions. The album/session part checks out ('Do You See' is a Regulate... G Funk Era track recorded at Track Record, as was the album), but the attribution is wrong: 'Do You See' is credited solely to Warren G, with songwriters Warren Griffin and an uncredited Ricardo Brown (Kurupt); Nate Dogg is not a credited performer. Searches for a Nate Dogg feature on this track returned only other Warren G/Nate Dogg collaborations ('Nobody Does It Better', 'My House', 'Game Don't Wait'). Per the attribution rule, this is invented.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Do_You_See",
+            "snippet": "Single by Warren G from the album Regulate...G Funk Era ... Songwriter(s): Warren Griffin; Ricardo Brown (uncredited); Producer(s): Warren G"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Regulate..._G_Funk_Era",
+            "snippet": "Singles from Regulate... G Funk Era - \"Regulate\" ... \"This D.J.\" ... \"Do You See\" Released: October 29, 1994"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "The Roots",
+        "title": "Mellow My Man",
+        "note": "From Do You Want More?!!!??!, live-band drums that pat like a hand on a car seat.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: 'Mellow My Man' is from Do You Want More?!!!??! and features live-band instrumentation. Confirmed as track 4 of Do You Want More?!!!??! (1995) with live players credited (?uestlove drums, trombone, trumpet, sax, Rhodes). The 'pat like a hand on a car seat' image is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.albumoftheyear.org/song/94473-mellow-my-man/",
+            "snippet": "Track #4 on Do You Want More?!!!??! 1995 / Year ... Josh Roseman / Trombone · HUB / Contrabass · B.R.O.THER. ? / Drums · Graham Haynes / Trumpet · Scott Storch / Rhodes Electric Piano"
+          },
+          {
+            "url": "https://music.apple.com/us/song/mellow-my-man/1543795419",
+            "snippet": "Do You Want More?!!!??! (Deluxe Version) The Roots January 17, 1995 ... Song · 1995"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Fugees, Ms. Lauryn Hill, Wyclef Jean, Pras",
+        "title": "Ready or Not",
+        "note": "The Score's haunting lullaby hook to close the arc as the exit sign says home.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Ready or Not' is from The Score by the Fugees (Lauryn Hill, Wyclef Jean, Pras). Wikipedia confirms the album and the writing/production credits for all three members. 'Haunting lullaby hook' and the closing-arc framing are subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Ready_or_Not_(Fugees_song)",
+            "snippet": "Single by Fugees from the album The Score ... Songwriters: Nel Ust Wyclef Jean; Prakazrel Michel; Lauryn Hill ... Producers: Wyclef Jean; Pras; Lauryn Hill; Jerry Duplessis"
+          },
+          {
+            "url": "https://open.spotify.com/track/3vZO25GdYuqFrR1kzZADnp",
+            "snippet": "Fugees, Ms. Lauryn Hill, Wyclef Jean, Pras · The Score (Expanded Edition) · Song · 1996"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 666,
+      "output_tokens": 6835,
+      "cache_creation_input_tokens": 14275,
+      "cache_read_input_tokens": 141672,
+      "web_search_requests": 10
+    }
+  },
+  {
+    "id": "mainstream-pop-anthems",
+    "category": "mainstream-safe",
+    "prompt": "the biggest pop anthems of the 2010s",
+    "cardTitle": "2010s Pop Domination",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Carly Rae Jepsen",
+        "title": "Call Me Maybe",
+        "note": "The 2012 chorus that hijacked every radio station and wedding DJ set on earth.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable element is the year 2012 attached to the song's ubiquity. Billboard confirms 'Call Me Maybe' began a nine-week run at No. 1 on the Hot 100 in June 2012 and was the 2012 song of the summer, so its chart/radio domination in 2012 is confirmed (original Canadian release was Sept 2011, but the note dates the phenomenon, not the release). Artist–title attribution correct. The 'every radio station and wedding DJ' phrasing is hyperbole, not a discrete fact.",
+        "evidence": [
+          {
+            "url": "https://billboard.com/articles/business/chart-beat/8516137/carly-rae-jepsen-call-me-maybe-this-week-in-billboard-chart-history-2012",
+            "snippet": "June 23, 2012 And … the 2012 song of the summer started its nine-week command of the Billboard Hot 100: Carly Rae Jepsen's \"Call Me Maybe.\""
+          },
+          {
+            "url": "https://elpee.jp/single/Call%20Me%20Maybe/Carly%20Rae%20Jepsen/",
+            "snippet": "Carly Rae Jepsen made a commanding entrance onto the Billboard Hot 100 on March 10, 2012 ... occupied the top position for nine consecutive weeks"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "One Direction",
+        "title": "What Makes You Beautiful",
+        "note": "Five teenagers and a strummed hook that launched a boy band supernova in 2012.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Two checkable elements: (a) five teenage members, (b) the 2012 breakout. Sources confirm 'What Makes You Beautiful' is One Direction's debut single, released 11 September 2011 in Europe and 14 February 2012 in the US, where it drove the band's American breakthrough; all five members were in their teens at the time (Tomlinson, the oldest, was 18 at the X Factor audition). The note dates the 'supernova' rather than the original release, so 2012 is supported by the US launch, though the single itself first appeared in 2011.",
+        "evidence": [
+          {
+            "url": "https://onedirection.fandom.com/wiki/What_Makes_You_Beautiful",
+            "snippet": "It was released on September 11, 2011 in Europe, Australia and New Zealand, and February 14, 2012 in the United States."
+          },
+          {
+            "url": "https://www.cheatsheet.com/entertainment/old-one-direction-members-auditioned-the-x-factor.html/",
+            "snippet": "At the time, every single One Direction member was in their teen years. Tomlinson, the oldest, was 18 when he auditioned."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Katy Perry",
+        "title": "Firework",
+        "note": "Teenage Dream's arena-sized ballad-turned-banger, built for fireworks and graduation montages alike.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Firework' belongs to the album Teenage Dream. Confirmed as the third single from Katy Perry's Teenage Dream. 'Arena-sized ballad-turned-banger' and 'graduation montages' are subjective color.",
+        "evidence": [
+          {
+            "url": "https://music.fandom.com/wiki/Firework",
+            "snippet": "\"Firework\" ... was released on October 26, 2010 by Capitol Records as the third single from her third studio album, Teenage Dream."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Taylor Swift",
+        "title": "Shake It Off",
+        "note": "The moment Taylor Swift traded banjos for full pop crossover on 1989.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Shake It Off' is on 1989 and marks Swift's move from country to full pop. Confirmed: it is from her fifth studio album 1989 and marked a departure from her country pop style / official transition to pop. 'Traded banjos' is figurative but consistent.",
+        "evidence": [
+          {
+            "url": "https://www.last.fm/music/Taylor+Swift/Shake+It+Off",
+            "snippet": "a song recorded by ... Taylor Swift for her fifth studio album 1989, marking a rapid departure from her signature country pop musical style"
+          },
+          {
+            "url": "https://taylorswiftswitzerland.ch/index.php/albums/1989-album/1989-songs/shake-it-off/",
+            "snippet": "the upbeat lead single from Taylor Swift's fifth album, 1989 (2014). It marked her official transition from country to pop."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Mark Ronson, Bruno Mars",
+        "title": "Uptown Funk (feat. Bruno Mars)",
+        "note": "A 2015 funk revival so relentless it sat atop charts for weeks on end.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: 2015 dating and a long run atop the charts. Billboard confirms 'Uptown Funk' hit No. 1 on the Hot 100 on Jan. 17, 2015 and stayed for 14 weeks, and was the No. 1 song of 2015. Mark Ronson feat. Bruno Mars attribution is correct.",
+        "evidence": [
+          {
+            "url": "https://www.billboard.com/articles/columns/chart-beat/8493199/mark-ronson-bruno-mars-uptown-funk-this-week-in-billboard-chart-history-2015",
+            "snippet": "Jan. 17, 2015 Mark Ronson and featured vocalist Bruno Mars soared to their first of 14 weeks at No. 1 on the Billboard Hot 100"
+          },
+          {
+            "url": "https://www.musictimes.com/articles/57568/20151209/mark-ronson-bruno-mars-uptown-funk-2015-billboard-hot-100.htm",
+            "snippet": "\"Uptown Funk\" ruled the Billboard Hot 100 for 14 weeks ... it's the official No. 1 song of the year"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Katy Perry",
+        "title": "Roar",
+        "note": "PRISM's tiger-print battle cry, the sound of a chorus built to fill stadiums.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Roar' belongs to the album PRISM. Confirmed as the lead single from Katy Perry's Prism (released Aug 10, 2013). 'Tiger-print battle cry' and 'built to fill stadiums' are subjective imagery (loosely tied to the song's tiger motif).",
+        "evidence": [
+          {
+            "url": "https://music.fandom.com/wiki/Roar",
+            "snippet": "\"Roar\" ... was released on August 10, 2013 by Capitol Records as the lead single from her fourth studio album, Prism."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Rihanna",
+        "title": "Diamonds",
+        "note": "Unapologetic's shimmering peak, all sky-scraping falsetto and lighter-waving hooks.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Diamonds' is from Unapologetic. Confirmed as the lead single from Rihanna's seventh album Unapologetic (2012). The 'sky-scraping falsetto' and 'lighter-waving hooks' descriptors are subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Diamonds_(Rihanna_song)",
+            "snippet": "Single by Rihanna from the album Unapologetic - Released: September 26, 2012"
+          },
+          {
+            "url": "https://www.last.fm/music/Rihanna/Unapologetic/Diamonds",
+            "snippet": "released on September 26, 2012 as the lead single for her seventh album, Unapologetic (2012)"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Lady Gaga, Bradley Cooper",
+        "title": "Shallow",
+        "note": "The decade closes on an Oscar-winning duet built to empty out a room in silence.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Shallow' is an Oscar-winning duet by Lady Gaga and Bradley Cooper. Confirmed: the A Star Is Born single won Best Original Song at the 91st Academy Awards (Feb 2019), Gaga's first Oscar. 'Empty out a room in silence' is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.cbsnews.com/news/oscars-2019-bradley-cooper-lady-gaga-deliver-emotional-performance-shallow-oscars-today-2019-02-24/",
+            "snippet": "Bradley Cooper and Lady Gaga delivered ... \"Shallow\" ... at the 91st Academy Awards. Later in the evening, the single from \"A Star is Born\" won best original song."
+          },
+          {
+            "url": "https://www.ajc.com/blog/music/oscars-2019-lady-gaga-wins-her-first-academy-award-with-shallow/PMF7jY1kVzmwuZQ3NpAxSJ/",
+            "snippet": "The coronation of \"Shallow\" as the best original song winner was hardly a surprise."
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 601,
+      "output_tokens": 6566,
+      "cache_creation_input_tokens": 10797,
+      "cache_read_input_tokens": 61745,
+      "web_search_requests": 11
+    }
+  },
+  {
+    "id": "mainstream-classic-rock",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Output blocked by content filtering policy\"},\"request_id\":\"req_011CeKAKVbUTfeJZRPU7mbTV\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "niche-city-pop",
+    "category": "deep-niche",
+    "prompt": "japanese city pop deep cuts from the early 80s",
+    "cardTitle": "Tokyo After Hours, 1982",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Minako Yoshida",
+        "title": "MIDNIGHT DRIVER",
+        "note": "Opens MONOCHROME in 1980 and stretches to nearly eight minutes like the road itself.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: 'MIDNIGHT DRIVER' opens MONOCHROME (1980) and runs nearly eight minutes. Album and year are correct and the track is 7:44 (nearly eight minutes), but it does not open the album: the Tower Records tracklist for MONOCHROME lists MIDNIGHT DRIVER immediately before track 8 '午後(AFTERNOON)', i.e. near the end of the record, and reviews name 'Tornado' as the opening cut. The positional claim is contradicted.",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/intl-es/track/5HCScxmgsTdy7yxpKkhtNX",
+            "snippet": "Minako Yoshida•MONOCHROME•1980•7:44"
+          },
+          {
+            "url": "https://tower.jp/item/3802711/MONOCHROME%EF%BC%9C%E3%82%BF%E3%83%AF%E3%83%BC%E3%83%AC%E3%82%B3%E3%83%BC%E3%83%89%E9%99%90%E5%AE%9A%EF%BC%9E",
+            "snippet": "MIDNIGHT DRIVER … 8. 午後(AFTERNOON) … オリジナル発売日：1980年"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Junko Yagami",
+        "title": "\\59137a7a\\306e\\30a4\\30e4\\30ea\\30f3\\30b0",
+        "note": "A 1982 LONELY GIRL cut, all shimmering earrings and neon-lit falsetto.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: the track (夜空のイヤリング, garbled in the card) is a 1982 cut from the album LONELY GIRL. The song does appear on Junko Yagami's Lonely Girl (track A2), but that album was released in 1983 (Apple Music dates it 21 Feb 1983; Discogs lists the LP as 1983), not 1982. The year is contradicted.",
+        "evidence": [
+          {
+            "url": "https://rateyourmusic.com/release/album/%E5%85%AB%E7%A5%9E%E7%B4%94%E5%AD%90/lonely-girl/",
+            "snippet": "A1 Lonely Girl 4:37 … A2 夜空のイヤリング lyrics 3:59"
+          },
+          {
+            "url": "https://music.apple.com/jp/song/%E5%A4%9C%E7%A9%BA%E3%81%AE%E3%82%A4%E3%83%A4%E3%83%AA%E3%83%B3%E3%82%B0/76081428",
+            "snippet": "Lonely Girl 八神純子 1983年2月21日"
+          },
+          {
+            "url": "https://www.discogs.com/release/5126280-Junko-Yagami-%E5%85%AB%E7%A5%9E%E7%B4%94%E5%AD%90-Lonely-Girl-%E3%83%AD%E3%83%B3%E3%83%AA%E3%83%BC%E3%82%AC%E3%83%BC%E3%83%AB",
+            "snippet": "Junko Yagami = 八神純子 – Lonely Girl = ロンリー・ガール – Vinyl (LP, Album, Stereo), 1983"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Hiroshi Sato",
+        "title": "I CAN'T WAIT",
+        "note": "Off Awakening, 1982 \" synths and Rhodes stacked like a skyline at dusk.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'I Can't Wait' is on Hiroshi Sato's Awakening, 1982. Qobuz track listing for Awakening shows 'I Can't Wait' as track 7, composed/arranged by Hiroshi Sato, (P) 1982 Alfa Music; Discogs lists the Awakening LP as 1982. Rest of the note is imagery.",
+        "evidence": [
+          {
+            "url": "https://www.qobuz.com/us-en/album/awakening-hiroshi-sato-feat-wendy-matthews/xg0cyj023gmta",
+            "snippet": "7 · I Can't Wait Buy track 00:04:14 · Hiroshi Sato, Composer, Arranger, MainArtist … (P) 1982 ALFA MUSIC,INC."
+          },
+          {
+            "url": "https://www.discogs.com/Hiroshi-Sato-Featuring-Wendy-Matthews-Awakening/release/2334329",
+            "snippet": "Hiroshi Sato Featuring Wendy Matthews … Awakening = アウェイクニング – Vinyl (LP, Album, Stereo), 1982"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Anri",
+        "title": "SHYNESS BOY",
+        "note": "Buried on Timely!! next to the hits, 1983, all breeze and shy-guy funk.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Shyness Boy' is an album track on Anri's Timely!! (1983). Apple Music attributes SHYNESS BOY to Timely!! 1983; a Timely!! tracklist places it as track 7 alongside the hits 'Cat's Eye' and '悲しみがとまらない'; Wikipedia confirms Timely!! is Anri's 1983 album.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/us/artist/anri/141989016",
+            "snippet": "SHYNESS BOY · Timely!! · 1983"
+          },
+          {
+            "url": "https://golectures.com/index.php?go=search&q=%E6%9D%8F%E9%87%8C+Anri+-+Timely%21%21+%281983%29+%5BFULL+ALBUM%5D",
+            "snippet": "1 Cat's Eye (New Take) 2 Windy Summer … 6 悲しみがとまらない 7 Shyness Boy"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Timely!!",
+            "snippet": "Timely!! is the sixth studio album by Japanese singer-songwriter Anri, released in 1983."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Junko Ohashi",
+        "title": "I LOVE YOU SO",
+        "note": "The 1984 MAGICAL deep cut where her voice finally cracks the ceiling open.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'I Love You So' is a 1984 deep cut from Junko Ohashi's MAGICAL. Universal Music Japan and HMV confirm MAGICAL (大橋純子の世界III) was originally released July 1984 and contains the rare track 'I LOVE YOU SO'; Discogs lists Magical as a 1984 release. The 'voice cracks the ceiling' phrasing is subjective colour.",
+        "evidence": [
+          {
+            "url": "https://www.universal-music.co.jp/ohashi-junko/products/upcy-90068/",
+            "snippet": "「A LOVE AFFAIR」、カップリング「I LOVE YOU SO」などの希少楽曲を収録。オリジナル発売日：1984年7月"
+          },
+          {
+            "url": "https://www.discogs.com/release/6035866-Junko-Ohashi-%E5%A4%A7%E6%A9%8B%E7%B4%94%E5%AD%90-Magical",
+            "snippet": "Junko Ohashi = 大橋純子 – Magical – Vinyl (LP, Compilation, Stereo), 1984 … Junko Ohashi - I Love You So 4:45"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Anri",
+        "title": "Good Bye Boogie Dance",
+        "note": "From Bi\\u30fbKi\\u30fbNi, 1983 \\u2014 a farewell dressed up as a disco floor.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Good Bye Boogie Dance' is from Anri's Bi・Ki・Ni, 1983. Apple Music lists the track under Bi・Ki・Ni 1983, and a tracklist for Bi・Ki・Ni (1983) shows it as the opening track. Album/year/attribution confirmed.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/us/artist/anri/141989016",
+            "snippet": "Good Bye Boogie Dance · Bi・Ki・Ni · 1983"
+          },
+          {
+            "url": "https://avxhm.se/music/Anri-Collection-1978-2003.html",
+            "snippet": "Anri - Bi・Ki・Ni (ビ・キ・ニ) (1983) … 01-Good bye boogie dance"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Hiroshi Sato",
+        "title": "BLUE AND MOODY MUSIC",
+        "note": "Awakening's title mood, 1982, slow enough to be the comedown itself.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Blue and Moody Music' is on Awakening, 1982. Qobuz's Awakening listing includes BLUE AND MOODY MUSIC (4:32), (P) 1982 Alfa Music; Discogs dates the Awakening LP to 1982. ('Title mood' and 'comedown' are subjective framing, not a claim that it is the title track.)",
+        "evidence": [
+          {
+            "url": "https://www.qobuz.com/us-en/album/awakening-hiroshi-sato-feat-wendy-matthews/xg0cyj023gmta",
+            "snippet": "BLUE AND MOODY MUSIC Buy track 00:04:32 · Hiroshi Sato, Composer, Arranger, MainArtist … (P) 1982 ALFA MUSIC,INC."
+          },
+          {
+            "url": "https://www.discogs.com/Hiroshi-Sato-Featuring-Wendy-Matthews-Awakening/release/2334329",
+            "snippet": "Awakening = アウェイクニング – Vinyl (LP, Album, Stereo), 1982"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Minako Yoshida",
+        "title": "\\98a8",
+        "note": "Closes LIGHT'N UP, 1982, nearly seven minutes of wind fading the tape out.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: '風' closes LIGHT'N UP (1982) and runs nearly seven minutes. The album (released 21 Sept 1982) and the duration (6:52) check out, but 風 is track 4 of 8; the closing track is 'ALCOHOLLER'. The 'closes the album' assertion is contradicted.",
+        "evidence": [
+          {
+            "url": "https://otonanoweb.jp/s/magazine/diary/detail/8151?ima=0000&link=ROBO004&cd=feature",
+            "snippet": "吉田美奈子『LIGHT'N UP』1982年9月21日発売 1. LIGHT'N UP 2. 頬に夜の灯 3. LOVE SHOWER 4. 風 5. MORNING PRAYER … 8. ALCOHOLLER"
+          },
+          {
+            "url": "https://open.spotify.com/album/1HkD7anWh1N7oUqQvbHQa7",
+            "snippet": "風 Minako Yoshida · 6:52 · 5 · MORNING PRAYER … 8 · ALCOHOLLER Minako Yoshida · 6:33 · 1982"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 671,
+      "output_tokens": 8120,
+      "cache_creation_input_tokens": 21617,
+      "cache_read_input_tokens": 134924,
+      "web_search_requests": 10
+    }
+  },
+  {
+    "id": "niche-croydon-dubstep",
+    "category": "deep-niche",
+    "prompt": "early Croydon-scene UK dubstep, strictly pre-2010",
+    "cardTitle": "South London Sub Frequencies",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Horsepower Productions",
+        "title": "Hdn",
+        "note": "Pulled from 2003's In Fine Style, one of the moody proto-dubstep blueprints out of the Big Apple Records orbit.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked: 'Hdn' exists on Horsepower Productions' In Fine Style, released 2003 on Tempa (TEMPACD001, 2003-03-10, track 2, 5:47). The 'Big Apple Records orbit' framing is loose (the album was on Tempa, not Big Apple), but Horsepower's Tempa releases were circulated through the Croydon Big Apple shop scene, so the historical framing is supported rather than contradicted.",
+        "evidence": [
+          {
+            "url": "https://www.traxsource.com/title/2496738/in-fine-style",
+            "snippet": "TEMPACD001 | 2003-03-10 ... 2 · Hdn (5:47) Horsepower Productions"
+          },
+          {
+            "url": "https://weoutherefestival.com/2026/07/a-history-of-dubstep-told-by-outlook-origins/",
+            "snippet": "Back in 2000, an unassuming pair of young British producers strode into Big Apple Records in Croydon. Their latest release – a two tracker titled 'Gorgon Sound/Triple 7' released on Tempa Recordings"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Digital Mystikz",
+        "title": "Give Jah Glory",
+        "note": "Landed on Tempa's Allstars Vol. 2 comp in 2005, all dread weight and DMZ-crew dub science.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked compilation, label and year: 'Give Jah Glory' by Digital Mystikz appears on Tempa Allstars Vol. 2, released January 2005 on Tempa.",
+        "evidence": [
+          {
+            "url": "https://www.amazon.com/Truly-Dread/dp/B07FZVNHJG",
+            "snippet": "Tempa Allstars (Vol. 2) ... JAN 17 2005 ... 4 · Give Jah Glory · Digital Mystikz · 06:46 ... ℗© 2005 Tempa"
+          },
+          {
+            "url": "https://open.spotify.com/track/5yBSQFVqDXt3tt5hAUIuHD",
+            "snippet": "Digital Mystikz · Tempa Allstars Vol. 2 · Song · 2005"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Skream",
+        "title": "Midnight Request Line",
+        "note": "The 2005 twelve-inch that turned one wobbling bassline into dubstep's first true anthem.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked release format/year: 'Midnight Request Line' was issued as a 12\" single on Tempa (Tempa.014) in October 2005. Its 'first true anthem' status is opinion but is echoed by retailers/reviewers.",
+        "evidence": [
+          {
+            "url": "https://allnightflightrecords.com/products/skream-midnight-request-line-i",
+            "snippet": "Label: Tempa – Tempa.014 Format: Vinyl, 12\", 45 RPM Country: UK Released: Oct 2005 ... THE DUBSTEP ANTHEM"
+          },
+          {
+            "url": "https://www.piccadillyrecords.com/165677/Skream-Midnight-Request-Line-I-Tempa",
+            "snippet": "Much needed repress of THE dubstep anthem. Originally released in 2005"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Skream",
+        "title": "Rutten",
+        "note": "Off the self-titled 2006 debut, six-plus minutes of sub-bass stomp named for smoke-session slang.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked three claims: (a) 'Rutten' is on Skream's self-titled debut Skream! (Tempa, 2006) – confirmed; (b) 'six-plus minutes' – listed at 6:31/6:32 – confirmed; (c) 'named for smoke-session slang' – the track is built on the 'Spliff Politics' scene from Human Traffic (Howard Marks narration about working a joint round a session), which directly supports the smoke-session slang framing, though no source spells out the etymology of the word itself.",
+        "evidence": [
+          {
+            "url": "https://rateyourmusic.com/release/album/skream/skream-3/",
+            "snippet": "8 Rutten 6:32 · 9 Tapped 3:38 ... 12 Colourful 5:13"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Skream!",
+            "snippet": "Skream! is the self-titled, debut album by dubstep producer Skream. It was released in 2006 on the Tempa label."
+          },
+          {
+            "url": "https://www.whosampled.com/sample/1186429/Skream-Rutten-Human-Traffic-Spliff-Politics/",
+            "snippet": "Rutten · Skream · Skream! Tempa 2006 ... Spliff Politics · Human Traffic (1999)"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Skream, Mala",
+        "title": "Midnight Request Line - Mala Remix",
+        "note": "Mala strips his own dance-floor staple back to bones, DMZ meeting Big Apple head-on.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the credit: a Mala remix of Skream's 'Midnight Request Line' genuinely exists (Tempa, 5:22, on the Skream! release, credited Skream with Mala as remixer). Note: the phrase 'his own dance-floor staple' is loose/inaccurate wording since the original is Skream's, not Mala's, but the remix credit as attributed on the card (Skream, Mala) is confirmed.",
+        "evidence": [
+          {
+            "url": "https://www.beatport.com/track/midnight-request-line/10888199",
+            "snippet": "Artists: Skream · Remixers: Mala ... Label: Tempa ... Length:5:22 · Released:2006-10-30"
+          },
+          {
+            "url": "https://rateyourmusic.com/release/album/skream/skream-1/",
+            "snippet": "2.2 Midnight Request Line (Mala Remix) 5:22 · Mala · remixer"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Digital Mystikz",
+        "title": "Molten",
+        "note": "From Tectonic's inaugural Tectonic Plates comp in 2006, all cavernous low-end and empty space.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked compilation, label, year: Digital Mystikz's 'Molten' appears on Tectonic Plates Vol. 1, the first Tectonic Plates compilation, released 2006 on Tectonic (TECCD001).",
+        "evidence": [
+          {
+            "url": "https://tectonicrecordings.bandcamp.com/track/digital-mystikz-molten-2",
+            "snippet": "from Tectonic Plates Vol. 1, released June 1, 2006"
+          },
+          {
+            "url": "https://www.discogs.com/release/14900672-Various-Tectonic-Plates-Vol-1",
+            "snippet": "Digital Mystikz - Molten 4:53 ... Label: Tectonic – TECCD001D ... Released: Oct 15, 2006"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Skream",
+        "title": "Colourful",
+        "note": "The tender flipside of the same skeleton, keys floating over a patient halfstep pulse.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Purely descriptive/impressionistic ('tender flipside', 'keys floating over a patient halfstep pulse'); the only implied fact is that it sits on the same album as the previous track, which is not stated as a checkable detail. No verifiable assertion.",
+        "evidence": []
+      },
+      {
+        "index": 7,
+        "artist": "Benga, Coki",
+        "title": "Night",
+        "note": "2008's Diary of an Afro Warrior cut, the wobble-bass sound right before it hit the festival mainstage.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked year, album and collaboration: 'Night' by Benga & Coki is track 2 on Benga's Diary of an Afro Warrior, released 2008 on Tempa.",
+        "evidence": [
+          {
+            "url": "https://tempa.bandcamp.com/album/diary-of-an-afro-warrior",
+            "snippet": "Diary Of An Afro Warrior by Benga, released 01 January 2008 1. Zero M2 2. Benga, Coki - Night"
+          },
+          {
+            "url": "https://www.discogs.com/release/1249166-Benga-Coki-Night",
+            "snippet": "Night is taken from the album Diary Of An Afro Warrior \\ CD - Tempa.CD010 ... Tempa Recordings \\ 2008"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 647,
+      "output_tokens": 9557,
+      "cache_creation_input_tokens": 21360,
+      "cache_read_input_tokens": 138962,
+      "web_search_requests": 12
+    }
+  },
+  {
+    "id": "nonenglish-hebrew-rock",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAjbV6mfoFTTPxkQ6Tm\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "nonenglish-french-chanson",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAuvNC9WaSqtB46YxPK\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "decade-80s-onehit",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAux9qkdLJ9zDSyYdpT\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mood-train-window",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAuy98NKbTmWKgY2Ahp\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mood-first-warm-day",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAuzTzzXVN9Qszn4EQF\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "statbait-highest-bpm",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAv1Tn55kGY8k9GH5iG\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "statbait-longest-solos",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAv2UYeSQ1DDx64jue1\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "recent-2025-best",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAv3VovANhLrK7Z33Hr\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "recent-2026-indie",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAv4mhpeRyw4TZqpv1x\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "artist-radiohead-bsides",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeKAv5nySacorFSSqFw41\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  }
+]

@@ -1,0 +1,1938 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy",
+    "card": {
+      "title": "Speed Demons of Rap",
+      "vibe": "For anyone who swears they can keep up with these verses — you can't.",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "4yBocB472ltALbHjm4qYYC",
+          "artist": "Twista",
+          "title": "Adrenaline Rush",
+          "note": "The Guinness-era speed record holder who turned rapid-fire syllables into a whole genre.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4yBocB472ltALbHjm4qYYC",
+          "spotifyUri": "spotify:track:4yBocB472ltALbHjm4qYYC",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048510d7f838db299df75132342b7",
+          "matchedName": "Twista — Adrenaline Rush",
+          "shownReleaseDate": "1997"
+        },
+        {
+          "ref": "7gKgd0P3dAAePiSQQBqrlf",
+          "artist": "Busta Rhymes",
+          "title": "Break Ya Neck",
+          "note": "Off 2001's Genesis, Busta snaps the hook into a machine-gun flow mid-comeback run.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7gKgd0P3dAAePiSQQBqrlf",
+          "spotifyUri": "spotify:track:7gKgd0P3dAAePiSQQBqrlf",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851075418a1fafdfd7a455941dd",
+          "matchedName": "Busta Rhymes — Break Ya Neck",
+          "shownReleaseDate": "2001-11-07"
+        },
+        {
+          "ref": "0B8drtTSp68pZdkmVrG9ZA",
+          "artist": "Big Pun, Fat Joe",
+          "title": "Twinz (Deep Cover 98) (feat. Fat Joe)",
+          "note": "Flips Dr. Dre's Deep Cover into a tongue-twisting duet where Pun never fumbles a syllable.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0B8drtTSp68pZdkmVrG9ZA",
+          "spotifyUri": "spotify:track:0B8drtTSp68pZdkmVrG9ZA",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518c7a8e68dc5c20bb72f713f2",
+          "matchedName": "Big Pun, Fat Joe — Twinz (Deep Cover 98) (feat. Fat Joe)",
+          "shownReleaseDate": "1998-04-28"
+        },
+        {
+          "ref": "3hsmbFKT5Cujb5GQjqEU39",
+          "artist": "Chris Brown, Lil Wayne, Busta Rhymes",
+          "title": "Look At Me Now (feat. Lil' Wayne & Busta Rhymes)",
+          "note": "Busta's closing verse here is the one every friend group has tried and failed to rap.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3hsmbFKT5Cujb5GQjqEU39",
+          "spotifyUri": "spotify:track:3hsmbFKT5Cujb5GQjqEU39",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048510a1d20ec09cab4bb17a36aab",
+          "matchedName": "Chris Brown, Lil Wayne, Busta Rhymes — Look At Me Now (feat. Lil' Wayne & Busta Rhymes)",
+          "shownReleaseDate": "2011-03-22"
+        },
+        {
+          "ref": "7FIWs0pqAYbP91WWM0vlTQ",
+          "artist": "Eminem, Juice WRLD",
+          "title": "Godzilla (feat. Juice WRLD)",
+          "note": "The record-breaking sprint verse that stole the show off Music To Be Murdered By.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7FIWs0pqAYbP91WWM0vlTQ",
+          "spotifyUri": "spotify:track:7FIWs0pqAYbP91WWM0vlTQ",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048512f44aec83b20e40f3baef73c",
+          "matchedName": "Eminem, Juice WRLD — Godzilla (feat. Juice WRLD)",
+          "shownReleaseDate": "2020-01-17"
+        },
+        {
+          "ref": "6or1bKJiZ06IlK0vFvY75k",
+          "artist": "Eminem",
+          "title": "Rap God",
+          "note": "Six-plus minutes shifting cadence after cadence until that infamous triplet run breaks the room.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6or1bKJiZ06IlK0vFvY75k",
+          "spotifyUri": "spotify:track:6or1bKJiZ06IlK0vFvY75k",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c6338d684995af10c2bf0533",
+          "matchedName": "Eminem — Rap God",
+          "shownReleaseDate": "2013-11-05"
+        },
+        {
+          "ref": "33MpATo5CCG2ennj6LAlYq",
+          "artist": "Tech N9ne, Eminem, Krizz Kaliko",
+          "title": "Speedom (Wwc2)",
+          "note": "Two of rap's fastest tongues trade bars on this Worldwide Choppers sequel built for velocity.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/33MpATo5CCG2ennj6LAlYq",
+          "spotifyUri": "spotify:track:33MpATo5CCG2ennj6LAlYq",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514b6ce6a88e6aa90472519aab",
+          "matchedName": "Tech N9ne, Eminem, Krizz Kaliko — Speedom (Wwc2)",
+          "shownReleaseDate": "2015-05-04"
+        },
+        {
+          "ref": "4NFBL3eUZGhGwss3Anegn9",
+          "artist": "Tech N9ne",
+          "title": "Worldwide Choppers (feat. Ceza, JL B.Hood, Uso, Yelawolf, Twista, Busta Rhymes, D-Loc and Twisted Insane)",
+          "note": "The ultimate posse cut: nine rappers including Twista and Busta Rhymes stacked verse after verse.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4NFBL3eUZGhGwss3Anegn9",
+          "spotifyUri": "spotify:track:4NFBL3eUZGhGwss3Anegn9",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a6bb593bf7ac8a57e768b79f",
+          "matchedName": "Tech N9ne — Worldwide Choppers (feat. Ceza, JL B.Hood, Uso, Yelawolf, Twista, Busta Rhymes, D-Loc and Twisted Insane)",
+          "shownReleaseDate": "2011-06-07"
+        }
+      ]
+    }
+  },
+  {
+    "id": "app-2am-drive",
+    "category": "app-example",
+    "prompt": "songs that sound like driving home at 2am",
+    "card": {
+      "title": "2AM on Empty Roads",
+      "vibe": "For the streetlights blurring past and the tank on reserve.",
+      "accent": "cobalt",
+      "tracks": [
+        {
+          "ref": "1Snko28yJOihcRVXs9dAo9",
+          "artist": "Mac DeMarco",
+          "title": "Chamber Of Reflection",
+          "note": "That warped keyboard intro from Salad Days feels like pulling out of the driveway.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1Snko28yJOihcRVXs9dAo9",
+          "spotifyUri": "spotify:track:1Snko28yJOihcRVXs9dAo9",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518b221f2ccf777ae0d4b0db50",
+          "matchedName": "Mac DeMarco — Chamber Of Reflection",
+          "shownReleaseDate": "2014-04-01"
+        },
+        {
+          "ref": "4V0x90QcMh4ZxwHzEWOdtK",
+          "artist": "Washed Out",
+          "title": "Feel It All Around",
+          "note": "Hazy chillwave from Life of Leisure, made for fogged-up windshields and low headlights.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4V0x90QcMh4ZxwHzEWOdtK",
+          "spotifyUri": "spotify:track:4V0x90QcMh4ZxwHzEWOdtK",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851cd4896d5151581d35aa1e5c0",
+          "matchedName": "Washed Out — Feel It All Around",
+          "shownReleaseDate": "2009-09-08"
+        },
+        {
+          "ref": "6mB9A9YLbY4jxpKX5EYAnT",
+          "artist": "The Midnight",
+          "title": "Sunset",
+          "note": "Endless Summer's synths glow like dashboard lights on an empty highway.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6mB9A9YLbY4jxpKX5EYAnT",
+          "spotifyUri": "spotify:track:6mB9A9YLbY4jxpKX5EYAnT",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485166f27b0ef0b92099a1927721",
+          "matchedName": "The Midnight — Sunset",
+          "shownReleaseDate": "2016-08-01"
+        },
+        {
+          "ref": "0U0ldCRmgCqhVvD6ksG63j",
+          "artist": "Kavinsky",
+          "title": "Nightcall",
+          "note": "The definitive late-night driving anthem, all analog synth and neon menace.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0U0ldCRmgCqhVvD6ksG63j",
+          "spotifyUri": "spotify:track:0U0ldCRmgCqhVvD6ksG63j",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851d6d8c2eaa1f9031b62f7a3f7",
+          "matchedName": "Kavinsky — Nightcall",
+          "shownReleaseDate": "2010"
+        },
+        {
+          "ref": "6GyFP1nfCDB8lbD2bG0Hq9",
+          "artist": "M83",
+          "title": "Midnight City",
+          "note": "That saxophone blast on Hurry Up, We're Dreaming hits like city lights rushing at the windshield.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6GyFP1nfCDB8lbD2bG0Hq9",
+          "spotifyUri": "spotify:track:6GyFP1nfCDB8lbD2bG0Hq9",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485162100064780b1d919a95fcf4",
+          "matchedName": "M83 — Midnight City",
+          "shownReleaseDate": "2011-10-17"
+        },
+        {
+          "ref": "6K4t31amVTZDgR3sKmwUJJ",
+          "artist": "Tame Impala",
+          "title": "The Less I Know The Better",
+          "note": "Currents' basslines slink like the road curving under low beams.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6K4t31amVTZDgR3sKmwUJJ",
+          "spotifyUri": "spotify:track:6K4t31amVTZDgR3sKmwUJJ",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519e1cfc756886ac782e363d79",
+          "matchedName": "Tame Impala — The Less I Know The Better",
+          "shownReleaseDate": "2015-07-17"
+        },
+        {
+          "ref": "5M4yti0QxgqJieUYaEXcpw",
+          "artist": "Tame Impala",
+          "title": "Eventually",
+          "note": "A five-minute comedown from Currents, drums fading like adrenaline after the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5M4yti0QxgqJieUYaEXcpw",
+          "spotifyUri": "spotify:track:5M4yti0QxgqJieUYaEXcpw",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519e1cfc756886ac782e363d79",
+          "matchedName": "Tame Impala — Eventually",
+          "shownReleaseDate": "2015-07-17"
+        },
+        {
+          "ref": "5MPLeS9KdZlA04OOCUb5Bt",
+          "artist": "The Midnight",
+          "title": "Los Angeles",
+          "note": "Days of Thunder's longest cut, over six minutes to coast the last empty miles home.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5MPLeS9KdZlA04OOCUb5Bt",
+          "spotifyUri": "spotify:track:5MPLeS9KdZlA04OOCUb5Bt",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851dffe8e5a1e7c4eed82fbbfd5",
+          "matchedName": "The Midnight — Los Angeles",
+          "shownReleaseDate": "2014-03-19"
+        }
+      ]
+    }
+  },
+  {
+    "id": "app-hebrew-indie",
+    "category": "app-example",
+    "prompt": "hebrew indie that deserves a bigger audience",
+    "card": {
+      "title": "Kol Israel, Quietly",
+      "vibe": "For the Hebrew indie scene that never needed English to hit this hard.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "7o6UDPFWtYrjUZnRvi1dvO",
+          "artist": "Jane Bordeaux",
+          "title": "איך אפשר",
+          "note": "Off their 2014 self-titled debut, three-part harmonies over acoustic strum like a porch at dusk.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7o6UDPFWtYrjUZnRvi1dvO",
+          "spotifyUri": "spotify:track:7o6UDPFWtYrjUZnRvi1dvO",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511b2e455ebf25db530027c276",
+          "matchedName": "Jane Bordeaux — איך אפשר",
+          "shownReleaseDate": "2014-12-17"
+        },
+        {
+          "ref": "2IeCeGrvb0kssNVbvwurEk",
+          "artist": "Lola Marsh",
+          "title": "She's a Rainbow",
+          "note": "Israeli duo turned festival darlings, all vintage twang and a chorus built for widescreen sunsets.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2IeCeGrvb0kssNVbvwurEk",
+          "spotifyUri": "spotify:track:2IeCeGrvb0kssNVbvwurEk",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485156bd5333bc8ab16a27355b79",
+          "matchedName": "Lola Marsh — She's a Rainbow",
+          "shownReleaseDate": "2017-06-09"
+        },
+        {
+          "ref": "1Ha8vaDExYViWuZcf6o4Z1",
+          "artist": "Riff Cohen",
+          "title": "Dans mon quartier",
+          "note": "French-Hebrew crossover from 'A Paris,' handclaps and horns like a block party in the Belleville of her mind.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1Ha8vaDExYViWuZcf6o4Z1",
+          "spotifyUri": "spotify:track:1Ha8vaDExYViWuZcf6o4Z1",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851100009ab773e4c4aabbdb294",
+          "matchedName": "Riff Cohen — Dans mon quartier",
+          "shownReleaseDate": "2012-01-01"
+        },
+        {
+          "ref": "66oX1HUwuY87qFY7ytisMS",
+          "artist": "HaBanot Nechama",
+          "title": "מאה אחוז אור",
+          "note": "From the trio's 2007 debut album, warm girl-group harmonies pushing the tempo up toward the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/66oX1HUwuY87qFY7ytisMS",
+          "spotifyUri": "spotify:track:66oX1HUwuY87qFY7ytisMS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519d6b66ba7a510655aa0fadd8",
+          "matchedName": "HaBanot Nechama — מאה אחוז אור",
+          "shownReleaseDate": "2007-01-01"
+        },
+        {
+          "ref": "7frL0reYXdXnHtWDQiRyWT",
+          "artist": "Noga Erez",
+          "title": "Vandalist",
+          "note": "From the 2024 album THE VANDALIST, a jagged electronic snarl built for a room that just woke up.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7frL0reYXdXnHtWDQiRyWT",
+          "spotifyUri": "spotify:track:7frL0reYXdXnHtWDQiRyWT",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f87463ba32b7b976ad5a3a59",
+          "matchedName": "Noga Erez — Vandalist",
+          "shownReleaseDate": "2024-09-20"
+        },
+        {
+          "ref": "2Pul6SaLL8e0sQhJDBVOr1",
+          "artist": "Noga Erez",
+          "title": "DUMB",
+          "note": "Tel Aviv's sharpest producer-vocalist keeps the pulse hot and clipped, barely over two minutes of tension.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2Pul6SaLL8e0sQhJDBVOr1",
+          "spotifyUri": "spotify:track:2Pul6SaLL8e0sQhJDBVOr1",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f87463ba32b7b976ad5a3a59",
+          "matchedName": "Noga Erez — DUMB",
+          "shownReleaseDate": "2024-09-20"
+        },
+        {
+          "ref": "6vMu1LroiF6DSH78Xjqvdi",
+          "artist": "Vaadat Charigim",
+          "title": "Ze Beseder Lefahed",
+          "note": "Tel Aviv shoegazers singing entirely in Hebrew, guitars drenched in reverb from 'The World Is Well Lost.'",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6vMu1LroiF6DSH78Xjqvdi",
+          "spotifyUri": "spotify:track:6vMu1LroiF6DSH78Xjqvdi",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516a52a1e706c4adef7c3433f9",
+          "matchedName": "Vaadat Charigim — Ze Beseder Lefahed",
+          "shownReleaseDate": "2013-08-20"
+        },
+        {
+          "ref": "7lUDcFMpOnFEpfSixlCWUc",
+          "artist": "Jane Bordeaux",
+          "title": "רוקדים צמודים",
+          "note": "A slow-dance closer from 'אוקיינוסים,' 2019, the lights-up song for the last two people on the floor.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7lUDcFMpOnFEpfSixlCWUc",
+          "spotifyUri": "spotify:track:7lUDcFMpOnFEpfSixlCWUc",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519dd641e5d1f91fae441d5ad4",
+          "matchedName": "Jane Bordeaux — רוקדים צמודים",
+          "shownReleaseDate": "2019-08-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "app-90s-roadtrip",
+    "category": "app-example",
+    "prompt": "90s hip-hop for a newborn's first road trip",
+    "card": {
+      "title": "Lullaby Lowrider",
+      "vibe": "For the tiny passenger asleep before the first exit ramp",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "20XdEFyaUR9C7aDIdq2OAd",
+          "artist": "DJ Jazzy Jeff & The Fresh Prince",
+          "title": "Summertime",
+          "note": "1991's official soundtrack for windows down and nowhere to be, off Homebase.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/20XdEFyaUR9C7aDIdq2OAd",
+          "spotifyUri": "spotify:track:20XdEFyaUR9C7aDIdq2OAd",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518f8697f6ee69d4b8ea74c9d6",
+          "matchedName": "DJ Jazzy Jeff & The Fresh Prince — Summertime",
+          "shownReleaseDate": "1991-07-09"
+        },
+        {
+          "ref": "1gSDTZHemEViEBiXysrlo0",
+          "artist": "A Tribe Called Quest",
+          "title": "Can I Kick It?",
+          "note": "That Lou Reed-sampling bassline strolls instead of struts, easy on tiny ears.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1gSDTZHemEViEBiXysrlo0",
+          "spotifyUri": "spotify:track:1gSDTZHemEViEBiXysrlo0",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511093b1a9528d6ac67479228b",
+          "matchedName": "A Tribe Called Quest — Can I Kick It?",
+          "shownReleaseDate": "1990"
+        },
+        {
+          "ref": "26q6YTrXt9l8qshIveiTX9",
+          "artist": "Digable Planets",
+          "title": "Rebirth Of Slick (Cool Like Dat)",
+          "note": "Butterfly's cool-as-a-fan flow from Reachin', jazzy and unhurried like a Sunday drive.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/26q6YTrXt9l8qshIveiTX9",
+          "spotifyUri": "spotify:track:26q6YTrXt9l8qshIveiTX9",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c9f6a742f2337f938e89f599",
+          "matchedName": "Digable Planets — Rebirth Of Slick (Cool Like Dat)",
+          "shownReleaseDate": "1993-01-01"
+        },
+        {
+          "ref": "3CFwVCt9DLwLu6kOQBtHVi",
+          "artist": "A Tribe Called Quest",
+          "title": "Electric Relaxation",
+          "note": "Midnight Marauders' velvet centerpiece, built to soften a car seat and a fussy mood.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3CFwVCt9DLwLu6kOQBtHVi",
+          "spotifyUri": "spotify:track:3CFwVCt9DLwLu6kOQBtHVi",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518332c6c7f31e61d72b3145f7",
+          "matchedName": "A Tribe Called Quest — Electric Relaxation",
+          "shownReleaseDate": "1993-11-24"
+        },
+        {
+          "ref": "7nYvUtkQMx1v80S2FH2s9J",
+          "artist": "Warren G, Nate Dogg",
+          "title": "Regulate",
+          "note": "The G-funk cruise anthem, Nate Dogg's hook smooth enough to double as a hum.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7nYvUtkQMx1v80S2FH2s9J",
+          "spotifyUri": "spotify:track:7nYvUtkQMx1v80S2FH2s9J",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f6b9b62ea130943d371b69ef",
+          "matchedName": "Warren G, Nate Dogg — Regulate",
+          "shownReleaseDate": "1994-06-07"
+        },
+        {
+          "ref": "2e3YoddL43UkaSqhYGqfKz",
+          "artist": "Warren G, Nate Dogg",
+          "title": "Do You See",
+          "note": "Same Regulate sessions, same warm synth glide, a quieter cousin for the comedown.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2e3YoddL43UkaSqhYGqfKz",
+          "spotifyUri": "spotify:track:2e3YoddL43UkaSqhYGqfKz",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f6b9b62ea130943d371b69ef",
+          "matchedName": "Warren G, Nate Dogg — Do You See",
+          "shownReleaseDate": "1994-06-07"
+        },
+        {
+          "ref": "0bzFaHiymbvjmIDKf6XAbS",
+          "artist": "The Roots",
+          "title": "Mellow My Man",
+          "note": "From Do You Want More?!!!??!, live-band drums that pat like a hand on a car seat.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0bzFaHiymbvjmIDKf6XAbS",
+          "spotifyUri": "spotify:track:0bzFaHiymbvjmIDKf6XAbS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518f71a687eb8d7564fbd59a97",
+          "matchedName": "The Roots — Mellow My Man",
+          "shownReleaseDate": "1995-01-17"
+        },
+        {
+          "ref": "3vZO25GdYuqFrR1kzZADnp",
+          "artist": "Fugees, Ms. Lauryn Hill, Wyclef Jean, Pras",
+          "title": "Ready or Not",
+          "note": "The Score's haunting lullaby hook to close the arc as the exit sign says home.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3vZO25GdYuqFrR1kzZADnp",
+          "spotifyUri": "spotify:track:3vZO25GdYuqFrR1kzZADnp",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048515b7865be7f7fcc05faec6137",
+          "matchedName": "Fugees, Ms. Lauryn Hill, Wyclef Jean, Pras — Ready or Not",
+          "shownReleaseDate": "1996-02-13"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mainstream-pop-anthems",
+    "category": "mainstream-safe",
+    "prompt": "the biggest pop anthems of the 2010s",
+    "card": {
+      "title": "2010s Pop Domination",
+      "vibe": "For anyone who ever screamed these into a car windshield at full volume.",
+      "accent": "rose",
+      "tracks": [
+        {
+          "ref": "20I6sIOMTCkB6w7ryavxtO",
+          "artist": "Carly Rae Jepsen",
+          "title": "Call Me Maybe",
+          "note": "The 2012 chorus that hijacked every radio station and wedding DJ set on earth.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/20I6sIOMTCkB6w7ryavxtO",
+          "spotifyUri": "spotify:track:20I6sIOMTCkB6w7ryavxtO",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851d3ee4bf67c2ac2154006ad72",
+          "matchedName": "Carly Rae Jepsen — Call Me Maybe",
+          "shownReleaseDate": "2012-01-01"
+        },
+        {
+          "ref": "4cluDES4hQEUhmXj6TXkSo",
+          "artist": "One Direction",
+          "title": "What Makes You Beautiful",
+          "note": "Five teenagers and a strummed hook that launched a boy band supernova in 2012.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4cluDES4hQEUhmXj6TXkSo",
+          "spotifyUri": "spotify:track:4cluDES4hQEUhmXj6TXkSo",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514a5584795dc73860653a9a3e",
+          "matchedName": "One Direction — What Makes You Beautiful",
+          "shownReleaseDate": "2012-05-25"
+        },
+        {
+          "ref": "1mXuMM6zjPgjL4asbBsgnt",
+          "artist": "Katy Perry",
+          "title": "Firework",
+          "note": "Teenage Dream's arena-sized ballad-turned-banger, built for fireworks and graduation montages alike.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1mXuMM6zjPgjL4asbBsgnt",
+          "spotifyUri": "spotify:track:1mXuMM6zjPgjL4asbBsgnt",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f619042d5f6b2149a4f5e0ca",
+          "matchedName": "Katy Perry — Firework",
+          "shownReleaseDate": "2010-08-24"
+        },
+        {
+          "ref": "0cqRj7pUJDkTCEsJkx8snD",
+          "artist": "Taylor Swift",
+          "title": "Shake It Off",
+          "note": "The moment Taylor Swift traded banjos for full pop crossover on 1989.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0cqRj7pUJDkTCEsJkx8snD",
+          "spotifyUri": "spotify:track:0cqRj7pUJDkTCEsJkx8snD",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485152b2a3824413eefe9e33817a",
+          "matchedName": "Taylor Swift — Shake It Off",
+          "shownReleaseDate": "2014-01-01"
+        },
+        {
+          "ref": "32OlwWuMpZ6b0aN2RZOeMS",
+          "artist": "Mark Ronson, Bruno Mars",
+          "title": "Uptown Funk (feat. Bruno Mars)",
+          "note": "A 2015 funk revival so relentless it sat atop charts for weeks on end.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/32OlwWuMpZ6b0aN2RZOeMS",
+          "spotifyUri": "spotify:track:32OlwWuMpZ6b0aN2RZOeMS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519860171ddfee17f77a570cf6",
+          "matchedName": "Mark Ronson, Bruno Mars — Uptown Funk (feat. Bruno Mars)",
+          "shownReleaseDate": "2015-01-12"
+        },
+        {
+          "ref": "27tNWlhdAryQY04Gb2ZhUI",
+          "artist": "Katy Perry",
+          "title": "Roar",
+          "note": "PRISM's tiger-print battle cry, the sound of a chorus built to fill stadiums.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/27tNWlhdAryQY04Gb2ZhUI",
+          "spotifyUri": "spotify:track:27tNWlhdAryQY04Gb2ZhUI",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511e9a057052d59004caf47e22",
+          "matchedName": "Katy Perry — Roar",
+          "shownReleaseDate": "2013-01-01"
+        },
+        {
+          "ref": "6O20JhBJPePEkBdrB5sqRx",
+          "artist": "Rihanna",
+          "title": "Diamonds",
+          "note": "Unapologetic's shimmering peak, all sky-scraping falsetto and lighter-waving hooks.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6O20JhBJPePEkBdrB5sqRx",
+          "spotifyUri": "spotify:track:6O20JhBJPePEkBdrB5sqRx",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516dee21d6cd1823e4d6231d37",
+          "matchedName": "Rihanna — Diamonds",
+          "shownReleaseDate": "2012-12-11"
+        },
+        {
+          "ref": "2VxeLyX666F8uXCJ0dZF8B",
+          "artist": "Lady Gaga, Bradley Cooper",
+          "title": "Shallow",
+          "note": "The decade closes on an Oscar-winning duet built to empty out a room in silence.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2VxeLyX666F8uXCJ0dZF8B",
+          "spotifyUri": "spotify:track:2VxeLyX666F8uXCJ0dZF8B",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e2d156fdc691f57900134342",
+          "matchedName": "Lady Gaga, Bradley Cooper — Shallow",
+          "shownReleaseDate": "2018-10-05"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mainstream-classic-rock",
+    "category": "mainstream-safe",
+    "prompt": "classic rock everyone knows the words to",
+    "card": {
+      "title": "Sing It Like You Mean It",
+      "vibe": "For every backseat chorus and steering-wheel air guitar solo, forever.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "40riOy7x9W7GXjyGp4pjAv",
+          "artist": "Eagles",
+          "title": "Hotel California - 2013 Remaster",
+          "note": "That opening guitar line from the 1976 original still makes a whole room go quiet, then sing.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/40riOy7x9W7GXjyGp4pjAv",
+          "spotifyUri": "spotify:track:40riOy7x9W7GXjyGp4pjAv",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514637341b9f507521afa9a778",
+          "matchedName": "Eagles — Hotel California - 2013 Remaster",
+          "shownReleaseDate": "1976-12-08"
+        },
+        {
+          "ref": "78lgmZwycJ3nzsdgmPPGNx",
+          "artist": "Led Zeppelin",
+          "title": "Immigrant Song - Remaster",
+          "note": "Two and a half minutes off Led Zeppelin III, all Viking scream and no fat on it.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/78lgmZwycJ3nzsdgmPPGNx",
+          "spotifyUri": "spotify:track:78lgmZwycJ3nzsdgmPPGNx",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485190a50cfe99a4c19ff3cbfbdb",
+          "matchedName": "Led Zeppelin — Immigrant Song - Remaster",
+          "shownReleaseDate": "1970"
+        },
+        {
+          "ref": "7snQQk1zcKl8gZ92AnueZW",
+          "artist": "Guns N' Roses",
+          "title": "Sweet Child O' Mine",
+          "note": "The Appetite For Destruction riff every guitar-shop kid learns before they can play anything else.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7snQQk1zcKl8gZ92AnueZW",
+          "spotifyUri": "spotify:track:7snQQk1zcKl8gZ92AnueZW",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485121ebf49b3292c3f0f575f0f5",
+          "matchedName": "Guns N' Roses — Sweet Child O' Mine",
+          "shownReleaseDate": "1987-07-21"
+        },
+        {
+          "ref": "77NNZQSqzLNqh2A9JhLRkg",
+          "artist": "Journey",
+          "title": "Don't Stop Believin'",
+          "note": "Small town girl, midnight train, a chorus built to be shouted by strangers in a bar.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/77NNZQSqzLNqh2A9JhLRkg",
+          "spotifyUri": "spotify:track:77NNZQSqzLNqh2A9JhLRkg",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048510f6ce5c138493ac768d9afc8",
+          "matchedName": "Journey — Don't Stop Believin'",
+          "shownReleaseDate": "2001-10-16"
+        },
+        {
+          "ref": "37ZJ0p5Jm13JPevGcx4SkF",
+          "artist": "Bon Jovi",
+          "title": "Livin' On A Prayer",
+          "note": "Off Slippery When Wet, 1986 — the talk-box intro alone gets fists in the air.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/37ZJ0p5Jm13JPevGcx4SkF",
+          "spotifyUri": "spotify:track:37ZJ0p5Jm13JPevGcx4SkF",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511336b31b6a1799f0de5807ac",
+          "matchedName": "Bon Jovi — Livin' On A Prayer",
+          "shownReleaseDate": "1986-08-16"
+        },
+        {
+          "ref": "22H14adeBwJ3Am1p6N0ewO",
+          "artist": "Queen",
+          "title": "Bohemian Rhapsody",
+          "note": "Nearly six minutes that somehow turns every crowd into an opera company mid-headbang.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/22H14adeBwJ3Am1p6N0ewO",
+          "spotifyUri": "spotify:track:22H14adeBwJ3Am1p6N0ewO",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b8809efd73259c1bc1914995",
+          "matchedName": "Queen — Bohemian Rhapsody",
+          "shownReleaseDate": "1981-10-26"
+        },
+        {
+          "ref": "1NHWG8zxSEypSRF3UufrnO",
+          "artist": "Queen",
+          "title": "Don't Stop Me Now",
+          "note": "From 1978's Jazz album, pure breathless joy — the comedown that still feels like flying.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1NHWG8zxSEypSRF3UufrnO",
+          "spotifyUri": "spotify:track:1NHWG8zxSEypSRF3UufrnO",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516c03b757ece416e014feef5e",
+          "matchedName": "Queen — Don't Stop Me Now",
+          "shownReleaseDate": "1978-11-10"
+        },
+        {
+          "ref": "5CQ30WqJwcep0pYcV4AMNc",
+          "artist": "Led Zeppelin",
+          "title": "Stairway to Heaven - Remaster",
+          "note": "Eight minutes off Led Zeppelin IV, the slow-build closer every campfire circle waits all night for.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5CQ30WqJwcep0pYcV4AMNc",
+          "spotifyUri": "spotify:track:5CQ30WqJwcep0pYcV4AMNc",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c8a11e48c91a982d086afc69",
+          "matchedName": "Led Zeppelin — Stairway to Heaven - Remaster",
+          "shownReleaseDate": "1971-11-08"
+        }
+      ]
+    }
+  },
+  {
+    "id": "niche-city-pop",
+    "category": "deep-niche",
+    "prompt": "japanese city pop deep cuts from the early 80s",
+    "card": {
+      "title": "Tokyo After Hours, 1982",
+      "vibe": "For the deep cuts that never made the karaoke machine, only the drive home",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "2wKsVeNrzorCLCix24ljAU",
+          "artist": "Minako Yoshida",
+          "title": "MIDNIGHT DRIVER",
+          "note": "Opens MONOCHROME in 1980 and stretches to nearly eight minutes like the road itself.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2wKsVeNrzorCLCix24ljAU",
+          "spotifyUri": "spotify:track:2wKsVeNrzorCLCix24ljAU",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bb14218d23418f5d83bb5321",
+          "matchedName": "Minako Yoshida — MIDNIGHT DRIVER",
+          "shownReleaseDate": "1980"
+        },
+        {
+          "ref": "3RQ9GQryeaGuTuqWXePve0",
+          "artist": "Junko Yagami",
+          "title": "\\59137a7a\\306e\\30a4\\30e4\\30ea\\30f3\\30b0",
+          "note": "A 1982 LONELY GIRL cut, all shimmering earrings and neon-lit falsetto.",
+          "resolved": false,
+          "shownReleaseDate": "1982"
+        },
+        {
+          "ref": "0JPe8VJmhwYrRNnXdqaXOA",
+          "artist": "Hiroshi Sato",
+          "title": "I CAN'T WAIT",
+          "note": "Off Awakening, 1982 \" synths and Rhodes stacked like a skyline at dusk.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0JPe8VJmhwYrRNnXdqaXOA",
+          "spotifyUri": "spotify:track:0JPe8VJmhwYrRNnXdqaXOA",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513d14cca401825c95432eb327",
+          "matchedName": "Hiroshi Sato — I CAN'T WAIT",
+          "shownReleaseDate": "1982"
+        },
+        {
+          "ref": "7KYzARBusZhyZ6jygZDmVr",
+          "artist": "Anri",
+          "title": "SHYNESS BOY",
+          "note": "Buried on Timely!! next to the hits, 1983, all breeze and shy-guy funk.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7KYzARBusZhyZ6jygZDmVr",
+          "spotifyUri": "spotify:track:7KYzARBusZhyZ6jygZDmVr",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851cfd93d36fe2365f9436587d1",
+          "matchedName": "Anri — SHYNESS BOY",
+          "shownReleaseDate": "1983-12-05"
+        },
+        {
+          "ref": "11x1qIGquHDFn1HuzZpUtC",
+          "artist": "Junko Ohashi",
+          "title": "I LOVE YOU SO",
+          "note": "The 1984 MAGICAL deep cut where her voice finally cracks the ceiling open.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/11x1qIGquHDFn1HuzZpUtC",
+          "spotifyUri": "spotify:track:11x1qIGquHDFn1HuzZpUtC",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851aaf57d8677f56a223972631d",
+          "matchedName": "Junko Ohashi — I LOVE YOU SO",
+          "shownReleaseDate": "1984-07-01"
+        },
+        {
+          "ref": "5LZja1KAke25BqjsidAcsq",
+          "artist": "Anri",
+          "title": "Good Bye Boogie Dance",
+          "note": "From Bi\\u30fbKi\\u30fbNi, 1983 \\u2014 a farewell dressed up as a disco floor.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5LZja1KAke25BqjsidAcsq",
+          "spotifyUri": "spotify:track:5LZja1KAke25BqjsidAcsq",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048512deb0d919a11d1ef5e12daae",
+          "matchedName": "Anri — Good Bye Boogie Dance",
+          "shownReleaseDate": "1983-06-05"
+        },
+        {
+          "ref": "7gfgEYOu87JZ6OORivWShX",
+          "artist": "Hiroshi Sato",
+          "title": "BLUE AND MOODY MUSIC",
+          "note": "Awakening's title mood, 1982, slow enough to be the comedown itself.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7gfgEYOu87JZ6OORivWShX",
+          "spotifyUri": "spotify:track:7gfgEYOu87JZ6OORivWShX",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513d14cca401825c95432eb327",
+          "matchedName": "Hiroshi Sato — BLUE AND MOODY MUSIC",
+          "shownReleaseDate": "1982"
+        },
+        {
+          "ref": "1f7Ff5cRgE49Xz6gExTspk",
+          "artist": "Minako Yoshida",
+          "title": "\\98a8",
+          "note": "Closes LIGHT'N UP, 1982, nearly seven minutes of wind fading the tape out.",
+          "resolved": false,
+          "shownReleaseDate": "1982"
+        }
+      ]
+    }
+  },
+  {
+    "id": "niche-croydon-dubstep",
+    "category": "deep-niche",
+    "prompt": "early Croydon-scene UK dubstep, strictly pre-2010",
+    "card": {
+      "title": "South London Sub Frequencies",
+      "vibe": "For the dubplates and carpark raves before the wobble ever left Croydon.",
+      "accent": "cobalt",
+      "tracks": [
+        {
+          "ref": "6lVhPxChnhOWmOWU7ryNTE",
+          "artist": "Horsepower Productions",
+          "title": "Hdn",
+          "note": "Pulled from 2003's In Fine Style, one of the moody proto-dubstep blueprints out of the Big Apple Records orbit.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6lVhPxChnhOWmOWU7ryNTE",
+          "spotifyUri": "spotify:track:6lVhPxChnhOWmOWU7ryNTE",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485156a0b472c8db26ff2dd29b73",
+          "matchedName": "Horsepower Productions — Hdn",
+          "shownReleaseDate": "2003-03-10"
+        },
+        {
+          "ref": "6RBVvIkzX7r3ipQ40sujfN",
+          "artist": "Digital Mystikz",
+          "title": "Give Jah Glory",
+          "note": "Landed on Tempa's Allstars Vol. 2 comp in 2005, all dread weight and DMZ-crew dub science.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6RBVvIkzX7r3ipQ40sujfN",
+          "spotifyUri": "spotify:track:6RBVvIkzX7r3ipQ40sujfN",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514a7f58321072291d2be7f106",
+          "matchedName": "Digital Mystikz — Give Jah Glory",
+          "shownReleaseDate": "2005-01-17"
+        },
+        {
+          "ref": "5FbqI4BGhhKMykDiLoJSad",
+          "artist": "Skream",
+          "title": "Midnight Request Line",
+          "note": "The 2005 twelve-inch that turned one wobbling bassline into dubstep's first true anthem.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5FbqI4BGhhKMykDiLoJSad",
+          "spotifyUri": "spotify:track:5FbqI4BGhhKMykDiLoJSad",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a14896452b73995229641693",
+          "matchedName": "Skream — Midnight Request Line",
+          "shownReleaseDate": "2005-11-07"
+        },
+        {
+          "ref": "5m1UlIDHNb0TD0WdUW1ZnH",
+          "artist": "Skream",
+          "title": "Rutten",
+          "note": "Off the self-titled 2006 debut, six-plus minutes of sub-bass stomp named for smoke-session slang.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5m1UlIDHNb0TD0WdUW1ZnH",
+          "spotifyUri": "spotify:track:5m1UlIDHNb0TD0WdUW1ZnH",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519e7fe70b7a95aa05f59777e7",
+          "matchedName": "Skream — Rutten",
+          "shownReleaseDate": "2006-10-30"
+        },
+        {
+          "ref": "6cWWsTwjwP8vMyNeMtvSVo",
+          "artist": "Skream, Mala",
+          "title": "Midnight Request Line - Mala Remix",
+          "note": "Mala strips his own dance-floor staple back to bones, DMZ meeting Big Apple head-on.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6cWWsTwjwP8vMyNeMtvSVo",
+          "spotifyUri": "spotify:track:6cWWsTwjwP8vMyNeMtvSVo",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519e7fe70b7a95aa05f59777e7",
+          "matchedName": "Skream, Mala — Midnight Request Line - Mala Remix",
+          "shownReleaseDate": "2006-10-30"
+        },
+        {
+          "ref": "2slj0H5ogdshy28BZvYl1O",
+          "artist": "Digital Mystikz",
+          "title": "Molten",
+          "note": "From Tectonic's inaugural Tectonic Plates comp in 2006, all cavernous low-end and empty space.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2slj0H5ogdshy28BZvYl1O",
+          "spotifyUri": "spotify:track:2slj0H5ogdshy28BZvYl1O",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514437c1431f978561328fe9d7",
+          "matchedName": "Digital Mystikz — Molten",
+          "shownReleaseDate": "2006-10-15"
+        },
+        {
+          "ref": "7gngYCD5N9GPx1ge6nMhHq",
+          "artist": "Skream",
+          "title": "Colourful",
+          "note": "The tender flipside of the same skeleton, keys floating over a patient halfstep pulse.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7gngYCD5N9GPx1ge6nMhHq",
+          "spotifyUri": "spotify:track:7gngYCD5N9GPx1ge6nMhHq",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519e7fe70b7a95aa05f59777e7",
+          "matchedName": "Skream — Colourful",
+          "shownReleaseDate": "2006-10-30"
+        },
+        {
+          "ref": "5wh6goFgG68FrFhpWHTumK",
+          "artist": "Benga, Coki",
+          "title": "Night",
+          "note": "2008's Diary of an Afro Warrior cut, the wobble-bass sound right before it hit the festival mainstage.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5wh6goFgG68FrFhpWHTumK",
+          "spotifyUri": "spotify:track:5wh6goFgG68FrFhpWHTumK",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b05f05460ff2cc2effbf9265",
+          "matchedName": "Benga, Coki — Night",
+          "shownReleaseDate": "2008-03-10"
+        }
+      ]
+    }
+  },
+  {
+    "id": "nonenglish-hebrew-rock",
+    "category": "non-english",
+    "prompt": "israeli rock classics from the 90s",
+    "card": {
+      "title": "Ninety's Israeli Rock Nights",
+      "vibe": "For late drives through Tel Aviv when the radio still spoke Hebrew rock",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "6HjAwBTrEMjPhAximoGzJc",
+          "artist": "Ethnix",
+          "title": "ציפור מדבר",
+          "note": "Opening cut off Ethnix's 1990 debut album, all jangling guitars and open-road restlessness.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6HjAwBTrEMjPhAximoGzJc",
+          "spotifyUri": "spotify:track:6HjAwBTrEMjPhAximoGzJc",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f24e0364c42d69bdf26ad687",
+          "matchedName": "Ethnix — ציפור מדבר",
+          "shownReleaseDate": "1990-01-01"
+        },
+        {
+          "ref": "611YfaO9iUILOPghQSVJEB",
+          "artist": "Mashina",
+          "title": "נגעה בשמיים",
+          "note": "Mashina reaching for the sky on 1993's שיא הרגש, synth-rock built for arena singalongs.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/611YfaO9iUILOPghQSVJEB",
+          "spotifyUri": "spotify:track:611YfaO9iUILOPghQSVJEB",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514f1295caf6cfa5dd7d3578aa",
+          "matchedName": "Mashina — נגעה בשמיים",
+          "shownReleaseDate": "1993-07-01"
+        },
+        {
+          "ref": "69VsGXE2ZtYK8P3SjfbHSH",
+          "artist": "Teapacks",
+          "title": "זמנים קטנים",
+          "note": "Teapacks' scrappy, horn-flecked rock from their 1993 album האחרון בעשירון התחתון.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/69VsGXE2ZtYK8P3SjfbHSH",
+          "spotifyUri": "spotify:track:69VsGXE2ZtYK8P3SjfbHSH",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513d09ee538cda5239f501655c",
+          "matchedName": "Teapacks — זמנים קטנים",
+          "shownReleaseDate": "1993-01-01"
+        },
+        {
+          "ref": "2Zkp6NoZiY0TJ4if2GV0KM",
+          "artist": "Shalom Hanoch",
+          "title": "ככה וככה",
+          "note": "The godfather of Israeli rock still restless in 1991 on בגלגול הזה.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2Zkp6NoZiY0TJ4if2GV0KM",
+          "spotifyUri": "spotify:track:2Zkp6NoZiY0TJ4if2GV0KM",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513e3eda61c05e80b3af39f684",
+          "matchedName": "Shalom Hanoch — ככה וככה",
+          "shownReleaseDate": "1991-03-01"
+        },
+        {
+          "ref": "6FGxmZS6pMXmhjphmWcvG3",
+          "artist": "Berry Sakharof",
+          "title": "עיר של קיץ",
+          "note": "Sakharof's sprawling five-minute-plus summer-city epic from the landmark 1998 album נגיעות.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6FGxmZS6pMXmhjphmWcvG3",
+          "spotifyUri": "spotify:track:6FGxmZS6pMXmhjphmWcvG3",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c96fdc05bbc44ccedd4db6f5",
+          "matchedName": "Berry Sakharof — עיר של קיץ",
+          "shownReleaseDate": "1998-12-03"
+        },
+        {
+          "ref": "0jDVIo7tXoU9RinLbiSIQX",
+          "artist": "Ethnix",
+          "title": "ג'סיקה",
+          "note": "Ethnix turn sly and playful on 1993's אדם ונחש, right past the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0jDVIo7tXoU9RinLbiSIQX",
+          "spotifyUri": "spotify:track:0jDVIo7tXoU9RinLbiSIQX",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851f87d85dddb3640a726d399a7",
+          "matchedName": "Ethnix — ג'סיקה",
+          "shownReleaseDate": "1993"
+        },
+        {
+          "ref": "6hlNzGSkTUSjfndGHlXm8S",
+          "artist": "Ehud Banai",
+          "title": "יוצא לאור",
+          "note": "Ehud Banai eases the tempo on 1996's עוד מעט, desert-blues warmth for the comedown.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6hlNzGSkTUSjfndGHlXm8S",
+          "spotifyUri": "spotify:track:6hlNzGSkTUSjfndGHlXm8S",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e002b96600f64b1cb0efec8a",
+          "matchedName": "Ehud Banai — יוצא לאור",
+          "shownReleaseDate": "1996-12-01"
+        },
+        {
+          "ref": "08QHMZblHgn2Sx0RET5x2e",
+          "artist": "Shalom Hanoch",
+          "title": "לילה",
+          "note": "Closing where the night begins: Hanoch's 1992 sleepless-hours ballad from לא יכול לישון עכשיו.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/08QHMZblHgn2Sx0RET5x2e",
+          "spotifyUri": "spotify:track:08QHMZblHgn2Sx0RET5x2e",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851d232422872b578e3f384c944",
+          "matchedName": "Shalom Hanoch — לילה",
+          "shownReleaseDate": "1992-05-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "nonenglish-french-chanson",
+    "category": "non-english",
+    "prompt": "french chanson for a rainy sunday morning",
+    "card": {
+      "title": "Pluie et Café au Lit",
+      "vibe": "For slow mornings when the windows fog and the coffee stays hot longer than you do",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "1ZK8WJqkD1XhEYI1AlkMHG",
+          "artist": "Charles Trenet",
+          "title": "La mer",
+          "note": "1992's Disque D'or opener, waves rolling behind glass while the rain does the same outside.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1ZK8WJqkD1XhEYI1AlkMHG",
+          "spotifyUri": "spotify:track:1ZK8WJqkD1XhEYI1AlkMHG",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518555817419b10e2b4757c242",
+          "matchedName": "Charles Trenet — La mer",
+          "shownReleaseDate": "1992"
+        },
+        {
+          "ref": "2tSpxPGywYcnfanQIT30gs",
+          "artist": "Yves Montand",
+          "title": "Sous le ciel de Paris",
+          "note": "1955 rooftop hymn to the city — perfect for watching grey clouds over grey zinc roofs.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2tSpxPGywYcnfanQIT30gs",
+          "spotifyUri": "spotify:track:2tSpxPGywYcnfanQIT30gs",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485148e53f4073be771be0016224",
+          "matchedName": "Yves Montand — Sous le ciel de Paris",
+          "shownReleaseDate": "1955"
+        },
+        {
+          "ref": "0Yg1hSAUgd2AAneReFOVzS",
+          "artist": "Françoise Hardy",
+          "title": "Tous les garçons et les filles - Stereo Mix",
+          "note": "The 1962 loneliness anthem that made a teenager famous for sighing beautifully.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0Yg1hSAUgd2AAneReFOVzS",
+          "spotifyUri": "spotify:track:0Yg1hSAUgd2AAneReFOVzS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511a1679a314d4c3855881ed01",
+          "matchedName": "Françoise Hardy — Tous les garçons et les filles - Stereo Mix",
+          "shownReleaseDate": "1962-06-30"
+        },
+        {
+          "ref": "7cUKT1Wiwve4E5iRFOLVmz",
+          "artist": "Serge Gainsbourg",
+          "title": "La javanaise",
+          "note": "A 1962 waltz built on a single vowel sound, slinking and half-asleep.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7cUKT1Wiwve4E5iRFOLVmz",
+          "spotifyUri": "spotify:track:7cUKT1Wiwve4E5iRFOLVmz",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a8651c4bd7ef6ed154383a1c",
+          "matchedName": "Serge Gainsbourg — La javanaise",
+          "shownReleaseDate": "1962-01-01"
+        },
+        {
+          "ref": "3YW3Tw3lLQfuPfklE76F3y",
+          "artist": "Serge Gainsbourg, Jane Birkin",
+          "title": "Je t'aime moi non plus",
+          "note": "The 1969 original, banned by the Vatican radio — the tape's unavoidable peak of breathless intimacy.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3YW3Tw3lLQfuPfklE76F3y",
+          "spotifyUri": "spotify:track:3YW3Tw3lLQfuPfklE76F3y",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ae711d4733290e2346cd2510",
+          "matchedName": "Serge Gainsbourg, Jane Birkin — Je t'aime moi non plus",
+          "shownReleaseDate": "1969-01-01"
+        },
+        {
+          "ref": "7FJVQPN3CBXAb2mWFZXD3y",
+          "artist": "Barbara",
+          "title": "L'aigle noir",
+          "note": "A dark eagle descends over four minutes of hushed drama, straight off Barbara's own catalog.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7FJVQPN3CBXAb2mWFZXD3y",
+          "spotifyUri": "spotify:track:7FJVQPN3CBXAb2mWFZXD3y",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c3e645f6780ef26512881def",
+          "matchedName": "Barbara — L'aigle noir",
+          "shownReleaseDate": "2017-10-06"
+        },
+        {
+          "ref": "4yKTDPH6iRBHmA44AipmIk",
+          "artist": "Yves Montand",
+          "title": "Les feuilles mortes",
+          "note": "Dead leaves swept together, from Montand's Prevert songbook, the exhale after the storm.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4yKTDPH6iRBHmA44AipmIk",
+          "spotifyUri": "spotify:track:4yKTDPH6iRBHmA44AipmIk",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511ea3cc67be2692a612e2bbf2",
+          "matchedName": "Yves Montand — Les feuilles mortes",
+          "shownReleaseDate": "1980-12-01"
+        },
+        {
+          "ref": "1fXz3igNkf46hzbnhwevss",
+          "artist": "Yves Montand",
+          "title": "La vie en rose",
+          "note": "1955 closer that turns the last grey light pink before the record runs out.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1fXz3igNkf46hzbnhwevss",
+          "spotifyUri": "spotify:track:1fXz3igNkf46hzbnhwevss",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485148e53f4073be771be0016224",
+          "matchedName": "Yves Montand — La vie en rose",
+          "shownReleaseDate": "1955"
+        }
+      ]
+    }
+  },
+  {
+    "id": "decade-80s-onehit",
+    "category": "decade-specific",
+    "prompt": "one-hit wonders of the 1980s",
+    "card": {
+      "title": "One Hit, Whole Decade",
+      "vibe": "For every band that lit the sky once and let the flash be enough",
+      "accent": "cobalt",
+      "tracks": [
+        {
+          "ref": "1omReVeoNf8T9krEhWUhBY",
+          "artist": "Men Without Hats",
+          "title": "The Safety Dance",
+          "note": "1982 synth-pop stomp that got a whole generation dancing without their partners.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1omReVeoNf8T9krEhWUhBY",
+          "spotifyUri": "spotify:track:1omReVeoNf8T9krEhWUhBY",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b7cfb56355c0eb66455d45e6",
+          "matchedName": "Men Without Hats — The Safety Dance",
+          "shownReleaseDate": "1982"
+        },
+        {
+          "ref": "5b6v3PGTEXnOEh4hy9aPhS",
+          "artist": "Toni Basil",
+          "title": "Mickey",
+          "note": "Cheerleader chant turned global smash off her 1982 album of the same name.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5b6v3PGTEXnOEh4hy9aPhS",
+          "spotifyUri": "spotify:track:5b6v3PGTEXnOEh4hy9aPhS",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514ed811465a94f3cd506fb7ea",
+          "matchedName": "Toni Basil — Mickey",
+          "shownReleaseDate": "1982-01-08"
+        },
+        {
+          "ref": "05wIrZSwuaVWhcv5FfqeH0",
+          "artist": "Katrina & The Waves",
+          "title": "Walking On Sunshine",
+          "note": "Horn blast and pure sunshine from 1985, still the go-to for instant good mood.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0",
+          "spotifyUri": "spotify:track:05wIrZSwuaVWhcv5FfqeH0",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851eafaf556eda644a745d0144d",
+          "matchedName": "Katrina & The Waves — Walking On Sunshine",
+          "shownReleaseDate": "1985"
+        },
+        {
+          "ref": "0DfG1ltJnZyq4Tx3ZLL7ZU",
+          "artist": "Falco",
+          "title": "Rock Me Amadeus",
+          "note": "Viennese rapper-turned-pop-star fuses classical name-drop with Eurodance strut, 1985.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0DfG1ltJnZyq4Tx3ZLL7ZU",
+          "spotifyUri": "spotify:track:0DfG1ltJnZyq4Tx3ZLL7ZU",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851731d2eb04541bef9e4434d4e",
+          "matchedName": "Falco — Rock Me Amadeus",
+          "shownReleaseDate": "1985-02-19"
+        },
+        {
+          "ref": "2IJftBfq7pJ43tfnOR0RB3",
+          "artist": "Nena",
+          "title": "99 Luftballons",
+          "note": "Cold War paranoia wrapped in a candy-colored German new wave hook, 1983.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2IJftBfq7pJ43tfnOR0RB3",
+          "spotifyUri": "spotify:track:2IJftBfq7pJ43tfnOR0RB3",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517e51ffd6a2e8f77ffd56bb8f",
+          "matchedName": "Nena — 99 Luftballons",
+          "shownReleaseDate": "1983-09-23"
+        },
+        {
+          "ref": "0cGG2EouYCEEC3xfa0tDFV",
+          "artist": "Soft Cell",
+          "title": "Tainted Love",
+          "note": "1981 synth reinvention of a Northern Soul obscurity that eclipsed the original.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0cGG2EouYCEEC3xfa0tDFV",
+          "spotifyUri": "spotify:track:0cGG2EouYCEEC3xfa0tDFV",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485149c982dae436bac27c336f45",
+          "matchedName": "Soft Cell — Tainted Love",
+          "shownReleaseDate": "1981"
+        },
+        {
+          "ref": "0lj15qHIbi7gsO6CLfWbvF",
+          "artist": "Dexys Midnight Runners",
+          "title": "Come On Eileen",
+          "note": "Dungarees, fiddles, and a key change so joyful it still ambushes wedding dance floors, off Too Rye Ay.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0lj15qHIbi7gsO6CLfWbvF",
+          "spotifyUri": "spotify:track:0lj15qHIbi7gsO6CLfWbvF",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516cf3416519c54d993186ce62",
+          "matchedName": "Dexys Midnight Runners — Come On Eileen",
+          "shownReleaseDate": "1982-08-01"
+        },
+        {
+          "ref": "4EfZ2eaFjn1MQbKZD8urIz",
+          "artist": "Timbuk 3",
+          "title": "The Future's So Bright, I Gotta Wear Shades",
+          "note": "1986 closer that sounds triumphant until you catch the deadpan nuclear-dread punchline.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4EfZ2eaFjn1MQbKZD8urIz",
+          "spotifyUri": "spotify:track:4EfZ2eaFjn1MQbKZD8urIz",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851902dfb3533c4a94e94e79bbc",
+          "matchedName": "Timbuk 3 — The Future's So Bright, I Gotta Wear Shades",
+          "shownReleaseDate": "1986-01-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mood-train-window",
+    "category": "mood-only",
+    "prompt": "songs for staring out a train window",
+    "card": {
+      "title": "Songs for the Window Seat",
+      "vibe": "For every mile that blurs by and every thought that doesn't",
+      "accent": "cobalt",
+      "tracks": [
+        {
+          "ref": "7pdmBld4yW3WIUkrxHyb5r",
+          "artist": "Nick Drake",
+          "title": "Northern Sky",
+          "note": "Opens like first light through fog — Drake's warmest, gentlest invitation to just watch.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7pdmBld4yW3WIUkrxHyb5r",
+          "spotifyUri": "spotify:track:7pdmBld4yW3WIUkrxHyb5r",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048512062d15bea2602a8a2cfe8b7",
+          "matchedName": "Nick Drake — Northern Sky",
+          "shownReleaseDate": "1971-03-05"
+        },
+        {
+          "ref": "65vKbFXcoAclTvHaJ7AQY0",
+          "artist": "The National",
+          "title": "About Today",
+          "note": "Matt Berninger's low murmur over a slow-building swell, made for empty carriages.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/65vKbFXcoAclTvHaJ7AQY0",
+          "spotifyUri": "spotify:track:65vKbFXcoAclTvHaJ7AQY0",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851aa8f533b42c172a04f0598a5",
+          "matchedName": "The National — About Today",
+          "shownReleaseDate": "2004-07-20"
+        },
+        {
+          "ref": "35KiiILklye1JRRctaLUb4",
+          "artist": "Bon Iver",
+          "title": "Holocene",
+          "note": "Falsetto and open tuning that makes you feel very small, very far from home.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/35KiiILklye1JRRctaLUb4",
+          "spotifyUri": "spotify:track:35KiiILklye1JRRctaLUb4",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514b6b1547455bbecb9f6bba64",
+          "matchedName": "Bon Iver — Holocene",
+          "shownReleaseDate": "2011-06-21"
+        },
+        {
+          "ref": "5yYyLbMrDiy8JZuxBJq9KY",
+          "artist": "Sigur Rós",
+          "title": "Untitled #1 - Vaka",
+          "note": "Ten years of Sigur Rós still don't title their songs — this one just breathes and swells.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5yYyLbMrDiy8JZuxBJq9KY",
+          "spotifyUri": "spotify:track:5yYyLbMrDiy8JZuxBJq9KY",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c01d5670524c8e9f9fc3d065",
+          "matchedName": "Sigur Rós — Untitled #1 - Vaka",
+          "shownReleaseDate": "2003-05-12"
+        },
+        {
+          "ref": "7pREa9pheznnVSvxewA1up",
+          "artist": "Sigur Rós",
+          "title": "Festival",
+          "note": "Nine-plus minutes built for 127 Hours, the kind of crescendo that arrives right as the scenery changes.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7pREa9pheznnVSvxewA1up",
+          "spotifyUri": "spotify:track:7pREa9pheznnVSvxewA1up",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517224da1bf2d8ae8b41a094d7",
+          "matchedName": "Sigur Rós — Festival",
+          "shownReleaseDate": "2010-01-01"
+        },
+        {
+          "ref": "1LzNfuep1bnAUR9skqdHCK",
+          "artist": "Mazzy Star",
+          "title": "Fade Into You",
+          "note": "Hope Sandoval's voice like a held breath — the comedown starts here.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1LzNfuep1bnAUR9skqdHCK",
+          "spotifyUri": "spotify:track:1LzNfuep1bnAUR9skqdHCK",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485189a392107ebd79818022b3ea",
+          "matchedName": "Mazzy Star — Fade Into You",
+          "shownReleaseDate": "1993-10-05"
+        },
+        {
+          "ref": "20AC70RUlVz6A6dCcQ5tRS",
+          "artist": "Bon Iver",
+          "title": "Re: Stacks",
+          "note": "Six and a half slow minutes of a man packing up and letting go, tape hiss included.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/20AC70RUlVz6A6dCcQ5tRS",
+          "spotifyUri": "spotify:track:20AC70RUlVz6A6dCcQ5tRS",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bf7c317a63c4f128b8823406",
+          "matchedName": "Bon Iver — Re: Stacks",
+          "shownReleaseDate": "2008-02-19"
+        },
+        {
+          "ref": "6meH4I9A4WZtD3z8hnQKqr",
+          "artist": "Nick Drake",
+          "title": "From The Morning",
+          "note": "The last song Drake's mother chose for his memorial stone — a fitting, quiet fade to black.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6meH4I9A4WZtD3z8hnQKqr",
+          "spotifyUri": "spotify:track:6meH4I9A4WZtD3z8hnQKqr",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e369195caf5d169bf5e9eafc",
+          "matchedName": "Nick Drake — From The Morning",
+          "shownReleaseDate": "1972-02-25"
+        }
+      ]
+    }
+  },
+  {
+    "id": "mood-first-warm-day",
+    "category": "mood-only",
+    "prompt": "music that feels like the first warm day of spring",
+    "card": {
+      "title": "Windows Down, Sun Out",
+      "vibe": "For the jacket you finally leave hanging by the door.",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "0bRXwKfigvpKZUurwqAlEh",
+          "artist": "Bill Withers",
+          "title": "Lovely Day",
+          "note": "Opens soft and sure, that famous held note stretching out like a sunbeam through curtains.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0bRXwKfigvpKZUurwqAlEh",
+          "spotifyUri": "spotify:track:0bRXwKfigvpKZUurwqAlEh",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485167c1113f55ab816ef61d3993",
+          "matchedName": "Bill Withers — Lovely Day",
+          "shownReleaseDate": "1977-10-29"
+        },
+        {
+          "ref": "6dGnYIeXmHdcikdzNNDMm2",
+          "artist": "The Beatles",
+          "title": "Here Comes The Sun - Remastered 2009",
+          "note": "Harrison wrote it after sneaking out of a grim meeting into Clapton's garden — the thaw in song form.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6dGnYIeXmHdcikdzNNDMm2",
+          "spotifyUri": "spotify:track:6dGnYIeXmHdcikdzNNDMm2",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851dc30583ba717007b00cceb25",
+          "matchedName": "The Beatles — Here Comes The Sun - Remastered 2009",
+          "shownReleaseDate": "1969-09-26"
+        },
+        {
+          "ref": "2DrGEaqoruCSn0FffWCf5O",
+          "artist": "Vampire Weekend",
+          "title": "A-Punk",
+          "note": "Two minutes eighteen of marimba-bright energy, the sound of a campus quad waking up.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2DrGEaqoruCSn0FffWCf5O",
+          "spotifyUri": "spotify:track:2DrGEaqoruCSn0FffWCf5O",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517749a08ddab9edbe427e9876",
+          "matchedName": "Vampire Weekend — A-Punk",
+          "shownReleaseDate": "2008-01-27"
+        },
+        {
+          "ref": "68hYdj3GepWm2R202KhJT7",
+          "artist": "Phoenix",
+          "title": "1901",
+          "note": "French synth-pop shimmer from Wolfgang Amadeus Phoenix, all momentum and open road.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/68hYdj3GepWm2R202KhJT7",
+          "spotifyUri": "spotify:track:68hYdj3GepWm2R202KhJT7",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485162cbc442278eefdde1a93efd",
+          "matchedName": "Phoenix — 1901",
+          "shownReleaseDate": "2009-05-25"
+        },
+        {
+          "ref": "05wIrZSwuaVWhcv5FfqeH0",
+          "artist": "Katrina & The Waves",
+          "title": "Walking On Sunshine",
+          "note": "1985 horn-stab joy so total it barely fits inside its own tempo — the peak of the tape.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/05wIrZSwuaVWhcv5FfqeH0",
+          "spotifyUri": "spotify:track:05wIrZSwuaVWhcv5FfqeH0",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851eafaf556eda644a745d0144d",
+          "matchedName": "Katrina & The Waves — Walking On Sunshine",
+          "shownReleaseDate": "1985"
+        },
+        {
+          "ref": "5dUFfk2cwD8GiJPS03mYN0",
+          "artist": "Vampire Weekend",
+          "title": "Campus",
+          "note": "A crush blooming on a spring quad, jangly guitars easing us past the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5dUFfk2cwD8GiJPS03mYN0",
+          "spotifyUri": "spotify:track:5dUFfk2cwD8GiJPS03mYN0",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517749a08ddab9edbe427e9876",
+          "matchedName": "Vampire Weekend — Campus",
+          "shownReleaseDate": "2008-01-27"
+        },
+        {
+          "ref": "0BgbobvykXxEvxo2HhCuvM",
+          "artist": "Jack Johnson",
+          "title": "Banana Pancakes",
+          "note": "Lazy acoustic shuffle built for staying in bed while the light gets good outside.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0BgbobvykXxEvxo2HhCuvM",
+          "spotifyUri": "spotify:track:0BgbobvykXxEvxo2HhCuvM",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851628dba01c669d89586967dc5",
+          "matchedName": "Jack Johnson — Banana Pancakes",
+          "shownReleaseDate": "2005-01-01"
+        },
+        {
+          "ref": "7yHqOZfsXYlicyoMt62yC6",
+          "artist": "Surfaces",
+          "title": "Heaven Falls / Fall on Me",
+          "note": "Warm duo harmonies fading the tape out slow, like the last hour of daylight.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7yHqOZfsXYlicyoMt62yC6",
+          "spotifyUri": "spotify:track:7yHqOZfsXYlicyoMt62yC6",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851d31c5ca0ba296c446a3fe725",
+          "matchedName": "Surfaces — Heaven Falls / Fall on Me",
+          "shownReleaseDate": "2018-08-24"
+        }
+      ]
+    }
+  },
+  {
+    "id": "statbait-highest-bpm",
+    "category": "stat-claim-bait",
+    "prompt": "songs with the highest BPM",
+    "card": {
+      "title": "Redline Tempo",
+      "vibe": "For anyone who thinks the needle should live in the red the whole time.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "5cw39FV9eXL3IuLxwpG8Z1",
+          "artist": "Pendulum",
+          "title": "Slam",
+          "note": "Pendulum's breakbeats hit like a drum and bass sprint from the Hold Your Colour era.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5cw39FV9eXL3IuLxwpG8Z1",
+          "spotifyUri": "spotify:track:5cw39FV9eXL3IuLxwpG8Z1",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485196bdaeb1e48a312ae3859ebe",
+          "matchedName": "Pendulum — Slam",
+          "shownReleaseDate": "2007-05-19"
+        },
+        {
+          "ref": "1JyrjxvP3MoGgOWnYinhwu",
+          "artist": "Angerfist",
+          "title": "Criminally Insane",
+          "note": "Dutch gabber king Angerfist turns the kick drum into a jackhammer off Raise & Revolt.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1JyrjxvP3MoGgOWnYinhwu",
+          "spotifyUri": "spotify:track:1JyrjxvP3MoGgOWnYinhwu",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485182fb8d4dfd4bc262e02e1964",
+          "matchedName": "Angerfist — Criminally Insane",
+          "shownReleaseDate": "2015-11-30"
+        },
+        {
+          "ref": "1Y76msoSt91b75qcoydJKI",
+          "artist": "Rob Gee",
+          "title": "Ecstasy, You Got What I Need",
+          "note": "A happy hardcore staple, still repping on the Happy Hardcore Top 100 comp decades later.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1Y76msoSt91b75qcoydJKI",
+          "spotifyUri": "spotify:track:1Y76msoSt91b75qcoydJKI",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851026fcfb19ddbe10e63f75e21",
+          "matchedName": "Rob Gee — Ecstasy, You Got What I Need",
+          "shownReleaseDate": "2010-05-17"
+        },
+        {
+          "ref": "4fiOTntQKr24p07FvQDHZE",
+          "artist": "Slayer",
+          "title": "Raining Blood",
+          "note": "1986's Reign In Blood closer, thrash picking so relentless it barely pauses for air.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4fiOTntQKr24p07FvQDHZE",
+          "spotifyUri": "spotify:track:4fiOTntQKr24p07FvQDHZE",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511530f31c8d4197777b70ee5d",
+          "matchedName": "Slayer — Raining Blood",
+          "shownReleaseDate": "1986-10-07"
+        },
+        {
+          "ref": "1UMdbkqX19OiwfExH7gzYA",
+          "artist": "DragonForce",
+          "title": "Through The Fire And Flames",
+          "note": "Seven-plus minutes of Inhuman Rampage shredding that turned into the ultimate guitar-hero speed test.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1UMdbkqX19OiwfExH7gzYA",
+          "spotifyUri": "spotify:track:1UMdbkqX19OiwfExH7gzYA",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048511f867e23a295217e98674bba",
+          "matchedName": "DragonForce — Through The Fire And Flames",
+          "shownReleaseDate": "2006-09-01"
+        },
+        {
+          "ref": "64syMK7oo9VPihJBj1IBGH",
+          "artist": "Napalm Death",
+          "title": "Scum",
+          "note": "The 1987 title track that helped invent grindcore's blast-beat blur in under three minutes.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/64syMK7oo9VPihJBj1IBGH",
+          "spotifyUri": "spotify:track:64syMK7oo9VPihJBj1IBGH",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514c16b131533c69af1f8c7503",
+          "matchedName": "Napalm Death — Scum",
+          "shownReleaseDate": "1987"
+        },
+        {
+          "ref": "3dfO5e6kvudYYQwWiLbBoo",
+          "artist": "Terrorizer",
+          "title": "Fear Of Napalm",
+          "note": "World Downfall, 1989 - grindcore's velocity starting to cool into a churning, punishing groove.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3dfO5e6kvudYYQwWiLbBoo",
+          "spotifyUri": "spotify:track:3dfO5e6kvudYYQwWiLbBoo",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513016bdf067e898a1050f9702",
+          "matchedName": "Terrorizer — Fear Of Napalm",
+          "shownReleaseDate": "1989"
+        },
+        {
+          "ref": "3GlVq6iVOxZJQ8gPm84avl",
+          "artist": "Venom",
+          "title": "Black Metal",
+          "note": "The 1982 title track that literally named a genre built on speed and noise.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3GlVq6iVOxZJQ8gPm84avl",
+          "spotifyUri": "spotify:track:3GlVq6iVOxZJQ8gPm84avl",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485100c57f3dad444913ef6b96f0",
+          "matchedName": "Venom — Black Metal",
+          "shownReleaseDate": "1982-11-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "statbait-longest-solos",
+    "category": "stat-claim-bait",
+    "prompt": "the longest guitar solos in rock history",
+    "card": {
+      "title": "Six Strings, No Limits",
+      "vibe": "For the nights when one song needs the whole side of a tape.",
+      "accent": "rust",
+      "tracks": [
+        {
+          "ref": "40riOy7x9W7GXjyGp4pjAv",
+          "artist": "Eagles",
+          "title": "Hotel California - 2013 Remaster",
+          "note": "The twin-guitar outro from Felder and Walsh that never seems to want to end, 6:31 of it.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/40riOy7x9W7GXjyGp4pjAv",
+          "spotifyUri": "spotify:track:40riOy7x9W7GXjyGp4pjAv",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514637341b9f507521afa9a778",
+          "matchedName": "Eagles — Hotel California - 2013 Remaster",
+          "shownReleaseDate": "1976-12-08"
+        },
+        {
+          "ref": "2kkvB3RNRzwjFdGhaUA0tz",
+          "artist": "Derek & The Dominos",
+          "title": "Layla",
+          "note": "Duane Allman's slide-guitar coda turns a breakup song into a 7:04 farewell.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2kkvB3RNRzwjFdGhaUA0tz",
+          "spotifyUri": "spotify:track:2kkvB3RNRzwjFdGhaUA0tz",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851fbcaf7402f38faac27610efc",
+          "matchedName": "Derek & The Dominos — Layla",
+          "shownReleaseDate": "1970-11-01"
+        },
+        {
+          "ref": "5CQ30WqJwcep0pYcV4AMNc",
+          "artist": "Led Zeppelin",
+          "title": "Stairway to Heaven - Remaster",
+          "note": "Page's solo builds for minutes before it even arrives, off Led Zeppelin IV, 1971.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5CQ30WqJwcep0pYcV4AMNc",
+          "spotifyUri": "spotify:track:5CQ30WqJwcep0pYcV4AMNc",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851c8a11e48c91a982d086afc69",
+          "matchedName": "Led Zeppelin — Stairway to Heaven - Remaster",
+          "shownReleaseDate": "1971-11-08"
+        },
+        {
+          "ref": "3YRCqOhFifThpSRFJ1VWFM",
+          "artist": "Guns N' Roses",
+          "title": "November Rain",
+          "note": "Slash steps onto a desert set piece and just keeps playing, all 8:56 of Use Your Illusion I excess.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3YRCqOhFifThpSRFJ1VWFM",
+          "spotifyUri": "spotify:track:3YRCqOhFifThpSRFJ1VWFM",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e44963b8bb127552ac761873",
+          "matchedName": "Guns N' Roses — November Rain",
+          "shownReleaseDate": "1991-09-17"
+        },
+        {
+          "ref": "7ajPDMxJkj2UCCGE2tnC9u",
+          "artist": "Pink Floyd",
+          "title": "Comfortably Numb - Live",
+          "note": "Gilmour's solo stretched to 9:31 onstage for the Pulse live album.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7ajPDMxJkj2UCCGE2tnC9u",
+          "spotifyUri": "spotify:track:7ajPDMxJkj2UCCGE2tnC9u",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ccf89fb5475cf826f61f0e51",
+          "matchedName": "Pink Floyd — Comfortably Numb - Live",
+          "shownReleaseDate": "1995-05-29"
+        },
+        {
+          "ref": "4qsAYBCJnu2OkTKUVbbOF1",
+          "artist": "Lynyrd Skynyrd",
+          "title": "Free Bird",
+          "note": "Three guitarists trading runs until the song outgrows its own frame, 9:19 on the expanded Pronounced album.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4qsAYBCJnu2OkTKUVbbOF1",
+          "spotifyUri": "spotify:track:4qsAYBCJnu2OkTKUVbbOF1",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851ed9531fd3add18804cd6d7c1",
+          "matchedName": "Lynyrd Skynyrd — Free Bird",
+          "shownReleaseDate": "1973"
+        },
+        {
+          "ref": "0auKlivXpm76wR63mMJ3pR",
+          "artist": "Jimi Hendrix",
+          "title": "Voodoo Chile",
+          "note": "A studio jam that ran a full 15:00 on Electric Ladyland, Hendrix just following the amp wherever it went.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0auKlivXpm76wR63mMJ3pR",
+          "spotifyUri": "spotify:track:0auKlivXpm76wR63mMJ3pR",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851522088789d49e216d9818292",
+          "matchedName": "Jimi Hendrix — Voodoo Chile",
+          "shownReleaseDate": "1968-10-25"
+        },
+        {
+          "ref": "2FZv72gyxqvSr4AdQm6gzt",
+          "artist": "Allman Brothers Band",
+          "title": "Whipping Post - Live At The Fillmore East, March 1971",
+          "note": "The marathon closer: 23:09 of Duane Allman and Dickey Betts refusing to let the crowd go home.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2FZv72gyxqvSr4AdQm6gzt",
+          "spotifyUri": "spotify:track:2FZv72gyxqvSr4AdQm6gzt",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048510e18e033b73488ca08a89b5b",
+          "matchedName": "Allman Brothers Band — Whipping Post - Live At The Fillmore East, March 1971",
+          "shownReleaseDate": "1971-07-01"
+        }
+      ]
+    }
+  },
+  {
+    "id": "recent-2025-best",
+    "category": "recent-music",
+    "prompt": "the best songs released in 2025",
+    "card": {
+      "title": "2025 In Motion",
+      "vibe": "For everyone still catching up on the year the charts got weird and great.",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "68E90ytvJUH0t9rCax4Wck",
+          "artist": "Charli xcx",
+          "title": "Apple",
+          "note": "The dance craze of the year, off her Salon Music 2025 era, opens the tape hands-up.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/68E90ytvJUH0t9rCax4Wck",
+          "spotifyUri": "spotify:track:68E90ytvJUH0t9rCax4Wck",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048517af5214ad5b860006da9760b",
+          "matchedName": "Charli xcx — Apple",
+          "shownReleaseDate": "2025-05-09"
+        },
+        {
+          "ref": "2LHNTC9QZxsL3nWpt8iaSR",
+          "artist": "Lady Gaga",
+          "title": "Abracadabra",
+          "note": "Lead cut off MAYHEM, all theatrical stomp and spell-casting chorus built for a big room.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2LHNTC9QZxsL3nWpt8iaSR",
+          "spotifyUri": "spotify:track:2LHNTC9QZxsL3nWpt8iaSR",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b0860cf0a98e09663c82290c",
+          "matchedName": "Lady Gaga — Abracadabra",
+          "shownReleaseDate": "2025-03-07"
+        },
+        {
+          "ref": "5TFD2bmFKGhoCRbX61nXY5",
+          "artist": "Bad Bunny",
+          "title": "NUEVAYoL",
+          "note": "From DeBÍ TiRAR MáS FOToS, salsa horns colliding with reggaeton swagger, pure New York flex.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5TFD2bmFKGhoCRbX61nXY5",
+          "spotifyUri": "spotify:track:5TFD2bmFKGhoCRbX61nXY5",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bbd45c8d36e0e045ef640411",
+          "matchedName": "Bad Bunny — NUEVAYoL",
+          "shownReleaseDate": "2025-01-05"
+        },
+        {
+          "ref": "6iycYUk3oB0NPMdaDUrN1w",
+          "artist": "Playboi Carti",
+          "title": "EVIL J0RDAN",
+          "note": "MUSIC album cut that hits like a strobe light going off in a basement rave.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/6iycYUk3oB0NPMdaDUrN1w",
+          "spotifyUri": "spotify:track:6iycYUk3oB0NPMdaDUrN1w",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516b219c8d8462bfe254a20469",
+          "matchedName": "Playboi Carti — EVIL J0RDAN",
+          "shownReleaseDate": "2025-03-14"
+        },
+        {
+          "ref": "2n9fC0A4ptmWqYeMXEVaok",
+          "artist": "Playboi Carti, Kendrick Lamar",
+          "title": "GOOD CREDIT (with Kendrick Lamar)",
+          "note": "Two of rap's biggest names sharing a beat this year, tension you can feel in the mix.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2n9fC0A4ptmWqYeMXEVaok",
+          "spotifyUri": "spotify:track:2n9fC0A4ptmWqYeMXEVaok",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516b219c8d8462bfe254a20469",
+          "matchedName": "Playboi Carti, Kendrick Lamar — GOOD CREDIT (with Kendrick Lamar)",
+          "shownReleaseDate": "2025-03-14"
+        },
+        {
+          "ref": "1musbempyJAw5gfSKZHXP9",
+          "artist": "Doechii",
+          "title": "Anxiety",
+          "note": "Off Alligator Bites Never Heal, restless energy that turns a panic spiral into a bop.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1musbempyJAw5gfSKZHXP9",
+          "spotifyUri": "spotify:track:1musbempyJAw5gfSKZHXP9",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513de7e97b3e5aa3eaccfc19ec",
+          "matchedName": "Doechii — Anxiety",
+          "shownReleaseDate": "2025-03-05"
+        },
+        {
+          "ref": "0FIDCNYYjNvPVimz5icugS",
+          "artist": "The Weeknd, Playboi Carti",
+          "title": "Timeless (feat Playboi Carti)",
+          "note": "Hurry Up Tomorrow's neon glide, the comedown lit by dashboard lights on an empty highway.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0FIDCNYYjNvPVimz5icugS",
+          "spotifyUri": "spotify:track:0FIDCNYYjNvPVimz5icugS",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851de79f330bc297af3fae736da",
+          "matchedName": "The Weeknd, Playboi Carti — Timeless (feat Playboi Carti)",
+          "shownReleaseDate": "2025-01-31"
+        },
+        {
+          "ref": "7so0lgd0zP2Sbgs2d7a1SZ",
+          "artist": "Lady Gaga, Bruno Mars",
+          "title": "Die With A Smile",
+          "note": "MAYHEM's duet closer, slow-dance strings to bring the whole tape back down to earth.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7so0lgd0zP2Sbgs2d7a1SZ",
+          "spotifyUri": "spotify:track:7so0lgd0zP2Sbgs2d7a1SZ",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851b0860cf0a98e09663c82290c",
+          "matchedName": "Lady Gaga, Bruno Mars — Die With A Smile",
+          "shownReleaseDate": "2025-03-07"
+        }
+      ]
+    }
+  },
+  {
+    "id": "recent-2026-indie",
+    "category": "recent-music",
+    "prompt": "new indie releases from 2026 I should know about",
+    "card": {
+      "title": "2026 Indie Dispatch",
+      "vibe": "For anyone who still reads liner notes before the algorithm tells them what's next.",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "3HQBl2IxewrUzb2h5aPxXT",
+          "artist": "Wet Leg, War Child Records",
+          "title": "Obvious",
+          "note": "Off HELP(2), the 2026 War Child charity comp — jangly, deadpan, made to open a set.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3HQBl2IxewrUzb2h5aPxXT",
+          "spotifyUri": "spotify:track:3HQBl2IxewrUzb2h5aPxXT",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485110a0cafaeaf22de1a6946ff8",
+          "matchedName": "Wet Leg, War Child Records — Obvious",
+          "shownReleaseDate": "2026-03-06"
+        },
+        {
+          "ref": "2cLjmhezy7CVKMTRAOcnEx",
+          "artist": "Black Country, New Road, War Child Records",
+          "title": "Strangers",
+          "note": "Same HELP(2) comp, art-rock sprawl that keeps building instead of resolving.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2cLjmhezy7CVKMTRAOcnEx",
+          "spotifyUri": "spotify:track:2cLjmhezy7CVKMTRAOcnEx",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485110a0cafaeaf22de1a6946ff8",
+          "matchedName": "Black Country, New Road, War Child Records — Strangers",
+          "shownReleaseDate": "2026-03-06"
+        },
+        {
+          "ref": "0R9R2fD4C8yGHN2BdBA6hm",
+          "artist": "Fontaines D.C., War Child Records",
+          "title": "Black Boys on Mopeds",
+          "note": "Dublin post-punks take on Sinead O'Connor's protest classic, all weight and gravity.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0R9R2fD4C8yGHN2BdBA6hm",
+          "spotifyUri": "spotify:track:0R9R2fD4C8yGHN2BdBA6hm",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485110a0cafaeaf22de1a6946ff8",
+          "matchedName": "Fontaines D.C., War Child Records — Black Boys on Mopeds",
+          "shownReleaseDate": "2026-03-06"
+        },
+        {
+          "ref": "1CLZzeLWqdhz5IfR5vHy4u",
+          "artist": "New Constellations",
+          "title": "Hot Blooded",
+          "note": "From the album It Comes in Waves — a four-minute-plus anthem built for a peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1CLZzeLWqdhz5IfR5vHy4u",
+          "spotifyUri": "spotify:track:1CLZzeLWqdhz5IfR5vHy4u",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851debbc97cbabb7e91e224d4db",
+          "matchedName": "New Constellations — Hot Blooded",
+          "shownReleaseDate": "2026-05-15"
+        },
+        {
+          "ref": "4XVY1N1g9j0XKQQRSWq8RH",
+          "artist": "Big Thief, War Child Records",
+          "title": "Relive, Redie",
+          "note": "Big Thief's HELP(2) contribution, all ache and open-tuned tenderness at the tape's center.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4XVY1N1g9j0XKQQRSWq8RH",
+          "spotifyUri": "spotify:track:4XVY1N1g9j0XKQQRSWq8RH",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485110a0cafaeaf22de1a6946ff8",
+          "matchedName": "Big Thief, War Child Records — Relive, Redie",
+          "shownReleaseDate": "2026-03-06"
+        },
+        {
+          "ref": "7ecIrGE1TNoVMHhEF53y2Y",
+          "artist": "boygenius",
+          "title": "Black Hole",
+          "note": "Pulled from pov: you need a good cry — three voices braided tight, still ringing.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7ecIrGE1TNoVMHhEF53y2Y",
+          "spotifyUri": "spotify:track:7ecIrGE1TNoVMHhEF53y2Y",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485153a8c3f9f3f188a6849d0927",
+          "matchedName": "boygenius — Black Hole",
+          "shownReleaseDate": "2026-06-05"
+        },
+        {
+          "ref": "0RVh6eHyE6wxV0MSl3KYep",
+          "artist": "Cameron Winter, War Child Records",
+          "title": "Warning",
+          "note": "Geese frontman goes solo for HELP(2), a stripped, unsteady baritone easing off the peak.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0RVh6eHyE6wxV0MSl3KYep",
+          "spotifyUri": "spotify:track:0RVh6eHyE6wxV0MSl3KYep",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485110a0cafaeaf22de1a6946ff8",
+          "matchedName": "Cameron Winter, War Child Records — Warning",
+          "shownReleaseDate": "2026-03-06"
+        },
+        {
+          "ref": "3TS0D27I4wwUfkvgpQxhpR",
+          "artist": "beabadoobee",
+          "title": "Sun Has Set",
+          "note": "Closing cut off Memories — under two and a half minutes, hazy, lights-down fade.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3TS0D27I4wwUfkvgpQxhpR",
+          "spotifyUri": "spotify:track:3TS0D27I4wwUfkvgpQxhpR",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851068caa28105743b03ac6ee0f",
+          "matchedName": "beabadoobee — Sun Has Set",
+          "shownReleaseDate": "2026-08-20"
+        }
+      ]
+    }
+  },
+  {
+    "id": "artist-radiohead-bsides",
+    "category": "artist-specific",
+    "prompt": "essential Radiohead b-sides and rarities",
+    "card": {
+      "title": "The Vault Sessions",
+      "vibe": "For the ones who flip the single over to hear what's really there.",
+      "accent": "plum",
+      "tracks": [
+        {
+          "ref": "01H97h3qF7oFMa1DXR1kGZ",
+          "artist": "Radiohead",
+          "title": "Killer Cars",
+          "note": "Tucked on the High & Dry / Planet Telex single in 1995, a nervy little road-panic opener.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/01H97h3qF7oFMa1DXR1kGZ",
+          "spotifyUri": "spotify:track:01H97h3qF7oFMa1DXR1kGZ",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851e6f922f8a05ea64329c74ac2",
+          "matchedName": "Radiohead — Killer Cars",
+          "shownReleaseDate": "1995-02-27"
+        },
+        {
+          "ref": "0CiGamY7diH7yvzHsPtHtO",
+          "artist": "Radiohead",
+          "title": "Banana Co",
+          "note": "A Street Spirit b-side that's practically a Bends outtake, all jangle and ache.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0CiGamY7diH7yvzHsPtHtO",
+          "spotifyUri": "spotify:track:0CiGamY7diH7yvzHsPtHtO",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514bb2cf6071587079e3d74947",
+          "matchedName": "Radiohead — Banana Co",
+          "shownReleaseDate": "1996-01-22"
+        },
+        {
+          "ref": "3cMuGOGSaTWbwOurTS4b3Y",
+          "artist": "Radiohead",
+          "title": "Talk Show Host",
+          "note": "Better known from the Romeo + Juliet soundtrack, this bassline slinks like a threat.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3cMuGOGSaTWbwOurTS4b3Y",
+          "spotifyUri": "spotify:track:3cMuGOGSaTWbwOurTS4b3Y",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514bb2cf6071587079e3d74947",
+          "matchedName": "Radiohead — Talk Show Host",
+          "shownReleaseDate": "1996-01-22"
+        },
+        {
+          "ref": "4CDeqY78NRvHBHLYW6ufnN",
+          "artist": "Radiohead",
+          "title": "Polyethylene (Parts 1 & 2)",
+          "note": "B-side to Paranoid Android, splicing a hushed part one into a squalling part two.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4CDeqY78NRvHBHLYW6ufnN",
+          "spotifyUri": "spotify:track:4CDeqY78NRvHBHLYW6ufnN",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851bff3434553f08aa1b0a0ab59",
+          "matchedName": "Radiohead — Polyethylene (Parts 1 & 2)",
+          "shownReleaseDate": "1997-05-26"
+        },
+        {
+          "ref": "7obvmD1HzGaYGIURbzhvaE",
+          "artist": "Radiohead",
+          "title": "Palo Alto",
+          "note": "A No Surprises b-side that hit harder live than half of OK Computer ever did.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7obvmD1HzGaYGIURbzhvaE",
+          "spotifyUri": "spotify:track:7obvmD1HzGaYGIURbzhvaE",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048513c0b096ff57f306f92c9306a",
+          "matchedName": "Radiohead — Palo Alto",
+          "shownReleaseDate": "1998-01-12"
+        },
+        {
+          "ref": "1popzk4gJkgAr6jrM1rL2U",
+          "artist": "Radiohead",
+          "title": "Meeting in the Aisle",
+          "note": "An instrumental Karma Police b-side, all sitar drone and supermarket-fluorescent unease.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/1popzk4gJkgAr6jrM1rL2U",
+          "spotifyUri": "spotify:track:1popzk4gJkgAr6jrM1rL2U",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851a44f6605cf23c03d70fcf504",
+          "matchedName": "Radiohead — Meeting in the Aisle",
+          "shownReleaseDate": "1997-08-25"
+        },
+        {
+          "ref": "5J9LB6XXJVF4kob0hWR8qZ",
+          "artist": "Radiohead",
+          "title": "Fog",
+          "note": "The Knives Out b-side that later got reborn on Kid A Mnesia, quiet and waterlogged.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/5J9LB6XXJVF4kob0hWR8qZ",
+          "spotifyUri": "spotify:track:5J9LB6XXJVF4kob0hWR8qZ",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851db5763b82032e977b658fac5",
+          "matchedName": "Radiohead — Fog",
+          "shownReleaseDate": "2001-08-06"
+        },
+        {
+          "ref": "3HPLfZhQUds6N6tZ4WiApn",
+          "artist": "Radiohead",
+          "title": "4 Minute Warning",
+          "note": "Buried on the second disc of In Rainbows, a hushed piano come-down to close the vault.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3HPLfZhQUds6N6tZ4WiApn",
+          "spotifyUri": "spotify:track:3HPLfZhQUds6N6tZ4WiApn",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048514b88d5c1b3358cca2c94ec0b",
+          "matchedName": "Radiohead — 4 Minute Warning",
+          "shownReleaseDate": "2007"
+        }
+      ]
+    }
+  }
+]

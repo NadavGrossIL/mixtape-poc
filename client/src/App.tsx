@@ -147,18 +147,17 @@ const ACCENT_INK: Record<string, string> = {
   rust: "#7a5518",
 };
 
+// One static placeholder: the example chips carry the "what can I type"
+// teaching, so the box itself holds still. A second variant takes over when
+// a seed playlist is armed — the prompt is optional in that mode and the
+// placeholder is where that contract is stated.
+const PLACEHOLDER =
+  "a mood, a moment, an era — “songs for driving at night through 1984”";
+const SEEDED_PLACEHOLDER =
+  "optional: add a twist — “more instrumental, nothing in english…”";
+
 // Each example demonstrates a different prompt axis: speed/skill,
 // mood+moment, discovery/language, era+audience.
-// Rotating input placeholders — one evocative prompt at a time beats a
-// static example at selling what the box can do.
-const PLACEHOLDERS = [
-  "songs for driving at night through 1984…",
-  "a mixtape for cooking with the windows open…",
-  "the sound of a beach town in the off-season…",
-  "b-sides for a long train ride north…",
-  "what my record-store clerk crush would play…",
-];
-
 const EXAMPLES = [
   "fastest rap verses ever recorded — Rap God energy",
   "songs that sound like driving home at 2am",
@@ -166,9 +165,14 @@ const EXAMPLES = [
   "90s hip-hop for a newborn's first road trip",
 ];
 
-// Candidate product names — cycle with the tiny dev switcher in the corner.
-// Where a slash exists it keeps the orange slash accent.
-const BRANDS = ["MADE YOU A MIXTAPE", "DEEP/CUTS", "PROMP/TAPE"];
+// Name decided 2026-08-23.
+const BRAND = "MIXTAPE";
+
+// The server-log console is a learning-project debugging aid, not product UI.
+const SHOW_LOGS =
+  import.meta.env.DEV ||
+  (typeof window !== "undefined" &&
+    new URLSearchParams(window.location.search).has("debug"));
 
 const UNVERIFIED_TITLE =
   "Spotify couldn't confirm this track exists — the curator may have " +
@@ -254,9 +258,12 @@ const TAPE_SPILL =
 // different speeds (the take-up pack is smaller, so it spins faster) and
 // tape spilling out into a slow shimmer. Pure decoration, aria-hidden;
 // all motion lives in CSS behind the reduced-motion gate.
-function DeckHero() {
+function DeckHero({ gate = false }: { gate?: boolean }) {
   return (
-    <div className="deck-hero" aria-hidden="true">
+    <div
+      className={"deck-hero" + (gate ? " deck-hero-gate" : "")}
+      aria-hidden="true"
+    >
       <svg
         className="deck"
         viewBox="0 0 280 172"
@@ -317,18 +324,6 @@ function DeckHero() {
         <path className="deck-tape-flow" d={TAPE_SPILL} />
       </svg>
     </div>
-  );
-}
-
-function BrandText({ text }: { text: string }) {
-  const i = text.indexOf("/");
-  if (i === -1) return <>{text}</>;
-  return (
-    <>
-      {text.slice(0, i)}
-      <span className="slash">/</span>
-      {text.slice(i + 1)}
-    </>
   );
 }
 
@@ -456,7 +451,6 @@ export default function LinerNotes() {
   // line — the log panel has the rest of the run.
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
-  const [brandIdx, setBrandIdx] = useState(0);
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -469,6 +463,7 @@ export default function LinerNotes() {
     Playlist[] | "unauthorized" | "error" | null
   >(null); // null=loading
   const [seedId, setSeedId] = useState("");
+  const [seedOpen, setSeedOpen] = useState(false); // the inline picker panel
   const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
@@ -502,20 +497,6 @@ export default function LinerNotes() {
   );
   const justDragged = useRef(false);
 
-  const brand = BRANDS[brandIdx];
-
-  // cycle the empty-input placeholder; hold still for reduced-motion users
-  const [phIndex, setPhIndex] = useState(0);
-  useEffect(() => {
-    if (card || loading) return;
-    if (window.matchMedia?.("(prefers-reduced-motion: reduce)").matches) return;
-    const t = setInterval(
-      () => setPhIndex((i) => (i + 1) % PLACEHOLDERS.length),
-      3500
-    );
-    return () => clearInterval(t);
-  }, [card, loading]);
-
   useEffect(() => {
     fetch("/auth/status")
       .then((r) => r.json())
@@ -524,9 +505,10 @@ export default function LinerNotes() {
   }, []);
 
   // the seed picker's playlist list. 403 = the stored token predates the
-  // playlist-read scopes — surfaced as a "reconnect Spotify" link.
-  useEffect(() => {
-    if (loggedIn !== true) return;
+  // playlist-read scopes — surfaced as a "reconnect Spotify" link. A named
+  // function (not just an effect) so the error state can offer a retry.
+  const loadPlaylists = () => {
+    setPlaylists(null);
     fetch("/api/playlists")
       .then(async (r) => {
         if (r.status === 403) return setPlaylists("unauthorized");
@@ -535,6 +517,9 @@ export default function LinerNotes() {
         setPlaylists(Array.isArray(d.playlists) ? d.playlists : []);
       })
       .catch(() => setPlaylists("error"));
+  };
+  useEffect(() => {
+    if (loggedIn === true) loadPlaylists();
   }, [loggedIn]);
 
   // Move focus to the result when it lands, so keyboard and
@@ -662,7 +647,7 @@ export default function LinerNotes() {
     // a seed playlist alone is a valid ask ("just like this one")
     if (!thePrompt && !seedPlaylist) {
       setInputHint(
-        "Type a vibe first — a mood, a moment, an era — or pick a playlist to channel."
+        "Type a vibe first — a mood, a moment, an era — or start from one of your playlists."
       );
       inputRef.current?.focus();
       return;
@@ -742,6 +727,11 @@ export default function LinerNotes() {
         `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
       );
       setCard(doneCard);
+      // The card records the seed (card.seed, printed on the sleeve); the
+      // armed seed must not silently ride along into the next generation.
+      // A failed run keeps it, so "try the same prompt again" stays true.
+      setSeedId("");
+      setSeedOpen(false);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
         setAnnounce("Stopped.");
@@ -954,9 +944,14 @@ export default function LinerNotes() {
       <header className="header">
         <h1 className="wordmark">
           <Logo />
-          <BrandText text={brand} />
+          {BRAND}
         </h1>
-        <div className="tagline">one prompt in. a record sleeve out.</div>
+        {/* the one line that must land in the first ten seconds: real tracks,
+            liner notes, a real playlist on YOUR Spotify — before any metaphor */}
+        <div className="tagline">
+          type a vibe → 8 real tracks with liner notes → a playlist on your
+          Spotify
+        </div>
       </header>
 
       <main className="main-col">
@@ -968,37 +963,71 @@ export default function LinerNotes() {
             <a href="/auth/login" className="btn-press">
               CONNECT SPOTIFY
             </a>
-            <DeckHero />
+            <DeckHero gate />
           </>
         )}
 
-        {loggedIn === true && (
+        {loggedIn === true && !card && (
           <>
-            {/* input */}
+            {/* input — the one path in. While a card is on the table this
+                whole section unmounts: one live text input on screen, ever. */}
             <div className="input-row">
-              <div
-                className={
-                  "prompt-wrap" + (SpeechRecognitionImpl ? " has-mic" : "")
-                }
-              >
-                <textarea
-                  ref={inputRef}
-                  value={prompt}
-                  onChange={(e) => {
-                    setPrompt(e.target.value);
-                    if (inputHint) setInputHint(null);
-                  }}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && !e.shiftKey) {
-                      e.preventDefault();
-                      generate();
-                    }
-                  }}
-                  placeholder={PLACEHOLDERS[phIndex]}
-                  rows={2}
-                  className="prompt-input"
-                  aria-label="Playlist prompt"
-                />
+              <div className="prompt-stack">
+                {/* armed seed: a removable token docked to the prompt box.
+                    The box visibly "contains something", which is also what
+                    makes an empty textarea read as legitimate. */}
+                {seedPlaylist && (
+                  <div className="seed-token">
+                    <span className="seed-token-mark" aria-hidden>
+                      ♫
+                    </span>
+                    <span className="seed-token-label">
+                      in the spirit of{" "}
+                      <span className="seed-token-name">
+                        “{seedPlaylist.name}”
+                      </span>
+                      {seedPlaylist.total != null
+                        ? ` · ${seedPlaylist.total} tracks`
+                        : ""}
+                    </span>
+                    <button
+                      type="button"
+                      className="seed-token-clear"
+                      aria-label={`Stop channeling ${seedPlaylist.name}`}
+                      onClick={() => {
+                        setSeedId("");
+                        inputRef.current?.focus();
+                      }}
+                    >
+                      ✕
+                    </button>
+                  </div>
+                )}
+                <div
+                  className={
+                    "prompt-wrap" +
+                    (SpeechRecognitionImpl ? " has-mic" : "") +
+                    (seedPlaylist ? " has-seed" : "")
+                  }
+                >
+                  <textarea
+                    ref={inputRef}
+                    value={prompt}
+                    onChange={(e) => {
+                      setPrompt(e.target.value);
+                      if (inputHint) setInputHint(null);
+                    }}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter" && !e.shiftKey) {
+                        e.preventDefault();
+                        generate();
+                      }
+                    }}
+                    placeholder={seedPlaylist ? SEEDED_PLACEHOLDER : PLACEHOLDER}
+                    rows={2}
+                    className="prompt-input"
+                    aria-label="Playlist prompt"
+                  />
                 {SpeechRecognitionImpl && (
                   <button
                     type="button"
@@ -1044,12 +1073,13 @@ export default function LinerNotes() {
                     </svg>
                   </button>
                 )}
+                </div>
               </div>
               <button
                 onClick={loading ? stopGenerating : () => generate()}
                 className="btn-press"
               >
-                {loading ? "STOP" : "PRESS IT"}
+                {loading ? "STOP" : "MAKE THE MIXTAPE"}
               </button>
             </div>
             {inputHint && (
@@ -1058,74 +1088,122 @@ export default function LinerNotes() {
               </div>
             )}
 
-            {/* what the box does — reads as the input's help text */}
-            {!card && !loading && (
-              <div className="scope-line">
-                describe a vibe, moment, or era — you get 8 real tracks with
-                liner notes
-              </div>
-            )}
-
-            {/* example chips: populate the prompt, stay editable */}
-            {!card && !loading && (
-              <div className="examples">
-                <div className="section-note">or start from an example</div>
-                <div className="chips">
-                  {EXAMPLES.map((ex) => (
+            {!loading && (
+              <>
+                {/* the alternate way in, attached to the input it modifies:
+                    a quiet entry chip that expands into the picker, and
+                    collapses into the docked token above once chosen. Hidden
+                    when the library is confirmed empty. */}
+                {!seedPlaylist &&
+                  !(Array.isArray(playlists) && playlists.length === 0) &&
+                  (seedOpen ? (
+                    <div className="seed-panel">
+                      <div className="seed-panel-head">
+                        <span>pick a playlist to channel</span>
+                        <button
+                          type="button"
+                          className="seed-panel-close"
+                          aria-label="Close the playlist picker"
+                          onClick={() => setSeedOpen(false)}
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      {Array.isArray(playlists) ? (
+                        <>
+                          <select
+                            className="seed-select"
+                            value={seedId}
+                            aria-label="Pick a playlist to channel"
+                            onChange={(e) => {
+                              const id = e.target.value;
+                              setSeedId(id);
+                              setInputHint(null);
+                              if (id) {
+                                setSeedOpen(false);
+                                const p = playlists.find((pl) => pl.id === id);
+                                setAnnounce(
+                                  `Channeling ${p?.name || "your playlist"}. The prompt is now optional.`
+                                );
+                                inputRef.current?.focus();
+                              }
+                            }}
+                          >
+                            <option value="">browse your playlists…</option>
+                            {playlists.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}
+                                {p.total != null ? ` · ${p.total} tracks` : ""}
+                              </option>
+                            ))}
+                          </select>
+                          <div className="seed-explainer">
+                            the curator reads its tracks, then cuts a new tape
+                            in its spirit — no songs copied over
+                          </div>
+                        </>
+                      ) : playlists === "unauthorized" ? (
+                        <a href="/auth/login" className="seed-reauth">
+                          reconnect Spotify to browse your playlists
+                        </a>
+                      ) : playlists === "error" ? (
+                        <div className="seed-error-row">
+                          <span className="seed-note">
+                            couldn’t load your playlists
+                          </span>
+                          <button
+                            type="button"
+                            className="seed-retry"
+                            onClick={loadPlaylists}
+                          >
+                            retry
+                          </button>
+                        </div>
+                      ) : (
+                        <span className="seed-note">reading your shelf…</span>
+                      )}
+                    </div>
+                  ) : (
                     <button
-                      key={ex}
-                      className="chip"
-                      onClick={() => {
-                        setPrompt(ex);
-                        setInputHint(null);
-                        inputRef.current?.focus();
-                      }}
+                      type="button"
+                      className="seed-chip"
+                      onClick={() => setSeedOpen(true)}
                     >
-                      {ex}
+                      + start from one of your playlists
                     </button>
                   ))}
+
+                {/* one caption under the action — expectation-setting, or the
+                    prompt-optional contract while a seed is armed */}
+                <div className="scope-line">
+                  {seedPlaylist
+                    ? "prompt optional — the tape follows that playlist’s spirit; add words to steer it"
+                    : "takes about a minute — every track is verified on Spotify before you see it"}
                 </div>
-              </div>
-            )}
 
-            {/* "in the spirit of" seed picker — optional; with a playlist
-                picked, the prompt may stay empty */}
-            {!card && !loading && (
-              <div className="seed-row">
-                <label htmlFor="seed-select" className="section-note">
-                  or make one in the spirit of your playlists
-                </label>
-                {Array.isArray(playlists) ? (
-                  <select
-                    id="seed-select"
-                    className="seed-select"
-                    value={seedId}
-                    onChange={(e) => {
-                      setSeedId(e.target.value);
-                      setInputHint(null);
-                    }}
-                  >
-                    <option value="">— nothing, fresh from the prompt —</option>
-                    {playlists.map((p) => (
-                      <option key={p.id} value={p.id}>
-                        {p.name}
-                        {p.total != null ? ` · ${p.total} tracks` : ""}
-                      </option>
+                {/* example chips: populate the prompt, stay editable */}
+                <div className="examples">
+                  <div className="section-note">stuck? steal a prompt</div>
+                  <div className="chips">
+                    {EXAMPLES.map((ex) => (
+                      <button
+                        key={ex}
+                        className="chip"
+                        onClick={() => {
+                          setPrompt(ex);
+                          setInputHint(null);
+                          inputRef.current?.focus();
+                        }}
+                      >
+                        {ex}
+                      </button>
                     ))}
-                  </select>
-                ) : playlists === "unauthorized" ? (
-                  <a href="/auth/login" className="seed-reauth">
-                    reconnect Spotify to browse your playlists
-                  </a>
-                ) : playlists === "error" ? (
-                  <span className="seed-note">couldn’t load your playlists</span>
-                ) : (
-                  <span className="seed-note">loading your playlists…</span>
-                )}
-              </div>
-            )}
+                  </div>
+                </div>
 
-            {!card && !loading && <DeckHero />}
+                <DeckHero />
+              </>
+            )}
           </>
         )}
 
@@ -1135,6 +1213,11 @@ export default function LinerNotes() {
             {/* studio-console progress log — every line is a real backend event.
                 aria-hidden: the live region above narrates the milestones. */}
             <div className="progress-log" aria-hidden>
+              {/* how long the tunnel is — the log shows progress is real,
+                  this line says how much of it to expect */}
+              <div className="log-caption">
+                cutting your mixtape — usually about a minute
+              </div>
               {!stage && <div className="log-line">reading your prompt…{cursor}</div>}
               {seedLog && (
                 <div className="log-line">
@@ -1252,14 +1335,17 @@ export default function LinerNotes() {
                 </DndContext>
 
                 <div className="card-footer">
-                  <span>
+                  {/* two widths of the same legend — phones used to hide it
+                      entirely, which left drag/swap undiscoverable */}
+                  <span className="card-hint-full">
                     {editable
                       ? "tap to open · drag to reorder · ↻ swaps a track"
                       : "tap a track to open it in Spotify"}
                   </span>
-                  <span className="footer-brand">
-                    <BrandText text={brand} /> · STEREO
+                  <span className="card-hint-short">
+                    {editable ? "drag to reorder · ↻ swaps" : "tap to open"}
                   </span>
+                  <span className="footer-brand">{BRAND} · STEREO</span>
                   <div className="barcode" aria-hidden />
                 </div>
               </div>
@@ -1269,6 +1355,9 @@ export default function LinerNotes() {
                 window, same gating as drag-to-reorder */}
             {editable && (
               <div className="refine-area">
+                {/* frames refine as the optional branch, so the accent save
+                    button below reads as the finish line */}
+                <div className="refine-caption">not quite right?</div>
                 <div className="refine-row">
                   <input
                     ref={refineRef}
@@ -1342,15 +1431,21 @@ export default function LinerNotes() {
                   className="btn-press"
                   style={{ marginTop: 24 }}
                 >
+                  {/* the brand verb is spent exactly here — the action that
+                      literally presses the record into Spotify */}
                   {saving
                     ? saveStage || "PRESSING TO WAX…"
-                    : `PRESS ${cardVerified} OF ${card.tracks.length} TRACKS TO SPOTIFY`}
+                    : cardUnverified === 0
+                      ? `PRESS IT TO SPOTIFY · ${card.tracks.length} TRACKS`
+                      : `PRESS ${cardVerified} OF ${card.tracks.length} TRACKS TO SPOTIFY`}
                 </button>
                 {cardUnverified > 0 && (
                   <div className="save-note">
                     {cardUnverified} unverified track
-                    {cardUnverified === 1 ? "" : "s"} will be left off the
-                    playlist
+                    {cardUnverified === 1 ? "" : "s"} — Spotify couldn’t
+                    confirm {cardUnverified === 1 ? "it exists" : "they exist"},
+                    so {cardUnverified === 1 ? "it’ll" : "they’ll"} be left off
+                    the playlist
                   </div>
                 )}
               </>
@@ -1392,25 +1487,16 @@ export default function LinerNotes() {
               className="btn-ghost"
               style={{ marginTop: 20 }}
             >
-              press another one
+              make another one
             </button>
           </div>
         )}
       </main>
 
-      {/* the server's log tail — the answer to "check the server logs" */}
-      <LogConsole />
-
-      {/* dev-only wordmark switcher — the product name is undecided */}
-      {import.meta.env.DEV && (
-        <button
-          className="brand-switcher"
-          onClick={() => setBrandIdx((i) => (i + 1) % BRANDS.length)}
-          title="cycle candidate wordmarks (dev only)"
-        >
-          wordmark {brandIdx + 1}/{BRANDS.length}
-        </button>
-      )}
+      {/* the server's log tail — the answer to "check the server logs".
+          A permanent "logs" pill reads as part of the product to a first-time
+          visitor, so it only renders in dev or behind ?debug. */}
+      {SHOW_LOGS && <LogConsole />}
     </div>
   );
 }

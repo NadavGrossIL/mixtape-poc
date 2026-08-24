@@ -976,7 +976,13 @@ function sampleTracks<T>(tracks: T[], cap: number = SEED_TRACK_CAP): T[] {
 // List the caller's playlists for the picker. Paginated at 50 (the API max);
 // capped at 4 pages — a picker doesn't need more than 200 entries.
 async function listPlaylists(user: string = OWNER) {
-  const playlists: { id: string; name: string; total: number | null; owner: string | null }[] = [];
+  const playlists: {
+    id: string;
+    name: string;
+    total: number | null;
+    owner: string | null;
+    mine: boolean;
+  }[] = [];
   for (let offset = 0; offset < 200; offset += 50) {
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
     const data = await spotifyFetch(`/me/playlists?${params}`, {}, {}, user);
@@ -989,6 +995,9 @@ async function listPlaylists(user: string = OWNER) {
         // Feb 2026 renamed playlist "tracks" to "items" — accept either shape
         total: p.items?.total ?? p.tracks?.total ?? null,
         owner: p.owner?.display_name || null,
+        // followed playlists can 403 on item reads for dev-mode apps
+        // (Spotify-made ones always do) — the client sorts and labels by this
+        mine: p.owner?.id === user,
       });
     }
     if (!data?.next || items.length === 0) break;
@@ -1006,12 +1015,25 @@ async function getSeedTracks(playlistId: string, user: string = OWNER) {
   let total: number | null = null;
   for (let offset = 0; offset < SEED_FETCH_MAX; offset += 50) {
     const params = new URLSearchParams({ limit: "50", offset: String(offset) });
-    const data = await spotifyFetch(
-      `/playlists/${encodeURIComponent(playlistId)}/items?${params}`,
-      {},
-      {},
-      user
-    );
+    let data;
+    try {
+      data = await spotifyFetch(
+        `/playlists/${encodeURIComponent(playlistId)}/items?${params}`,
+        {},
+        {},
+        user
+      );
+    } catch (err: any) {
+      // Dev-mode apps can't read Spotify-made playlists (and some followed
+      // ones) — measured live 2026-08-23. Without this, the user sees a raw
+      // "Spotify API 403 … Forbidden" with no way to know what to do.
+      if (err?.status === 403) {
+        err.message =
+          "Spotify doesn't let this app read that playlist — Spotify-made " +
+          "and some followed playlists are off-limits. Pick one you made.";
+      }
+      throw err;
+    }
     total = data?.total ?? total;
     const items = data?.items || [];
     for (const entry of items) {

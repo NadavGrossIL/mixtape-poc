@@ -50,6 +50,11 @@ interface Playlist {
   id: string;
   name: string;
   total?: number | null;
+  owner?: string | null;
+  // false = followed, not made by the caller — dev-mode apps may not be able
+  // to read its tracks (Spotify-made ones never work), so the picker sorts
+  // and labels by this
+  mine?: boolean;
 }
 
 // Progress-log line for the generate stream — written sparsely by index, so
@@ -327,6 +332,25 @@ function DeckHero({ gate = false }: { gate?: boolean }) {
   );
 }
 
+// The Spotify mark, monochrome via currentColor — Spotify's brand rules allow
+// the one-color mark on buttons that link into Spotify. Used ONLY at the
+// touchpoints that actually hit Spotify (connect, save, open), never in the
+// header: this is Mixtape's page, not Spotify's.
+function SpotifyMark({ size = 16 }: { size?: number }) {
+  return (
+    <svg
+      className="spotify-mark"
+      width={size}
+      height={size}
+      viewBox="0 0 24 24"
+      fill="currentColor"
+      aria-hidden="true"
+    >
+      <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.5 17.31a.75.75 0 0 1-1.03.25c-2.82-1.72-6.37-2.11-10.55-1.16a.75.75 0 1 1-.33-1.46c4.57-1.04 8.49-.59 11.66 1.34.35.21.46.67.25 1.03zm1.47-3.27a.94.94 0 0 1-1.29.31c-3.23-1.98-8.15-2.55-11.97-1.4a.94.94 0 1 1-.54-1.79c4.36-1.32 9.79-.68 13.49 1.6.44.27.58.85.31 1.28zm.13-3.4C15.24 8.4 8.94 8.19 5.24 9.31a1.13 1.13 0 1 1-.65-2.16C8.83 5.86 15.88 6.11 20.26 8.7a1.13 1.13 0 0 1-1.16 1.94z" />
+    </svg>
+  );
+}
+
 // Identity for a track. Not guaranteed unique: a repeated curated track, or
 // two entries resolving to the same URI, would collide.
 const trackId = (t: Track) => t.spotifyUri || `${t.artist}—${t.title}`;
@@ -464,6 +488,7 @@ export default function LinerNotes() {
   >(null); // null=loading
   const [seedId, setSeedId] = useState("");
   const [seedOpen, setSeedOpen] = useState(false); // the inline picker panel
+  const [seedFilter, setSeedFilter] = useState("");
   const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
@@ -531,6 +556,17 @@ export default function LinerNotes() {
   const seedPlaylist = Array.isArray(playlists)
     ? playlists.find((p) => p.id === seedId) || null
     : null;
+
+  // the picker's rows: filtered by the search box, the caller's own playlists
+  // first (followed ones can be unreadable for dev-mode apps — see server).
+  // `mine ?? true`: rows from a server without the flag stay unlabeled.
+  const seedShown = Array.isArray(playlists)
+    ? playlists
+        .filter((p) =>
+          p.name.toLowerCase().includes(seedFilter.trim().toLowerCase())
+        )
+        .sort((a, b) => Number(b.mine ?? true) - Number(a.mine ?? true))
+    : [];
 
   // a page-leave mid-dictation must not leave the mic hot
   useEffect(
@@ -946,11 +982,26 @@ export default function LinerNotes() {
           <Logo />
           {BRAND}
         </h1>
-        {/* the one line that must land in the first ten seconds: real tracks,
-            liner notes, a real playlist on YOUR Spotify — before any metaphor */}
-        <div className="tagline">
-          type a vibe → 8 real tracks with liner notes → a playlist on your
-          Spotify
+        {/* the value prop as a numbered tracklist — the numbers borrow the
+            card's track-number voice, and the structure is what makes the
+            line readable at the shell's cream-only contrast budget */}
+        <div className="steps" aria-label="How it works">
+          <span className="step">
+            <span className="step-num">1</span> type a vibe
+          </span>
+          <span className="step-sep" aria-hidden>
+            →
+          </span>
+          <span className="step">
+            <span className="step-num">2</span> we cut 8 real tracks + liner
+            notes
+          </span>
+          <span className="step-sep" aria-hidden>
+            →
+          </span>
+          <span className="step">
+            <span className="step-num">3</span> press it to your Spotify
+          </span>
         </div>
       </header>
 
@@ -961,6 +1012,7 @@ export default function LinerNotes() {
         {loggedIn === false && (
           <>
             <a href="/auth/login" className="btn-press">
+              <SpotifyMark />
               CONNECT SPOTIFY
             </a>
             <DeckHero gate />
@@ -1104,39 +1156,59 @@ export default function LinerNotes() {
                           type="button"
                           className="seed-panel-close"
                           aria-label="Close the playlist picker"
-                          onClick={() => setSeedOpen(false)}
+                          onClick={() => {
+                            setSeedOpen(false);
+                            setSeedFilter("");
+                          }}
                         >
                           ✕
                         </button>
                       </div>
                       {Array.isArray(playlists) ? (
                         <>
-                          <select
-                            className="seed-select"
-                            value={seedId}
-                            aria-label="Pick a playlist to channel"
-                            onChange={(e) => {
-                              const id = e.target.value;
-                              setSeedId(id);
-                              setInputHint(null);
-                              if (id) {
-                                setSeedOpen(false);
-                                const p = playlists.find((pl) => pl.id === id);
-                                setAnnounce(
-                                  `Channeling ${p?.name || "your playlist"}. The prompt is now optional.`
-                                );
-                                inputRef.current?.focus();
-                              }
-                            }}
-                          >
-                            <option value="">browse your playlists…</option>
-                            {playlists.map((p) => (
-                              <option key={p.id} value={p.id}>
-                                {p.name}
-                                {p.total != null ? ` · ${p.total} tracks` : ""}
-                              </option>
+                          {playlists.length > 6 && (
+                            <input
+                              className="seed-filter"
+                              value={seedFilter}
+                              onChange={(e) => setSeedFilter(e.target.value)}
+                              placeholder="find a playlist…"
+                              aria-label="Filter your playlists"
+                            />
+                          )}
+                          <div className="seed-list">
+                            {seedShown.map((p) => (
+                              <button
+                                key={p.id}
+                                type="button"
+                                className="seed-item"
+                                onClick={() => {
+                                  setSeedId(p.id);
+                                  setSeedOpen(false);
+                                  setSeedFilter("");
+                                  setInputHint(null);
+                                  setAnnounce(
+                                    `Channeling ${p.name}. The prompt is now optional.`
+                                  );
+                                  inputRef.current?.focus();
+                                }}
+                              >
+                                <span className="seed-item-name">{p.name}</span>
+                                <span className="seed-item-meta">
+                                  {p.total != null
+                                    ? `${p.total} track${p.total === 1 ? "" : "s"}`
+                                    : ""}
+                                  {p.mine === false && p.owner
+                                    ? `${p.total != null ? " · " : ""}by ${p.owner}`
+                                    : ""}
+                                </span>
+                              </button>
                             ))}
-                          </select>
+                            {seedShown.length === 0 && (
+                              <div className="seed-note">
+                                nothing matches “{seedFilter.trim()}”
+                              </div>
+                            )}
+                          </div>
                           <div className="seed-explainer">
                             the curator reads its tracks, then cuts a new tape
                             in its spirit — no songs copied over
@@ -1433,6 +1505,7 @@ export default function LinerNotes() {
                 >
                   {/* the brand verb is spent exactly here — the action that
                       literally presses the record into Spotify */}
+                  {!saving && <SpotifyMark />}
                   {saving
                     ? saveStage || "PRESSING TO WAX…"
                     : cardUnverified === 0
@@ -1462,6 +1535,7 @@ export default function LinerNotes() {
                   openInSpotify(playlistUrl);
                 }}
               >
+                <SpotifyMark size={14} />
                 pressed. open in Spotify ▸
               </a>
             )}

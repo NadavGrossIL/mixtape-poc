@@ -149,15 +149,31 @@
 .logo-accent {
   stroke: var(--accent-soft);
 }
-.tagline {
+/* the value prop as a numbered tracklist. Contrast budget: the words sit at
+   full --ink (this line has to be READ, not glanced past), the numbers carry
+   the accent, the arrows drop to the caption floor. */
+.steps {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: baseline;
+  gap: 4px 12px;
+  margin-top: 10px;
   font-family: "Space Mono", monospace;
-  font-size: 12px;
-  /* load-bearing now — it IS the value proposition, so it sits a full tier
-     above the caption floor */
-  color: var(--ink-dim);
-  margin-top: 6px;
-  max-width: 34em;
-  line-height: 1.5;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--ink);
+}
+.step {
+  white-space: nowrap;
+}
+.step-num {
+  color: var(--accent-soft);
+  font-weight: 700;
+  margin-right: 4px;
+}
+.step-sep {
+  color: var(--ink-faint);
 }
 .checking {
   font-family: "Space Mono", monospace;
@@ -203,6 +219,14 @@
   box-shadow: inset 0 -3px 0 var(--accent-press);
   transform: none;
   filter: none;
+}
+
+/* the monochrome Spotify mark inside buttons/links — inherits currentColor */
+.spotify-mark {
+  flex-shrink: 0;
+  margin-right: 8px;
+  position: relative;
+  top: 1px; /* optical: centers the circle on the label's cap height */
 }
 
 .btn-ghost {
@@ -495,23 +519,74 @@
 }
 
 /* ── seed picker controls (inside .seed-panel) ── */
-.seed-select {
+.seed-filter {
   width: 100%;
   min-width: 0;
   background: var(--shell-raised);
   border: 1px solid var(--line);
   border-radius: 4px;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 16px; /* <16px triggers iOS focus zoom */
+  padding: 8px 12px;
+  min-height: 44px;
+  transition: border-color 0.15s ease;
+}
+.seed-filter::placeholder {
   color: var(--ink-dim);
-  font-family: "Space Mono", monospace;
-  font-size: 13px; /* control tier, matched with the chips */
-  padding: 0 12px;
+}
+.seed-filter:hover {
+  border-color: var(--accent-soft);
+}
+.seed-filter:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+  border-color: transparent;
+}
+/* the shelf: playlist rows ruled like a tracklist, scrolling in place */
+.seed-list {
+  max-height: 264px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+.seed-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-top: 1px solid
+    color-mix(in srgb, var(--line) 40%, transparent);
+  padding: 10px 6px;
   min-height: 44px;
   cursor: pointer;
-  transition: border-color 0.15s ease, color 0.15s ease;
+  transition: background 0.15s ease, transform 0.15s ease;
 }
-.seed-select:hover {
-  border-color: var(--accent-soft);
+.seed-item:first-child {
+  border-top: none;
+}
+.seed-item:hover {
+  background: var(--shell-raised);
+  transform: translateX(3px);
+}
+.seed-item-name {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
   color: var(--ink);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+.seed-item-meta {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+  white-space: nowrap;
 }
 .seed-note {
   font-family: "Space Mono", monospace;
@@ -1060,6 +1135,28 @@
     transform: rotate(-0.4deg);
   }
 }
+/* seed picker transitions: the panel unfolds from under the chip, and the
+   chosen playlist "docks" onto the prompt box from the panel's direction */
+@keyframes seed-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+@keyframes seed-dock {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
 /* cycle length = dasharray period (26 + 206) for a seamless loop */
 @keyframes tapeflow {
   to {
@@ -1101,6 +1198,34 @@
   .cursor {
     animation: lnblink 1s steps(1) infinite;
   }
+  .seed-panel {
+    animation: seed-open 0.22s ease;
+  }
+  .seed-token {
+    animation: seed-dock 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .seed-chip {
+    animation: lnfade 0.25s ease;
+  }
+  /* rows cascade in as the shelf unfolds — first few only, then instant */
+  .seed-item {
+    animation: lnfade 0.3s ease backwards;
+  }
+  .seed-item:nth-child(1) {
+    animation-delay: 0.03s;
+  }
+  .seed-item:nth-child(2) {
+    animation-delay: 0.06s;
+  }
+  .seed-item:nth-child(3) {
+    animation-delay: 0.09s;
+  }
+  .seed-item:nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  .seed-item:nth-child(5) {
+    animation-delay: 0.15s;
+  }
   .log-line,
   .log-track {
     animation: lnfade 0.35s ease;
@@ -1130,6 +1255,15 @@
   }
   .card-hint-short {
     display: inline;
+  }
+  /* phones: the three steps stack as a list — arrows off, numbers carry it */
+  .steps {
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
+  }
+  .step-sep {
+    display: none;
   }
   /* the full wordmark + cassette runs ~460px at desktop size */
   .wordmark {

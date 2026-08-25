@@ -1048,10 +1048,13 @@
 
 /* ── empty-state deck hero ── */
 .deck-hero {
-  margin-top: 30px;
+  margin-top: 32px;
   color: var(--ink-dim);
 }
 .deck {
+/* 32px from whatever sits above it (button on the gate, chips when signed
+   in): one step more than the 24px inside the action group, because the
+   cassette is garnish, not a fourth item in the stack */
   display: block;
   /* garnish, not headline: it must never outrank the input above it */
   width: min(240px, 68vw);
@@ -1257,7 +1260,7 @@
   }
   .tagline-sub {
     font-size: 12px;
-    max-width: 30ch;
+    max-width: 40ch; /* two lines on a 390px phone, not three */
   }
   /* the full wordmark + cassette runs ~460px at desktop size */
   .wordmark {
@@ -1297,7 +1300,7 @@
      examples, and the decorative deck dead last. Nothing that teaches or
      acts may lose the fold-fight to decoration. */
   .deck-hero {
-    margin-top: 14px;
+    margin-top: 24px;
   }
 }
 

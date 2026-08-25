@@ -271,7 +271,10 @@ function DeckHero({ gate = false }: { gate?: boolean }) {
     >
       <svg
         className="deck"
-        viewBox="0 0 280 172"
+        // cropped to the drawn content (y 12–160 incl. stroke) so the box has
+        // no invisible padding and the CSS margins around it mean what they
+        // say; x stays 0–280 so the cassette body sits on the column's centre
+        viewBox="0 12 280 148"
         fill="none"
         stroke="currentColor"
         strokeWidth="2.5"

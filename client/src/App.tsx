@@ -469,6 +469,76 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
   );
 }
 
+type Stage = "seeding" | "curating" | "resolving" | null;
+
+// Studio chatter: the rotating "calculating… blablaating…" line under the
+// spinning disc. The progress log next to it only prints real backend
+// events, and between events it can sit still for 20+ seconds — long
+// enough to read as hung. This line is the opposite: cosmetic on purpose,
+// keeps moving, and is keyed to the stage so it never claims a step that
+// isn't happening. aria-hidden: the live region narrates the milestones.
+const CHATTER: Record<"reading" | Exclude<Stage, null>, string[]> = {
+  reading: [
+    "reading your liner notes…",
+    "decoding the vibe…",
+    "warming up the tubes…",
+    "tuning the dial…",
+    "checking the levels…",
+    "sharpening the pencil…",
+  ],
+  seeding: [
+    "dropping the needle on your playlist…",
+    "reading the grooves…",
+    "taking notes from your crate…",
+    "rewinding to track one…",
+    "listening for the through-line…",
+  ],
+  curating: [
+    "digging through the crates…",
+    "flipping past the B-sides…",
+    "dusting off a deep cut…",
+    "asking the record-store guy…",
+    "arguing about the opener…",
+    "sequencing side A…",
+    "pulling a few sleeves…",
+    "checking the bpm…",
+    "holding out for the closer…",
+    "cutting one that didn't earn it…",
+  ],
+  resolving: [
+    "matching wax to Spotify…",
+    "checking the barcodes…",
+    "cueing up the tracks…",
+    "aligning the tape heads…",
+    "winding the cassette…",
+    "labelling the spine…",
+  ],
+};
+const CHATTER_MS = 2600;
+
+function StudioChatter({ stage }: { stage: Stage }) {
+  const pool = CHATTER[stage ?? "reading"];
+  const [line, setLine] = useState(pool[0]);
+  useEffect(() => {
+    // new stage → its first line immediately, then wander the pool without
+    // repeating the line that's on screen
+    let current = pool[0];
+    setLine(current);
+    const id = setInterval(() => {
+      const rest = pool.filter((l) => l !== current);
+      current = rest[Math.floor(Math.random() * rest.length)];
+      setLine(current);
+    }, CHATTER_MS);
+    return () => clearInterval(id);
+  }, [pool]);
+  // key on the text so the fade-in re-runs on every change
+  return (
+    <div className="studio-chatter" aria-hidden key={line}>
+      {line}
+    </div>
+  );
+}
+
 export default function LinerNotes() {
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
@@ -482,7 +552,7 @@ export default function LinerNotes() {
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   // real progress, driven only by SSE events from the backend
-  const [stage, setStage] = useState<"seeding" | "curating" | "resolving" | null>(null);
+  const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
   const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
   // "in the spirit of" seed picker
@@ -1011,10 +1081,11 @@ export default function LinerNotes() {
 
         {loggedIn === true && !card && (
           <>
-            {/* input — the one path in. While a card is on the table this
-                whole section unmounts: one live text input on screen, ever. */}
-            <div className="input-row">
-              <div className="prompt-stack">
+            {/* the composer card — one bounded surface for everything that
+                composes the request: docked seed token, prompt, seed trigger,
+                submit. While a card is on the table this whole section
+                unmounts: one live text input on screen, ever. */}
+            <div className="composer">
                 {/* armed seed: a removable token docked to the prompt box.
                     The box visibly "contains something", which is also what
                     makes an empty textarea read as legitimate. */}
@@ -1047,9 +1118,7 @@ export default function LinerNotes() {
                 )}
                 <div
                   className={
-                    "prompt-wrap" +
-                    (SpeechRecognitionImpl ? " has-mic" : "") +
-                    (seedPlaylist ? " has-seed" : "")
+                    "prompt-wrap" + (SpeechRecognitionImpl ? " has-mic" : "")
                   }
                 >
                   <textarea
@@ -1066,7 +1135,7 @@ export default function LinerNotes() {
                       }
                     }}
                     placeholder={seedPlaylist ? SEEDED_PLACEHOLDER : PLACEHOLDER}
-                    rows={2}
+                    rows={3}
                     className="prompt-input"
                     aria-label="Playlist prompt"
                   />
@@ -1116,13 +1185,30 @@ export default function LinerNotes() {
                   </button>
                 )}
                 </div>
+              {/* the card's control row: attached-context trigger on the
+                  left, the one primary action on the right */}
+              <div className="composer-bar">
+                {!loading &&
+                !seedPlaylist &&
+                !(Array.isArray(playlists) && playlists.length === 0) ? (
+                  <button
+                    type="button"
+                    className="seed-entry"
+                    aria-expanded={seedOpen}
+                    onClick={() => setSeedOpen(!seedOpen)}
+                  >
+                    + start from a playlist
+                  </button>
+                ) : (
+                  <span aria-hidden />
+                )}
+                <button
+                  onClick={loading ? stopGenerating : () => generate()}
+                  className="btn-press"
+                >
+                  {loading ? "STOP" : "MAKE THE MIXTAPE"}
+                </button>
               </div>
-              <button
-                onClick={loading ? stopGenerating : () => generate()}
-                className="btn-press"
-              >
-                {loading ? "STOP" : "MAKE THE MIXTAPE"}
-              </button>
             </div>
             {inputHint && (
               <div className="input-hint" role="alert">
@@ -1132,14 +1218,11 @@ export default function LinerNotes() {
 
             {!loading && (
               <>
-                {/* the alternate way in, attached to the input it modifies:
-                    a quiet entry chip that expands into the picker, and
-                    collapses into the docked token above once chosen. Hidden
-                    when the library is confirmed empty. */}
-                {!seedPlaylist &&
-                  !(Array.isArray(playlists) && playlists.length === 0) &&
-                  (seedOpen ? (
-                    <div className="seed-panel">
+                {/* the seed picker, opened from the composer-bar trigger; a
+                    chosen playlist collapses into the token docked on the
+                    composer */}
+                {seedOpen && !seedPlaylist && (
+                  <div className="seed-panel">
                       <div className="seed-panel-head">
                         <span>pick a playlist to channel</span>
                         <button
@@ -1225,15 +1308,7 @@ export default function LinerNotes() {
                         <span className="seed-note">reading your shelf…</span>
                       )}
                     </div>
-                  ) : (
-                    <button
-                      type="button"
-                      className="seed-chip"
-                      onClick={() => setSeedOpen(true)}
-                    >
-                      + start from one of your playlists
-                    </button>
-                  ))}
+                )}
 
                 {/* one caption under the action — expectation-setting, or the
                     prompt-optional contract while a seed is armed */}
@@ -1272,6 +1347,7 @@ export default function LinerNotes() {
         {loading && (
           <div className="loading">
             <div className="spinner-disc" aria-hidden />
+            <StudioChatter stage={stage} />
             {/* studio-console progress log — every line is a real backend event.
                 aria-hidden: the live region above narrates the milestones. */}
             <div className="progress-log" aria-hidden>

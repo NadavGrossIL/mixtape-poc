@@ -160,6 +160,9 @@
   line-height: 1.3;
   letter-spacing: -0.01em;
   color: var(--ink);
+  margin: 10px auto 0;
+  max-width: 30ch;
+  text-wrap: balance;
 }
 .tagline-sub {
   font-family: "Space Mono", monospace;
@@ -242,45 +245,72 @@
 }
 
 /* ── input ── */
-.input-row {
+/* ── the composer card: one bounded surface for everything that composes
+   the request — docked seed token, prompt, seed trigger, submit. Common
+   region does the section-separation work; nothing else on the landing
+   gets a container, so the card alone reads as "act here". ── */
+.composer {
   display: flex;
-  gap: 10px;
+  flex-direction: column;
   width: 100%;
   max-width: 560px;
-  align-items: stretch;
+  background: var(--shell-raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
+}
+.composer:hover {
+  border-color: var(--accent-soft); /* hover speaks the focus ring's language */
+}
+.composer:focus-within {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+  border-color: transparent;
+}
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+}
+/* seed trigger: a labeled ghost affordance INSIDE the composer — a seed is
+   attached context, not an alternate mode, so it lives where attachments
+   live (the +) instead of floating as a sibling of the example chips */
+.seed-entry {
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  min-height: 44px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+.seed-entry:hover {
+  color: var(--ink);
 }
 .prompt-input {
   flex: 1;
-  background: var(--shell-raised);
-  border: 1px solid var(--line);
-  border-radius: 4px;
+  background: transparent;
+  border: none;
   color: var(--ink);
   font-family: "Space Grotesk", sans-serif;
   font-size: 16px; /* <16px triggers iOS focus zoom */
   line-height: 1.4;
   padding: 12px 14px;
   resize: none;
-  transition: border-color 0.15s ease;
-}
-.prompt-input:hover {
-  border-color: var(--accent-soft); /* hover speaks the focus ring's language */
 }
 .prompt-input:focus-visible {
-  outline: 2px solid var(--accent-soft);
-  outline-offset: 0;
-  border-color: transparent;
+  outline: none; /* the ring is the composer's (:focus-within) */
 }
 .prompt-input::placeholder {
   /* the most-read text in the box — one full step above the caption floor */
   color: var(--ink-dim);
-}
-
-/* token + textarea stack as one visual input object */
-.prompt-stack {
-  flex: 1;
-  min-width: 0;
-  display: flex;
-  flex-direction: column;
 }
 
 /* mic sits inside the textarea's corner so the stacked mobile layout
@@ -290,22 +320,12 @@
   flex: 1;
   display: flex;
 }
-/* with a seed token docked on top, the textarea is the bottom half of a
-   single box: square its top edge and let the token own the top radius */
-.prompt-wrap.has-seed .prompt-input {
-  border-top-left-radius: 0;
-  border-top-right-radius: 0;
-}
-
 /* ── armed seed: a removable token docked to the prompt box ── */
 .seed-token {
   display: flex;
   align-items: center;
   gap: 8px;
-  background: var(--shell-raised);
-  border: 1px solid var(--line);
-  border-bottom: none;
-  border-radius: 4px 4px 0 0;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
   padding: 8px 6px 8px 12px;
   font-family: "Space Mono", monospace;
   font-size: 12px;
@@ -346,24 +366,7 @@
   color: var(--ink);
 }
 
-/* ── seed entry chip + inline picker panel ── */
-.seed-chip {
-  font-family: "Space Mono", monospace;
-  font-size: 12.5px;
-  background: transparent;
-  color: var(--ink-dim);
-  border: 1px dashed var(--line);
-  border-radius: 999px;
-  padding: 7px 14px;
-  min-height: 44px;
-  cursor: pointer;
-  margin-top: 10px;
-  transition: color 0.15s ease, border-color 0.15s ease;
-}
-.seed-chip:hover {
-  color: var(--ink);
-  border-color: var(--accent-soft);
-}
+/* ── inline seed picker panel (opened from the composer-bar trigger) ── */
 .seed-panel {
   width: 100%;
   max-width: 560px;
@@ -493,8 +496,8 @@
    One tier above the faint captions: headings must outrank what they organize */
 .section-note {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
-  letter-spacing: 1.5px;
+  font-size: 11px;
+  letter-spacing: 2px;
   color: var(--ink-dim);
   text-align: center;
 }
@@ -510,7 +513,9 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  margin-top: 28px;
+  /* a full tier of air above the examples: last-priority footnote, and the
+     only dashed pills left on the page — clearly not the composer's kin */
+  margin-top: 40px;
 }
 
 /* ── seed picker controls (inside .seed-panel) ── */
@@ -646,6 +651,18 @@
     radial-gradient(circle, var(--accent) 0 8px, #0a100e 8px 10px, transparent 10px),
     repeating-radial-gradient(circle, #0a100e 0 2px, #22312c 2px 4px);
   border: 2px solid var(--accent);
+}
+/* the rotating chatter line: sits between disc and log, reads as the
+   disc "saying" something. Pulled up toward the disc so the two read as
+   one object and the log stays its own column. */
+.studio-chatter {
+  margin-top: -18px;
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-align: center;
+  min-height: 1.4em; /* line swaps never shift the log below */
 }
 .progress-log {
   display: flex;
@@ -1047,14 +1064,14 @@
 }
 
 /* ── empty-state deck hero ── */
+/* 32px from whatever sits above it (button on the gate, chips when signed
+   in): one step more than the 24px inside the action group, because the
+   cassette is garnish, not a fourth item in the stack */
 .deck-hero {
   margin-top: 32px;
   color: var(--ink-dim);
 }
 .deck {
-/* 32px from whatever sits above it (button on the gate, chips when signed
-   in): one step more than the 24px inside the action group, because the
-   cassette is garnish, not a fourth item in the stack */
   display: block;
   /* garnish, not headline: it must never outrank the input above it */
   width: min(240px, 68vw);
@@ -1165,6 +1182,9 @@
   .spinner-disc {
     animation: spin 1.4s linear infinite;
   }
+  .studio-chatter {
+    animation: lnfade 0.45s ease;
+  }
   .deck-hero {
     /* reels + tape shimmer are the hero's motion; the whole object holding
        still keeps it garnish rather than a competing attention source */
@@ -1235,8 +1255,11 @@
 
 /* ── narrow screens ── */
 @media (max-width: 520px) {
-  .input-row {
-    flex-direction: column;
+  .composer-bar {
+    flex-wrap: wrap;
+  }
+  .composer-bar .btn-press {
+    flex: 1;
   }
   .refine-row {
     flex-direction: column;

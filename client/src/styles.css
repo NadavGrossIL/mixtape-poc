@@ -664,6 +664,14 @@
   text-align: center;
   min-height: 1.4em; /* line swaps never shift the log below */
 }
+/* inside a log column (the refine flow has no disc): first line of the
+   log, left-aligned, in the log's own type size */
+.studio-chatter.inline {
+  margin-top: 0;
+  margin-bottom: 4px;
+  text-align: left;
+  letter-spacing: 0;
+}
 .progress-log {
   display: flex;
   flex-direction: column;

@@ -477,7 +477,7 @@ type Stage = "seeding" | "curating" | "resolving" | null;
 // enough to read as hung. This line is the opposite: cosmetic on purpose,
 // keeps moving, and is keyed to the stage so it never claims a step that
 // isn't happening. aria-hidden: the live region narrates the milestones.
-const CHATTER: Record<"reading" | Exclude<Stage, null>, string[]> = {
+const CHATTER = {
   reading: [
     "reading your liner notes…",
     "decoding the vibe…",
@@ -513,11 +513,23 @@ const CHATTER: Record<"reading" | Exclude<Stage, null>, string[]> = {
     "winding the cassette…",
     "labelling the spine…",
   ],
+  // the refine flow: same card, one instruction, a few tracks swapped
+  rewinding: [
+    "rewinding the tape…",
+    "reading your note…",
+    "listening back to the sequence…",
+    "finding the track that's off…",
+    "splicing in a replacement…",
+    "keeping what worked…",
+    "checking the segue…",
+    "re-dubbing side B…",
+  ],
 };
+type ChatterPool = keyof typeof CHATTER;
 const CHATTER_MS = 2600;
 
-function StudioChatter({ stage }: { stage: Stage }) {
-  const pool = CHATTER[stage ?? "reading"];
+function StudioChatter({ pool: name, inline }: { pool: ChatterPool; inline?: boolean }) {
+  const pool = CHATTER[name];
   const [line, setLine] = useState(pool[0]);
   useEffect(() => {
     // new stage → its first line immediately, then wander the pool without
@@ -533,7 +545,11 @@ function StudioChatter({ stage }: { stage: Stage }) {
   }, [pool]);
   // key on the text so the fade-in re-runs on every change
   return (
-    <div className="studio-chatter" aria-hidden key={line}>
+    <div
+      className={"studio-chatter" + (inline ? " inline" : "")}
+      aria-hidden
+      key={line}
+    >
       {line}
     </div>
   );
@@ -1347,7 +1363,7 @@ export default function LinerNotes() {
         {loading && (
           <div className="loading">
             <div className="spinner-disc" aria-hidden />
-            <StudioChatter stage={stage} />
+            <StudioChatter pool={stage ?? "reading"} />
             {/* studio-console progress log — every line is a real backend event.
                 aria-hidden: the live region above narrates the milestones. */}
             <div className="progress-log" aria-hidden>
@@ -1523,6 +1539,10 @@ export default function LinerNotes() {
                   /* same console-log aesthetic as generate — every line is a
                      real SSE event; the live region above narrates milestones */
                   <div className="progress-log refine-log" aria-hidden>
+                    <StudioChatter
+                      pool={adjustStage === "resolving" ? "resolving" : "rewinding"}
+                      inline
+                    />
                     <div className="log-line">
                       rewinding the tape…
                       {adjustStage === "resolving" ? (

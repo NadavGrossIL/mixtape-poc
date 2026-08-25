@@ -982,27 +982,14 @@ export default function LinerNotes() {
           <Logo />
           {BRAND}
         </h1>
-        {/* the value prop as a numbered tracklist — the numbers borrow the
-            card's track-number voice, and the structure is what makes the
-            line readable at the shell's cream-only contrast budget */}
-        <div className="steps" aria-label="How it works">
-          <span className="step">
-            <span className="step-num">1</span> type a vibe
-          </span>
-          <span className="step-sep" aria-hidden>
-            →
-          </span>
-          <span className="step">
-            <span className="step-num">2</span> we cut 8 real tracks + liner
-            notes
-          </span>
-          <span className="step-sep" aria-hidden>
-            →
-          </span>
-          <span className="step">
-            <span className="step-num">3</span> press it to your Spotify
-          </span>
-        </div>
+        {/* the tagline: one human sentence about the playlist, not a
+            process. The facts sit under it in the caption voice so the
+            promise stays concrete. */}
+        <p className="tagline">Say the mood. We’ll make the playlist.</p>
+        <p className="tagline-sub">
+          Eight tracks that belong together, with liner notes — saved to your
+          Spotify.
+        </p>
       </header>
 
       <main className="main-col">

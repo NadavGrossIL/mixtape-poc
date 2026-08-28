@@ -1,0 +1,30 @@
+{
+  "name": "mixtape-factory-console",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Local-only visualization of Mixtape feature-factory workflow runs. Never deployed.",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "fixtures": "node fixtures/redact.mjs"
+  },
+  "dependencies": {
+    "@dagrejs/dagre": "^3.0.0",
+    "@xyflow/react": "^12.0.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.1",
+    "typescript": "~5.9.0",
+    "vite": "^5.4.8"
+  }
+}

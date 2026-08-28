@@ -1,0 +1,144 @@
+{
+  "runId": "wf_sample-implement-0001",
+  "timestamp": "2026-08-28T09:00:00.000Z",
+  "taskId": "sample001",
+  "scriptPath": "tools/console/fixtures/implement-from-spec.sample.js",
+  "args": "specs/0001-sample.md",
+  "result": {
+    "status": "ready-for-pr",
+    "review": {
+      "verdict": "pass"
+    }
+  },
+  "agentCount": 4,
+  "logs": [
+    "implement: branch feat/0001-sample",
+    "gate: attempt 1 failed (typecheck)",
+    "gate: attempt 2 passed",
+    "review: pass"
+  ],
+  "durationMs": 238000,
+  "summary": "Synthetic sample run of implement-from-spec (fixture)",
+  "workflowName": "implement-from-spec",
+  "status": "completed",
+  "startTime": 1787907600000,
+  "phases": [
+    {
+      "title": "Implement",
+      "detail": "the implementer works the spec on a branch"
+    },
+    {
+      "title": "Gate",
+      "detail": "types → tests → selftest → build, at most 2 tries"
+    },
+    {
+      "title": "Review",
+      "detail": "a separate read-only reviewer, then a human merges"
+    }
+  ],
+  "defaultModel": "claude-sonnet-5",
+  "workflowProgress": [
+    {
+      "type": "workflow_phase",
+      "index": 1,
+      "title": "Implement"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 1,
+      "label": "implement",
+      "phaseIndex": 1,
+      "phaseTitle": "Implement",
+      "agentId": "a0sample0implement",
+      "model": "claude-sonnet-5",
+      "state": "done",
+      "attempt": 1,
+      "queuedAt": 1787907600000,
+      "startedAt": 1787907601500,
+      "lastProgressAt": 1787907696500,
+      "durationMs": 95000,
+      "tokens": 40000,
+      "toolCalls": 31,
+      "lastToolName": "Edit",
+      "lastToolSummary": "server/curator.ts",
+      "promptPreview": "/implement specs/0001-sample.md",
+      "resultPreview": "Implemented on feat/0001-sample; 3 files changed"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 2,
+      "title": "Gate"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 2,
+      "label": "gate",
+      "phaseIndex": 2,
+      "phaseTitle": "Gate",
+      "agentId": "a0sample0gate00001",
+      "model": "claude-sonnet-5",
+      "state": "error",
+      "attempt": 1,
+      "queuedAt": 1787907696600,
+      "startedAt": 1787907697800,
+      "lastProgressAt": 1787907735800,
+      "durationMs": 38000,
+      "tokens": 8000,
+      "toolCalls": 6,
+      "lastToolName": "Bash",
+      "lastToolSummary": "npm run gate",
+      "promptPreview": "Run `npm run gate`; return {ok, log}",
+      "error": "gate failed: typecheck — 2 errors in server/curator.ts"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 3,
+      "label": "gate",
+      "phaseIndex": 2,
+      "phaseTitle": "Gate",
+      "agentId": "a0sample0gate00002",
+      "model": "claude-sonnet-5",
+      "state": "done",
+      "attempt": 2,
+      "queuedAt": 1787907736000,
+      "startedAt": 1787907737200,
+      "lastProgressAt": 1787907778200,
+      "durationMs": 41000,
+      "tokens": 8000,
+      "toolCalls": 6,
+      "lastToolName": "Bash",
+      "lastToolSummary": "npm run gate",
+      "promptPreview": "Run `npm run gate`; return {ok, log}",
+      "resultPreview": "{\"ok\":true,\"log\":\"types ok · 41 tests · selftest ok · build ok\"}"
+    },
+    {
+      "type": "workflow_phase",
+      "index": 3,
+      "title": "Review"
+    },
+    {
+      "type": "workflow_agent",
+      "index": 4,
+      "label": "review",
+      "phaseIndex": 3,
+      "phaseTitle": "Review",
+      "agentId": "a0sample0review000",
+      "model": "claude-sonnet-5",
+      "state": "done",
+      "attempt": 1,
+      "queuedAt": 1787907778300,
+      "startedAt": 1787907779600,
+      "lastProgressAt": 1787907837600,
+      "durationMs": 58000,
+      "tokens": 15000,
+      "toolCalls": 14,
+      "lastToolName": "Read",
+      "lastToolSummary": "server/curator.ts",
+      "promptPreview": "Review specs/0001-sample.md against the diff",
+      "resultPreview": "{\"verdict\":\"pass\",\"notes\":[\"…\"]}"
+    }
+  ],
+  "totalTokens": 71000,
+  "totalToolCalls": 57,
+  "script": "// Sample native workflow script for the console's static parser. It follows\n// the sketch in docs/factory/plan.md §10; the real .claude/workflows/ script\n// replaces it once M4a lands. `human:merge` is not an agent the engine can\n// pause on — it is the hand-off point from the §4 diagram, drawn on the map.\nexport const meta = {\n  name: 'implement-from-spec',\n  description: 'spec → gated, reviewed branch',\n  phases: [\n    { title: 'Implement', detail: 'the implementer works the spec on a branch' },\n    { title: 'Gate', detail: 'types → tests → selftest → build, at most 2 tries' },\n    { title: 'Review', detail: 'a separate read-only reviewer, then a human merges' },\n  ],\n}\n\nconst spec = args\nlet gate\nfor (let i = 0; i < 2; i++) {\n  await agent(`/implement ${spec}`, { label: 'implement', phase: 'Implement' })\n  gate = await agent('Run `npm run gate`; return {ok, log}', { schema: GATE, label: 'gate', phase: 'Gate' })\n  if (gate.ok) break\n}\nif (!gate.ok) return { status: 'needs-human', gate }\n\nconst review = await agent(`Review ${spec} against the diff`, {\n  agentType: 'reviewer',\n  schema: REVIEW,\n  label: 'review',\n  phase: 'Review',\n})\nawait agent('Open a draft PR and append the RUNS.md row', { label: 'human:merge', phase: 'Review' })\nreturn { status: review.verdict === 'pass' ? 'ready-for-pr' : 'needs-human', review }\n"
+}

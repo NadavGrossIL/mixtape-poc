@@ -1,0 +1,24 @@
+import type { RunManifest } from '../types'
+import { fmtDate, fmtDuration, fmtTokens, dash } from './format'
+
+export function RunList({ runs, selectedId, onSelect }: { runs: RunManifest[]; selectedId?: string; onSelect: (id: string) => void }) {
+  return (
+    <aside className="rail">
+      <h2>Runs</h2>
+      {runs.length === 0 && <p className="muted">No runs on disk for this repo.</p>}
+      <ul className="runs">
+        {runs.map((r) => (
+          <li key={r.runId}>
+            <button className="run" data-selected={r.runId === selectedId || undefined} onClick={() => r.runId && onSelect(r.runId)}>
+              <span className="dot" data-status={r.status ?? 'unknown'} aria-label={r.status} />
+              <span className="run-main">
+                <span className="run-name">{r.workflowName ?? dash}{r.fixture && <span className="badge">fixture</span>}</span>
+                <span className="run-meta">{fmtDate(r.startTime, r.timestamp)} · {fmtDuration(r.durationMs)} · {fmtTokens(r.totalTokens)} tok</span>
+              </span>
+            </button>
+          </li>
+        ))}
+      </ul>
+    </aside>
+  )
+}

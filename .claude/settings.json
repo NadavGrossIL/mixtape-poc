@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(npm run gate)",
+      "Bash(npm run typecheck)",
+      "Bash(node --test *)",
+      "Bash(node evals/selftest.ts)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)"
+    ],
+    "ask": [
+      "Edit(server/session.ts)",
+      "Edit(server/caps.ts)",
+      "Edit(server/env.ts)",
+      "Edit(server/spotify.ts)"
+    ],
+    "deny": [
+      "Edit(evals/thresholds.json)",
+      "Edit(evals/runs/**)",
+      "Edit(evals/baseline-logs/**)",
+      "Edit(.github/**)",
+      "Edit(CLAUDE.md)",
+      "Edit(.claude/**)",
+      "Read(server/.env*)",
+      "Edit(server/.env*)"
+    ]
+  }
+}

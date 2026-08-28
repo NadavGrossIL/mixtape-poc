@@ -14,18 +14,16 @@ jobs:
         with:
           # 24 LTS: runs .ts files natively (type stripping), has import.meta.main
           node-version: 24
+          cache: npm
+          cache-dependency-path: |
+            server/package-lock.json
+            client/package-lock.json
 
-      - name: Server tests
-        working-directory: server
-        run: npm ci && npm test
+      - name: Install
+        run: npm --prefix server ci && npm --prefix client ci
 
-      - name: Typecheck
-        working-directory: server
-        run: npm run typecheck
-
-      - name: Evals selftest
-        run: node evals/selftest.ts
-
-      - name: Client build
-        working-directory: client
-        run: npm ci && npx vite build
+      # One script, shared with `npm run gate` locally, so CI and the desk
+      # can't drift: server typecheck → client typecheck → unit tests →
+      # evals selftest → client build. Evals are not here — they cost money.
+      - name: Gate
+        run: npm run gate

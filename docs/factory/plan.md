@@ -188,6 +188,36 @@ and how do I verify it" answers from the map without grepping.
 by the client with the rule shown, and a request to edit `server/caps.ts`
 prompts.
 
+**Verified 2026-08-28 — headless `claude -p` from the repo, real tool
+calls, files checked with `git status` after each run:**
+
+| Mode | Never tier (`evals/thresholds.json`) | Ask tier (`server/caps.ts`) |
+| --- | --- | --- |
+| `default` | Edit tool: `File is in a directory that is denied by your permission settings`. Bash `>>`: `Permission to use Bash … has been denied`. `sed -i`: blocked. | Edit → prompt → denied headless. Bash `>>` → prompt → denied headless. Holds — but so does everything else the implementer needs. |
+| `auto` (the user-level default) | Model refused before calling a tool; docs: deny holds in every mode and a hook can't override it. | Edit tool: `requested permissions … haven't granted` → run stops ✓. Bash `printf > tmp && mv`: **approved by the classifier, file changed** ✗. |
+| `acceptEdits` | as `default` | Free-tier Edit accepted ✓. Bash `printf '\n' >> server/caps.ts`: **ran, file changed** ✗. |
+
+Why: the docs say Read/Edit *deny* rules also cover the Bash file commands
+and redirect targets; *ask* rules are not on that list, and the measurement
+agrees. A `Bash(*caps.ts*)` rule — tried as ask and as deny — never matched
+the redirect command, so Bash text patterns are not the tool either.
+
+What M2 does about it: the never tier stays on deny rules (proven, every
+mode). The ask tier becomes **gate step 0**, `scripts/protected-check.sh`:
+free, deterministic, fails when an ask-tier file differs from `origin/main`
+or is changed in the tree; a human passes it with `FACTORY_ASK_OK=1`, the
+agent can't because its allowlist admits `npm run gate` verbatim only. The
+Edit ask rules stay for the interactive case. Factory runs use
+`--permission-mode acceptEdits` (edits flow, Bash is enumerated — never a
+broad `Bash(*)`). The documented hole remains: a Node script that opens the
+file itself; the reviewer reads the diff.
+
+Two operational facts found on the way: `permissions.allow` entries in the
+repo's settings are **ignored until the workspace is trusted** (one
+interactive `claude` in the repo, accept the dialog) — required before M4a
+runs headless; and the `-p` JSON result carries `total_cost_usd` (a
+no-op call from this repo costs ~$0.06–0.27 depending on cache).
+
 ### M3 · Skills and the reviewer
 
 Slash commands and skills are now one mechanism (`.claude/commands/x.md`

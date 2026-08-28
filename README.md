@@ -73,7 +73,7 @@ dev-only). Required env vars on the host:
 | `HOST` | `0.0.0.0` |
 | `CLIENT_URL` | `/` |
 | `SPOTIFY_REDIRECT_URI` | `https://<app-host>/callback` — must also be registered in the Spotify dashboard |
-| `APP_SECRET` | shared key; gates every request behind a cookie (required off-loopback) |
+| `APP_SECRET` | optional — set it for **invite-only** mode (a cookie gate; the invite link is `/?key=<APP_SECRET>`). Unset = public mode: the daily caps below are the protection |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `ANTHROPIC_API_KEY` | as in local dev |
 | `SPOTIFY_REFRESH_TOKEN` | the OWNER's token — paste from `server/.tokens.json` after one login; survives the host's ephemeral disk and powers catalog search |
 | `SPOTIFY_HOST_REFRESH_TOKEN` | the **Mixtape host account's** token — every mixtape is pressed into this account, public. Unset = the owner's account hosts them (fine for testing, not for sharing widely). See *Sharing* below |
@@ -101,10 +101,22 @@ user can follow it manually"), and it's what setlist.fm's bot does at scale.
 Never delete or privatize a pressed playlist: both revoke it from every
 library it was saved to.
 
-**Invite link:** `https://<app-host>/?key=<APP_SECRET>` — one tap sets the
-gate cookie and strips the key from the address bar. The gate stays for now
-because it, plus the guest caps, is what bounds the Anthropic bill and the
-per-developer daily Spotify quota (one burst can lock everyone out for ~19h).
+**Public by default.** With `APP_SECRET` unset the URL is the whole invite —
+post it anywhere. What bounds the Anthropic bill and the per-developer daily
+Spotify quota (one burst can lock everyone out for ~19h) is the caps: per
+guest, per IP, and **all guests together** (`GUEST_TOTAL_DAILY_CAP`). Size
+that last one to the Spotify search quota, not the bill — a run costs ~8–20
+searches and the quota is a few hundred a day, so ~12 is the honest public
+ceiling; when it's spent, visitors see *"today's tapes are all pressed —
+come back tomorrow"*, which is meant to read as scarcity, not an error.
+
+**Invite-only mode:** set `APP_SECRET` and share `https://<app-host>/?key=<APP_SECRET>`
+— one tap sets the gate cookie and strips the key from the address bar.
+
+**Link previews:** `client/index.html` carries the Open Graph tags and
+`client/public/og.png` (1200×630, rendered from the deck hero) so a post on
+LinkedIn/WhatsApp/Slack unfurls as a card. `og:image`/`og:url` are absolute
+and point at the deployed host — update them if the domain changes.
 
 **Setting up the host account (once):**
 

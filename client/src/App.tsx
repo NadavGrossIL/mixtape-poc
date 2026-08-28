@@ -104,6 +104,15 @@ type SaveStreamEvent =
   | ["done", { playlistUrl?: string; playlistId?: string; saved?: boolean } | null]
   | ["error", { message?: string; detail?: string } | null];
 
+// A daily-cap refusal (HTTP 429). Not a failure: the server's line IS the
+// message, and "try the same prompt again" would be the wrong advice.
+class CapError extends Error {
+  constructor(message?: string) {
+    super(message || "that’s it for today — come back tomorrow.");
+    this.name = "CapError";
+  }
+}
+
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
 // The mic button only renders when the browser can actually transcribe.
 const SpeechRecognitionImpl =
@@ -565,6 +574,7 @@ export default function LinerNotes() {
   // The server's own words for what went wrong, shown under the friendly
   // line — the log panel has the rest of the run.
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
+  const [booked, setBooked] = useState(false); // the error is a cap, not a fault
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
@@ -791,6 +801,7 @@ export default function LinerNotes() {
     setLoading(true);
     setError(null);
     setErrorDetail(null);
+    setBooked(false);
     setCard(null);
     setPlaylistUrl(null);
     setPlaylistId(null);
@@ -820,6 +831,7 @@ export default function LinerNotes() {
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
+        if (response.status === 429) throw new CapError(data.error);
         throw new Error(data.error || "generate failed");
       }
       // widened initializers: the assignments happen inside the readSSE
@@ -877,6 +889,10 @@ export default function LinerNotes() {
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
         setAnnounce("Stopped.");
+      } else if (e instanceof CapError) {
+        setBooked(true);
+        setError(e.message);
+        setAnnounce(e.message);
       } else {
         console.error(e);
         setError("The curator dropped the needle. Try the same prompt again.");
@@ -920,6 +936,7 @@ export default function LinerNotes() {
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
+        if (response.status === 429) throw new CapError(data.error);
         throw new Error(data.error || "adjust failed");
       }
       // widened initializers, same reason as in generate
@@ -959,6 +976,9 @@ export default function LinerNotes() {
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
         setAnnounce("Stopped.");
+      } else if (e instanceof CapError) {
+        setAdjustError(e.message);
+        setAnnounce(e.message);
       } else {
         console.error(e);
         setAdjustError("The curator couldn't rewind that one. Try rewording it.");
@@ -1514,7 +1534,7 @@ export default function LinerNotes() {
         )}
 
         {error && (
-          <div className="error" role="alert">
+          <div className={"error" + (booked ? " booked" : "")} role="alert">
             {error}
             {errorDetail && <span className="error-detail">{errorDetail}</span>}
           </div>

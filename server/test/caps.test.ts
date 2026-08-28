@@ -18,7 +18,7 @@ test("a guest stops at the per-guest cap", () => {
   const caps = makeCaps(limits);
   assert.strictEqual(spend(caps, "anon:a", "1.1.1.1"), null);
   assert.strictEqual(spend(caps, "anon:a", "1.1.1.1"), null);
-  assert.match(spend(caps, "anon:a", "1.1.1.1")!, /2\/day/);
+  assert.match(spend(caps, "anon:a", "1.1.1.1")!, /your 2 tapes/);
 });
 
 test("new guest cookies from one IP share the IP cap", () => {
@@ -35,13 +35,13 @@ test("all guests together stop at the global cap, with the booked-out line", () 
   for (const [u, ip] of [["anon:a", "1.1.1.1"], ["anon:b", "2.2.2.2"], ["anon:c", "3.3.3.3"], ["anon:d", "4.4.4.4"]]) {
     assert.strictEqual(spend(caps, u!, ip!), null);
   }
-  assert.match(spend(caps, "anon:e", "5.5.5.5")!, /fully booked/);
+  assert.match(spend(caps, "anon:e", "5.5.5.5")!, /all pressed/);
 });
 
 test("connected accounts have their own cap and never touch the guest pool", () => {
   const caps = makeCaps(limits);
   for (let i = 0; i < 3; i++) assert.strictEqual(spend(caps, "spotify-nadav", "1.1.1.1"), null);
-  assert.match(spend(caps, "spotify-nadav", "1.1.1.1")!, /3\/day/);
+  assert.match(spend(caps, "spotify-nadav", "1.1.1.1")!, /your 3 tapes/);
   // the guest pool is untouched by those four calls
   for (let i = 0; i < 4; i++) {
     assert.strictEqual(spend(caps, `anon:${i}`, `9.9.9.${i}`), null);

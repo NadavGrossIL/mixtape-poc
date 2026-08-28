@@ -59,9 +59,10 @@ if (!curator.anthropicConfigured()) {
 // ── owner gate ───────────────────────────────────────────────
 
 // This server proxies two private credentials (Anthropic key, Spotify tokens).
-// Locally the loopback bind is the protection; deployed, APP_SECRET turns on
-// a cookie gate so only people who were given the shared key get in. WHO they
-// are is a separate question, answered by the Spotify session cookie below.
+// Locally the loopback bind is the protection; deployed, the daily caps are
+// (caps.ts). APP_SECRET is optional on top: set, it turns on a cookie gate
+// so only people who were given the shared key get in (invite-only mode).
+// WHO they are is a separate question, answered by the session cookie below.
 // The gate cookie carries a hash of the secret, never the secret itself.
 const APP_SECRET = process.env.APP_SECRET || "";
 const GATE_COOKIE = "mixtape_gate";
@@ -667,10 +668,12 @@ if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
 }
 
 if (HOST !== "127.0.0.1" && !APP_SECRET) {
-  console.warn(
-    "[config] HOST is not loopback but APP_SECRET is unset — anyone who can " +
-      "reach this server can spend the Anthropic key and write to the Spotify " +
-      "account. Set APP_SECRET."
+  // Public mode. The door is open on purpose; what bounds the Anthropic
+  // spend and the shared Spotify quota is the daily caps, not a key.
+  console.log(
+    "[config] APP_SECRET is unset — public mode. Spend is bounded by the " +
+      "daily caps (GUEST_TOTAL_DAILY_CAP and friends); set APP_SECRET to go " +
+      "back to invite-only."
   );
 }
 

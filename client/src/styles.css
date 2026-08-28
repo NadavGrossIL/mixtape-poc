@@ -1626,3 +1626,12 @@
   display: block;
   margin: 0 auto;
 }
+
+/* a daily-cap refusal is the shop being sold out, not a fault: it speaks in
+   the tagline's voice, not the error's */
+.error.booked {
+  font-family: Fraunces, "Space Grotesk", Georgia, serif;
+  font-size: 20px;
+  line-height: 1.3;
+  color: var(--ink);
+}

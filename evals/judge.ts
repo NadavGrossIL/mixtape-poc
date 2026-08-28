@@ -206,7 +206,12 @@ async function judgeCard(client: any, entry: any, usageTotal: any) {
   const messages: any[] = [{ role: "user", content: buildCardMessage(entry) }];
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const response = await client.messages.create({
+    // Streamed, not create(): a judge turn can legitimately run past the
+    // SDK's idle-socket window (Opus + up to 15 web searches + 16k output),
+    // and on 2026-08-24 every non-streamed card died with "Request timed
+    // out." twice in a row. Streaming keeps bytes flowing so only the
+    // 30-minute hard cap below can end a live request.
+    const response = await client.messages.stream({
       model: JUDGE_MODEL,
       max_tokens: 16000,
       system: [
@@ -218,7 +223,7 @@ async function judgeCard(client: any, entry: any, usageTotal: any) {
       ],
       tools,
       messages,
-    });
+    }).finalMessage();
     addUsage(usageTotal, response.usage);
 
     const toolUse = response.content.find(

@@ -1,0 +1,649 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy",
+    "cardTitle": "Rap God Energy",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Busta Rhymes",
+        "title": "Break Ya Neck",
+        "note": "Busta snaps the tape open with a verse that sounds like it's chasing its own snare hits.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Imagery about the verse 'chasing its own snare hits' plus card-sequencing ('snaps the tape open'). No verifiable stat, credit, lyric or release detail asserted.",
+        "evidence": []
+      },
+      {
+        "index": 1,
+        "artist": "The Notorious B.I.G., Bone Thugs-N-Harmony",
+        "title": "Notorious Thugs (feat. Bone Thugs-n-Harmony) - 2007 Remaster",
+        "note": "Biggie flips into Bone Thugs' triplet cadence, proof the double-time flow predates the internet era.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims Biggie adopts Bone Thugs' triplet/double-time cadence on this track and that it predates the internet era. Song exists as attributed (Life After Death, 1997, feat. Bone Thugs-n-Harmony) and sources describe Biggie taking on Bone's rapid/double-time flow.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Notorious_Thugs",
+            "snippet": "\"Notorious Thugs\" is a song by American rapper The Notorious B.I.G. featuring American hip hop group Bone Thugs-n-Harmony from the former's second studio album Life After Death (1997)."
+          },
+          {
+            "url": "https://www.amazon.com/Life-After-Death-NOTORIOUS-B-I-G/dp/B0000039QA",
+            "snippet": "he adopts Bone Thugs-N-Harmony's rapid rhyme flow and Midwestern beats when they guest on \"Notorious Thugs\""
+          },
+          {
+            "url": "https://allhiphop.com/news/steve-lobel-notorious-thugs-biggie-bone-thugs-n-harmony-life-after-death-puffy/",
+            "snippet": "The opening song on LAD's disc two was a 6-minute exhibition on double time flow from Biggie and Bone."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Big Pun",
+        "title": "Twinz (Deep Cover '98)",
+        "note": "Big Pun stacks internal rhymes so dense the beat almost struggles to keep up.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Aesthetic assessment of internal rhyme density and the beat 'struggling to keep up' — no checkable stat, credit or quote.",
+        "evidence": []
+      },
+      {
+        "index": 3,
+        "artist": "Twista",
+        "title": "Adrenaline Rush",
+        "note": "The title track from the album that got Twista into the Guinness Book for fastest rapper alive.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claims the Adrenaline Rush album (1997) earned Twista his Guinness fastest-rapper recognition. Sources show the Guinness Book of World Records entry came in 1992 in connection with his debut as Tung Twista, Runnin' Off at da Mouth — five years before Adrenaline Rush.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Runnin'_Off_at_da_Mouth",
+            "snippet": "Released in 1992 ... The album was released after Twista entered the Guinness Book of World Records as the world's fastest emcee."
+          },
+          {
+            "url": "https://www.encyclopedia.com/education/news-wires-white-papers-and-books/twista",
+            "snippet": "entered the Guinness Book of World Records as Fastest Rapper in the World, 1992; ... debuted as Twista with Adrenaline Rush, 1997"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Eminem",
+        "title": "Rap God",
+        "note": "Six minutes long and the whole reason this playlist exists — the machine-gun MMLP2 centerpiece.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims the track is roughly six minutes long and is from MMLP2. Wikipedia lists the album version at 6:04 on The Marshall Mathers LP 2 (2013).",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Rap_God",
+            "snippet": "from the album The Marshall Mathers LP 2 - Released: October 15, 2013 ... Length: 6:04 (album version)"
+          },
+          {
+            "url": "https://www.okayplayer.com/eminem-rap-god/541678",
+            "snippet": "'Rap God' features six minutes of straight rapping."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Tech N9ne",
+        "title": "Worldwide Choppers (feat. Ceza, JL B.Hood, Uso, Yelawolf, Twista, Busta Rhymes, D-Loc and Twisted Insane)",
+        "note": "A whole roster of speed-rap legends trading bars on one posse cut, five and a half minutes of showing off.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims a multi-artist posse cut about five and a half minutes long. Wikipedia lists the song at 5:26 with exactly the featured roster named on the card (Busta Rhymes, Ceza, D-Loc, JL B.Hood, Twista, Twisted Insane, U$O, Yelawolf).",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Worldwide_Choppers",
+            "snippet": "Single by Tech N9ne featuring Busta Rhymes, Ceza, D-Loc, JL B.Hood, Twista, Twisted Insane, U$O and Yelawolf ... Length: 5:26"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Tech N9ne, Eminem, Krizz Kaliko",
+        "title": "Speedom (Wwc2)",
+        "note": "Tech N9ne pulls Eminem back in for round two, the comedown that's still redlining.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Speedom (WWC2) is indeed the sequel to Worldwide Choppers, but the note asserts Tech N9ne pulls Eminem 'back in for round two', implying Eminem appeared on the first Worldwide Choppers. Credits for Worldwide Choppers list Busta Rhymes, Ceza, D-Loc, JL B.Hood, Twista, Twisted Insane, U$O and Yelawolf — no Eminem — so the returning-guest claim is contradicted.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Worldwide_Choppers",
+            "snippet": "Single by Tech N9ne featuring Busta Rhymes, Ceza, D-Loc, JL B.Hood, Twista, Twisted Insane, U$O and Yelawolf"
+          },
+          {
+            "url": "https://djbooth.net/songs/2015-04-20-tech-n9ne-speedom-wwc2-eminem-krizz-kaliko/",
+            "snippet": "Speedom, a sequel to World Wide Choppers, which features Krizz Kaliko and none other..."
+          },
+          {
+            "url": "https://www.songfacts.com/facts/tech-n9ne/speedom-wwc2",
+            "snippet": "2011 \"Worldwide Choppers\" featuring the Americans Yelawolf, Twista, Busta Rhymes, JL of B. Hood, D-Loc & Twisted Insane plus Turkish rapper Ceza"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Yelawolf",
+        "title": "Box Chevy V",
+        "note": "Yelawolf closes it out with his slurred-drawl double-time, a Southern gearshift down from the chaos.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Describes vocal delivery ('slurred-drawl double-time') and card sequencing as a 'Southern gearshift' — stylistic impression, not a checkable fact, credit or stat.",
+        "evidence": []
+      }
+    ],
+    "usage": {
+      "input_tokens": 727,
+      "output_tokens": 4993,
+      "cache_creation_input_tokens": 16845,
+      "cache_read_input_tokens": 20386,
+      "web_search_requests": 8
+    }
+  },
+  {
+    "id": "app-2am-drive",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "app-hebrew-indie",
+    "category": "app-example",
+    "prompt": "hebrew indie that deserves a bigger audience",
+    "cardTitle": "Tel Aviv Basement Tapes",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Jane Bordeaux",
+        "title": "איך אפשר",
+        "note": "Opens their self-titled 2014 record with the kind of jangly hook that should've traveled way beyond Israel.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: \"איך אפשר\" opens Jane Bordeaux's self-titled 2014 album. The album (released 4 Oct 2014) exists and contains the song, but the official Bandcamp tracklist shows track 1 is \"על סבון וחיסכון\" and \"איך אפשר\" is track 2 — so it does not open the record. The 'opens' claim is contradicted.",
+        "evidence": [
+          {
+            "url": "https://janebordeauxtlv.bandcamp.com/album/jane-bordeaux",
+            "snippet": "released 04 October 2014 1. על סבון וחיסכון 2. איך אפשר 3. עינב 4. קרן שמש ..."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Riff Cohen",
+        "title": "אליך",
+        "note": "Cohen usually sings in French and Arabic too, but here she stays close and quiet in Hebrew.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable elements: the song \"אליך\" exists as a Riff Cohen track, and Cohen also sings in French and Arabic. Both confirmed: Apple Music/Spotify list \"אליך\" by Riff Cohen (2020, from Quelle Heure Est-Il), and multiple sources describe her singing in Hebrew, French and Arabic. The 'close and quiet' description is subjective but the factual core holds.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/il/song/%D7%90%D7%9C%D7%99%D7%9A/1839790122",
+            "snippet": "Listen to אליך by Riff Cohen on Apple Music. 2020. Duration: 3:01"
+          },
+          {
+            "url": "https://www.timesofisrael.com/locked-down-open-up-to-eclectic-singer-songwriter-riff-cohen/",
+            "snippet": "Her uplifting pop tunes, which she sings in a medley of French, Arabic, English and Hebrew"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Lola Marsh",
+        "title": "You're Mine",
+        "note": "The lead-off track from Remember Roses, all cinematic strum and duet-vocal swagger.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: \"You're Mine\" is the opening track of Lola Marsh's Remember Roses. Wikipedia's tracklist for the 2017 debut album lists \"You're Mine\" as track 1.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Remember_Roses",
+            "snippet": "Remember Roses is the debut studio album by Israeli pop group Lola Marsh ... |1. |\"You're Mine\" |4:13 |2. |\"Remember Roses\""
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Garden City Movement",
+        "title": "She's so Untouchable",
+        "note": "Tel Aviv trio built for late-night trip-hop drift, this single glides like a car with its lights off.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable elements: Garden City Movement is a Tel Aviv trio and \"She's So Untouchable\" is a single by them. Stereogum and Consequence both describe the Tel Aviv trio releasing the one-off track; Clash names the three members. The 'trip-hop drift / car with lights off' framing is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.stereogum.com/1880343/garden-city-movement-shes-so-untouchable/music/",
+            "snippet": "Tel Aviv trio Garden City Movement ... Today, they hit us with the one-off \"She's So Untouchable.\""
+          },
+          {
+            "url": "https://consequence.net/2016/06/garden-city-movement-share-catchy-new-track-shes-so-untouchable-listen/",
+            "snippet": "The Tel Aviv based trio shared the catchy new track \"She's So Untouchable\" today."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Vaadat Charigim",
+        "title": "Kezef al Hamayim",
+        "note": "Hebrew shoegaze that wears its Slowdive worship proudly, off The World Is Well Lost.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: \"Kezef al Hamayim\" appears on Vaadat Charigim's The World Is Well Lost. The band's Bandcamp tracklist for the 2013 album lists it as track 2. The Slowdive-worship remark is subjective commentary.",
+        "evidence": [
+          {
+            "url": "https://vaadatcharigim1.bandcamp.com/album/the-world-is-well-lost",
+            "snippet": "The World is Well Lost by Vaadat Charigim, released 20 August 2013 1. Odisea 2. Kezef Al Hamayim"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Vaadat Charigim",
+        "title": "Ze Beseder Lefahed",
+        "note": "Track four of the same album keeps the fuzz pedal down and the anxiety turned up.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: \"Ze Beseder Lefahed\" is track four of The World Is Well Lost. Bandcamp tracklist confirms it at position 4.",
+        "evidence": [
+          {
+            "url": "https://vaadatcharigim1.bandcamp.com/album/the-world-is-well-lost",
+            "snippet": "1. Odisea 2. Kezef Al Hamayim 3. Lehitorer Velo Lada'at 4. Ze Beseder Lefahed 5. Haolam Avad Mizman"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Ester Rada",
+        "title": "הלוואי",
+        "note": "From her 2020 record חסד, Rada trades soul horns for something bare and aching.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: \"הלוואי\" is from Ester Rada's 2020 album חסד. Spotify lists the track as belonging to Ester Rada's חסד (2020), and the album itself is listed as a 2020 Ester Rada album. (It also circulated as a 2019 single, which does not contradict the album placement.)",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/track/72tOZHpOYUNUDh4iXawlho",
+            "snippet": "Listen to הלוואי on Spotify. Song · Ester Rada · 2020 ... Ester Rada · חסד · Song · 2020"
+          },
+          {
+            "url": "https://open.spotify.com/album/1zzaUA1BJSJYxbUhqhUcgW",
+            "snippet": "Listen to חסד on Spotify · album · Ester Rada · 2020 · 8 songs"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Jane Bordeaux",
+        "title": "מגדל המים",
+        "note": "A standalone 2023 single that closes the loop, quiet and echoing like an empty water tower.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: \"מגדל המים\" is a standalone 2023 Jane Bordeaux single. Spotify's Jane Bordeaux discography listing shows \"מגדל המים · 2023 • Single\". The 'quiet and echoing' description is subjective.",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/track/7FSNvre21CIecc08tKMOD6",
+            "snippet": "לא לבד · 2023 • Single · מגדל המים · 2023 • Single · לא יוצאת למסיבות · 2023 • Single"
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 613,
+      "output_tokens": 4737,
+      "cache_creation_input_tokens": 21729,
+      "cache_read_input_tokens": 43692,
+      "web_search_requests": 8
+    }
+  },
+  {
+    "id": "app-90s-roadtrip",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mainstream-pop-anthems",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mainstream-classic-rock",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "niche-city-pop",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "niche-croydon-dubstep",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "nonenglish-hebrew-rock",
+    "category": "non-english",
+    "prompt": "israeli rock classics from the 90s",
+    "cardTitle": "Tel Aviv, Rewound",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Mashina",
+        "title": "\\u05d4\\u05db\\u05d5\\u05db\\u05d1\\u05d9\\u05dd \\u05d3\\u05d5\\u05dc\\u05e7\\u05d9\\u05dd \\u05e2\\u05dc \\u05d0\\u05e9 \\u05e7\\u05d8\\u05e0\\u05d4",
+        "note": "Track 3 on 1990's \\u05d4\\u05e2\\u05de\\u05d5\\u05ea\\u05d4 \\u05dc\\u05d7\\u05e7\\u05e8 \\u05d4\\u05ea\\u05de\\u05d5\\u05ea\\u05d4 \\u2014 new-wave guitars lighting the room.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Song and album/year check out: 'הכוכבים דולקים על אש קטנה' is a Mashina song included on 'העמותה לחקר התמותה', released 5 Aug 1990. However, the specific claim that it is TRACK 3 could not be confirmed — no tracklist with running order was found (Discogs/Wikipedia snippets did not give position). Under skeptical default, the position claim remains unverified.",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%94%D7%9B%D7%95%D7%9B%D7%91%D7%99%D7%9D_%D7%93%D7%95%D7%9C%D7%A7%D7%99%D7%9D_%D7%A2%D7%9C_%D7%90%D7%A9_%D7%A7%D7%98%D7%A0%D7%94",
+            "snippet": "\"הכוכבים דולקים על אש קטנה\" ... וביצעה להקת הפופ רוק משינה, אשר יצא לאור בשנת 1990. השיר נכלל באלבום \"העמותה לחקר התמותה\""
+          },
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%94%D7%A2%D7%9E%D7%95%D7%AA%D7%94_%D7%9C%D7%97%D7%A7%D7%A8_%D7%94%D7%AA%D7%9E%D7%95%D7%AA%D7%94",
+            "snippet": "אלבום האולפן הרביעי של להקת הפופ רוק הישראלית משינה, אשר יצא לאור ב-5 באוגוסט 1990"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Shalom Hanoch",
+        "title": "\\u05db\\u05db\\u05d4 \\u05d5\\u05db\\u05db\\u05d4",
+        "note": "The godfather of Israeli rock, still restless in 1991 on \\u05d1\\u05d2\\u05dc\\u05d2\\u05d5\\u05dc \\u05d4\\u05d6\\u05d4.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'ככה וככה' is a Shalom Hanoch song on the 1991 album 'בגילגול הזה'. Hebrew Wikipedia confirms the album is his 7th solo album, released March 1991, and lists 'ככה וככה' among its hits; the National Library tracklist shows it as track 4. The 'godfather of Israeli rock' framing is subjective but the checkable release detail holds.",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%91%D7%92%D7%99%D7%9C%D7%92%D7%95%D7%9C_%D7%94%D7%96%D7%94",
+            "snippet": "בגילגול הזה הוא אלבום הסולו ה-7 ... שלום חנוך, שיצא במרץ 1991 ... \"ככה וככה\", \"בגילגול הזה\""
+          },
+          {
+            "url": "https://www.nli.org.il/he/items/NNL_MUSIC_AL003640153/NLI",
+            "snippet": "מתוך אלבום: בגילגול הזה ... 1991 ... 04. ככה וככה 4:21"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Berry Sakharof",
+        "title": "\\u05d7\\u05dc\\u05dc\\u05d9\\u05d5\\u05ea",
+        "note": "Post-punk edge from \\u05d4\\u05db\\u05dc \\u05d0\\u05d5 \\u05db\\u05dc\\u05d5\\u05dd, 1991 \\u2014 Sakharof's voice like static and steel.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'חלליות' appears on Berry Sakharof's 'הכל או כלום' (1991). Hebrew Wikipedia confirms the album is his 1991 solo debut and names 'חלליות' among its hits; a chords/lyrics page credits lyrics to Rami Fortis, music Sakharof. Sound-description is subjective but the release fact holds.",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%94%D7%9B%D7%9C_%D7%90%D7%95_%D7%9B%D7%9C%D7%95%D7%9D",
+            "snippet": "\"הכל או כלום\" הוא אלבום הסולו הראשון של ברי סחרוף ... יצא לאור בשנת 1991 ... ובהם \"לחץ\", \"אמונה עיוורת\" ו\"חלליות\""
+          },
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%91%D7%A8%D7%99_%D7%A1%D7%97%D7%A8%D7%95%D7%A3",
+            "snippet": "בשנת 1991 הוציא סחרוף את אלבום הבכורה שלו, \"הכל או כלום\" ... האלבום כלל להיטים רבים, ובהם ... \"חלליות\""
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Aviv Geffen",
+        "title": "\\u05d0\\u05d5\\u05e8 \\u05d4\\u05d9\\u05e8\\u05d7",
+        "note": "Closing track on his 1992 debut \\u05d6\\u05d4 \\u05e8\\u05e7 \\u05d0\\u05d5\\u05e8 \\u05d4\\u05d9\\u05e8\\u05d7, teen-idol melancholy turned anthem.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'אור הירח' closes Aviv Geffen's 1992 debut 'זה רק אור הירח'. National Library page states the song was first recorded for his 1992 debut album, named after a line from the song, and explicitly notes the song closes that album; Apple Music lists the album as 1992.",
+        "evidence": [
+          {
+            "url": "https://www.nli.org.il/en/items/NNL_MUSIC_AL997008754500105171/NLI",
+            "snippet": "\"אור הירח\" ... הוקלט לראשונה עבור אלבום הבכורה של ... אביב גפן שיצא לאור בשנת 1992 ונקרא \"זה רק אור הירח\" ... השיר \"אור הירח\", שסוגר את האלבום"
+          },
+          {
+            "url": "https://music.apple.com/il/album/%D7%96%D7%94-%D7%A8%D7%A7-%D7%90%D7%95%D7%A8-%D7%94%D7%99%D7%A8%D7%97/1572562900?l=he",
+            "snippet": "אביב גפן, The Mistakes · רוק · 1992 ... 28 במאי 1992 14 שירים"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Mashina",
+        "title": "\\u05e0\\u05d2\\u05e2\\u05d4 \\u05d1\\u05e9\\u05de\\u05d9\\u05d9\\u05dd",
+        "note": "The closing track on 1993's \\u05e9\\u05d9\\u05d0 \\u05d4\\u05e8\\u05d2\\u05e9, a big skyward chorus at their peak.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'נגעה בשמים' is the final track on Mashina's 1993 album 'שיא הרגש'. The band's official site and a record-shop listing both show it as track 10, the last on the album, released 2 July 1993.",
+        "evidence": [
+          {
+            "url": "https://www.mashina.co.il/music/%D7%A9%D7%99%D7%90-%D7%94%D7%A8%D7%92%D7%A9/",
+            "snippet": "שיא הרגש 2 ביולי 1993 ... כולם אומרים לי תזהר (6:49) נגעה בשמים (4:18)"
+          },
+          {
+            "url": "https://third-ear.com/product/mashina-si-ha-regesh/",
+            "snippet": "צד ב' 6 מה אני עושה למעני 7 הנחש 8 נובל 9 כולם אומרים לי תזהר 10 נגעה בשמים"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Ehud Banai",
+        "title": "\\u05d9\\u05d5\\u05e6\\u05d0 \\u05dc\\u05d0\\u05d5\\u05e8",
+        "note": "Second track on 1996's \\u05e2\\u05d5\\u05d3 \\u05de\\u05e2\\u05d8 \\u2014 desert-blues grit pulling the tape toward the comedown.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'יוצא לאור' is the second track on Ehud Banai's 1996 album 'עוד מעט'. His official site tracklist begins 'סרט רץ, יוצא לאור', and Hebrew Wikipedia confirms the album is his fourth studio album, released late 1996, including that song.",
+        "evidence": [
+          {
+            "url": "https://www.ehudbanai.co.il/he/96/37",
+            "snippet": "רשימת השירים: סרט רץ יוצא לאור מהרי נא ..."
+          },
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%A2%D7%95%D7%93_%D7%9E%D7%A2%D7%98",
+            "snippet": "\"עוד מעט\" הוא אלבום האולפן הרביעי ... אהוד בנאי. האלבום יצא בסוף שנת 1996 ... \"יוצא לאור\""
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Aviv Geffen",
+        "title": "\\u05e2\\u05d5\\u05e0\\u05d5\\u05ea",
+        "note": "From 1996's \\u05d4\\u05de\\u05db\\u05ea\\u05d1, softer and more world-weary than his debut years.",
+        "resolved": false,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'עונות' is from Aviv Geffen's 1996 album 'המכתב'. Hebrew Wikipedia lists 'עונות' among the album's known songs from 1996, and a vinyl reissue tracklist shows it as track 2 of 'המכתב'. The comparative 'softer/world-weary' remark is subjective.",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%90%D7%91%D7%99%D7%91_%D7%92%D7%A4%D7%9F",
+            "snippet": "בשנת 1996 יצא האלבום \"המכתב\" ... מהשירים המוכרים באלבום היו ... \"עונות\""
+          },
+          {
+            "url": "https://tavisraeli.co.il/song/%D7%A2%D7%95%D7%A0%D7%95%D7%AA-%D7%90%D7%91%D7%99%D7%91-%D7%92%D7%A4%D7%9F-%D7%AA%D7%95%D7%95%D7%99%D7%9D-%D7%95%D7%90%D7%A7%D7%95%D7%A8%D7%93%D7%99%D7%9D-%D7%9E%D7%99%D7%9C%D7%99%D7%9D/",
+            "snippet": "השיר \"עונות\" ... זהו השיר השני מתוך אלבומו \"המכתב\", שיצא בשנת 1996"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Knesiyat Hasechel",
+        "title": "Lemaya Yesh Ekdach (Maya Has A Gun)",
+        "note": "From their self-titled 1999 debut, jagged alt-rock guitars closing out the decade.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The song is real and does appear on Knesiyat Hasechel's self-titled 'yellow album', but that record is their THIRD album, not their debut: their debut was 'דברים בלחש' (March 1993), followed by 'קח שירים'. The note's core release claim ('self-titled 1999 debut') is therefore contradicted by the evidence.",
+        "evidence": [
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%9B%D7%A0%D7%A1%D7%99%D7%99%D7%AA_%D7%94%D7%A9%D7%9B%D7%9C_(%D7%90%D7%9C%D7%91%D7%95%D7%9D)",
+            "snippet": "כנסיית השכל (ידוע גם בתור \"האלבום הצהוב\") הוא אלבומם השלישי של כנסיית השכל ... להיטים, כדוגמת \"למיה יש אקדח\""
+          },
+          {
+            "url": "https://he.wikipedia.org/wiki/%D7%9B%D7%A0%D7%A1%D7%99%D7%99%D7%AA_%D7%94%D7%A9%D7%9B%D7%9C",
+            "snippet": "במרץ 1993 יצא לאור אלבומם הראשון, \"דברים בלחש\" ... בשנת 1999 יצא לאור אלבומה השלישי של הלהקה, \"כנסיית הש[כל]\""
+          }
+        ]
+      }
+    ],
+    "usage": {
+      "input_tokens": 1238,
+      "output_tokens": 9100,
+      "cache_creation_input_tokens": 40202,
+      "cache_read_input_tokens": 151415,
+      "web_search_requests": 12
+    }
+  },
+  {
+    "id": "nonenglish-french-chanson",
+    "error": "Request timed out.",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "decade-80s-onehit",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNngVXo5FZCGhzGgLVnw\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mood-train-window",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNno7BaFiXpfdCY7JAtw\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "mood-first-warm-day",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNno8HZAopgWmLQcerLB\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "statbait-highest-bpm",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNno9J5BjUS6aQbkYe7k\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "statbait-longest-solos",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNnoAcwbbKZkACxSkrQL\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "recent-2025-best",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNnoBxJyvEGGmaeHJZ1a\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "recent-2026-indie",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNnoDNeM9oJbSEZvAgZ7\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  },
+  {
+    "id": "artist-radiohead-bsides",
+    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNnoEPAQ5KX5wPcZXttJ\"}",
+    "usage": {
+      "input_tokens": 0,
+      "output_tokens": 0,
+      "cache_creation_input_tokens": 0,
+      "cache_read_input_tokens": 0,
+      "web_search_requests": 0
+    }
+  }
+]

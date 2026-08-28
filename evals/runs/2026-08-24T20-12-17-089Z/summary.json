@@ -1,0 +1,124 @@
+{
+  "runDir": "/Users/nadavgross/Projects/mixtape-poc/evals/runs/2026-08-24T20-12-17-089Z",
+  "generatedAt": "2026-08-25T03:54:00.741Z",
+  "cards": {
+    "prompts": 18,
+    "generated": 18,
+    "generateErrors": 0,
+    "judged": 3,
+    "judgeErrors": 15,
+    "judgeErrorIds": [
+      "app-2am-drive",
+      "app-90s-roadtrip",
+      "mainstream-pop-anthems",
+      "mainstream-classic-rock",
+      "niche-city-pop",
+      "niche-croydon-dubstep",
+      "nonenglish-french-chanson",
+      "decade-80s-onehit",
+      "mood-train-window",
+      "mood-first-warm-day",
+      "statbait-highest-bpm",
+      "statbait-longest-solos",
+      "recent-2025-best",
+      "recent-2026-indie",
+      "artist-radiohead-bsides"
+    ]
+  },
+  "notes": {
+    "total": 24,
+    "resolved": 17,
+    "unresolved": 7,
+    "unknownResolution": 0
+  },
+  "outcomes": {
+    "overall": {
+      "specific-subjective": 3,
+      "specific-true": 16,
+      "specific-invented": 4,
+      "specific-unverifiable": 1
+    },
+    "resolved": {
+      "specific-subjective": 3,
+      "specific-true": 10,
+      "specific-invented": 4
+    },
+    "unresolved": {
+      "specific-unverifiable": 1,
+      "specific-true": 6
+    },
+    "unknown-resolution": {}
+  },
+  "rates": {
+    "overall": {
+      "specific-subjective": 0.125,
+      "specific-true": 0.6667,
+      "specific-invented": 0.1667,
+      "specific-unverifiable": 0.0417
+    },
+    "resolved": {
+      "specific-subjective": 0.1765,
+      "specific-true": 0.5882,
+      "specific-invented": 0.2353
+    },
+    "unresolved": {
+      "specific-unverifiable": 0.1429,
+      "specific-true": 0.8571
+    },
+    "unknown-resolution": {}
+  },
+  "headline": {
+    "checkableNotes": 21,
+    "inventedRate": 0.1905,
+    "verifiedTrueRate": 0.7619,
+    "unverifiableRate": 0.0476,
+    "genericRate": 0,
+    "resolutionRate": 0.7083
+  },
+  "downgrades": {
+    "total": 0,
+    "byReason": {}
+  },
+  "checks": [
+    {
+      "path": "headline.inventedRate",
+      "actual": 0.1905,
+      "rule": {
+        "max": 0.35,
+        "note": "measured 0.240"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.verifiedTrueRate",
+      "actual": 0.7619,
+      "rule": {
+        "min": 0.6,
+        "note": "measured 0.733"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.genericRate",
+      "actual": 0,
+      "rule": {
+        "max": 0.15,
+        "note": "measured 0.045"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.resolutionRate",
+      "actual": 0.7083,
+      "rule": {
+        "min": 0.9,
+        "note": "measured 1.000"
+      },
+      "ok": false,
+      "reason": "below min 0.9"
+    }
+  ]
+}

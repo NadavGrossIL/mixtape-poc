@@ -250,6 +250,16 @@ between approval and review.
 **Done when** `RUNS.md` has three rows and one eval case exists because of a
 factory-built feature.
 
+### M6 · The console (visualization layer)
+
+The factory drawn, live, in a browser: every workflow as an animated DAG,
+every run as history you can replay, every node's prompt and knobs editable
+in place. Section 11 has the research, the decision and the build slices.
+One sitting for the read-only view, one more for editing.
+
+**Done when** a dry-run is watched end to end in the console and one prompt
+tweak is made from its node panel instead of the editor.
+
 ## 6. Dry runs
 
 1. **Client-only, free tier, no prompt — on Claude Code native.** A "copy
@@ -275,13 +285,14 @@ describes.
 | Evals | `thresholds.json` set from a baseline; one-shot gate; pass^k in `reliability.ts` | 24.0% → 10.1% invented notes |
 | Commands | `/spec` `/implement` `/review` as skills | 3 skills, 1 agent |
 | Gates | `npm run gate`; deny/ask rules refusing an edit | "prompt rules die at 20–30% context; deny rules are evaluated before the model gets a say" |
-| Observability | `RUNS.md` with real cost per run; the bug → eval-case rule | attempts and escalations per run |
+| Observability | `RUNS.md` with real cost per run; the bug → eval-case rule; **the console** — the DAG animating while a run is live, then replayed | attempts and escalations per run; tokens per node |
 | Shaping | the reviewer's tools, the ≤2 retry, `--max-budget-usd`, the schema handoff | the half-billion-dollar loop, now a CLI flag |
 
 ## 8. Order and effort
 
-M1 + M2 in one evening, M3 in one, M4 in one, M5 folds into dry run 1.
-About four sittings. The write-up is this file plus `RUNS.md` — no separate
+M1 + M2 in one evening, M3 in one, M4 in one, M5 folds into dry run 1,
+M6 (the console) one or two more once there are runs to draw.
+About five or six sittings. The write-up is this file plus `RUNS.md` — no separate
 blog post needed.
 
 ## 9. Alignment check — 2026-08-28
@@ -437,3 +448,191 @@ approval step inside the run, a dashboard, webhook triggers you'd otherwise
 never wire. What it costs: a daemon and one more thing that can be
 misconfigured. For Mixtape alone, native is enough; for the job search, the
 comparison is the deliverable.
+
+
+## 11. The console — a visualization layer for the factory
+
+Added 2026-08-28 after a research pass (tools surveyed, libraries measured,
+Claude Code's on-disk run records read by hand). The ask: an admin page where
+every workflow is a clear, animated flow, each run can be watched and replayed,
+and the parts that need tweaking can be tweaked there — light, one person,
+beautiful.
+
+### 11.1 The decision
+
+Build a small page of our own, don't adopt a platform. Verdict in one line:
+**nothing off the shelf reads Claude Code workflow runs, and everything that
+draws DAGs well is a service (Postgres, Docker, a JVM) or the wrong shape
+(durable-execution timelines, LLM-chain canvases).** The data we need already
+exists on disk, so the "backend" is a dev-server plugin of ~60 lines.
+
+| Option | Why not (or why yes) |
+| --- | --- |
+| **Archon Mission Control** | Yes — for the Archon leg (M4b). It ships run history, a step-by-step execution view, a drag-and-drop DAG builder and the in-run approval UI. Don't rebuild it; later, point the console at Archon's SQLite so both engines draw in one place. |
+| Kestra | Closest turnkey match (live topology, YAML editor, Pause task = approval, shell tasks) — but Java + Docker for a hobby box. |
+| n8n, Windmill, Trigger.dev | Services with databases; general automation, won't read Claude Code runs; n8n's shell node is off by default since 2.0. |
+| Temporal, Inngest, Restate, Vercel Workflow, DBOS | Durable-execution engines: the UI is a step timeline, not a graph, and the factory would have to be rewritten in their SDK. |
+| Mastra Studio | The nicest graph view with live steps and suspend/resume — but only for workflows written in Mastra. |
+| Prefect, Dagster | Python, data-asset model. |
+| Flyde, Node-RED, Rivet | In-code dataflow / event flows / a desktop app whose last release was Aug 2025. Wrong shape. |
+| Motia | Winding down (site redirects). |
+| `claude-workflow-viz` | Zero-dep viewer of the exact run files we use: terminal DAG, gantt, single-file HTML with a replay scrubber, `wfviz watch` for live runs. 10 stars. **Stopgap today and the reference for the file format**, not a dependency. |
+
+The Claude Code `/workflows` view is a TUI — phases, agents, tokens, `p`/`x`/`r`
+— with no browser surface and no export. That is the gap the console fills.
+
+### 11.2 What the engine already writes (verified 2026-08-28, one real run)
+
+Every native run leaves, under `~/.claude/projects/<slug>/<session>/`:
+
+- `workflows/wf_<id>.json` — the run manifest. Top level: `runId`,
+  `workflowName`, `status` (`completed` …), `startTime`, `durationMs`,
+  `agentCount`, `totalTokens`, `totalToolCalls`, `defaultModel`, `phases`
+  (`title`, `detail`), `logs[]`, `result`, `args`, `script`, `scriptPath`
+  (→ `workflows/scripts/<name>-<runId>.js`), and `workflowProgress[]`.
+- `workflowProgress` entries are `workflow_phase` (`index`, `title`) and
+  `workflow_agent`: `label`, `phaseIndex`, `phaseTitle`, `agentId`, `model`,
+  `fallbackModel`, `state` (`done` | `error`; live states not yet observed),
+  `attempt`, `queuedAt`, `startedAt`, `lastProgressAt`, `durationMs`,
+  `tokens`, `toolCalls`, `lastToolName`, `lastToolSummary`, `promptPreview`
+  (80 chars), `resultPreview`, `error`.
+- `subagents/workflows/wf_<id>/journal.jsonl` — `started` / `result` per
+  agent keyed by a prompt hash (the resume cache), plus one full transcript
+  per agent, `agent-<id>.jsonl` (first line = the full prompt; every line has
+  a `timestamp`; assistant lines carry `usage` and `model`).
+
+So the console reads files; it never talks to Claude. Two things the manifest
+does **not** have: USD cost (tokens only — USD comes from the `claude -p
+--output-format json` result, which the driver writes into `RUNS.md`), and
+the prompt beyond 80 characters (read the agent transcript's first line).
+Hooks exist for live pushes (`SubagentStart` / `SubagentStop` with `agent_id`)
+but carry no label; the manifest already does, so hooks are not needed.
+
+Unverified, and the first thing to check in the build: whether
+`wf_<id>.json` is rewritten *during* the run (`lastProgressAt` suggests it)
+or only at the end. If only at the end, live view falls back to tailing
+`journal.jsonl` + agent transcripts, which are appended as they go.
+
+### 11.3 Shape
+
+```
+tools/console/                      a second Vite root, never deployed
+  index.html · main.tsx · vite.config.ts
+  plugin.ts      ← the "backend": a Vite configureServer middleware
+  graph/         ← script → nodes+edges (static), run → node states (dynamic)
+  ui/            ← Canvas · RunList · NodePanel · Replay
+npm run console  →  http://127.0.0.1:5174
+```
+
+- **Rendering:** `@xyflow/react` 12.x (58 kB gz, MIT, released this week —
+  the canvas under n8n, Windmill and DBOS's viewer) + `@dagrejs/dagre` 3.x for
+  layout (15 kB; the unscoped `dagre` has been dead since 2019). Optional:
+  `motion` for node pulses. ~75 kB total. React 18 is already the client's
+  stack, so nothing new to learn.
+- **The plugin** (`plugin.ts`): `GET /api/workflows` lists `.claude/workflows/*.js`,
+  `.claude/skills/*/SKILL.md`, `.archon/workflows/*.yaml`; `GET /api/runs`
+  globs `~/.claude/projects/<slug>/*/workflows/wf_*.json` for this repo's
+  slug and returns them newest first; `GET /api/runs/:id/agent/:agentId`
+  returns the full prompt and result from the transcript; `GET /api/events`
+  is SSE from `fs.watch` on those directories; `POST /api/file` writes back
+  — path-allowlisted to the three workflow/skill/YAML globs plus
+  `factory.config.json`, nothing else. No database, no auth, bound to
+  127.0.0.1. It reads the home directory, which is exactly why it never
+  ships anywhere.
+- **Two sources for the graph, one drawing.** Static: parse the script for
+  `meta.phases` and every `agent(…, { label, phase })` call — the factory
+  scripts are short and regular enough for a regex, and the same parser reads
+  Archon YAML `nodes` / `depends_on` for real. Dynamic: overlay a run's
+  `workflowProgress` onto those nodes by `label`. A run that spawned nodes the
+  script doesn't name (a `pipeline()` fan-out) adds them under their phase.
+
+### 11.4 What it looks like
+
+Three screens, one accent color, dark by default, no chrome that a screenshot
+would have to crop.
+
+1. **Workflows.** A card per workflow (native and Archon side by side, an
+   `engine` badge) with its DAG drawn small and the last run's status. Click
+   → the canvas.
+2. **Canvas.** Phases as swimlanes left to right, agents as nodes inside
+   them, the gate as a diamond, the human points as octagons. State is color
+   and motion, never text alone: idle grey · queued dotted · running pulsing
+   with the incoming edge's dash animating (`animated` edge) · done solid ·
+   error red with the error string on hover · waiting-for-human amber and
+   breathing. Node chips: model, attempt, tokens, duration. Run header:
+   status, elapsed, total tokens, USD when `RUNS.md` has it. A run picker on
+   the right lists history; a **replay scrubber** at the bottom plays a
+   finished run back at 20× from `queuedAt` / `startedAt` / `lastProgressAt`
+   — that is the demo clip.
+3. **Node panel** (slides in on click). Tabs: *Prompt* (the skill's
+   `SKILL.md` for a `/skill` node, or the literal prompt), *Knobs* (`model`,
+   `effort`, `schema`, retries, `--max-budget-usd` — read from
+   `factory.config.json`, which the driver passes to the run as `args`),
+   *Last result* (the schema'd object, pretty-printed), *Transcript* (tool
+   calls in order, from `agent-<id>.jsonl`). Save writes the file through
+   `POST /api/file` and shows the diff first.
+
+### 11.5 What "tweak" means, honestly
+
+- **Prompts and knobs — yes, in place.** They live in files the node panel
+  can own: `SKILL.md`, `factory.config.json`, the reviewer agent's
+  frontmatter. This is 90% of what you will ever change.
+- **The script text — yes, as text with a diff.** A `.js` workflow is
+  imperative; the console shows it as a graph but edits it as code.
+- **Drag-editing the DAG — only for Archon YAML.** A node/edge is a real
+  thing there (`id`, `depends_on`), so drag → YAML is a faithful round trip;
+  Archon's own builder already does it, and the console can defer to it.
+  For a `.js` script the graph is emergent from `if`/`for`, so a drag-edit
+  would be a lie. Don't build it.
+
+### 11.6 Build slices — each one demoable
+
+- **C1 · Draw the map.** Static graph from the script/YAML, dagre layout,
+  swimlanes, the six node states styled with fixture data. No plugin yet —
+  fixtures in `graph/fixtures/`. *Done when* the plan's §4 diagram is
+  recognisable on screen and a designer wouldn't wince.
+- **C2 · Runs and replay.** The plugin's read endpoints; the run picker;
+  overlay real `wf_*.json` (use the July job-scan review run as the first
+  fixture — 26 agents, errors included); the scrubber. *Done when* a
+  finished run replays with correct timing and the failed agents go red at
+  the right moment.
+- **C3 · Live.** SSE + `fs.watch`; confirm whether the manifest updates
+  mid-run, fall back to `journal.jsonl` if not. *Done when* dry-run 1 is
+  watched from the console with the terminal closed.
+- **C4 · Tweak.** Node panel, the allowlisted write, the diff preview,
+  `factory.config.json` → `args`. *Done when* the M6 done-when holds.
+- **C5 · Archon lane** (after M4b). Read `.archon/workflows/*.yaml` for the
+  graph and Archon's SQLite for runs; same canvas, `engine` badge. *Done
+  when* dry-run 2 shows up next to dry-run 1.
+
+C1–C2 are one sitting; C3–C4 another. C5 waits for Archon to exist.
+
+### 11.7 Rules
+
+- Local only, forever. It reads `~/.claude`; the shareable artifacts are
+  the code, screenshots and a replay GIF — hold those to the same bar as
+  the product itself (LinkedIn-shareable by default).
+- The console must never be able to *start* a run. Starting is `claude -p`
+  with the hard-stop flags, or Archon; the console watches and edits. One
+  less way to burn a window by accident.
+- Tolerate missing keys. The manifest shape above is from one Claude Code
+  version; the loader treats every field as optional and shows "—".
+- No new state. If something needs remembering, it is a file the repo
+  already has (`RUNS.md`, `factory.config.json`), not a console database.
+
+### 11.8 Sources
+
+Anthropic docs: `code.claude.com/docs/en/workflows` (the `/workflows` TUI,
+run persistence under the session dir, resume semantics), `…/hooks`
+(`SubagentStart`/`SubagentStop`, `agent_id`/`agent_type`). On-disk: run
+`wf_d62c68a5-d0a` (2026-07-31, job-scan review). Tools: coleam00/Archon README
+(dashboard, builder, `interactive: true`), kestra-io/kestra, n8n Execute
+Command docs, windmill flow editor, temporalio/ui, inngest dev server,
+trigger.dev self-hosting, mastra-ai/mastra, restatedev, dbos-inc + tmarkovski/
+dbos-argus, democra-ai/claude-workflow-viz, d-kimuson/claude-code-viewer.
+Libraries: xyflow/xyflow (`animating-edges`, dagre and elkjs examples; the
+"Workflow Editor" template is Pro-only, its mechanics are in the free
+examples), dagrejs/dagre, erikbrinkman/d3-dag, kieler/elkjs, mermaid
+(no drag, `securityLevel: 'loose'` for clicks — rejected), jerosoler/Drawflow
+(stale 2024 — rejected), GoJS (commercial — rejected). Sizes from
+bundlephobia, 2026-08-28.

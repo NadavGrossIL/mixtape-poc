@@ -53,6 +53,13 @@ function credentialsConfigured(): boolean {
 // request (evals, scripts).
 
 const OWNER = "owner";
+// The HOST is the account every mixtape is pressed into — a dedicated
+// "Mixtape" Spotify account whose public profile is the product's shelf.
+// Visitors beyond the 5-user allowlist can't log in, so the playlist can't
+// land in THEIR library; it lands here, public, and they keep it with one
+// tap (+) in Spotify. Bootstrapped from SPOTIFY_HOST_REFRESH_TOKEN; falls
+// back to the owner so a deploy without a host account still works.
+const HOST = "host";
 
 interface StoredTokens {
   access_token: string | null;
@@ -89,14 +96,18 @@ function loadStore(): TokenStore {
 function loadTokens(user: string): StoredTokens | null {
   const stored = loadStore().users[user];
   if (stored) return stored;
-  if (user === OWNER) {
-    // No owner entry (fresh container, ephemeral disk wiped on redeploy):
-    // bootstrap from SPOTIFY_REFRESH_TOKEN so a deployed server comes back
-    // logged in. expires_at 0 forces a refresh on first use.
-    const refresh = process.env.SPOTIFY_REFRESH_TOKEN || "";
-    if (refresh && !PLACEHOLDER_RE.test(refresh)) {
-      return { access_token: null, refresh_token: refresh, expires_at: 0 };
-    }
+  // No stored entry (fresh container, ephemeral disk wiped on redeploy):
+  // the two service identities bootstrap from env so a deployed server
+  // comes back logged in. expires_at 0 forces a refresh on first use.
+  const envRefresh =
+    user === OWNER
+      ? process.env.SPOTIFY_REFRESH_TOKEN
+      : user === HOST
+        ? process.env.SPOTIFY_HOST_REFRESH_TOKEN
+        : "";
+  const refresh = envRefresh || "";
+  if (refresh && !PLACEHOLDER_RE.test(refresh)) {
+    return { access_token: null, refresh_token: refresh, expires_at: 0 };
   }
   return null;
 }
@@ -147,6 +158,54 @@ async function getOwnerId(): Promise<string | null> {
 function catalogUser(): string {
   if (isLoggedIn(OWNER)) return OWNER;
   return Object.keys(loadStore().users)[0] || OWNER;
+}
+
+// The account playlists are pressed into. Without a configured host token
+// the owner's own account hosts them (local dev, or a deploy that hasn't
+// set up the Mixtape account yet).
+function hostUser(): string {
+  return isLoggedIn(HOST) ? HOST : catalogUser();
+}
+
+// ── pasted playlist references ───────────────────────────────
+
+// Visitors who can't log in seed from a playlist LINK instead of the picker.
+// Accepts the share URL (with ?si= and locale prefixes), the spotify: URI,
+// or a bare id. Pure; null means "not a playlist reference".
+const PLAYLIST_ID_RE = /^[A-Za-z0-9]{22}$/;
+function parsePlaylistRef(input: unknown): string | null {
+  const text = String(input || "").trim();
+  if (!text) return null;
+  if (PLAYLIST_ID_RE.test(text)) return text;
+  const uri = /^spotify:playlist:([A-Za-z0-9]{22})$/.exec(text);
+  if (uri) return uri[1]!;
+  let url: URL;
+  try {
+    url = new URL(text);
+  } catch {
+    return null;
+  }
+  if (!/(^|\.)spotify\.com$/.test(url.hostname)) return null;
+  const parts = url.pathname.split("/").filter(Boolean);
+  if (parts[0]?.startsWith("intl-")) parts.shift();
+  if (parts[0] === "playlist" && parts[1] && PLAYLIST_ID_RE.test(parts[1])) {
+    return parts[1];
+  }
+  return null;
+}
+
+// The pressed playlist's name on a PUBLIC profile — the visitor's title,
+// tidied: no control characters, no runaway whitespace, Spotify's 100-char
+// limit respected, never empty. The prompt itself never goes on the playlist.
+const PLAYLIST_NAME_MAX = 100;
+function sanitizePlaylistName(input: unknown): string {
+  const name = String(input || "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, PLAYLIST_NAME_MAX)
+    .trim();
+  return name || "Mixtape";
 }
 
 // ── OAuth (authorization code flow) ──────────────────────────
@@ -989,6 +1048,16 @@ async function listPlaylists(user: string = OWNER) {
     const items = data?.items || [];
     for (const p of items) {
       if (!p?.id) continue;
+      // Mixtapes the caller's own account hosts are not a seed library —
+      // without this the owner-as-host picker fills with them. Compared by
+      // Spotify id, not store key: the same account can be "owner" here and
+      // its Spotify id in the cookie.
+      if (
+        p.owner?.id === user &&
+        String(p.description || "").startsWith("Made with Mixtape")
+      ) {
+        continue;
+      }
       playlists.push({
         id: p.id,
         name: p.name || "(untitled)",
@@ -1003,6 +1072,30 @@ async function listPlaylists(user: string = OWNER) {
     if (!data?.next || items.length === 0) break;
   }
   return playlists;
+}
+
+// A playlist's name and size, for a pasted link the picker never saw.
+async function getPlaylistMeta(playlistId: string, user: string = OWNER) {
+  try {
+    const p = await spotifyFetch(
+      `/playlists/${encodeURIComponent(playlistId)}`,
+      {},
+      {},
+      user
+    );
+    return {
+      name: String(p?.name || "").trim() || null,
+      total: p?.items?.total ?? p?.tracks?.total ?? null,
+    };
+  } catch (err: any) {
+    if (err?.status === 403 || err?.status === 404) {
+      err.message =
+        "Spotify doesn't let this app read that playlist — Spotify-made " +
+        "and private playlists are off-limits. Paste a link to a public " +
+        "playlist someone made.";
+    }
+    throw err;
+  }
 }
 
 // Fetch a playlist's tracks (artist/title only) to seed the curator.
@@ -1056,18 +1149,27 @@ async function getSeedTracks(playlistId: string, user: string = OWNER) {
 // onProgress(event, payload) fires on the two real steps:
 // "creating" (playlist create request) and "adding" (adding N tracks).
 async function createPlaylist(
-  { name, description, uris }: { name: string; description: string; uris: string[] },
+  {
+    name,
+    description,
+    uris,
+    isPublic = false,
+  }: { name: string; description: string; uris: string[]; isPublic?: boolean },
   onProgress?: (event: string, data?: any) => void,
   // the playlist lands in THIS account's library
   user: string = OWNER
-): Promise<string | null> {
+): Promise<{ id: string; url: string | null }> {
   // POST /v1/me/playlists — NOT /users/{id}/playlists (removed Feb 2026)
   if (onProgress) onProgress("creating", { name });
+  // public: a private playlist can't be opened by ANYONE, link or not
+  // (Spotify has no "unlisted") — so a playlist meant to be handed to a
+  // visitor must be public, and must never be made private again later:
+  // that revokes it from every library it was saved to.
   const playlist = await spotifyFetch(
     "/me/playlists",
     {
       method: "POST",
-      body: JSON.stringify({ name, description, public: false }),
+      body: JSON.stringify({ name, description, public: isPublic }),
     },
     {},
     user
@@ -1105,7 +1207,18 @@ async function createPlaylist(
       throw err;
     }
   }
-  return playlist.external_urls?.spotify || null;
+  return { id: String(playlist.id), url: playlist.external_urls?.spotify || null };
+}
+
+// Save a (host-owned) playlist into THIS user's library — the 0-tap save
+// for the allowlisted few. PUT /v1/playlists/{id}/followers.
+async function followPlaylist(playlistId: string, user: string): Promise<void> {
+  await spotifyFetch(
+    `/playlists/${encodeURIComponent(playlistId)}/followers`,
+    { method: "PUT", body: JSON.stringify({ public: true }) },
+    {},
+    user
+  );
 }
 
 export {
@@ -1121,7 +1234,12 @@ export {
   searchCatalog,
   isSearchCached,
   createPlaylist,
+  followPlaylist,
+  hostUser,
+  parsePlaylistRef, // pure, exported for tests
+  sanitizePlaylistName, // pure, exported for tests
   listPlaylists,
+  getPlaylistMeta,
   getSeedTracks,
   SEED_TRACK_CAP,
   sampleTracks, // pure, exported for tests

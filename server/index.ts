@@ -12,7 +12,8 @@ import * as spotify from "./spotify.ts";
 import * as curator from "./curator.ts";
 import * as logbook from "./logbook.ts";
 import * as usage from "./usage.ts";
-import { signUser, verifyUser } from "./session.ts";
+import { signUser, verifyUser, newAnonId, isAnon } from "./session.ts";
+import { makeCaps, today } from "./caps.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
 // startup config warnings below are readable from the browser.
@@ -39,6 +40,13 @@ if (!spotify.credentialsConfigured()) {
       "placeholders.\n[config] Copy server/.env.example to server/.env and fill in " +
       "your Spotify app credentials.\n[config] The server will run, but Spotify " +
       "login and search will fail until then.\n"
+  );
+}
+if (!spotify.isLoggedIn("host") && spotify.isLoggedIn()) {
+  console.warn(
+    "[config] SPOTIFY_HOST_REFRESH_TOKEN is unset — mixtapes will be pressed " +
+      "into the OWNER's Spotify account (public). Set up the Mixtape host " +
+      "account before sharing widely; see README → Sharing."
   );
 }
 if (!curator.anthropicConfigured()) {
@@ -89,22 +97,35 @@ const GATE_PAGE = `<!doctype html>
 <button style="padding:12px;border-radius:8px;border:0;background:#eee;color:#111;font-size:16px">enter</button>
 </form>`;
 
+function setGateCookie(req: Request, res: Response) {
+  res.setHeader(
+    "Set-Cookie",
+    `${GATE_COOKIE}=${GATE_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
+      (req.secure ? "; Secure" : "")
+  );
+}
+
 if (APP_SECRET) {
   app.post("/gate", (req, res) => {
     if (!timingSafeMatch(req.body?.secret || "", APP_SECRET)) {
       return res.status(401).type("html").send(GATE_PAGE);
     }
-    res.setHeader(
-      "Set-Cookie",
-      `${GATE_COOKIE}=${GATE_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
-        (req.secure ? "; Secure" : "")
-    );
+    setGateCookie(req, res);
     res.redirect("/");
   });
   app.use((req, res, next) => {
     // /callback is exempt: Spotify lands there mid-OAuth, and the state
     // check (issued only to a gated /auth/login) already gates it.
     if (req.path === "/callback" || hasGateCookie(req)) return next();
+    // The invite link carries the key (`/?key=…`): one tap sets the cookie
+    // and lands on the app, so a visitor never meets the password form.
+    // Redirect to strip the key from the address bar and history.
+    if (req.method === "GET" && typeof req.query.key === "string") {
+      if (timingSafeMatch(req.query.key, APP_SECRET)) {
+        setGateCookie(req, res);
+        return res.redirect(req.path);
+      }
+    }
     if (req.path.startsWith("/api/") || req.path.startsWith("/auth/")) {
       return res.status(401).json({ error: "Locked — reload the page and enter the secret key." });
     }
@@ -135,6 +156,37 @@ function callerUser(req: Request): string | null {
   return verifyUser(readCookie(req, SESSION_COOKIE), SESSION_KEY);
 }
 
+function setSessionCookie(req: Request, res: Response, userId: string) {
+  res.setHeader(
+    "Set-Cookie",
+    `${SESSION_COOKIE}=${signUser(userId, SESSION_KEY)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
+      (req.secure ? "; Secure" : "")
+  );
+}
+
+// Who is asking — a connected Spotify account, or a guest. Guests get a
+// signed anonymous id minted on first use (the cookie is set here, so call
+// this BEFORE any streaming headers go out). A stale Spotify identity whose
+// token is gone (redeploy wiped the store) is treated as a guest rather
+// than bounced: the mixtape flow no longer needs their token.
+function callerIdentity(req: Request, res: Response): string {
+  const user = callerUser(req);
+  if (user && (isAnon(user) || spotify.isLoggedIn(user))) return user;
+  const anon = newAnonId();
+  setSessionCookie(req, res, anon);
+  return anon;
+}
+
+// The Spotify identity to read the caller's playlists with: their own
+// token when they have one (private playlists work), else the host's.
+function readerFor(user: string): string {
+  return isAnon(user) ? spotify.hostUser() : user;
+}
+
+function whoLabel(user: string): string {
+  return isAnon(user) ? `guest ${user.slice(5, 11)}` : spotify.getDisplayName(user) || user;
+}
+
 // The caller's Spotify user id, or null AFTER sending the 401 — so routes
 // can bail with a plain `if (!user) return`.
 function requireSpotifyUser(req: Request, res: Response): string | null {
@@ -159,29 +211,24 @@ async function requireOwner(req: Request, res: Response): Promise<boolean> {
   return false;
 }
 
-// ── per-user daily cap ───────────────────────────────────────
+// ── daily caps ───────────────────────────────────────────────
 
-// Generation spends two budgets SHARED by every user: the Anthropic key and
-// Spotify's per-developer-account daily search quota (low hundreds of
-// searches/day — one enthusiastic friend could lock the whole app out for
-// ~19h). In-memory is enough: it resets on redeploy, which at friends scale
-// is a feature, not a bug.
-const DAILY_CAP = Number(process.env.DAILY_GENERATIONS_PER_USER) || 25;
-const generationsToday = new Map<string, { day: string; count: number }>();
+// The reasoning and the counting live in caps.ts (pure, tested); this is
+// just the env wiring. Guests are cheap to mint, so the guest caps are what
+// bound the bill; the account cap is per allowlisted friend.
+const caps = makeCaps({
+  perAccount: Number(process.env.DAILY_GENERATIONS_PER_USER) || 25,
+  perGuest: Number(process.env.GUEST_DAILY_CAP) || 5,
+  perIp: Number(process.env.GUEST_IP_DAILY_CAP) || 10,
+  allGuests: Number(process.env.GUEST_TOTAL_DAILY_CAP) || 40,
+});
 
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
+function capExceeded(user: string, req: Request): string | null {
+  return caps.refusal(user, String(req.ip), today());
 }
 
-function underDailyCap(user: string): boolean {
-  const entry = generationsToday.get(user);
-  return !entry || entry.day !== today() || entry.count < DAILY_CAP;
-}
-
-function countGeneration(user: string) {
-  const entry = generationsToday.get(user);
-  if (entry && entry.day === today()) entry.count += 1;
-  else generationsToday.set(user, { day: today(), count: 1 });
+function countGeneration(user: string, req: Request) {
+  caps.count(user, String(req.ip), today());
 }
 
 // ── auth ─────────────────────────────────────────────────────
@@ -243,6 +290,7 @@ app.get("/callback", async (req, res) => {
   try {
     const { userId, displayName } = await spotify.exchangeCode(code as string);
     usage.record(userId, displayName, "login");
+    // replaces a guest identity, if the browser had one
     res.setHeader("Set-Cookie", [
       `${SESSION_COOKIE}=${signUser(userId, SESSION_KEY)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
         (req.secure ? "; Secure" : ""),
@@ -347,11 +395,15 @@ app.get("/api/playlists", async (req, res) => {
 app.post("/api/generate/stream", async (req, res) => {
   const prompt = String(req.body?.prompt || "").trim();
   // seed: {id, name} — an existing playlist to build "in the spirit of".
-  // The name is client-provided display text; the id is what gets fetched.
-  const seedId = String(req.body?.seed?.id || "").trim();
-  const seedName = String(req.body?.seed?.name || "").trim();
-  if (seedId && !/^[A-Za-z0-9]{8,64}$/.test(seedId)) {
-    return res.status(400).json({ error: "Invalid seed playlist id" });
+  // The id comes from the picker, or is parsed out of a pasted link; the
+  // name is client-provided display text and is looked up when missing.
+  const seedRaw = String(req.body?.seed?.id || "").trim();
+  const seedId = (seedRaw && spotify.parsePlaylistRef(seedRaw)) || "";
+  let seedName = String(req.body?.seed?.name || "").trim();
+  if (seedRaw && !seedId) {
+    return res.status(400).json({
+      error: "That doesn't look like a Spotify playlist link.",
+    });
   }
   if (!prompt && !seedId) {
     return res.status(400).json({ error: "Missing prompt" });
@@ -361,15 +413,11 @@ app.post("/api/generate/stream", async (req, res) => {
       .status(500)
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
   }
-  const user = requireSpotifyUser(req, res);
-  if (!user) return;
-  if (!underDailyCap(user)) {
-    return res.status(429).json({
-      error: `Daily mixtape limit reached (${DAILY_CAP}/day) — try again tomorrow.`,
-    });
-  }
-  countGeneration(user);
-  usage.record(user, spotify.getDisplayName(user), "generation");
+  const user = callerIdentity(req, res);
+  const refusal = capExceeded(user, req);
+  if (refusal) return res.status(429).json({ error: refusal });
+  countGeneration(user, req);
+  usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "generation");
   sseInit(res);
   // Client abort (STOP) must stop the paid upstream work too. `close` also
   // fires after a normal end — writableEnded distinguishes the two.
@@ -381,8 +429,13 @@ app.post("/api/generate/stream", async (req, res) => {
     let seed: { name: string; tracks: { artist: string; title: string }[]; total: number } | null =
       null;
     if (seedId) {
+      const reader = readerFor(user);
+      if (!seedName) {
+        // pasted link: the client only knows the id
+        seedName = (await spotify.getPlaylistMeta(seedId, reader)).name || "";
+      }
       sseSend(res, "seeding", { name: seedName });
-      const { tracks, total } = await spotify.getSeedTracks(seedId, user);
+      const { tracks, total } = await spotify.getSeedTracks(seedId, reader);
       if (tracks.length === 0) {
         sseSend(res, "error", {
           message: "Couldn't read that playlist — it may be empty.",
@@ -393,7 +446,7 @@ app.post("/api/generate/stream", async (req, res) => {
       sseSend(res, "seeded", { count: tracks.length, total });
     }
     console.log(
-      `[generate/stream] (${spotify.getDisplayName(user) || user}) ` +
+      `[generate/stream] (${whoLabel(user)}) ` +
         `prompt=${JSON.stringify(prompt)}` +
         (seedId ? ` seed=${seedId}` : "")
     );
@@ -460,15 +513,11 @@ app.post("/api/adjust/stream", async (req, res) => {
       .status(500)
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
   }
-  const user = requireSpotifyUser(req, res);
-  if (!user) return;
-  if (!underDailyCap(user)) {
-    return res.status(429).json({
-      error: `Daily mixtape limit reached (${DAILY_CAP}/day) — try again tomorrow.`,
-    });
-  }
-  countGeneration(user);
-  usage.record(user, spotify.getDisplayName(user), "adjust");
+  const user = callerIdentity(req, res);
+  const refusal = capExceeded(user, req);
+  if (refusal) return res.status(429).json({ error: refusal });
+  countGeneration(user, req);
+  usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "adjust");
   sseInit(res);
   // Same disconnect handling as /api/generate/stream.
   const abort = new AbortController();
@@ -476,7 +525,7 @@ app.post("/api/adjust/stream", async (req, res) => {
     if (!res.writableEnded) abort.abort();
   });
   console.log(
-    `[adjust/stream] (${spotify.getDisplayName(user) || user}) ` +
+    `[adjust/stream] (${whoLabel(user)}) ` +
       `adjustment=${JSON.stringify(adjustment)}`
   );
   sseSend(res, "adjusting", { adjustment });
@@ -537,62 +586,72 @@ app.post("/api/adjust/stream", async (req, res) => {
   res.end();
 });
 
+// Press the card into a real playlist. Every mixtape is pressed into the
+// HOST account, public, so it is shareable from birth and anyone can keep
+// it with one tap (+) in Spotify — no login, no allowlist. A caller who IS
+// connected also gets it followed into their own library right here (the
+// 0-tap save). Body: { title, uris }. With Accept: text/event-stream the
+// two real steps (creating → adding N) stream as SSE; else plain JSON.
 app.post("/api/playlist", async (req, res) => {
-  const { title, uris, prompt } = req.body || {};
+  const { title, uris } = req.body || {};
   if (!title || !Array.isArray(uris) || uris.length === 0) {
     return res.status(400).json({ error: "Missing title or uris" });
   }
-  const user = requireSpotifyUser(req, res);
-  if (!user) return;
-  // With Accept: text/event-stream, the two real steps (creating playlist →
-  // adding N tracks) stream as SSE events; otherwise plain JSON as before.
+  const user = callerIdentity(req, res);
+  const host = spotify.hostUser();
+  const name = spotify.sanitizePlaylistName(title);
   const wantsStream = String(req.headers.accept || "").includes("text/event-stream");
+  if (wantsStream) sseInit(res);
   try {
+    const { id, url } = await spotify.createPlaylist(
+      {
+        name,
+        // No prompt on the playlist: it sits on a public profile, and a
+        // prompt can be more personal than the person meant to publish.
+        description: "Made with Mixtape.",
+        uris,
+        isPublic: true,
+      },
+      wantsStream ? (event, data) => sseSend(res, event, data) : undefined,
+      host
+    );
+    // Follow it into the caller's own library when they have a token — a
+    // failure here must not fail the press: the playlist exists and the
+    // one-tap path still works.
+    let saved = false;
+    if (!isAnon(user) && user !== host) {
+      try {
+        await spotify.followPlaylist(id, user);
+        saved = true;
+      } catch (err: any) {
+        console.warn(`[playlist] follow into ${whoLabel(user)}'s library failed: ${err.message}`);
+      }
+    } else if (user === host) {
+      saved = true; // it's their own library
+    }
+    usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "save");
+    console.log(
+      `[playlist] (${whoLabel(user)}) pressed ${JSON.stringify(name)} → ${id}` +
+        (saved ? " (in their library)" : "")
+    );
     if (wantsStream) {
-      sseInit(res);
-      const playlistUrl = await spotify.createPlaylist(
-        {
-          name: title,
-          description: `made from prompt: ${prompt || ""}`.trim(),
-          uris,
-        },
-        (event, data) => sseSend(res, event, data),
-        user
-      );
-      usage.record(user, spotify.getDisplayName(user), "save");
-      console.log(
-        `[playlist] (${spotify.getDisplayName(user) || user}) saved ${JSON.stringify(title)}`
-      );
-      sseSend(res, "done", { playlistUrl });
+      sseSend(res, "done", { playlistUrl: url, playlistId: id, saved });
       return res.end();
     }
-    const playlistUrl = await spotify.createPlaylist(
-      {
-        name: title,
-        description: `made from prompt: ${prompt || ""}`.trim(),
-        uris,
-      },
-      undefined,
-      user
-    );
-    usage.record(user, spotify.getDisplayName(user), "save");
-    console.log(
-      `[playlist] (${spotify.getDisplayName(user) || user}) saved ${JSON.stringify(title)}`
-    );
-    res.json({ playlistUrl });
+    res.json({ playlistUrl: url, playlistId: id, saved });
   } catch (err: any) {
     console.error("[playlist] failed:", err.message);
     // detail stays in the server log — clients get a generic line
     const message = err.quotaExceeded
       ? "Spotify's daily limit for this app is used up — try again tomorrow."
       : err.status === 401
-        ? "Not logged in to Spotify."
-        : "Saving the playlist failed — check the server logs.";
-    if (wantsStream && res.headersSent) {
+        ? "The Mixtape account isn't connected on the server."
+        : "Pressing the playlist failed — check the server logs.";
+    if (wantsStream) {
       sseSend(res, "error", { message });
       return res.end();
     }
-    res.status(err.status === 401 ? 401 : 500).json({ error: message });
+    res.status(500).json({ error: message });
   }
 });
 

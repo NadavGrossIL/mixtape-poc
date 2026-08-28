@@ -483,3 +483,47 @@ test("isFresh: missing and expired entries are not fresh", () => {
   assert.strictEqual(isFresh(undefined), false);
   assert.strictEqual(isFresh({ items: [REF_ITEM], at: Date.now() - CACHE_TTL_MS - 1 }), false);
 });
+
+// ── pasted playlist references ───────────────────────────────
+
+import { parsePlaylistRef, sanitizePlaylistName } from "../spotify.ts";
+
+test("parsePlaylistRef accepts every shape Spotify hands out", () => {
+  const id = "37i9dQZF1DXcBWIGoYBM5M";
+  for (const ref of [
+    id,
+    `  ${id}  `,
+    `spotify:playlist:${id}`,
+    `https://open.spotify.com/playlist/${id}`,
+    `https://open.spotify.com/playlist/${id}?si=abc123&nd=1`,
+    `https://open.spotify.com/intl-he/playlist/${id}`,
+    `http://open.spotify.com/playlist/${id}/`,
+  ]) {
+    assert.strictEqual(parsePlaylistRef(ref), id, ref);
+  }
+});
+
+test("parsePlaylistRef rejects everything that is not a playlist", () => {
+  for (const junk of [
+    "",
+    null,
+    undefined,
+    "https://open.spotify.com/track/4uLU6hMCjMI75M1A2tKUQC",
+    "https://open.spotify.com/album/37i9dQZF1DXcBWIGoYBM5M",
+    "https://evil.example/playlist/37i9dQZF1DXcBWIGoYBM5M",
+    "https://open.spotify.com/playlist/short",
+    "spotify:playlist:not-an-id",
+    "rainy tel aviv drive",
+  ]) {
+    assert.strictEqual(parsePlaylistRef(junk), null, String(junk));
+  }
+});
+
+test("sanitizePlaylistName tidies what lands on a public profile", () => {
+  assert.strictEqual(sanitizePlaylistName("  Rainy   Drive \n"), "Rainy Drive");
+  const controlChar = String.fromCharCode(1);
+  assert.strictEqual(sanitizePlaylistName("a" + controlChar + "bc"), "a bc");
+  assert.strictEqual(sanitizePlaylistName(""), "Mixtape");
+  assert.strictEqual(sanitizePlaylistName(null), "Mixtape");
+  assert.strictEqual(sanitizePlaylistName("x".repeat(300)).length, 100);
+});

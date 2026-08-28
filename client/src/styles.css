@@ -1534,3 +1534,95 @@
     grid-column: 2;
   }
 }
+
+/* ── the quiet "on the list?" connect line under the composer. Not a
+   button: the product no longer needs a login, and the five who have one
+   already know they do. ── */
+.connect-note {
+  font-family: "Space Mono", monospace;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 12px;
+}
+.connect-link {
+  color: var(--accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.connect-link:hover {
+  color: var(--ink);
+}
+
+/* pasted-link seed: the same field as the picker's filter, plus a submit */
+.seed-paste {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+.seed-paste .seed-filter {
+  flex: 1;
+  min-width: 0;
+}
+
+/* ── after pressing: one primary action (open it), the keep-it caption,
+   quiet secondary actions, the player, and the "own a copy" disclosure ── */
+.pressed {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+.pressed-open {
+  width: 100%;
+  max-width: 360px;
+}
+.pressed-note {
+  margin-top: 10px;
+}
+.pressed-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+/* the embed is Spotify's own surface; it gets the paper's rounding and
+   nothing else, and sits a full step below the actions so it reads as
+   "listen" rather than a fifth button */
+.pressed-embed {
+  margin-top: 24px;
+  border-radius: 12px;
+  width: 100%;
+  max-width: 560px;
+  border: 0;
+  background: transparent;
+}
+.pressed-mine {
+  margin-top: 18px;
+  max-width: 560px;
+  width: 100%;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+.pressed-mine summary {
+  cursor: pointer;
+  color: var(--ink-dim);
+  text-align: center;
+  padding: 8px;
+}
+.pressed-mine summary:hover {
+  color: var(--ink);
+}
+.pressed-mine p {
+  margin: 8px 0 12px;
+  line-height: 1.55;
+  text-align: center;
+}
+.pressed-mine b {
+  color: var(--ink-dim);
+  font-weight: 700;
+}
+.pressed-mine .btn-ghost {
+  display: block;
+  margin: 0 auto;
+}

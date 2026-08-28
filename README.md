@@ -76,35 +76,75 @@ dev-only). Required env vars on the host:
 | `APP_SECRET` | shared key; gates every request behind a cookie (required off-loopback) |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `ANTHROPIC_API_KEY` | as in local dev |
 | `SPOTIFY_REFRESH_TOKEN` | the OWNER's token — paste from `server/.tokens.json` after one login; survives the host's ephemeral disk and powers catalog search |
+| `SPOTIFY_HOST_REFRESH_TOKEN` | the **Mixtape host account's** token — every mixtape is pressed into this account, public. Unset = the owner's account hosts them (fine for testing, not for sharing widely). See *Sharing* below |
 | `DAILY_GENERATIONS_PER_USER` | optional, default 25 — per-account generate/adjust cap (Anthropic spend and Spotify's daily quota are shared by everyone) |
+| `GUEST_DAILY_CAP` / `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 5 / 10 / 40 — caps for visitors who never connect Spotify: per guest cookie, per IP, and all guests together (the last one bounds the bill) |
 
 Log in once (from any device — the callback is same-origin in production),
 copy the owner `refresh_token` from `.tokens.json` into the env var, and the
 server re-auths itself on every cold start from then on.
 
-## Sharing with friends
+## Sharing
 
-Friends use their own Spotify accounts: playlists save to their library and
-the seed picker reads their playlists. Two one-time steps per friend:
+Anyone with the invite link can make a mixtape — no Spotify login. Every
+mixtape is pressed into the **Mixtape host account** as a *public* playlist
+(the only kind Spotify lets a link open — there is no "unlisted"), and the
+visitor keeps it with one tap: **Open in Spotify → +**. The playlist link is
+shareable from birth; whoever gets it does the same tap. A prompt never goes
+on the playlist (it sits on a public profile); only the curator's title does.
 
-1. Spotify dashboard → the app → **User Management** → add their name and
-   the email on their Spotify account. Dev-mode apps are capped at **5
-   allowlisted users, permanently** — choose wisely.
-2. Send them the app URL and the `APP_SECRET`.
+Why this shape: Spotify caps dev-mode apps at **5 allowlisted accounts,
+permanently**, and extended quota is business-only. So the app can't put a
+playlist in a stranger's library — but a public playlist on its own account
+is Spotify's officially suggested alternative ("link to a playlist where the
+user can follow it manually"), and it's what setlist.fm's bot does at scale.
+Never delete or privatize a pressed playlist: both revoke it from every
+library it was saved to.
 
-They enter the key, hit connect, approve on Spotify, and an HMAC-signed
-cookie (`mixtape_user`) remembers them per browser. The token store
-(`server/.tokens.json`, keyed by Spotify user id) lives on the ephemeral
-disk, so a redeploy logs everyone out — reconnecting is one click, since
-Spotify remembers the consent. Catalog search always runs on the owner
-token; only `/me`-scoped calls (playlists, seeds, saves) use the caller's.
+**Invite link:** `https://<app-host>/?key=<APP_SECRET>` — one tap sets the
+gate cookie and strips the key from the address bar. The gate stays for now
+because it, plus the guest caps, is what bounds the Anthropic bill and the
+per-developer daily Spotify quota (one burst can lock everyone out for ~19h).
+
+**Setting up the host account (once):**
+
+1. Create a free Spotify account for the app (e.g. "Mixtape"). Free is fine —
+   only the app *owner* needs Premium.
+2. Spotify dashboard → the app → **User Management** → add it (name + the
+   exact email). That's one of the 5 slots.
+3. Run the app locally, connect with that account, then
+   `node scripts/list-tokens.ts` and put its `refresh_token` in
+   `SPOTIFY_HOST_REFRESH_TOKEN` on the host. Until then the owner's account
+   hosts the mixtapes (the server warns at boot).
+
+**Seeding from a playlist:** a connected account gets the shelf picker; a
+guest pastes a playlist link (Share → Copy link in Spotify). Public,
+user-made playlists only — Spotify-made ones are unreadable for dev-mode
+apps, and the app says so.
+
+**The allowlisted few** (owner + up to 4 friends) still connect their own
+Spotify — quietly, from the "on the list?" line under the composer. They get
+the shelf picker and a 0-tap save: the pressed playlist is followed straight
+into their library. Two one-time steps per friend:
+
+1. Spotify dashboard → the app → **User Management** → name + the email on
+   their Spotify account.
+2. Send them the invite link.
+
+An HMAC-signed cookie (`mixtape_user`) remembers them per browser; guests
+get the same cookie with a random `anon:` id, which is what the caps and the
+usage ledger key on. The token store (`server/.tokens.json`) lives on the
+ephemeral disk, so a redeploy logs everyone out — reconnecting is one click,
+and a guest keeps working regardless. Catalog search and the host's playlist
+writes run on the env-bootstrapped tokens; only the picker and the 0-tap
+follow use the caller's.
 
 Visibility is asymmetric on purpose: `/api/logs*` and `/api/usage` (who
-logged in / generated / saved, and when — persisted in
-`server/.usage.json`) answer ONLY to the owner — the caller whose Spotify
-id matches the owner token's `/me`. Friends passing the gate get a 401
-there; the log console renders its "who's used it" strip only for the
-owner, and its API is enforced server-side, not hidden client-side.
+generated / pressed, and when — persisted in `server/.usage.json`, guests
+included) answer ONLY to the owner — the caller whose Spotify id matches the
+owner token's `/me`. Everyone else gets a 401 there; the log console renders
+its "who's used it" strip only for the owner, and its API is enforced
+server-side, not hidden client-side.
 
 ## Tests
 

@@ -52,3 +52,23 @@ test("garbage parses to an empty store (reads as everyone-logged-out)", () => {
     assert.deepStrictEqual(parseTokenStore(junk), { users: {} });
   }
 });
+
+// ── guest identities ─────────────────────────────────────────
+
+import { newAnonId, isAnon } from "../session.ts";
+
+test("guest ids are prefixed, random, and survive the cookie roundtrip", () => {
+  const a = newAnonId();
+  const b = newAnonId();
+  assert.ok(isAnon(a));
+  assert.notStrictEqual(a, b);
+  assert.strictEqual(verifyUser(signUser(a, KEY), KEY), a);
+});
+
+test("a Spotify id is never a guest", () => {
+  for (const id of ["nadav", "31k2jspotify", "", "anon", "owner", "host"]) {
+    assert.strictEqual(isAnon(id), false);
+  }
+  assert.strictEqual(isAnon(null), false);
+  assert.strictEqual(isAnon(undefined), false);
+});

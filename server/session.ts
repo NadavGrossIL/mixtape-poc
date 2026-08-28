@@ -29,4 +29,17 @@ function verifyUser(cookieValue: unknown, key: string): string | null {
   return userId.length > 0 ? userId : null;
 }
 
-export { signUser, verifyUser };
+// Visitors who never connect a Spotify account still need an identity —
+// for the daily caps and the usage ledger. Same signed cookie, a random
+// id under the `anon:` prefix so it can never collide with a Spotify id.
+const ANON_PREFIX = "anon:";
+
+function newAnonId(): string {
+  return ANON_PREFIX + crypto.randomBytes(8).toString("hex");
+}
+
+function isAnon(userId: string | null | undefined): boolean {
+  return typeof userId === "string" && userId.startsWith(ANON_PREFIX);
+}
+
+export { signUser, verifyUser, newAnonId, isAnon };

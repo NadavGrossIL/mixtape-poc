@@ -99,7 +99,9 @@ type AdjustStreamEvent =
 type SaveStreamEvent =
   | ["creating", { name?: string } | null]
   | ["adding", { count?: number } | null]
-  | ["done", { playlistUrl?: string } | null]
+  // saved: the server followed the playlist straight into the caller's own
+  // library (connected accounts only); everyone else keeps it with one tap
+  | ["done", { playlistUrl?: string; playlistId?: string; saved?: boolean } | null]
   | ["error", { message?: string; detail?: string } | null];
 
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
@@ -566,6 +568,9 @@ export default function LinerNotes() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
+  const [playlistId, setPlaylistId] = useState<string | null>(null);
+  const [savedToLibrary, setSavedToLibrary] = useState(false);
+  const [copied, setCopied] = useState<"link" | "tracks" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
@@ -578,6 +583,11 @@ export default function LinerNotes() {
   const [seedId, setSeedId] = useState("");
   const [seedOpen, setSeedOpen] = useState(false); // the inline picker panel
   const [seedFilter, setSeedFilter] = useState("");
+  // a seed that arrived as a pasted link — visitors without a connected
+  // Spotify have no shelf to pick from, so they paste a playlist link
+  // instead; the server reads it with the host account and names it
+  const [pastedSeed, setPastedSeed] = useState<Playlist | null>(null);
+  const [seedPaste, setSeedPaste] = useState("");
   const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
@@ -642,9 +652,9 @@ export default function LinerNotes() {
     if (card) cardTitleRef.current?.focus();
   }, [card]);
 
-  const seedPlaylist = Array.isArray(playlists)
-    ? playlists.find((p) => p.id === seedId) || null
-    : null;
+  const seedPlaylist =
+    (Array.isArray(playlists) ? playlists.find((p) => p.id === seedId) || null : null) ??
+    pastedSeed;
 
   // the picker's rows: filtered by the search box, the caller's own playlists
   // first (followed ones can be unreadable for dev-mode apps — see server).
@@ -783,6 +793,9 @@ export default function LinerNotes() {
     setErrorDetail(null);
     setCard(null);
     setPlaylistUrl(null);
+    setPlaylistId(null);
+    setSavedToLibrary(false);
+    setCopied(null);
     setSaveError(null);
     setAdjustError(null);
     setAdjustErrorDetail(null);
@@ -817,6 +830,10 @@ export default function LinerNotes() {
         if (event === "seeding") {
           setStage("seeding");
           setSeedLog({ name: data?.name || "your playlist" });
+          // a pasted seed learns its real name from the server
+          if (data?.name) {
+            setPastedSeed((s) => (s ? { ...s, name: data.name! } : s));
+          }
           setAnnounce("Reading your playlist.");
         } else if (event === "curating") {
           setStage("curating");
@@ -982,15 +999,9 @@ export default function LinerNotes() {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
         },
-        body: JSON.stringify({
-          title: card.title,
-          uris,
-          // seed-only cards have no prompt — the playlist description should
-          // still say where the mixtape came from
-          prompt:
-            card.prompt ||
-            (card.seed ? `in the spirit of ${card.seed.name}` : ""),
-        }),
+        // the prompt stays off the playlist on purpose: it lands on a
+        // public profile, and a prompt can be more personal than intended
+        body: JSON.stringify({ title: card.title, uris }),
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
@@ -998,16 +1009,28 @@ export default function LinerNotes() {
       }
       // widened initializers, same reason as in generate
       let url = null as string | null;
+      let id = null as string | null;
+      let saved = false;
       let streamError = null as string | null;
       await readSSE<SaveStreamEvent>(response, (event, data) => {
         if (event === "creating") setSaveStage("CREATING PLAYLIST…");
         else if (event === "adding") setSaveStage(`ADDING ${data?.count} TRACKS…`);
-        else if (event === "done") url = data?.playlistUrl ?? null;
-        else if (event === "error") streamError = data?.message || "save failed";
+        else if (event === "done") {
+          url = data?.playlistUrl ?? null;
+          id = data?.playlistId ?? null;
+          saved = Boolean(data?.saved);
+        } else if (event === "error") streamError = data?.message || "save failed";
       });
       if (streamError) throw new Error(streamError);
-      setAnnounce("Playlist saved to Spotify.");
+      if (!url) throw new Error("no playlist url");
+      setAnnounce(
+        saved
+          ? "Pressed. The playlist is in your Spotify library."
+          : "Pressed. Open it in Spotify and tap plus to keep it."
+      );
       setPlaylistUrl(url);
+      setPlaylistId(id);
+      setSavedToLibrary(saved);
     } catch (e) {
       console.error(e);
       setSaveError("Couldn't press it to Spotify. Try again.");
@@ -1032,6 +1055,51 @@ export default function LinerNotes() {
 
   const spotifySearch = (t: Track) =>
     `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
+
+  // Clipboard feedback is the button's own label for a beat, not a toast.
+  const copyText = async (text: string, what: "link" | "tracks") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      setAnnounce(what === "link" ? "Link copied." : "Track list copied.");
+      setTimeout(() => setCopied((c) => (c === what ? null : c)), 1800);
+    } catch {
+      setAnnounce("Couldn't copy — select it by hand.");
+    }
+  };
+
+  // The card's tracks as plain lines — for anyone who wants to own a copy
+  // (paste into a new playlist, or search them on another service).
+  const trackListText = () =>
+    (card?.tracks || [])
+      .filter((t) => t.resolved)
+      .map((t) => `${t.artist} — ${t.title}`)
+      .join("\n");
+
+  const shareMixtape = async () => {
+    if (!playlistUrl || !card) return;
+    try {
+      await navigator.share({ title: card.title, url: playlistUrl });
+    } catch {
+      // dismissed the sheet — nothing to report
+    }
+  };
+
+  // arm a pasted playlist link as the seed; the server names it while seeding
+  const usePastedSeed = () => {
+    const m = /playlist[/:]([A-Za-z0-9]{22})/.exec(seedPaste) ||
+      /^\s*([A-Za-z0-9]{22})\s*$/.exec(seedPaste);
+    if (!m) {
+      setInputHint("That doesn't look like a Spotify playlist link — copy it from Share → Copy link in Spotify.");
+      return;
+    }
+    setPastedSeed({ id: m[1]!, name: "", total: null, mine: false });
+    setSeedPaste("");
+    setSeedOpen(false);
+    setInputHint(null);
+    setAnnounce("Channeling your pasted playlist. The prompt is now optional.");
+    inputRef.current?.focus();
+  };
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
@@ -1076,26 +1144,19 @@ export default function LinerNotes() {
             promise stays concrete. */}
         <p className="tagline">Say the mood. We’ll make the playlist.</p>
         <p className="tagline-sub">
-          Eight tracks that belong together, with liner notes — saved to your
-          Spotify.
+          Eight tracks that belong together, with liner notes — one tap to keep
+          it in your Spotify.
         </p>
       </header>
 
       <main className="main-col">
         {loggedIn === null && <div className="checking">checking the deck…</div>}
 
-        {/* login gate */}
-        {loggedIn === false && (
-          <>
-            <a href="/auth/login" className="btn-press">
-              <SpotifyMark />
-              CONNECT SPOTIFY
-            </a>
-            <DeckHero gate />
-          </>
-        )}
-
-        {loggedIn === true && !card && (
+        {/* no login gate: anyone past the door can make a mixtape. A
+            connected Spotify (the allowlisted few) only adds the shelf picker
+            and the 0-tap save; everyone else keeps the playlist with one
+            tap in Spotify. */}
+        {loggedIn !== null && !card && (
           <>
             {/* the composer card — one bounded surface for everything that
                 composes the request: docked seed token, prompt, seed trigger,
@@ -1113,7 +1174,7 @@ export default function LinerNotes() {
                     <span className="seed-token-label">
                       in the spirit of{" "}
                       <span className="seed-token-name">
-                        “{seedPlaylist.name}”
+                        {seedPlaylist.name ? `“${seedPlaylist.name}”` : "your pasted playlist"}
                       </span>
                       {seedPlaylist.total != null
                         ? ` · ${seedPlaylist.total} tracks`
@@ -1125,6 +1186,7 @@ export default function LinerNotes() {
                       aria-label={`Stop channeling ${seedPlaylist.name}`}
                       onClick={() => {
                         setSeedId("");
+                        setPastedSeed(null);
                         inputRef.current?.focus();
                       }}
                     >
@@ -1231,6 +1293,18 @@ export default function LinerNotes() {
                 {inputHint}
               </div>
             )}
+            {/* the allowlisted few connect here; it is deliberately quiet —
+                the product does not need it, and it cannot be offered to
+                everyone (Spotify caps dev-mode apps at 5 accounts) */}
+            {loggedIn === false && !loading && (
+              <div className="connect-note">
+                on the list?{" "}
+                <a href="/auth/login" className="connect-link">
+                  connect your Spotify
+                </a>{" "}
+                to pick from your own playlists and save in one go
+              </div>
+            )}
 
             {!loading && (
               <>
@@ -1240,7 +1314,7 @@ export default function LinerNotes() {
                 {seedOpen && !seedPlaylist && (
                   <div className="seed-panel">
                       <div className="seed-panel-head">
-                        <span>pick a playlist to channel</span>
+                        <span>{loggedIn ? "pick a playlist to channel" : "paste a playlist to channel"}</span>
                         <button
                           type="button"
                           className="seed-panel-close"
@@ -1253,7 +1327,35 @@ export default function LinerNotes() {
                           ✕
                         </button>
                       </div>
-                      {Array.isArray(playlists) ? (
+                      {!loggedIn ? (
+                        <>
+                          <form
+                            className="seed-paste"
+                            onSubmit={(e) => {
+                              e.preventDefault();
+                              usePastedSeed();
+                            }}
+                          >
+                            <input
+                              className="seed-filter"
+                              value={seedPaste}
+                              onChange={(e) => setSeedPaste(e.target.value)}
+                              placeholder="https://open.spotify.com/playlist/…"
+                              aria-label="Spotify playlist link"
+                              inputMode="url"
+                              autoFocus
+                            />
+                            <button type="submit" className="seed-retry">
+                              use it
+                            </button>
+                          </form>
+                          <div className="seed-explainer">
+                            in Spotify: the playlist’s ⋯ menu → Share → Copy link. Public
+                            playlists only — the curator reads its tracks, then cuts a new
+                            tape in its spirit
+                          </div>
+                        </>
+                      ) : Array.isArray(playlists) ? (
                         <>
                           {playlists.length > 6 && (
                             <input
@@ -1610,20 +1712,72 @@ export default function LinerNotes() {
               </>
             )}
             {playlistUrl && (
-              <a
-                href={playlistUrl}
-                target="_blank"
-                rel="noreferrer"
-                className="playlist-link"
-                onClick={(e) => {
-                  if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                  e.preventDefault();
-                  openInSpotify(playlistUrl);
-                }}
-              >
-                <SpotifyMark size={14} />
-                pressed. open in Spotify ▸
-              </a>
+              <div className="pressed">
+                {/* the one primary action after pressing: open it. The https
+                    href stays in the DOM (copy, middle-click, no-app fallback);
+                    a plain click hands off to the installed app. */}
+                <a
+                  href={playlistUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-press pressed-open"
+                  aria-label="Open this mixtape in Spotify"
+                  onClick={(e) => {
+                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                    e.preventDefault();
+                    openInSpotify(playlistUrl);
+                  }}
+                >
+                  <SpotifyMark />
+                  OPEN IN SPOTIFY
+                </a>
+                <div className="save-note pressed-note">
+                  {savedToLibrary
+                    ? "pressed — it’s in your library."
+                    : "pressed — then tap + in Spotify to keep it."}
+                </div>
+                <div className="pressed-actions">
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => copyText(playlistUrl, "link")}
+                  >
+                    {copied === "link" ? "copied ✓" : "copy link"}
+                  </button>
+                  {typeof navigator !== "undefined" && "share" in navigator && (
+                    <button type="button" className="btn-ghost" onClick={shareMixtape}>
+                      share
+                    </button>
+                  )}
+                </div>
+                {playlistId && (
+                  <iframe
+                    className="pressed-embed"
+                    title={`${card.title} on Spotify`}
+                    src={`https://open.spotify.com/embed/playlist/${playlistId}?theme=0`}
+                    width="100%"
+                    height="352"
+                    frameBorder="0"
+                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
+                    loading="lazy"
+                  />
+                )}
+                <details className="pressed-mine">
+                  <summary>want your own editable copy?</summary>
+                  <p>
+                    Keeping it follows Mixtape’s playlist. To make one you can edit:
+                    in Spotify, open it → ⋯ → <b>Add to other playlist</b> →{" "}
+                    <b>New playlist</b>. Or copy the tracks and build it anywhere.
+                  </p>
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    onClick={() => copyText(trackListText(), "tracks")}
+                  >
+                    {copied === "tracks" ? "copied ✓" : "copy track list"}
+                  </button>
+                </details>
+              </div>
             )}
             {saveError && (
               <div className="error" role="alert">
@@ -1635,6 +1789,9 @@ export default function LinerNotes() {
               onClick={() => {
                 setCard(null);
                 setPlaylistUrl(null);
+                setPlaylistId(null);
+                setSavedToLibrary(false);
+                setCopied(null);
                 setSaveError(null);
                 setAdjustError(null);
                 setAdjustErrorDetail(null);

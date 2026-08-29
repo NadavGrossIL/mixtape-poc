@@ -8,7 +8,8 @@
       "Bash(git status*)",
       "Bash(git diff*)",
       "Bash(git log*)",
-      "Workflow(implement-from-spec)"
+      "Workflow(implement-from-spec)",
+      "Workflow(review-spec)"
     ],
     "ask": [
       "Edit(server/session.ts)",

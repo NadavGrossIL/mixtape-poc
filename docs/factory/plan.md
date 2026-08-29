@@ -291,6 +291,32 @@ section 10 has the comparison and the order.
 **Done when** one spec goes from `ready` to a PR branch with no human
 between approval and review.
 
+**Verified 2026-08-29** — `.claude/workflows/implement-from-spec.js`
+committed (`1758ad2`). Shape as built: Implement (the `implement` skill
+through the Skill tool) → Gate (a low-effort agent types `npm run gate`
+verbatim and returns `{ok, step, log}`) → Review (a low-effort extractor
+copies the spec's Goal + Acceptance checks, then `agentType: 'reviewer'`
+with schema `{verdict, findings}` — the same three-part prompt `/review`
+builds). Gate loop ≤2; a review fail buys one fix round → gate → review,
+else `needs-human`; no `parallel()`. Settings: `Workflow(implement-from-spec)`
+in allow, `subagentPromptCacheTtl: "1h"`. Registry facts: saved workflows
+are scanned at session start, so a file added mid-session needs
+`/reload-skills`; `meta.name` defines the `/name`; no CLI lists saved
+workflows. Load check: `claude -p "/implement-from-spec"` with no argument
+ran the workflow (`wf_b18901ad-f4e`, 13 ms, `needs-human` from the no-arg
+guard) — and then the headless top-level model found the ready spec and
+re-launched the workflow on `main` by itself (`wf_2a52cfdf-b8a`, killed by
+`--max-budget-usd 0.5` after 4.8 s, no file touched; $0.68 for the probe).
+The budget flag is the hard stop it was written up as.
+
+Two corrections to the text above, from the run: "the saved file already
+runs as `/name`" holds only in a fresh session; and never probe from the
+main checkout — the M5 driver cuts a worktree for exactly this. And the
+cost expectation: a full line run is ~$3.9 (dry run 1, section 6), not the
+$0.4–1.3 M3 measured per skill; the implementer is 94% of it. Done-when
+met: `specs/0001` went from `ready` to draft PR #1 with no human between
+approval and the verdict (one stash, section 6).
+
 ### M5 · Observability and the learning loop
 
 - `docs/factory/RUNS.md`: date · spec · **engine** · attempts · gate ·
@@ -301,6 +327,28 @@ between approval and review.
 
 **Done when** `RUNS.md` has three rows and one eval case exists because of a
 factory-built feature.
+
+**Verified 2026-08-29** — `docs/factory/RUNS.md` created (`7da57a5`), one
+row (dry run 1, $3.92), written by hand. The done-when — three rows and an
+eval case from a factory-built feature — is not yet met; `specs/0002`
+(section 6) carries the first candidate case. The driver,
+`scripts/factory-run.sh` (`f4dc989`): preflight (spec `status: ready`,
+clean main checkout, exit 2 otherwise); worktree `../mixtape-poc.wt` cut
+from `origin/main` per run (project slug `-Users-…-mixtape-poc.wt`, which
+the console globs); `npm ci` there (server 84 packages in ~0.4 s, client 75
+in ~0.9 s, from the cache); a trust check on `~/.claude.json`
+`projects[path].hasTrustDialogAccepted` — a worktree is a new directory,
+untrusted, and an untrusted directory ignores `permissions.allow`, so the
+script exits 3 with the one-time `cd … && claude` instruction rather than
+parking a headless run on the approval card; args as one JSON string
+`{spec, config}` from `factory.config.json`; the `claude -p` JSON result
+saved to `docs/factory/runs/<date>-NNNN.json`; the row inserted from the
+run manifest. Exercised with `--dry-run`; `npm run gate` passed inside the
+worktree. The matching script patch (JSON `args`, an `implementModel` knob
+on the implement and fix agents only, `ready-for-eval` when the contract's
+`touches_prompt` is true) sits in the scratchpad for a human to apply —
+`.claude/workflows/` is never tier. `factory.config.json` carries
+`implementModel: "sonnet"` for dry run 2.
 
 ### M6 · The console (visualization layer)
 
@@ -322,11 +370,40 @@ tweak is made from its node panel instead of the editor.
    **Share** button on the pressed card (`navigator.share` on phones, copy
    as the fallback — real value for friends on mobile), or a keyboard
    shortcut for the existing copy. Human picks; then `/spec` runs once.
-2. **Prompt-touching — on Archon.** Show `track_number` to the curator so
-   opener / closer claims are grounded (the next lever named in the Aug 23
-   validation). Touches `server/curator.ts`, so it exercises
-   `touches_prompt: true` and the one-shot eval read — and Archon's
-   in-workflow approval node before the eval spend.
+
+   **Verified 2026-08-29 — done.** Share on the pressed card,
+   `specs/0001-share-pressed-card.md` (`5dccb5e` draft, `a790832`
+   rewritten test-first, `772e833` ready), branch `factory/0001-share`:
+   `claude -p "/implement-from-spec specs/0001-share-pressed-card.md"
+   --permission-mode acceptEdits --max-turns 60 --max-budget-usd 5
+   --output-format json`. Run `wf_9fda3778-dbf`: implement 1 / gate 1 /
+   review 1, all first attempt; 4 agents — implement (fable-5, 49k
+   tokens, 2m31s), gate (14k, 10 s), contract extractor (18k, 17 s),
+   reviewer (sonnet-5, 25k, 1m24s); 106k tokens, 4m22s, 3 top-level
+   turns, no permission denials; reviewer `{verdict: pass, findings: []}`;
+   `total_cost_usd` $3.92 (fable-5 $3.69 + sonnet $0.22). Gate passed by
+   hand again before the commit. Draft PR #1, not merged — the human
+   gate. One intervention mid-run: uncommitted console work in the tree
+   would have reached the reviewer's `git diff`; stashed by hand before
+   the Review phase, and the driver now cuts a worktree so it cannot
+   recur. Row 1 of `RUNS.md`. Headless spend for the day: $0.68 (the M4a
+   probe) + $3.92 = $4.60.
+2. **Prompt-touching.** *2026-08-29:* the lever this line used to name —
+   show `track_number` to the curator — already shipped in `6815090` on
+   2026-08-23. Replaying the current gate over both judged runs: album
+   position still tops invented notes (5/13 on 08-23 → 2/10 on 08-24; the
+   08-24 headline is inventedRate 0.099 on 101 checkable, 14/18 cards
+   judged), the four refutable 08-23 cases are gone, the two 08-24
+   survivors are blind spots of `albumPositionContext` (album words beyond
+   "album"; per-disc `track_number`), and the rule bounces four
+   judged-true notes. The feature is now
+   `specs/0002-album-position-gate-blind-spots.md` (`ba55caf`, draft):
+   `touches_prompt: true`, no ask-tier file, one eval case
+   `statbait-album-openers`. It touches `server/curator.ts`, so it
+   exercises `touches_prompt: true`, the driver's `ready-for-eval` outcome
+   and the one-shot eval read; on the Archon leg (item 3, section 10) the
+   same spec is where the in-workflow approval node before the eval spend
+   gets felt. Dry run 2 runs it with `implementModel: "sonnet"`.
 3. **The same feature on the other engine**, once each, so `RUNS.md` has a
    like-for-like row: lines of orchestration, cost, minutes, and where each
    one made you intervene.
@@ -569,6 +646,13 @@ Unverified, and the first thing to check in the build: whether
 `wf_<id>.json` is rewritten *during* the run (`lastProgressAt` suggests it)
 or only at the end. If only at the end, live view falls back to tailing
 `journal.jsonl` + agent transcripts, which are appended as they go.
+Measured 2026-08-29: only at the end — on `wf_9fda3778-dbf` the journal
+opened 09:43:38, the manifest appeared 09:48:00, nothing between; a budget
+kill writes one with `status: killed`. `journal.jsonl` has the `started` /
+`result` lines keyed by prompt hash with no timestamp or label;
+`agent-<id>.jsonl` carries the timestamps, usage and model; a live agent's
+manifest `state` is `progress` (not in the list above). So the live view
+is journal-driven — C3.
 
 ### 11.3 Shape
 
@@ -663,6 +747,29 @@ would have to crop.
   when* dry-run 2 shows up next to dry-run 1.
 
 C1–C2 are one sitting; C3–C4 another. C5 waits for Archon to exist.
+
+**Verified 2026-08-29** — C3 (`342d3c7`) and C4 (`01c904e`, `1edd82a`)
+done; the M6 done-when holds. C3: the manifest is written only at run end
+(11.2), so `/api/runs` derives a live record from `journal.jsonl` plus the
+agent transcripts, pushed by SSE over `fs.watch`, every record tagged
+`source: journal | merged | manifest`; dry run 1 was watched live in the
+browser. C4: `POST /api/file` allowlisted to the workflow / skill / agent /
+YAML globs plus `factory.config.json`, a sha256 `base` → 409 when the file
+changed on disk, an LCS line diff before the write (no library). Verified
+by editing one line of `implement/SKILL.md` from the node panel and
+reverting it the same way — byte-identical afterwards. The parser was
+fixed for template-literal labels (`gate:${round}` → `gate:*`; the Gate
+and Review lanes had been drawn empty). Then `1edd82a`: runs read from
+every `<slug>`, `<slug>.x` and `<slug>-x` project dir (the driver's
+worktree), loop-back edges for `fix:*` nodes labelled with the enclosing
+`for` bound (≤2 / ≤1), USD from `RUNS.md` through `GET /api/ledger`.
+
+One correction to 11.5 and 11.7: the console *can* write never-tier files
+— `.claude/skills/*/SKILL.md`, `.claude/agents/*.md` and
+`.claude/workflows/*.js` are on its allowlist by design. That is the Node
+`fs` hole M2 documents, and the console is the human's tool, not the
+agent's: a human edits the line from the panel; the agent, verifying it,
+edits and reverts.
 
 ### 11.7 Rules
 

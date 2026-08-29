@@ -3,7 +3,7 @@ import type { Ledger, RunManifest, WorkflowFile } from '../types'
 import { isStalled } from '../graph'
 import type { ConsoleMeta } from './Workflows'
 import { runForms } from './Workflows'
-import { dash, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
+import { RUN_COPY, dash, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
 
 // The run rail (IA-SPEC §6): runs grouped by workflow — the reader arrives from
 // a card, so "the other runs of this workflow" is the question — newest first
@@ -11,11 +11,7 @@ import { dash, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, spe
 // the spec, then when / how long / what it cost. While the node panel is open
 // the rail folds to a strip of the same dots (A10) so the canvas keeps its width.
 
-const TIP = {
-  stale: 'nothing moved for 15 min; the session may have ended without a manifest',
-  killed: 'stopped by --max-budget-usd / --max-turns',
-  live: 'following the journal',
-} as const
+const TIP = { ...RUN_COPY, live: 'following the journal' } as const
 const PLACEHOLDER = 'filter by spec, outcome or run id'
 
 interface Row {
@@ -137,7 +133,7 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   if (live) badges.push({ text: 'live', live: true, title: `from the ${run.source ?? 'manifest'}` })
   if (run.fixture) badges.push({ text: 'fixture' })
   const line2: Row['line2'] = live
-    ? [{ text: `started ${fmtClock(start)}`, title: whenAbs(start) }, { text: fmtDuration(start != null ? Math.max(now - start, run.durationMs ?? 0) : run.durationMs) }, { text: usd.text, title: usd.title }]
+    ? [{ text: `started ${fmtClock(start)}`, title: whenAbs(start) }, { text: fmtDuration(elapsedOf(run, now)) }, { text: usd.text, title: usd.title }]
     : [{ text: whenRel(start, now), title: whenAbs(start) }, { text: fmtDuration(run.durationMs) }, { text: usd.text, title: usd.title }]
   return {
     run, id: run.runId ?? `run-${i}`, workflow: run.workflowName ?? 'unnamed', word, wordTitle: stalled ? TIP.stale : killed ? TIP.killed : oc.title, tone, dot,

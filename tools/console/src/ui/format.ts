@@ -1,5 +1,7 @@
 import type { Ledger, RunManifest, WorkflowAgentEntry } from '../types'
-import { agentsOf, stateAt } from '../graph/overlayRun'
+import { agentsOf, isStalled, labelOf, stateAt } from '../graph/overlayRun'
+
+export { labelOf }
 
 // Pure formatters for the page. Every input is optional and a partial
 // manifest never throws: a field the engine did not write shows `—`. The
@@ -163,6 +165,21 @@ export function isLive(run?: RunManifest): boolean {
   return !!run && (run.live === true || run.status === 'running')
 }
 
+/** Elapsed: a live run counts from its start (never less than what it already reported); a stale or finished one is what the manifest says. */
+export function elapsedOf(run: RunManifest | undefined, now: number = Date.now()): number | undefined {
+  const start = startOf(run)
+  return isLive(run) && !isStalled(run) && start != null ? Math.max(now - start, run?.durationMs ?? 0) : run?.durationMs
+}
+
+/** The colour behind the outcome word: red for a stop a human must look at, amber while it moves or went cold, accent for a result, muted for the rest. */
+export function toneOf(run: RunManifest | undefined, outcome: ReturnType<typeof outcomeOf>): 'ok' | 'err' | 'warn' | 'muted' {
+  if (!run) return 'muted'
+  if (outcome.source === 'result') return outcome.word === 'needs-human' ? 'err' : 'ok'
+  if (outcome.word === 'error' || outcome.word === 'killed') return 'err'
+  if (outcome.word === 'running' || isStalled(run)) return 'warn'
+  return 'muted'
+}
+
 /**
  * Cost, which only the ledger knows: `$3.92` from the RUNS.md row; a run in
  * progress has no row yet; a finished run without one is missing from the
@@ -183,24 +200,55 @@ export function stoppedAt(run?: RunManifest): string | undefined {
   return hit ? `stopped at ${labelOf(hit)}` : undefined
 }
 
+/** `<phase> › <label>`, or the label alone when the agent has no phase. */
+export function whereOf(a: WorkflowAgentEntry): string {
+  return a.phaseTitle ? `${a.phaseTitle} › ${labelOf(a)}` : labelOf(a)
+}
+
+/** Why the engine stopped, worded once for the header, the card and the rail's tooltips (IA-SPEC §1.3, §2, §6). */
+export const RUN_COPY = {
+  stale: 'nothing moved for 15 min; the session may have ended without a manifest',
+  killed: 'stopped by --max-budget-usd / --max-turns',
+} as const
+
+/**
+ * Why the engine stopped, the first that applies: stale (with the agent it
+ * was last at), killed (with the first error agent, if any), the first error
+ * agent; nothing when the run simply finished.
+ */
+export function stopReason(run?: RunManifest): string | undefined {
+  if (!run) return undefined
+  if (isStalled(run)) {
+    const agents = agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+    const last = agents.filter((a) => a.state === 'running' || a.state === 'progress' || a.state === 'queued').pop() ?? agents[agents.length - 1]
+    return last ? `${RUN_COPY.stale} · last at ${whereOf(last)}` : RUN_COPY.stale
+  }
+  if (run.status === 'killed' || run.status === 'cancelled') {
+    const at = stoppedAt(run)
+    return at ? `${RUN_COPY.killed} · ${at}` : RUN_COPY.killed
+  }
+  return stoppedAt(run)
+}
+
 /** Live only: `running <phase> › <label> for <elapsed>` for the last agent still going, else `between steps`. */
 export function nowAt(run?: RunManifest, now: number = Date.now()): string | undefined {
   if (!isLive(run)) return undefined
   const running = agentsOf(run).filter((a) => a.state === 'running' || a.state === 'progress')
   const a = running[running.length - 1]
   if (!a) return 'between steps'
-  const where = a.phaseTitle ? `${a.phaseTitle} › ${labelOf(a)}` : labelOf(a)
+  const where = whereOf(a)
   const started = toMs(a.startedAt)
   return started != null ? `running ${where} for ${fmtDuration(Math.max(0, now - started))}` : `running ${where}`
 }
 
-/** `last progress 9m ago` from the run's newest agent timestamp; nothing when no agent ever wrote one. */
-export function lastProgress(run?: RunManifest, now: number = Date.now()): string | undefined {
+/** The newest timestamp any agent of the run wrote (the run's own `lastProgressAt` first); nothing when none ever did. */
+export function lastProgressAt(run?: RunManifest): number | undefined {
   const ts = agentsOf(run).map((a) => a.lastProgressAt).filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
-  const t = toMs(run?.lastProgressAt) ?? (ts.length ? Math.max(...ts) : undefined)
-  return t == null ? undefined : `last progress ${whenRel(t, now)}`
+  return toMs(run?.lastProgressAt) ?? (ts.length ? Math.max(...ts) : undefined)
 }
 
-function labelOf(a: WorkflowAgentEntry): string {
-  return a.label ?? (a.index != null ? `agent ${a.index}` : 'agent')
+/** `last progress 9m ago` from `lastProgressAt`; nothing when no agent ever wrote one. */
+export function lastProgress(run?: RunManifest, now: number = Date.now()): string | undefined {
+  const t = lastProgressAt(run)
+  return t == null ? undefined : `last progress ${whenRel(t, now)}`
 }

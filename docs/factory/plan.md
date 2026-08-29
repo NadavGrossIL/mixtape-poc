@@ -826,7 +826,9 @@ the ranked audit are in the PR.
 - Tolerate missing keys. The manifest shape above is from one Claude Code
   version; the loader treats every field as optional and shows "—".
 - No new state. If something needs remembering, it is a file the repo
-  already has (`RUNS.md`, `factory.config.json`), not a console database.
+  already has (`RUNS.md`, `factory.config.json`), not a console database
+  (the one exception: the node panel's width, a per-viewer convenience in
+  the browser's `localStorage` — never a run, never a definition).
 
 ### 11.8 Sources
 

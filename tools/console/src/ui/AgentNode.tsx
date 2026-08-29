@@ -98,8 +98,8 @@ function LaneNodeView({ data }: NodeProps<LaneRFNode>) {
 }
 export const LaneNode = memo(LaneNodeView)
 
-/** The visible end: every word the script can return, the one this run returned lit, and its reason. */
-export type OutcomeNodeData = { outcomes: string[]; achieved?: string; text: string; inY: number }
+/** The visible end: every word the script can return, the one this run returned lit, and its reason. `dim`: a killed run — every chip outlined dim (IA-SPEC §4.4). */
+export type OutcomeNodeData = { outcomes: string[]; achieved?: string; text: string; inY: number; dim?: boolean }
 export type OutcomeRFNode = Node<OutcomeNodeData, 'outcome'>
 function OutcomeNodeView({ data }: NodeProps<OutcomeRFNode>) {
   return (
@@ -107,9 +107,9 @@ function OutcomeNodeView({ data }: NodeProps<OutcomeRFNode>) {
       <Handle id="in" type="target" position={Position.Left} className="port" style={{ left: 0, top: data.inY }} />
       <span className="lane-title">Outcome</span>
       <div className="outcome-chips">
-        {data.outcomes.map((o) => <span key={o} className="outcome-chip" data-on={o === data.achieved || undefined} data-tone={o === 'needs-human' ? 'err' : 'ok'}>{o}</span>)}
+        {data.outcomes.map((o) => <span key={o} className="outcome-chip" data-on={o === data.achieved || undefined} data-dim={data.dim || undefined} data-tone={o === 'needs-human' ? 'err' : 'ok'}>{o}</span>)}
       </div>
-      {data.text && <p className="outcome-text">{data.text}</p>}
+      {data.text && <p className="outcome-text" title={data.text}>{data.text}</p>}
     </div>
   )
 }

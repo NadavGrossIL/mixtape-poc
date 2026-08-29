@@ -93,10 +93,12 @@ const common = (path: string): Extension[] => [
 
 /**
  * One file in a CodeMirror view. `value` is the source of truth: the view is
- * built once (per `path`/`readOnly`) and an outside change — Revert, a reload
- * after a 409 — is dispatched into the existing doc, so the cursor, the undo
- * history and the scroll position survive. `onSave` is Mod-s, the same door as
- * the Save… button: it opens the diff, it does not write.
+ * built once (per `path`/`readOnly`) and an outside change — Revert — is
+ * dispatched into the existing doc, so the cursor, the undo history and the
+ * scroll position survive. A reload after a 409 is different: FileEditor
+ * drops to its "Loading…" line while it refetches, which unmounts this view;
+ * the rebuilt editor starts with a fresh undo history. `onSave` is Mod-s, the
+ * same door as the Save… button: it opens the diff, it does not write.
  */
 export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
   value: string; onChange?: (v: string) => void; path: string; readOnly?: boolean; onSave?: () => void; label?: string

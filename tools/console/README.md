@@ -84,10 +84,13 @@ line, phase strip, run-it block; a skills-and-agents table), the Canvas (lanes w
 subtitles, nodes with a purpose line, the outcome column, a legend), the run rail
 (grouped by workflow, filterable), the replay bar (phase ticks, one bar per agent) and
 the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
-and is drag-resizable. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
+and is drag-resizable. The panel's width is the only browser-side state (`localStorage`
+`console.panelWidth`, a per-viewer convenience); runs and definitions are never stored
+there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 (`result.status` in the workflow's words, else the engine status), `specOf` (args →
 result → ledger → prompt), `usdOf` ("no cost yet" while live, "not in RUNS.md" after),
-`stoppedAt`, `nowAt`. A stale run's unfinished agents are drawn `stalled`. The page keeps
+`stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's unfinished
+agents are drawn `stalled`. The page keeps
 one `EventSource` open and refetches on each event; a live run follows "now" and the
 scrubber is offered once it finishes. Esc closes the panel; Enter opens a focused node.
 All CSS lives in `src/styles.css`.

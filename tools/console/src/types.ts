@@ -175,4 +175,6 @@ export interface NodeRunInfo {
 
 export interface RunGraph extends Graph {
   info: Record<string, NodeRunInfo>
+  /** Phase titles the run brought that the script does not name (its `phases[]` or an agent's `phaseTitle`); the canvas subtitles these `not in the script`. */
+  addedPhases?: string[]
 }

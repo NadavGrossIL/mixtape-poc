@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import type { Ledger, NodeState, RunManifest, WorkflowAgentEntry, WorkflowFile, WorkflowMeta } from '../types'
-import { agentsOf, firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
-import { dash, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, startOf, stoppedAt, usdOf, whenAbs, whenRel } from './format'
+import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
+import { firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
+import { dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 // The "all workflows" screen: one card per workflow that says what it does,
 // how its last run ended (one line), where each phase got to (the strip),
@@ -17,8 +17,6 @@ const COPY = {
   subtitle: "The factory's saved workflows and their runs on this machine. Nothing here starts a run.",
   runNote: 'The console never starts a run. Paste one of these in a terminal; the driver writes the RUNS.md row.',
   skillsSub: 'The files the workflows are made of. Each line says who calls it.',
-  stale: 'stale — nothing moved for 15 min; the session may have ended without a manifest',
-  killed: 'stopped by --max-budget-usd / --max-turns',
   definitionDirs: '.claude/workflows/, .claude/skills/, .archon/workflows/',
 } as const
 
@@ -113,8 +111,7 @@ function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledge
 
 function LastRun({ run, ledger, now, outcome, tag }: { run: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; tag?: string }) {
   const start = startOf(run)
-  const live = isLive(run) && !isStalled(run)
-  const duration = live && start != null ? fmtDuration(Math.max(now - start, run.durationMs ?? 0)) : fmtDuration(run.durationMs)
+  const duration = fmtDuration(elapsedOf(run, now))
   const usd = usdOf(run, ledger)
   return (
     <>
@@ -131,39 +128,17 @@ function LastRun({ run, ledger, now, outcome, tag }: { run: RunManifest; ledger:
   )
 }
 
-/** Line 2 of the last-run block — the first that applies: live, stale, killed, an error agent, a `needs-human` reason; else nothing. */
+/** Line 2 of the last-run block — the first that applies: stale (prefixed `stale — `, IA-SPEC §2), live, killed, an error agent (`stopReason`), a `needs-human` reason; else nothing. */
 function lineTwo(run: RunManifest, outcome: ReturnType<typeof outcomeOf>, now: number): string | undefined {
-  if (isStalled(run)) {
-    const agents = agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-    const last = agents.filter((a) => a.state === 'running' || a.state === 'progress' || a.state === 'queued').pop() ?? agents[agents.length - 1]
-    return last ? `${COPY.stale} · last at ${where(last)}` : COPY.stale
-  }
+  if (isStalled(run)) return `stale — ${stopReason(run)}`
   if (isLive(run)) return nowAt(run, now)
-  if (run.status === 'killed' || run.status === 'cancelled') {
-    const at = stoppedAt(run)
-    return at ? `${COPY.killed} · ${at}` : COPY.killed
-  }
-  const at = stoppedAt(run)
-  if (at) return at
+  const why = stopReason(run)
+  if (why) return why
   if (outcome.source === 'result' && outcome.word === 'needs-human') {
     const reason = (run.result as { reason?: unknown } | null)?.reason
     if (typeof reason === 'string' && reason) return reason
   }
   return undefined
-}
-
-function where(a: WorkflowAgentEntry): string {
-  const label = a.label ?? (a.index != null ? `agent ${a.index}` : 'agent')
-  return a.phaseTitle ? `${a.phaseTitle} › ${label}` : label
-}
-
-/** The colour behind the outcome word: red for a stop a human must look at, amber while it moves, accent for a result, muted for the rest. */
-function toneOf(run: RunManifest | undefined, outcome: ReturnType<typeof outcomeOf>): 'ok' | 'err' | 'warn' | 'muted' {
-  if (!run) return 'muted'
-  if (outcome.source === 'result') return outcome.word === 'needs-human' ? 'err' : 'ok'
-  if (outcome.word === 'error' || outcome.word === 'killed') return 'err'
-  if (outcome.word === 'running') return 'warn'
-  return 'muted'
 }
 
 // --- the phase strip ------------------------------------------------------------
@@ -186,8 +161,7 @@ function PhaseStrip({ graph, run, now, outcome }: { graph: ReturnType<typeof ove
       if (!info) continue
       if (RANK[info.state] > RANK[worst]) worst = info.state
       for (const a of info.agents) {
-        let s = stateAt(a)
-        if (stalled && (s === 'running' || s === 'queued')) s = 'stalled'
+        const s = stateAt(a, undefined, stalled)
         const ms = s === 'running' && a.startedAt != null ? Math.max(now - a.startedAt, a.durationMs ?? 0) : a.durationMs
         lines.push(`${phase} · ${a.label ?? n.label} · ${s} · ${fmtDuration(ms)}`)
       }

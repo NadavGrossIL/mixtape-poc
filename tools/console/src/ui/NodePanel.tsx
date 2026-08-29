@@ -10,6 +10,7 @@ const CONFIG = 'factory.config.json'
 
 const COPY = {
   notRun: 'This step has not run in the selected run.',
+  notYet: 'Not yet at this point of the replay.',
   noResult: 'No result was recorded for this attempt.',
   fixture: 'Fixture run: results and transcripts are not shipped with the repo.',
   live: 'Live — reloads as the transcript grows.',
@@ -34,7 +35,7 @@ const WIDTH = { min: 360, max: 720, default: 440 }
 export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date.now(), onClose, onSaved }: {
   node: GraphNode; info?: NodeRunInfo; run?: RunManifest; tick?: number; files: WorkflowFile[]; scriptPath?: string; now?: number; onClose: () => void; onSaved: () => void
 }) {
-  const a = info?.agent
+  const a = info?.agent // the attempt visible at the replay position — the facts follow it
   const [tab, setTab] = useState<Tab>('prompt')
   const [detail, setDetail] = useState<AgentDetail | { error: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -61,8 +62,8 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
   const attempts = useMemo(() => (info ? attemptRows(info.agents, node, run) : []), [info, node, run])
   const last = attempts[attempts.length - 1]
   const live = isLive(run) && !isStalled(run)
-  const ran = !!a
-  const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : undefined
+  const ran = (info?.agents.length ?? 0) > 0 // did the step run at all in this run — not just by the scrubbed clock
+  const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : !a ? COPY.notYet : undefined
   const loadButton = (label: string) => canLoad && !detail && <button type="button" className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : label}</button>
 
   const rows: [string, string, string?][] = [
@@ -138,7 +139,7 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
                     ? <p className="muted small">{COPY.fixture}</p>
                     : <>
                         <h3>result preview</h3>
-                        {a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{COPY.noResult}</p>}
+                        {a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{a ? COPY.noResult : COPY.notYet}</p>}
                         {canLoad && !detail && <p>{loadButton('Load full result')}</p>}
                         {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
                         {detail && 'prompt' in detail && <><h3>result</h3><Mono tall>{detail.result || dash}</Mono></>}
@@ -194,8 +195,7 @@ function attemptRows(agents: WorkflowAgentEntry[], node: GraphNode, run?: RunMan
   const gateStep = ((run?.result as { gate?: { step?: unknown } } | null | undefined)?.gate?.step)
   const resultStep = typeof gateStep === 'string' && gateStep.trim() ? gateStep.trim() : undefined
   return agents.map((x, i) => {
-    let state = stateAt(x)
-    if (stalled && (state === 'running' || state === 'queued')) state = 'stalled'
+    const state = stateAt(x, undefined, stalled)
     const p = parseResult(x.resultPreview)
     let outcome: string
     if (p?.ok != null) outcome = p.ok ? 'passed' : 'failed'
@@ -299,7 +299,7 @@ function Mono({ children, tall, className }: { children: ReactNode; tall?: boole
 
 const validJson = (s: string) => { try { JSON.parse(s); return undefined } catch (e) { return `not valid JSON: ${e instanceof Error ? e.message : String(e)}` } }
 
-type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved' } | { kind: 'error'; text: string } | { kind: 'conflict'; current: string }
+type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved' } | { kind: 'error'; text: string } | { kind: 'conflict' }
 
 /**
  * One file, one CodeMirror editor, one Save that shows the diff before it
@@ -336,7 +336,7 @@ function FileEditor({ path, note, onSaved, validate }: { path: string; note: str
     try {
       const res = await fetch('/api/file', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ path, content: text, base: loaded.sha }) })
       const body = await res.json().catch(() => ({}))
-      if (res.status === 409) { setStatus({ kind: 'conflict', current: String(body.current ?? '') }); return }
+      if (res.status === 409) { setStatus({ kind: 'conflict' }); return } // the server's current sha rides in `body.current`; Reload refetches it, so it is not kept here
       if (!res.ok) { setStatus({ kind: 'error', text: `${res.status}: ${body.error ?? 'write failed'}` }); return }
       setFile({ path, content: text, sha: body.sha }); setPreview(false); setStatus({ kind: 'saved' })
       onSaved()

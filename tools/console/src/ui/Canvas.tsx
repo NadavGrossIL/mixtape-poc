@@ -99,9 +99,10 @@ function build(graph: RunGraph, files: WorkflowFile[], run: RunManifest | undefi
     cache.set(node.id, { sig, node })
     return node
   }
-  const declared = run?.phases?.filter((p) => p.title).map((p) => p.title) ?? []
+  // A lane's subtitle is the script's detail for that phase; a phase the run added that the script does not name says so (IA-SPEC §4.1).
+  const added = new Set(graph.addedPhases ?? [])
   const lanes: LaneRFNode[] = l.lanes.map((ln) => {
-    const detail = graph.phaseDetails?.[ln.title] ?? (declared.length && !declared.includes(ln.title) ? 'not in the script' : undefined)
+    const detail = graph.phaseDetails?.[ln.title] ?? (added.has(ln.title) ? 'not in the script' : undefined)
     return keep<LaneRFNode>({
       id: ln.id, type: 'lane', position: { x: ln.x, y: ln.y }, data: detail ? { title: ln.title, detail } : { title: ln.title },
       width: ln.w, height: ln.h, measured: { width: ln.w, height: ln.h }, draggable: false, selectable: false, focusable: false, zIndex: 0,
@@ -126,7 +127,7 @@ function build(graph: RunGraph, files: WorkflowFile[], run: RunManifest | undefi
       id: 'outcome', type: 'outcome', position: { x: o.x, y: o.y }, width: o.w, height: o.h, measured: { width: o.w, height: o.h }, zIndex: 0,
       draggable: false, selectable: false, focusable: false,
       handles: [{ id: 'in', type: 'target', position: Position.Left, x: -3, y: o.inY - 3, width: 6, height: 6 }],
-      data: { outcomes: graph.outcomes ?? [], achieved, text: outcomeText(run, achieved), inY: o.inY },
+      data: { outcomes: graph.outcomes ?? [], achieved, text: outcomeText(run, achieved), inY: o.inY, dim: run?.status === 'killed' },
     }))
   }
   const stateOf = (e: { source: string; target: string; loop?: string }): NodeState => {

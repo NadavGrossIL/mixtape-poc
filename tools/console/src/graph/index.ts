@@ -1,7 +1,7 @@
 export { parseScript, parseSkill, readMeta, kindOf, nodeId } from './parseScript'
 export type { ScriptMeta } from './parseScript'
 export { parseYaml } from './parseYaml'
-export { overlayRun, agentsOf, agentEnd, runBounds, stateAt, isStalled } from './overlayRun'
+export { overlayRun, agentsOf, agentEnd, runBounds, stateAt, isStalled, labelOf } from './overlayRun'
 export { purposeOf, firstSentence } from './purpose'
 export { layout, nodeSize, NODE_W, NODE_H, GATE_H } from './layout'
 export type { Layout, Lane, LaidOutNode } from './layout'

@@ -1,18 +1,16 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ConsoleEvent, Ledger, RunManifest, WorkflowAgentEntry, WorkflowFile } from '../types'
-import { agentsOf, graphFor, isStalled, overlayRun, runBounds } from '../graph'
+import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
+import { graphFor, isStalled, overlayRun, runBounds } from '../graph'
 import { Workflows, cardsFrom, runForms, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Replay, type ReplayState } from './Replay'
 import { NodePanel } from './NodePanel'
-import { dash, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, nowAt, outcomeOf, projectTag, specOf, startOf, stoppedAt, usdOf, whenAbs, whenRel } from './format'
+import { dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, specOf, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 
 const COPY = {
-  stale: 'nothing moved for 15 min; the session may have ended without a manifest',
-  killed: 'stopped by --max-budget-usd / --max-turns',
   runNote: 'The console never starts a run. Paste one of these in a terminal; the driver writes the RUNS.md row.',
 } as const
 
@@ -134,9 +132,8 @@ export function App() {
       </main>
     )
   }
-  const start = startOf(run)
-  // Elapsed: a live run counts from its start; a stale one stops at what the journal last wrote (A5); a scrubbed replay shows the clock.
-  const elapsed = live && !stalled && start != null ? Math.max(now - start, run?.durationMs ?? 0) : t != null ? t - bounds.start : run?.durationMs
+  // Elapsed: a scrubbed replay shows the clock; else a live run counts from its start and a stale one stops at what the journal last wrote (A5).
+  const elapsed = t != null ? t - bounds.start : elapsedOf(run, now)
   const outcome = outcomeOf(run)
   const usd = usdOf(run, ledger)
   const progress = live || stalled ? lastProgress(run, now) : undefined
@@ -178,12 +175,6 @@ export function App() {
       <Replay total={total} start={bounds.start} state={replay} run={run} phases={graph.phases} now={now} onChange={onReplay} />
     </main>
   )
-}
-
-/** The newest timestamp any agent of the run wrote — what `lastProgress` is relative to. */
-function lastProgressAt(run?: RunManifest): number | undefined {
-  const ts = agentsOf(run).map((a) => a.lastProgressAt).filter((x): x is number => typeof x === 'number' && Number.isFinite(x))
-  return run?.lastProgressAt ?? (ts.length ? Math.max(...ts) : undefined)
 }
 
 /**
@@ -229,32 +220,9 @@ function RunSentence({ run, ledger, now, outcome, forms }: { run?: RunManifest; 
   )
 }
 
-/** `result.reason`; without one, why the engine stopped: killed, stale (with the last agent), the first error agent; else `—`. */
+/** `result.reason`; without one, why the engine stopped (`stopReason`: stale, killed, the first error agent); else `—`. */
 function reasonOf(run: RunManifest): string {
   const r = run.result as { reason?: unknown } | null | undefined
   if (r && typeof r === 'object' && typeof r.reason === 'string' && r.reason.trim()) return r.reason
-  if (isStalled(run)) {
-    const agents = agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-    const last = agents.filter((a) => a.state === 'running' || a.state === 'progress' || a.state === 'queued').pop() ?? agents[agents.length - 1]
-    return last ? `${COPY.stale} · last at ${where(last)}` : COPY.stale
-  }
-  if (run.status === 'killed' || run.status === 'cancelled') {
-    const at = stoppedAt(run)
-    return at ? `${COPY.killed} · ${at}` : COPY.killed
-  }
-  return stoppedAt(run) ?? dash
-}
-
-function where(a: WorkflowAgentEntry): string {
-  const label = a.label ?? (a.index != null ? `agent ${a.index}` : 'agent')
-  return a.phaseTitle ? `${a.phaseTitle} › ${label}` : label
-}
-
-/** The colour behind the outcome word: red for a stop a human must look at, amber while it moves, accent for a result, muted for the rest. */
-function toneOf(run: RunManifest, outcome: ReturnType<typeof outcomeOf>): 'ok' | 'err' | 'warn' | 'muted' {
-  if (outcome.source === 'result') return outcome.word === 'needs-human' ? 'err' : 'ok'
-  if (outcome.word === 'error' || outcome.word === 'killed') return 'err'
-  if (outcome.word === 'running') return 'warn'
-  if (isStalled(run)) return 'warn'
-  return 'muted'
+  return stopReason(run) ?? dash
 }

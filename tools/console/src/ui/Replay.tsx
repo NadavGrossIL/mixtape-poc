@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { NodeState, RunManifest, WorkflowAgentEntry } from '../types'
-import { agentEnd, agentsOf, isStalled, stateAt } from '../graph'
+import { agentEnd, agentsOf, isStalled, labelOf, stateAt } from '../graph'
 import { fmtDuration, fmtTime, fmtTokens, isLive, nowAt } from './format'
 
 export const SPEEDS = [5, 20, 50] as const
@@ -138,9 +138,8 @@ function markersOf(run: RunManifest | undefined, phases: string[], start: number
     const e = Math.max(s, endOf(a))
     let row = rowEnds.findIndex((end) => end <= s)
     if (row < 0) { row = rowEnds.length; rowEnds.push(e) } else rowEnds[row] = e
-    let state = stateAt(a)
-    if (stalled && (state === 'running' || state === 'queued')) state = 'stalled'
-    const label = a.label ?? (a.index != null ? `agent ${a.index}` : 'agent')
+    const state = stateAt(a, undefined, stalled)
+    const label = labelOf(a)
     const left = pct(s)
     const width = Math.max(0.4, pct(e) - left)
     agentMarks.push({ key: a.agentId ?? `${label}-${i}`, at: s, left, width, row, state, title: `${label} · ${fmtTime(s)} → ${fmtTime(e)} · ${fmtDuration(e - s)} · ${state} · ${fmtTokens(a.tokens)} tok` })

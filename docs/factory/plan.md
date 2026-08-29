@@ -308,9 +308,14 @@ tweak is made from its node panel instead of the editor.
 
 ## 6. Dry runs
 
-1. **Client-only, free tier, no prompt — on Claude Code native.** A "copy
-   link" control on the finished card, or a keyboard shortcut. Proves
-   M2–M4a with nothing at risk.
+1. **Client-only, free tier, no prompt — on Claude Code native.** Proves
+   M2–M4a with nothing at risk. *2026-08-29:* the "copy link" control this
+   line used to name already shipped with the guest flow (`4385a75`,
+   `client/src/App.tsx:1759`) — `/spec` found that on its own and wrote a
+   contract instead of a delta ($1.22, discarded). Candidates now: a
+   **Share** button on the pressed card (`navigator.share` on phones, copy
+   as the fallback — real value for friends on mobile), or a keyboard
+   shortcut for the existing copy. Human picks; then `/spec` runs once.
 2. **Prompt-touching — on Archon.** Show `track_number` to the curator so
    opener / closer claims are grounded (the next lever named in the Aug 23
    validation). Touches `server/curator.ts`, so it exercises

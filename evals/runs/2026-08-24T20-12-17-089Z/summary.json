@@ -1,24 +1,13 @@
 {
   "runDir": "/Users/nadavgross/Projects/mixtape-poc/evals/runs/2026-08-24T20-12-17-089Z",
-  "generatedAt": "2026-08-25T03:54:00.741Z",
+  "generatedAt": "2026-08-29T06:09:06.346Z",
   "cards": {
     "prompts": 18,
     "generated": 18,
     "generateErrors": 0,
-    "judged": 3,
-    "judgeErrors": 15,
+    "judged": 14,
+    "judgeErrors": 4,
     "judgeErrorIds": [
-      "app-2am-drive",
-      "app-90s-roadtrip",
-      "mainstream-pop-anthems",
-      "mainstream-classic-rock",
-      "niche-city-pop",
-      "niche-croydon-dubstep",
-      "nonenglish-french-chanson",
-      "decade-80s-onehit",
-      "mood-train-window",
-      "mood-first-warm-day",
-      "statbait-highest-bpm",
       "statbait-longest-solos",
       "recent-2025-best",
       "recent-2026-indie",
@@ -26,22 +15,23 @@
     ]
   },
   "notes": {
-    "total": 24,
-    "resolved": 17,
+    "total": 112,
+    "resolved": 105,
     "unresolved": 7,
     "unknownResolution": 0
   },
   "outcomes": {
     "overall": {
-      "specific-subjective": 3,
-      "specific-true": 16,
-      "specific-invented": 4,
-      "specific-unverifiable": 1
+      "specific-subjective": 11,
+      "specific-true": 88,
+      "specific-invented": 10,
+      "specific-unverifiable": 3
     },
     "resolved": {
-      "specific-subjective": 3,
-      "specific-true": 10,
-      "specific-invented": 4
+      "specific-subjective": 11,
+      "specific-true": 82,
+      "specific-invented": 10,
+      "specific-unverifiable": 2
     },
     "unresolved": {
       "specific-unverifiable": 1,
@@ -51,15 +41,16 @@
   },
   "rates": {
     "overall": {
-      "specific-subjective": 0.125,
-      "specific-true": 0.6667,
-      "specific-invented": 0.1667,
-      "specific-unverifiable": 0.0417
+      "specific-subjective": 0.0982,
+      "specific-true": 0.7857,
+      "specific-invented": 0.0893,
+      "specific-unverifiable": 0.0268
     },
     "resolved": {
-      "specific-subjective": 0.1765,
-      "specific-true": 0.5882,
-      "specific-invented": 0.2353
+      "specific-subjective": 0.1048,
+      "specific-true": 0.781,
+      "specific-invented": 0.0952,
+      "specific-unverifiable": 0.019
     },
     "unresolved": {
       "specific-unverifiable": 0.1429,
@@ -68,12 +59,12 @@
     "unknown-resolution": {}
   },
   "headline": {
-    "checkableNotes": 21,
-    "inventedRate": 0.1905,
-    "verifiedTrueRate": 0.7619,
-    "unverifiableRate": 0.0476,
+    "checkableNotes": 101,
+    "inventedRate": 0.099,
+    "verifiedTrueRate": 0.8713,
+    "unverifiableRate": 0.0297,
     "genericRate": 0,
-    "resolutionRate": 0.7083
+    "resolutionRate": 0.9375
   },
   "downgrades": {
     "total": 0,
@@ -82,7 +73,7 @@
   "checks": [
     {
       "path": "headline.inventedRate",
-      "actual": 0.1905,
+      "actual": 0.099,
       "rule": {
         "max": 0.35,
         "note": "measured 0.240"
@@ -92,7 +83,7 @@
     },
     {
       "path": "headline.verifiedTrueRate",
-      "actual": 0.7619,
+      "actual": 0.8713,
       "rule": {
         "min": 0.6,
         "note": "measured 0.733"
@@ -112,13 +103,13 @@
     },
     {
       "path": "headline.resolutionRate",
-      "actual": 0.7083,
+      "actual": 0.9375,
       "rule": {
         "min": 0.9,
         "note": "measured 1.000"
       },
-      "ok": false,
-      "reason": "below min 0.9"
+      "ok": true,
+      "reason": null
     }
   ]
 }

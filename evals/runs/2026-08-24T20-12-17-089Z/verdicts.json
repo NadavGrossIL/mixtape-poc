@@ -153,13 +153,163 @@
   },
   {
     "id": "app-2am-drive",
-    "error": "Request timed out.",
+    "category": "app-example",
+    "prompt": "songs that sound like driving home at 2am",
+    "cardTitle": "2AM Freeway Static",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Mac DeMarco",
+        "title": "Chamber Of Reflection",
+        "note": "That warped keyboard intro feels like fog lights cutting through mist on an empty on-ramp.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Note describes the keyboard/synth intro impressionistically ('fog lights cutting through mist'). No verifiable stat, credit, lyric, or release detail asserted; the song-artist pairing is standard and the claim is purely evocative.",
+        "evidence": []
+      },
+      {
+        "index": 1,
+        "artist": "Khruangbin",
+        "title": "Maria También",
+        "note": "Houston trio's twangy, reverb-soaked groove built for a long straightaway with the windows cracked.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: Khruangbin is a Houston trio and 'Maria También' is theirs. Sources confirm Khruangbin is a trio of Houstonians and that 'Maria También' is a Khruangbin track (lead single from Con Todo El Mundo). The 'twangy, reverb-soaked groove' portion is descriptive but the factual core checks out.",
+        "evidence": [
+          {
+            "url": "https://kutx.org/song-of-the-day/khruangbin-maria-tambien/",
+            "snippet": "Khruangbin is a mixed-up thing: a trio of Houstonians, recently based in London..."
+          },
+          {
+            "url": "https://soundcloud.com/nighttimestorieslabel/khruangbin-maria-tambien/albums",
+            "snippet": "Globetrotting Texan trio Khruangbin present 'Maria También', the first single from their upcoming second album 'Con Todo El Mundo'."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Beach House",
+        "title": "Myth",
+        "note": "Dream-pop haze from Festival that makes streetlights blur into one long smear of gold.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Note claims 'Myth' comes from an album called 'Festival'. Sources show 'Myth' is the opening track of Beach House's 2012 album Bloom (Sub Pop); no Beach House album titled 'Festival' exists. The dream-pop genre tag is correct, but the album attribution is fabricated.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Myth_(song)",
+            "snippet": "Single by Beach House from the album Bloom ... Released: March 7, 2012 ... Genre: Dream pop ... Label: Sub Pop"
+          },
+          {
+            "url": "https://www.musicomh.com/reviews/albums/beach-house-bloom",
+            "snippet": "ponders Beach House vocalist and organist Victoria Legrand on Myth, the opening track on Bloom."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "M83",
+        "title": "Midnight City",
+        "note": "The saxophone break at the end is basically the city skyline rising up in the rearview.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Midnight City' has a saxophone break at the end. Confirmed: the song ends on a saxophone solo played by James King of Fitz and the Tantrums.",
+        "evidence": [
+          {
+            "url": "https://www.songfacts.com/facts/m83/midnight-city",
+            "snippet": "The song ends with a bombastic saxophone solo played by James King of the Los Angeles soul/indie pop band, Fitz and The Tantrums."
+          },
+          {
+            "url": "https://www.last.fm/music/M83/_/Midnight+City/+wiki",
+            "snippet": "The song ends on a saxophone solo played by Fitz and the Tantrums' James King."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Kavinsky",
+        "title": "Nightcall",
+        "note": "French synthwave built for a Drive soundtrack moment, vocoder murmuring over a pulsing arpeggio.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: French synthwave, associated with the film Drive, vocoder vocals. Confirmed: 'Nightcall' is a French synthwave/electro song by Kavinsky that set the tone for Drive; its vocoder-processed vocal is widely documented.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Nightcall_(song)",
+            "snippet": "\"Nightcall\" is a French song by electro house artist Kavinsky ... Genre: Synth-pop; electro; synthwave"
+          },
+          {
+            "url": "https://www.nbcnews.com/pop-culture/pop-culture-news/kavinsky-french-dj-composer-nightcall-drive-soundtrack-dies-50-rcna589807",
+            "snippet": "the French electro-pop composer whose haunting track \"Nightcall\" set the musical tone for the movie \"Drive\""
+          },
+          {
+            "url": "https://www.productionmusiclive.com/blogs/news/classic-kavinsky-nightcall-vocoder-sound-from-drive-soundtrack-ableton-live-tutorial",
+            "snippet": "how to make the vocoder from Kavinsky's \"Nightcall\""
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "The Weeknd",
+        "title": "The Hills",
+        "note": "Beauty Behind the Madness at its most nocturnal, all dread and headlights in the dark.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'The Hills' is on Beauty Behind the Madness. Confirmed by Wikipedia: single by the Weeknd from the album Beauty Behind the Madness. Remaining wording ('dread and headlights') is subjective colour.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/The_Hills_(song)",
+            "snippet": "Single by the Weeknd from the album Beauty Behind the Madness ... Released: May 27, 2015"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Cigarettes After Sex",
+        "title": "Apocalypse",
+        "note": "Whispered vocals and slow-motion guitar for the stretch of road where you stop talking.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Describes vocal delivery and guitar texture ('whispered vocals', 'slow-motion guitar') plus a driving image; no checkable stat, credit, lyric, or release fact. Artist-title pairing (Cigarettes After Sex — 'Apocalypse') is the well-known attribution, so no contradiction to flag.",
+        "evidence": []
+      },
+      {
+        "index": 7,
+        "artist": "Tame Impala",
+        "title": "New Person, Same Old Mistakes",
+        "note": "Closing track on Currents, a six-minute fade that mirrors pulling into the driveway half-asleep.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: closing track on Currents and roughly six minutes long. Confirmed: Songfacts calls it the closing song of Currents; Billboard calls it the 'six-minute long kicker' and its runtime is 6:03.",
+        "evidence": [
+          {
+            "url": "https://www.songfacts.com/facts/tame-impala/new-person-same-old-mistakes",
+            "snippet": "This is the closing song and its lyrics about making the same old mistakes suggest his metamorphosis should be read with caution."
+          },
+          {
+            "url": "https://www.billboard.com/music/music-news/tame-impala-same-old-mistakes-songs-that-defined-the-decade-8544242/",
+            "snippet": "\"New Person, Same Old Mistakes,\" the woozy, six-minute long kicker"
+          },
+          {
+            "url": "https://music.amazon.com/tracks/B00WO1ZVZC",
+            "snippet": "Tame Impala · Currents [Explicit] 6 MINUTES AND 3 SECONDS • JUL 17 2015"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 585,
+      "output_tokens": 4536,
+      "cache_creation_input_tokens": 18533,
+      "cache_read_input_tokens": 55473,
+      "web_search_requests": 8
     }
   },
   {
@@ -319,57 +469,849 @@
   },
   {
     "id": "app-90s-roadtrip",
-    "error": "Request timed out.",
+    "category": "app-example",
+    "prompt": "90s hip-hop for a newborn's first road trip",
+    "cardTitle": "Lullaby Lowrider",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "De La Soul",
+        "title": "Me Myself and I",
+        "note": "Off 3 Feet High and Rising, 1989 \\started started it all, easy as buckling a car seat.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Me Myself and I' is from 3 Feet High and Rising, 1989. Wikipedia lists it as a single from that album, released March 1989; album released March 3, 1989.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Me_Myself_and_I_(De_La_Soul_song)",
+            "snippet": "Single by De La Soul from the album 3 Feet High and Rising ... Released: March 21, 1989"
+          },
+          {
+            "url": "https://store.wearedelasoul.com/products/3-feet-high-and-rising-cassette",
+            "snippet": "3 Feet High and Rising was released on March 3, 1989 ... contains the singles, \"Me Myself and I\""
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "A Tribe Called Quest",
+        "title": "Can I Kick It?",
+        "note": "That rolling bassline moves like tires on a quiet highway at dusk.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "A simile about the bassline resembling tires on a highway — concrete imagery tied to the track but not fact-checkable. No factual assertion (no year, credit, or stat).",
+        "evidence": []
+      },
+      {
+        "index": 2,
+        "artist": "Digable Planets",
+        "title": "Rebirth Of Slick (Cool Like Dat)",
+        "note": "1993 jazz-loop cool from Reachin', the kind of horn sample that makes a car feel like a lounge.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Rebirth of Slick (Cool Like Dat)' is a 1993 track from Reachin'. Wikipedia confirms the song is on Reachin' (A New Refutation of Time and Space), released February 9, 1993, and that the single was a 1993 hit. The 'jazz-loop/horn sample' framing is subjective coloring around a verified release detail.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Reachin%27_(A_New_Refutation_of_Time_and_Space)",
+            "snippet": "Studio album by Digable Planets - Released: February 9, 1993 ... Singles from Reachin' ... \"Rebirth of Slick (Cool Like Dat)\""
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Reachin'_(A_New_Refutation_of_Time_and_Space)",
+            "snippet": "The single \"Rebirth of Slick (Cool Like Dat)\" became a hit in 1993"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "The Pharcyde",
+        "title": "Passin' Me By",
+        "note": "Dreamy, sun-through-the-windshield melancholy from Bizarre Ride II The Pharcyde, 1992.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Passin' Me By' comes from Bizarre Ride II The Pharcyde, 1992. Wikipedia confirms it was the second single from the group's 1992 debut album of that title.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Passin'_Me_By",
+            "snippet": "The song was the second single released from the group's 1992 debut album Bizarre Ride II the Pharcyde."
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Bizarre_Ride_II_the_Pharcyde",
+            "snippet": "Studio album by the Pharcyde - Released: November 24, 1992 ... \"Passin' Me By\" Released: March 18, 1993"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Warren G, Nate Dogg",
+        "title": "Regulate",
+        "note": "The G-funk cruiser itself, from Regulate\\u2026G Funk Era, 1994 \\u2014 synths gliding like cruise control kicking in.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Regulate' (Warren G feat. Nate Dogg) is from Regulate...G Funk Era, 1994, and is G-funk. Wikipedia lists it as a 1994 single from that album, genre G-funk; album released June 7, 1994.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Regulate_(song)",
+            "snippet": "Single by Warren G and Nate Dogg from the album Regulate... G Funk Era ... Released: April 1994 ... Genre: West Coast hip-hop; gangsta rap; G-funk"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Regulate..._G_Funk_Era",
+            "snippet": "Regulate... G Funk Era ... Released: June 7, 1994 ... \"Regulate\" Released: April 23, 1994"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "A Tribe Called Quest",
+        "title": "Electric Relaxation",
+        "note": "Midnight Marauders, 1993 \\u2014 the title says exactly what it does to a sleepy backseat.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Electric Relaxation' is on Midnight Marauders, 1993. Spotify track page lists the song under Midnight Marauders, 1993 (album confirmed as 1993 in Discogs listings too).",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/track/0eEXcw3JLVXcRxYrVYMy68",
+            "snippet": "Electric Relaxation - song and lyrics by A Tribe Called Quest ... Midnight Marauders · 1993 • Album"
+          },
+          {
+            "url": "https://www.discogs.com/release/3102724-The-Pharcyde-Labcabincalifornia",
+            "snippet": "Midnight Marauders · A Tribe Called Quest · 1993 US · Vinyl — · LP, Album"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "The Pharcyde",
+        "title": "Runnin'",
+        "note": "From Labcabincalifornia, 1995 \\u2014 loose and rolling like the road just keeps unspooling.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Runnin'' is from Labcabincalifornia, 1995. Wikipedia confirms the single from the album Labcabincalifornia, released October 7, 1995; album released November 14, 1995.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Runnin%27_(The_Pharcyde_song)",
+            "snippet": "Single by The Pharcyde from the album Labcabincalifornia - Released: October 7, 1995"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Labcabincalifornia",
+            "snippet": "Studio album by the Pharcyde - Released: November 14, 1995 ... \"Runnin'\" Released: October 7, 1995"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Digable Planets",
+        "title": "Where I'm From",
+        "note": "Track three on Reachin', 1993 \\u2014 porch-light warmth for pulling into the driveway.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Where I'm From' is track three on Reachin', 1993. Discogs release credits explicitly identify Track 3 as \"Where I'm From\"; Wikipedia confirms album release February 9, 1993 and that 'Where I'm From' was a single from it.",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/release/3508764-Digable-Planets-Reachin-A-New-Refutation-Of-Time-And-Space",
+            "snippet": "Track 3 \"Where I'm From\" (Ishmael Butler, Mary Ann Vieira"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Reachin%27_(A_New_Refutation_of_Time_and_Space)",
+            "snippet": "Released: February 9, 1993 ... Singles from Reachin' ... \"Where I'm From\" Released: April 1993"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 667,
+      "output_tokens": 4297,
+      "cache_creation_input_tokens": 10447,
+      "cache_read_input_tokens": 61957,
+      "web_search_requests": 7
     }
   },
   {
     "id": "mainstream-pop-anthems",
-    "error": "Request timed out.",
+    "category": "mainstream-safe",
+    "prompt": "the biggest pop anthems of the 2010s",
+    "cardTitle": "Biggest Pop Anthems 2010s",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Carly Rae Jepsen",
+        "title": "Call Me Maybe",
+        "note": "The 2012 hook that hijacked every radio station and never let go, off Kiss.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 2012 hit, from the album Kiss. Wikipedia/fan wiki confirm 'Call Me Maybe' is a track on Jepsen's album Kiss (2012) and served as its lead single, breaking globally in early 2012 (initial Canada-only release Sept 2011). Attribution to Carly Rae Jepsen confirmed.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Call_Me_Maybe",
+            "snippet": "Single by Carly Rae Jepsen from the EP Curiosity and the album Kiss - Released: September 20, 2011"
+          },
+          {
+            "url": "https://carlyraejepsen.fandom.com/wiki/Call_Me_Maybe",
+            "snippet": "later Jepsen's worldwide debut album, Kiss, in September 2012, with Call Me Maybe serving as its lead single"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Katy Perry, Snoop Dogg",
+        "title": "California Gurls",
+        "note": "Whipped cream bikinis and Snoop's drawl, Teenage Dream's sugar-rush lead single from 2010.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: Katy Perry featuring Snoop Dogg, lead single from Teenage Dream, 2010. Wikipedia and Katy Perry wiki confirm release May 7, 2010 as the lead single from Teenage Dream featuring Snoop Dogg. The whipped-cream-bikini imagery is well-known video imagery (subjective flourish) but the checkable core is confirmed.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/California_Gurls",
+            "snippet": "Single by Katy Perry featuring Snoop Dogg from the album Teenage Dream - Released: May 7, 2010"
+          },
+          {
+            "url": "https://katyperry.fandom.com/wiki/California_Gurls",
+            "snippet": "It was released as the album's lead single on May 7, 2010."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "LMFAO, Lauren Bennett, GoonRock",
+        "title": "Party Rock Anthem",
+        "note": "2011's shuffle-inducing juggernaut off Sorry For Party Rocking, still a floor-filler.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 2011, from the album Sorry For Party Rocking. Wikipedia confirms 'Party Rock Anthem' by LMFAO feat. Lauren Bennett and GoonRock was released January 25, 2011 as the first single from Sorry for Party Rocking.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Party_Rock_Anthem",
+            "snippet": "Single by LMFAO featuring Lauren Bennett and GoonRock from the album Sorry for Party Rocking - Released: January 25, 2011"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Sorry_for_Party_Rocking",
+            "snippet": "Singles from Sorry for Party Rocking - \"Party Rock Anthem\" Released: January 25, 2011"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Mark Ronson, Bruno Mars",
+        "title": "Uptown Funk (feat. Bruno Mars)",
+        "note": "Mark Ronson's horn-blasted 2015 funk revival with Bruno Mars stealing the mic.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: Mark Ronson track with Bruno Mars, funk, 2015. Confirmed as a Mark Ronson song with Bruno Mars from Ronson's 2015 album Uptown Special; note that the single itself dropped 10 November 2014, so the '2015' framing matches the parent album and chart-dominance year rather than the single's release date. Attribution correct.",
+        "evidence": [
+          {
+            "url": "https://brunomars.fandom.com/wiki/Uptown_Funk",
+            "snippet": "released on Ronson's fourth studio album Uptown Special (2015) ... released as a single on November 10, 2014"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Uptown_Special",
+            "snippet": "Studio album by Mark Ronson - Released: 13 January 2015 ... Genre: Funk; R&B"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Katy Perry",
+        "title": "Roar",
+        "note": "Track one on PRISM, 2013's tiger-eyed empowerment anthem shouted from every karaoke booth.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 'Roar' is track one on PRISM, 2013. Spotify PRISM tracklist shows Roar as track 1; Wikipedia confirms the single was released August 10, 2013 from Prism (album Oct 18, 2013).",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/album/5MQBzs5YlZlE28mD9yUItn",
+            "snippet": "PRISM (Deluxe) Album · Katy Perry•2013 · 1 · Roar Katy Perry · 3:43"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Roar_(song)",
+            "snippet": "Single by Katy Perry from the album Prism - Released: August 10, 2013"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Rihanna",
+        "title": "Diamonds",
+        "note": "The soaring ballad-anthem off Unapologetic, 2012, that turned arenas into galaxies of phone lights.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: from Unapologetic, 2012. Wikipedia confirms 'Diamonds' is Rihanna's single from Unapologetic (2012); other sources confirm it was the album's lead single. The arena/phone-lights line is subjective color.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Diamonds_(Rihanna_song)",
+            "snippet": "Single by Rihanna from the album Unapologetic - Released: September 26, 2012"
+          },
+          {
+            "url": "https://rihanna.fandom.com/wiki/Diamonds_(song)",
+            "snippet": "released for a digital download the following day, as the lead single of Unapologetic"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Pharrell Williams",
+        "title": "Happy - From \"Despicable Me 2\"",
+        "note": "The one-word-title juggernaut from G I R L, 2014, engineered pure sunshine.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: one-word title, from G I R L, 2014. Wikipedia confirms 'Happy' appears on Pharrell's album Girl (released March 2014) as well as the Despicable Me 2 soundtrack; single release was Nov 21, 2013 but the album placement and 2014 breakout year check out.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Happy_(Pharrell_Williams_song)",
+            "snippet": "Single by Pharrell Williams from the album Girl and Despicable Me 2: Original Motion Picture Soundtrack"
+          },
+          {
+            "url": "https://pharrell.fandom.com/wiki/Happy",
+            "snippet": "\"Happy\" is the fifth song by Pharrell Williams from the album G I R L and the fourth track from the album Despicable Me 2"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Lorde",
+        "title": "Royals",
+        "note": "A teenager from New Zealand flipping pop excess on its head in 2013 — the comedown that started an era.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: a teenager from New Zealand, 2013. Sources confirm Lorde is a New Zealand singer-songwriter whose debut single 'Royals' was released in 2013 when she was a teenager (15/16). The 'flipping pop excess' and 'comedown' framing is subjective, but the checkable facts hold.",
+        "evidence": [
+          {
+            "url": "https://simple.wikipedia.org/wiki/Lorde",
+            "snippet": "Lorde ... is a New Zealand singer-songwriter ... Her first single, \"Royals\", was released on Republic on 8 March 2013."
+          },
+          {
+            "url": "https://au.rollingstone.com/music/music-lists/best-australian-new-zealand-songs-21st-century-so-far-list-87989/lorde-royals-4-88478/",
+            "snippet": "\"Royals\" was Lorde's debut single, released when she was just 16 years old"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 675,
+      "output_tokens": 5253,
+      "cache_creation_input_tokens": 10611,
+      "cache_read_input_tokens": 74877,
+      "web_search_requests": 10
     }
   },
   {
     "id": "mainstream-classic-rock",
-    "error": "Request timed out.",
+    "category": "mainstream-safe",
+    "prompt": "classic rock everyone knows the words to",
+    "cardTitle": "Every Word, Every Time",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Fleetwood Mac",
+        "title": "Dreams - 2004 Remaster",
+        "note": "The only Fleetwood Mac song to hit #1 in the US, gliding in like the first slow inhale of the night.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Dreams' is Fleetwood Mac's only US #1. Source confirms it topped the Billboard Hot 100 (June 1977) and is the band's only Hot 100 #1. Attribution (Fleetwood Mac, from Rumours) also confirmed.",
+        "evidence": [
+          {
+            "url": "https://www.yahoo.com/entertainment/music/articles/fleetwood-macs-dreams-back-billboard-205313179.html",
+            "snippet": "It peaked at No. 1 on the US Billboard Hot 100 on June 18 ... \"It's Fleetwood Mac's only song to hit No. 1 on said chart.\""
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Journey",
+        "title": "Don't Stop Believin'",
+        "note": "That piano intro alone gets a whole bar on its feet before the first word even hits.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "References the track's piano intro but the assertion (a bar getting on its feet before the first word) is an impressionistic crowd-reaction claim, not a verifiable fact.",
+        "evidence": []
+      },
+      {
+        "index": 2,
+        "artist": "Bon Jovi",
+        "title": "Livin' On A Prayer",
+        "note": "Tommy and Gina's saga off Slippery When Wet, the ultimate shout-it-with-strangers chorus.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: the song features characters Tommy and Gina and appears on Slippery When Wet. Both confirmed; the 'shout-it-with-strangers chorus' part is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Livin'_on_a_Prayer",
+            "snippet": "\"Livin' on a Prayer\" is a song by the American rock band Bon Jovi from their third studio album, Slippery When Wet."
+          },
+          {
+            "url": "https://www.wilde-life.com/encyclopedia/livin-on-a-prayer/",
+            "snippet": "The song is about a fictional working class couple, Tommy and Gina, who struggle to make ends meet"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "AC/DC",
+        "title": "Back In Black",
+        "note": "Title track of the best-selling hard rock album ever, a riff built to open a set, not close one.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Back in Black' is the title track of the best-selling hard rock album ever. Sources confirm the title track is on Back in Black and that the album is the top-selling rock album of all time (50M+ sold).",
+        "evidence": [
+          {
+            "url": "https://bestclassicbands.com/acdc-back-in-black-sales-7-25-17/",
+            "snippet": "There can be only 1 album that's the world's top-selling rock LP of all-time ... Two singles, \"You Shook Me All Night Long\" and the title track"
+          },
+          {
+            "url": "https://www.yahoo.com/entertainment/music/articles/1980-hard-rock-album-still-200418399.html",
+            "snippet": "AC/DC's album \"Back in Black\" remains a monumental success, selling over 50 million"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Guns N' Roses",
+        "title": "Sweet Child O' Mine",
+        "note": "Slash's opening lick from Appetite For Destruction is the closest rock has to a national anthem.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: the song is on Appetite for Destruction and the opening lick is Slash's. Wikipedia confirms the album and lists Saul Hudson (Slash) among writers; feature coverage confirms the song grew from the guitar riff. 'National anthem' framing is hyperbole/subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Sweet_Child_o'_Mine",
+            "snippet": "a song by American rock band Guns N' Roses, released on their debut studio album, Appetite for Destruction (1987)"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Sweet_Child_o%27_Mine",
+            "snippet": "Songwriters: Steven Adler; Saul Hudson; Duff McKagan; Axl Rose; Izzy Stradlin"
+          },
+          {
+            "url": "https://www.udiscovermusic.com/stories/sweet-child-o-mine-guns-n-roses-song-feature/",
+            "snippet": "From a nearly discarded riff to the top of the charts."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Led Zeppelin",
+        "title": "Stairway to Heaven - Remaster",
+        "note": "Eight-plus minutes off Led Zeppelin IV that build from acoustic whisper to full electric roar.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: runtime over eight minutes and inclusion on Led Zeppelin IV. Wikipedia lists length 8:02 on Led Zeppelin IV (1971); the acoustic-to-electric build is a standard description of the arrangement.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Stairway_to_Heaven",
+            "snippet": "from the album Led Zeppelin IV - Released: 8 November 1971 ... Length: 8:02"
+          },
+          {
+            "url": "https://music.apple.com/us/song/stairway-to-heaven/580708180",
+            "snippet": "Led Zeppelin IV (Remastered) ... Duration 8:02"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Eagles",
+        "title": "Hotel California - 2013 Remaster",
+        "note": "That twin-guitar outro is the sound of a mixtape starting to exhale.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Notes the twin-guitar outro but the claim itself ('the sound of a mixtape starting to exhale') is purely impressionistic and not fact-checkable.",
+        "evidence": []
+      },
+      {
+        "index": 7,
+        "artist": "Queen",
+        "title": "Bohemian Rhapsody",
+        "note": "A six-minute opera off A Night At The Opera, the only way to end a tape everyone screams the words to.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: roughly six-minute length and inclusion on A Night at the Opera. Wikipedia lists 5:55 on A Night at the Opera (1975), and the track contains an operatic passage; 'six-minute' is an acceptable rounding. Closing-track/screaming claims are subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Bohemian_Rhapsody",
+            "snippet": "from the album A Night at the Opera ... Released: 31 October 1975 ... Length: 5:55"
+          },
+          {
+            "url": "https://bohemian-rhapsody.fandom.com/wiki/Bohemian_Rhapsody_(song)",
+            "snippet": "It is a 5 minute and 55 second suite ... an operatic passage"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 622,
+      "output_tokens": 3949,
+      "cache_creation_input_tokens": 6567,
+      "cache_read_input_tokens": 43630,
+      "web_search_requests": 7
     }
   },
   {
     "id": "niche-city-pop",
-    "error": "Request timed out.",
+    "category": "deep-niche",
+    "prompt": "japanese city pop deep cuts from the early 80s",
+    "cardTitle": "Deep Cuts Under Neon",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Anri",
+        "title": "WINDY SUMMER",
+        "note": "Track 2 on 1983's Timely!! — a breezy synth strut built for a convertible with the top down.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'WINDY SUMMER' is track 2 on Anri's 1983 album Timely!!. Jpop Wiki gives Timely!! as released December 5, 1983 with tracklist beginning CAT'S EYE (NEW TAKE), WINDY SUMMER; Internet Archive and Discogs listings agree WINDY SUMMER is the second track. Rest of note ('breezy synth strut...') is subjective flavour.",
+        "evidence": [
+          {
+            "url": "https://jpop.fandom.com/wiki/Timely!!",
+            "snippet": "December 5, 1983 · City Pop ... Timely!! is the 6th album released by ANRI ... CAT'S EYE (NEW TAKE) WINDY SUMMER · STAY BY ME · A HOPE FROM SAD STREET"
+          },
+          {
+            "url": "https://archive.org/details/1983-anri-timely",
+            "snippet": "25.1M CAT’S EYE (NEW TAKE) download · 31.7M WINDY SUMMER download · 27.9M STAY BY ME download"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Junko Yagami",
+        "title": "夜空のイヤリング",
+        "note": "Deep cut off 1982's LONELY GIRL, her voice floating over glassy electric piano.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Claim: '夜空のイヤリング' is a deep cut off 1982's LONELY GIRL by Junko Yagami. The song does exist as track A2 on LONELY GIRL, but the album was released 21 February 1983 (Japanese Wikipedia, Apple Music), not 1982, so the stated release year is contradicted (only streaming metadata on Spotify shows 1982).",
+        "evidence": [
+          {
+            "url": "https://ja.wikipedia.org/wiki/LONELY_GIRL_(%E3%82%A2%E3%83%AB%E3%83%90%E3%83%A0)",
+            "snippet": "『LONELY GIRL』は、1983年2月21日に発売された八神純子の5作目のオリジナルアルバムである ... 夜空のイヤリング (3分59秒)"
+          },
+          {
+            "url": "https://music.apple.com/jp/song/%E5%A4%9C%E7%A9%BA%E3%81%AE%E3%82%A4%E3%83%A4%E3%83%AA%E3%83%B3%E3%82%B0/76081428",
+            "snippet": "Lonely Girl 八神純子 1983年2月21日"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Toshiki Kadomatsu",
+        "title": "Fly-By-Day",
+        "note": "Slap-bass and falsetto stacked up like neon signs along the Bayshore Route at night.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Note offers only impressionistic description (slap bass, falsetto, neon signs along the Bayshore Route) with no release detail, credit, stat or lyric to check.",
+        "evidence": []
+      },
+      {
+        "index": 3,
+        "artist": "Miki Matsubara",
+        "title": "Jazzy Night",
+        "note": "Buried at track 5 on Who Are You? — brushed hi-hats and a late-night sax line.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Jazzy Night' is track 5 on Miki Matsubara's Who Are You?. Tower Records' tracklist for 松原みき/WHO ARE YOU? lists 5. Jazzy Night (Hayashi Tetsuji composition/arrangement); the album's credited sax/flute player is Jake H. Concepcion, consistent with the sax mention.",
+        "evidence": [
+          {
+            "url": "https://tower.jp/item/2502550",
+            "snippet": "＜収録曲＞ 1. あいつのブラウンシューズ ... 5. Jazzy Night 作詞：三浦徳子／作曲：林哲司／編曲：林哲司"
+          },
+          {
+            "url": "https://record-day.jp/item/pcja-00109/",
+            "snippet": "2枚目のオリジナル・アルバム(1980年) ... サックス/フルート：ジェイク H コンセプション"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Anri",
+        "title": "SHYNESS BOY",
+        "note": "Tucked at 7 of 11 on Timely!!, a shuffling cut most Plastic Love fans never dig for.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'SHYNESS BOY' sits at track 7 of 11 on Timely!!. Jpop Wiki's tracklist runs CAT'S EYE (NEW TAKE), WINDY SUMMER, STAY BY ME, A HOPE FROM SAD STREET, YOU ARE NOT ALONE, 悲しみがとまらない, SHYNESS BOY, LOST LOVE IN THE RAIN, DRIVING MY LOVE, GOOD-NIGHT FOR YOU, Remember Summer Days — SHYNESS BOY is 7th of 11 (credits also run #1–#11). The 'Plastic Love fans' remark is subjective.",
+        "evidence": [
+          {
+            "url": "https://jpop.fandom.com/wiki/Timely!!",
+            "snippet": "CAT’S EYE (NEW TAKE) WINDY SUMMER · STAY BY ME · A HOPE FROM SAD STREET · YOU ARE NOT ALONE · Kanashimi ga Tomaranai ... SHYNESS BOY · LOST LOVE IN THE RAIN · DRIVING MY LOVE · GOOD-NIGHT FOR YOU · Remember Summer Days"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Junko Ohashi",
+        "title": "テレフォン・ナンバー",
+        "note": "From 1984's MAGICAL III, a bassline that answers the phone before you even pick up.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'テレフォン・ナンバー' comes from 1984's MAGICAL III by Junko Ohashi. Universal Music Japan's page for MAGICAL 大橋純子の世界III gives an original release of July 1984 with テレフォン・ナンバー as track 7; AWA/Spotify confirm the 1984 album placement.",
+        "evidence": [
+          {
+            "url": "https://www.universal-music.co.jp/ohashi-junko/products/upcy-90068/",
+            "snippet": "MAGICAL 大橋純子の世界Ⅲ ... オリジナル発売日：1984年7月 · 1. 恋はマジック ... 7. テレフォン・ナンバー"
+          },
+          {
+            "url": "https://open.spotify.com/intl-ja/track/49vIvmsneQwxyFTdmCQzmV",
+            "snippet": "Junko Ohashi · MAGICAL 大橋純子の世界 III · Song · 1984"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Junko Yagami",
+        "title": "Lady-Ready",
+        "note": "B-side to the 1983 Bay City single, the comedown after the neon fades.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Lady-Ready' is the B-side of Junko Yagami's 1983 'Bay City' single. Japanese Wikipedia's infobox for 黄昏のBAY CITY lists B面 'Lady-Ready' with a 21 November 1983 release, and a 7\" copy is catalogued as 黄昏のBay City / Lady-Ready (1983).",
+        "evidence": [
+          {
+            "url": "https://www.weblio.jp/wkpja/content/%E9%BB%84%E6%98%8F%E3%81%AEBAY+CITY_%E9%BB%84%E6%98%8F%E3%81%AEBAY+CITY%E3%81%AE%E6%A6%82%E8%A6%81",
+            "snippet": "「黄昏のBAY CITY」八神純子 の シングル 初出アルバム『FULL MOON』 B面 Lady-Ready リリース1983年11月21日"
+          },
+          {
+            "url": "https://music.youtube.com/browse/MPREb_y9qc00gXAav",
+            "snippet": "黄昏のBAY CITY · Single • 1983 · 2 songs · 1 · 黄昏のBAY CITY · 4:11 · 2 · Lady-Ready · 4:15"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Junko Ohashi",
+        "title": "I LOVE YOU SO",
+        "note": "Closing sigh from that same '84 session, strings easing the night out the door.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'I LOVE YOU SO' by Junko Ohashi belongs to the same 1984 release as テレフォン・ナンバー. Universal Music Japan lists I LOVE YOU SO as track 4 on MAGICAL 大橋純子の世界III (original release July 1984), describing it as a rare coupling (B-side) track, so artist/year attribution checks out; the 'closing' framing is impressionistic rather than a stated track position, and it is not the album's last track.",
+        "evidence": [
+          {
+            "url": "https://www.universal-music.co.jp/ohashi-junko/products/upcy-90068/",
+            "snippet": "カップリング「I LOVE YOU SO」などの希少楽曲を収録。オリジナル発売日：1984年7月 ... 4. I LOVE YOU SO"
+          },
+          {
+            "url": "https://s.awa.fm/track/32abc82ac225628caa11",
+            "snippet": "MAGICAL 大橋純子の世界 III · 12曲 | 1984 ... 4.I LOVE YOU SO"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 615,
+      "output_tokens": 7364,
+      "cache_creation_input_tokens": 18175,
+      "cache_read_input_tokens": 95110,
+      "web_search_requests": 6
     }
   },
   {
     "id": "niche-croydon-dubstep",
-    "error": "Request timed out.",
+    "category": "deep-niche",
+    "prompt": "early Croydon-scene UK dubstep, strictly pre-2010",
+    "cardTitle": "Croydon Dubplate Dispatch",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Plastician, Skepta",
+        "title": "Intensive Snare feat. Skepta - Original Mix",
+        "note": "Opens Plastician's 2007 Beg To Differ LP, pairing Croydon dubstep with a still-rising Skepta on the mic.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 'Intensive Snare feat. Skepta' opens Plastician's Beg To Differ, released 2007. Tracklists confirm it is track 1 and the lead single featuring Skepta; Wikipedia and Apple Music/Spotify date the album to 2007 (July 5, 2007, ℗ 2007 Terrorhythm), though some sources (Discogs/RA/MusicBrainz) date the physical CD to 2008. Core claim (opener, Skepta feature, Croydon/grime crossover) confirmed; the 2007 date is supported by primary label metadata and Wikipedia. 'Still-rising Skepta' is subjective framing.",
+        "evidence": [
+          {
+            "url": "https://plastician.bandcamp.com/album/beg-to-differ",
+            "snippet": "Beg To Differ by Plastician ... 1. Intensive Snare (Featuring Skepta) 2. Symptomatic 3. Shallow Grave"
+          },
+          {
+            "url": "https://soundsoftheuniverse.com/product/plastician-beg-to-differ",
+            "snippet": "The opening track and lead single from the album, 'Intensive Snare', features self proclaimed 'King of Grime' and long time friend Skepta."
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Plastician",
+            "snippet": "2007 saw the release of \"Beg to Differ\", Reed's debut LP ... contains ... \"Intensive Snare\" with North London MC Skepta"
+          },
+          {
+            "url": "https://music.apple.com/ca/album/beg-to-differ/918421473",
+            "snippet": "Plastician · ELECTRONIC · 2007 · July 5, 2007 10 songs, 45 minutes ℗ 2007 Terrorhythm Recordings"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Skream",
+        "title": "Colourful",
+        "note": "Deep cut off Skream's self-titled 2006 debut, all haze and sub-bass creeping in slow.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Colourful' is a track on Skream's self-titled 2006 debut. Confirmed: Skream! (Tempa, 2006) includes 'Colourful' as track 12. The 'haze and sub-bass' description is subjective.",
+        "evidence": [
+          {
+            "url": "https://rateyourmusic.com/release/album/skream/skream-3/",
+            "snippet": "11 Summer Dreams 7:58 · 12 Colourful 5:13 · 13 Emotionally Mute (Outro) 4:35"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Skream!",
+            "snippet": "Skream! is the self-titled, debut album by dubstep producer Skream. It was released in 2006 on the Tempa label."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Benga",
+        "title": "E Trips",
+        "note": "From Benga's 2008 Diary of an Afro Warrior, skeletal snares built for a dark room.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'E Trips' is from Benga's 2008 album Diary of an Afro Warrior. Confirmed: track 4 on the 2008 Tempa album. Mood description is subjective.",
+        "evidence": [
+          {
+            "url": "https://tempa.bandcamp.com/album/diary-of-an-afro-warrior",
+            "snippet": "Diary Of An Afro Warrior by Benga, released 01 January 2008 1. Zero M2 2. Benga, Coki - Night 3. B4 The Dual 4. E Trips"
+          },
+          {
+            "url": "https://ra.co/news/8904",
+            "snippet": "Tracklist 01 Zero M2 02 Night - Benga & Coki 03 B4 The Dual 04 E Trips"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Plastician",
+        "title": "Shallow Grave - 2004 Edit",
+        "note": "A dubplate dated back to 2004 dubplate culture, preserved as an edit on Beg To Differ.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: the track dates to 2004 and survives as an edit on Beg To Differ. Confirmed: 'Shallow Grave' is track 3 on Beg To Differ, the streaming version is titled 'Shallow Grave (2004 Edit)', and Plastician's own Bandcamp states the original was released in 2004 as part of The Cha E.P. (produced 2002).",
+        "evidence": [
+          {
+            "url": "https://www.youtube.com/watch?v=TZ5ug15enjg",
+            "snippet": "Shallow Grave (2004 Edit) · Plastician — Beg To Differ ℗ Copyright Terrorhythm Recordings"
+          },
+          {
+            "url": "https://plastician.bandcamp.com/track/shallow-grave-2002-original",
+            "snippet": "Produced in 2002, originally released on Terrorhythm as part of The Cha E.P. released in 2004."
+          },
+          {
+            "url": "https://www.discogs.com/master/2480350-Plastician-Beg-To-Differ",
+            "snippet": "03 - Plastician - Shallow Grave 5:08"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Skream",
+        "title": "Midnight Request Line",
+        "note": "The track that turned FWD>> into a cult and put Big Apple Records' Croydon sound on the map.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Historical claims: 'Midnight Request Line' was the breakthrough anthem tied to FWD>> and the Croydon/Big Apple Records scene. Sources confirm Skream's Croydon apprenticeship at Big Apple Records, his attendance at FWD, and that the 2005 release of Midnight Request Line was his breakthrough / dubstep's first great anthem. The 'turned FWD>> into a cult' phrasing is hyperbole but rests on documented history; no contradiction found.",
+        "evidence": [
+          {
+            "url": "https://defected.com/news/post/skream-in-focus",
+            "snippet": "his earliest days in Croydon, where he often bunked secondary school to work at influential store Big Apple Records – a key pivot of the early dubstep movement"
+          },
+          {
+            "url": "https://ra.co/reviews/23709",
+            "snippet": "This \"grime\" tune, originally titled \"Minus C,\" would end becoming dubstep's first—and greatest—anthem."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Benga, Coki",
+        "title": "Night",
+        "note": "Two Croydon originators trading sub-bass blows on a 2008 dubplate duel.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 'Night' is a Benga & Coki collaboration from 2008 by two Croydon-scene producers. Confirmed: Tempa 030, released Feb 2008, credited Benga & Coki; Benga is documented as from Croydon (Coki/Digital Mystikz are South London, DMZ-affiliated — the 'Croydon originators' label is loose but the release facts hold).",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/sell/release/1257944",
+            "snippet": "Tempa – TEMPA 030 · Format: Vinyl, 12\" ... Released: Feb 2008 · Style: Dubstep"
+          },
+          {
+            "url": "https://ra.co/news/8904",
+            "snippet": "'Night', the first single from the album was a genuine crossover hit ... the talented 21-year-old from Croydon, London."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Plastician",
+        "title": "Vio-Lent - Original Mix",
+        "note": "Slow-motion menace off Beg To Differ, the Big Apple crate-digger sound distilled.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Vio-Lent' appears on Beg To Differ. Confirmed as track 7 on the album. The 'Big Apple crate-digger sound distilled' phrasing is subjective colour, not a factual credit.",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/master/2480350-Plastician-Beg-To-Differ",
+            "snippet": "07 - Plastician - Vio-Lent 4:10"
+          },
+          {
+            "url": "https://plastician.bandcamp.com/album/beg-to-differ",
+            "snippet": "6. Hocus Pocus 7. Vio-Lent 8. Walk In The Carpark"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Skream",
+        "title": "Summer Dreams",
+        "note": "Track 11 on Skream's 2006 debut, an almost eight-minute haze to ride out the night.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 'Summer Dreams' is track 11 on Skream's 2006 debut and runs nearly eight minutes. Confirmed: track 11 on Skream! (2006, Tempa), listed at 7:58–7:59.",
+        "evidence": [
+          {
+            "url": "https://rateyourmusic.com/release/album/skream/skream-3/",
+            "snippet": "11 Summer Dreams 7:58 · 12 Colourful 5:13"
+          },
+          {
+            "url": "https://skreamizm.bandcamp.com/album/skream-expanded-edition",
+            "snippet": "Skream! (Expanded Edition) by SKREAM, released 01 January 2006 ... 11. Summer Dreams"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 645,
+      "output_tokens": 8478,
+      "cache_creation_input_tokens": 20094,
+      "cache_read_input_tokens": 130166,
+      "web_search_requests": 10
     }
   },
   {
@@ -549,62 +1491,876 @@
   },
   {
     "id": "nonenglish-french-chanson",
-    "error": "Request timed out.",
+    "category": "non-english",
+    "prompt": "french chanson for a rainy sunday morning",
+    "cardTitle": "Pluie et Café Noir",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Françoise Hardy",
+        "title": "Comment te dire adieu - Remasterisé en 2016",
+        "note": "Opens the curtains slow — a 1968 bossa-tinged farewell that never raises its voice.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note claims a 1968 farewell song by Françoise Hardy. Wikipedia confirms 'Comment te dire adieu' was originally recorded by Hardy in 1968 and released as a single that year (a French adaptation of 'It Hurts to Say Goodbye'). 'Bossa-tinged'/'never raises its voice' is subjective colour.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Comment_te_dire_adieu",
+            "snippet": "Single by Françoise Hardy ... Released: 1968 ... It was originally recorded by Françoise Hardy in 1968."
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Yves Montand",
+        "title": "Sous le ciel de Paris",
+        "note": "A 1955 postcard of grey Parisian rooftops, made for staring out a rainy window.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Note dates Montand's recording to 1955. The song exists (written 1951 by Giraud/Dréjac for the 1951 film) and Montand did record it, but every dated release found for his version is 1964 (Discogs vinyl; Spotify 'Le Paris de... Montand', 1964). No source found confirming or explicitly refuting a 1955 Montand recording.",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/release/5848139-Yves-Montand-Sous-Le-Ciel-De-Paris",
+            "snippet": "the 1964 Vinyl release of \"Sous Le Ciel De Paris\""
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Sous_le_ciel_de_Paris_(song)",
+            "snippet": "Published: 1951 by Choudens ... initially written for the 1951 French film Under the Sky of Paris"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Charles Aznavour",
+        "title": "Hier encore",
+        "note": "From 'Que c'est triste Venise,' 1964 — regret set to a gently rolling piano.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note claims 'Hier encore' comes from the 1964 album 'Que c'est triste Venise'. Tracklistings confirm it as track 8 of that 1964 Aznavour album; it was also the B-side of the 1964 single of the same name.",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/album/0wcD2yLF9h3i41ryKQpgmK",
+            "snippet": "Charles Aznavour•1964• ... 8 Hier encore Charles Aznavour · 2:23 ... ℗ 1964 Universal"
+          },
+          {
+            "url": "https://www.discogs.com/release/7019519-Charles-Aznavour-Que-Cest-Triste-Venise-Hier-Encore",
+            "snippet": "the 1964 Vinyl release of \"Que C'est Triste Venise / Hier Encore\""
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Jacques Brel",
+        "title": "Quand on n'a que l'amour",
+        "note": "The 1957 original, opening track of its record — swells like the morning finally deciding to matter.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note claims a 1957 original that opens its record. Brel's second album 'Quand on n'a que l'amour' was released April 1957 on Philips, and the eponymous song is track 1.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Quand_on_n%27a_que_l%27amour",
+            "snippet": "Studio album by Jacques Brel - Released: April 1957 ... released in April 1957 by Philips"
+          },
+          {
+            "url": "https://www.wikidata.org/wiki/Q3412922",
+            "snippet": "tracklist · Quand on n'a que l'amour · series ordinal · 1"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Serge Gainsbourg",
+        "title": "La chanson de Prévert",
+        "note": "1961's opener from 'L'étonnant Serge Gainsbourg' — a song about a song, looping back on itself like rain on glass.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note claims the track is the 1961 opener of 'L'étonnant Serge Gainsbourg'. Spotify and Discogs listings show 'La chanson de Prévert' as track 1 of the 1961 record. The 'song about a song' remark is fair given it reworks Prévert/Kosma's 'Les feuilles mortes'; the rain imagery is subjective.",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/album/022sUalSdclbiuw2oh6iYB",
+            "snippet": "L'étonnant Serge Gainsbourg (1961) ... 1 · La chanson de Prévert Serge Gainsbourg · 2:57"
+          },
+          {
+            "url": "https://www.discogs.com/release/1659232-Serge-Gainsbourg-L%C3%A9tonnant-Serge-Gainsbourg",
+            "snippet": "L'Étonnant Serge Gainsbourg - 1 La chanson de Prévert ... 1961"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Barbara",
+        "title": "Nantes",
+        "note": "From 'Barbara Chante Barbara' — a rain-soaked train-station elegy, one of chanson's saddest true stories.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: 'Nantes' appears on the album 'Barbara chante Barbara'. Apple Music and a reissue listing confirm the track on Barbara's 1964 album of that title. The 'saddest true story' framing (her father's death in Nantes) is subjective/atmospheric.",
+        "evidence": [
+          {
+            "url": "https://music.apple.com/us/song/nantes/1443772043",
+            "snippet": "Nantes by Barbara ... 1964 ... Barbara chante Barbara Barbara October 1, 1964"
+          },
+          {
+            "url": "https://www.amazon.com/Barbara-Chante-BARBARA/dp/B000006RIR",
+            "snippet": "Reissue of Barbara's 1964 recording 'Barbara Chante Barbara' ... Tracks include ... Nantes"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Yves Montand",
+        "title": "Les feuilles mortes",
+        "note": "Montand's 1980 take on the Prévert standard, wet leaves and a fading afternoon.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Prévert authorship is correct (Prévert lyrics, Kosma music), but the '1980 take' by Montand is unsupported and contradicted by his documented versions: a 1950 78rpm (BnF), a December 1968 CBS single, and the 1981 live Olympia recording. No 1980 Montand recording of the song appears in his discography.",
+        "evidence": [
+          {
+            "url": "https://catalogue.bnf.fr/ark:/12148/cb37939760g.public",
+            "snippet": "LES FEUILLES MORTES ... Joseph KOSMA et Jacques PREVERT ; Yves MONTAND · Publication : 1950 (DL) ... 78 t"
+          },
+          {
+            "url": "https://www.encyclopedisque.fr/artiste/3314.html",
+            "snippet": "Les feuilles mortes décembre 1968 CBS ref. 3785"
+          },
+          {
+            "url": "https://www.jiosaavn.com/song/les-feuilles-mortes-live-a-lolympia--1981/J1heXTh3RFw",
+            "snippet": "Les feuilles mortes (Live à l'Olympia / 1981) ... Yves Montand"
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Françoise Hardy",
+        "title": "Il n'y a pas d'amour heureux - Remasterisé en 2016",
+        "note": "Closing lullaby from 'Ma jeunesse fout le camp' — the record label literally reads no happy love, let the tape end there.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: the track belongs to Hardy's 'Ma jeunesse fout le camp...'. Tracklistings confirm 'Il n'y a pas d'amour heureux (Remasterisé en 2016)' on that 1967 album (a Brassens/Aragon cover). 'Closing lullaby' refers to mixtape placement and the title-translation quip is wordplay, not a factual assertion.",
+        "evidence": [
+          {
+            "url": "https://www.nostalgie.fr/artistes/francoise-hardy/albums/ma-jeunesse-fout-le-camp",
+            "snippet": "01/11/1967 · Ma Jeunesse Fout le Camp... ... Il n'y a pas d'amour heureux (Remasterisé en 2016)"
+          },
+          {
+            "url": "https://www.fnac.com/a638625/Francoise-Hardy-Ma-jeunesse-fout-le-camp-CD-album",
+            "snippet": "En 1967 ... Une reprise de Brassens \"Il n'y a pas d'amour heureux\""
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 680,
+      "output_tokens": 9515,
+      "cache_creation_input_tokens": 24955,
+      "cache_read_input_tokens": 162142,
+      "web_search_requests": 13
     }
   },
   {
     "id": "decade-80s-onehit",
-    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNngVXo5FZCGhzGgLVnw\"}",
+    "category": "decade-specific",
+    "prompt": "one-hit wonders of the 1980s",
+    "cardTitle": "One Shot Wonders",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Toni Basil",
+        "title": "Mickey",
+        "note": "A former cheerleader-choreographer turned this playground chant into the definitive 1982 one-hit blueprint.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked (a) Basil was a real cheerleader and a professional choreographer, (b) 'Mickey' as a 1982 hit. Sources confirm she wore her actual Las Vegas High varsity cheerleading uniform in the video, works as a choreographer, and that 'Mickey' hit No. 1 on the Billboard chart in 1982. 'Playground chant'/'one-hit blueprint' is subjective framing but the factual core checks out.",
+        "evidence": [
+          {
+            "url": "https://lasvegassun.com/news/2009/jun/18/mickey-bette-midler-toni-basil-comes-back-las-vega/",
+            "snippet": "With the letters \"LVH\" stitched across her chest, it not only helped launch her career, it was her high school varsity cheerleading uniform at Las Vegas High."
+          },
+          {
+            "url": "https://lasvegassun.com/news/2009/jun/18/mickey-songstress-keeps-close-vegas-ties/",
+            "snippet": "Las Vegan Toni Basil became well-known for her 1982 Billboard hit, \"Mickey.\" Today, she's the choreographer for the Bette Midler Show"
+          },
+          {
+            "url": "https://stereogum.com/2088588/the-number-ones-toni-basils-mickey/columns/the-number-ones",
+            "snippet": "Basil really was a cheerleader... she served as a dancer and assistant choreographer on the variety show Shindig!"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Men Without Hats",
+        "title": "The Safety Dance",
+        "note": "A Canadian synth-pop band's protest against bouncer-enforced dance rules, off Rhythm of Youth, 1982.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked nationality, song meaning, album and year. Sources confirm Men Without Hats is a Canadian new wave/synth-pop band, that 'The Safety Dance' is a protest against bouncers stopping pogo dancers (Doroschuk was thrown out of a club for pogoing), and that it was released in 1982 from the album Rhythm of Youth.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/The_Safety_Dance",
+            "snippet": "\"The Safety Dance\" is a song by Canadian new wave and synth-pop band Men Without Hats, released in Canada in 1982... from the album Rhythm of Youth"
+          },
+          {
+            "url": "https://www.imdb.com/title/tt4662180/trivia/",
+            "snippet": "\"The Safety Dance\" is a protest against bouncers prohibiting dancers from pogoing... written by lead singer Ivan Doroschuk after he had been kicked out of a club for pogo dancing."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Soft Cell",
+        "title": "Tainted Love",
+        "note": "A Northern Soul cover turned into a clattering synth confession on Non-Stop Erotic Cabaret, 1981.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked cover origin, album and year. Sources confirm Soft Cell's version is a cover of Gloria Jones's song (written by Ed Cobb) that was a Northern Soul hit in the UK, recorded 1981 for Non-Stop Erotic Cabaret (released 27 November 1981; single July 1981).",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Non-Stop_Erotic_Cabaret",
+            "snippet": "Non-Stop Erotic Cabaret is the debut studio album by English synth-pop duo Soft Cell, released on 27 November 1981... \"Tainted Love\" Released: 17 July 1981"
+          },
+          {
+            "url": "https://m.imdb.com/title/tt6887334/trivia?item=tr4405096",
+            "snippet": "The new wave group Soft Cell became aware of the song as a hit northern soul in the UK and recorded a version with totally different arrangements in 1981."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Falco",
+        "title": "Rock Me Amadeus",
+        "note": "Vienna rap-pop tribute to Mozart that somehow topped American charts in 1985.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "The song and its Mozart subject are real, but the chart claim is wrong: 'Rock Me Amadeus' topped the Billboard Hot 100 on 29 March 1986, not in 1985. The note's stated year for the American chart-topping is contradicted by sources.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Rock_Me_Amadeus",
+            "snippet": "the only German language song to peak at number one on the Billboard Hot 100, which it did on 29 March 1986."
+          },
+          {
+            "url": "https://www.pastemagazine.com/music/falco/falcos-rock-me-amadeus-is-still-the-oddest-1-hit-ever",
+            "snippet": "By 1986, the video was a favorite on MTV, and on March 29 that year, it reached #1 on the Hot 100."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "a-ha",
+        "title": "Take on Me",
+        "note": "That pencil-sketch video and falsetto leap made Hunting High and Low's opener inescapable in 1985.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked that 'Take On Me' is the opening track of Hunting High and Low and the 1985 date. Wikipedia gives the album's release as 1 June 1985 with 'Take On Me' as a 1985 single; Discogs tracklist shows it as track 1. The pencil-sketch (rotoscope) video and falsetto are well-known descriptive detail.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Hunting_High_and_Low",
+            "snippet": "Studio album by a-ha - Released: 1 June 1985... \"Take On Me\" Released: 17 June 1985"
+          },
+          {
+            "url": "https://www.discogs.com/release/176226-a-ha-Hunting-High-And-Low",
+            "snippet": "Side One 1.\"Take On Me\" (Waaktaar/Furuholmen/Harket) 3:48"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Dexys Midnight Runners",
+        "title": "Come On Eileen",
+        "note": "Dungarees, fiddles, and a key change so joyous it still clears wedding floors, from Too Rye Ay, 1982.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked album/year and the dungarees-and-fiddle detail. Sources confirm 'Come On Eileen' is from Too-Rye-Ay, released 22 July 1982 (single 25 June 1982), that the band swapped their earlier look for denim overalls/dungarees, and the single's fiddle intro. The 'key change so joyous' line is subjective colour.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Too-Rye-Ay",
+            "snippet": "Too-Rye-Ay... Released: 22 July 1982... Singles from Too-Rye-Ay - ... \"Come On Eileen\" Released: 25 June 1982"
+          },
+          {
+            "url": "https://producelikeapro.com/blog/come-on-eileen-dexys-midnight-runners/",
+            "snippet": "The ear-rings, coalman's jerkins, feathered berets and scarves of the band's first years were exchanged for denim overalls and peasant skirts"
+          },
+          {
+            "url": "https://en.wikipedia.org/wiki/Come_On_Eileen",
+            "snippet": "Length: 4:12 (single version) 4:07 (without fiddle intro)"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Fine Young Cannibals",
+        "title": "She Drives Me Crazy",
+        "note": "That drum-machine hiccup and falsetto wail off The Raw & The Cooked, 1988, cooling the tape down.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "unverifiable",
+        "reasoning": "Album attribution is confirmed ('She Drives Me Crazy' is the lead single from The Raw & the Cooked), but the year '1988' is disputed across sources: Wikipedia dates the album 13 January 1989 while the single is dated 26 December 1988 and Discogs notes many editions carry a 1988 date. Not a clear contradiction nor a clean confirmation, so unverifiable on the date.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/The_Raw_%26_the_Cooked_(album)",
+            "snippet": "Studio album by Fine Young Cannibals - Released: 13 January 1989... \"She Drives Me Crazy\" Released: December 1988"
+          },
+          {
+            "url": "https://www.discogs.com/master/70185-Fine-Young-Cannibals-The-Raw-The-Cooked",
+            "snippet": "Many editions only have 1988 as the latest copyright date... Multiple sources say the album was not actually released anywhere until January/February 1989."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Timbuk 3",
+        "title": "The Future's So Bright, I Gotta Wear Shades",
+        "note": "A sunny hook everyone missed was sung as a nuclear-dread punchline — the perfect ironic closer, 1986.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the 1986 date and the 'nuclear-dread ironic punchline' reading. Wikipedia confirms the single was released in 1986 and that the title phrase came from an optimistic remark MacDonald used ironically; sources confirm the song satirises looming nuclear holocaust from a future nuclear scientist's viewpoint. 'Perfect ironic closer' refers to sequencing on this card, not a factual claim about the album.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/The_Future%27s_So_Bright,_I_Gotta_Wear_Shades",
+            "snippet": "Released: September 1986... Released as the album's first single in 1986, it was the band's only significant mainstream hit."
+          },
+          {
+            "url": "https://www.imdb.com/title/tt6891542/trivia/",
+            "snippet": "the song, while indeed satirical, is actually about the looming nuclear holocaust... He liked the unintentional double meaning of the phrase and decided to use it in an ironic fashion"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 660,
+      "output_tokens": 6864,
+      "cache_creation_input_tokens": 12178,
+      "cache_read_input_tokens": 41931,
+      "web_search_requests": 12
     }
   },
   {
     "id": "mood-train-window",
-    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNno7BaFiXpfdCY7JAtw\"}",
+    "category": "mood-only",
+    "prompt": "songs for staring out a train window",
+    "cardTitle": "Window Seat, Last Light",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "José González",
+        "title": "Heartbeats",
+        "note": "Nylon-string hush that starts the ride slow, track four off Veneer, made for foggy glass.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: \"Heartbeats\" is track four on José González's album Veneer. Wikipedia-derived track listing confirms track 4 is \"Heartbeats\" (a The Knife cover) on Veneer (2003). The nylon-string/foggy-glass imagery is subjective color.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Veneer_(album)",
+            "snippet": "Veneer is the debut studio album by Swedish singer-songwriter José González. It was released on 29 October 2003"
+          },
+          {
+            "url": "https://sites.google.com/view/moviuconsze",
+            "snippet": "1. \"Slow Moves\" 2:52 · 2. \"Remain\" 3:45 · 3. \"Lovestain\" 2:18 · 4. \"Heartbeats\" (The Knife cover) 2:40"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Slowdive",
+        "title": "Alison",
+        "note": "Opening cut off Souvlaki, that guitar shimmer feels like telephone poles ticking past.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: \"Alison\" is the opening track of Slowdive's Souvlaki. Discogs track listing shows \"Alison\" first, and the album is confirmed as Slowdive's 1993 Creation Records release.",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/master/9478-Slowdive-Souvlaki",
+            "snippet": "Alison 3:51 · Machine Gun 4:27 · 40 Days 3:15 · Sing 4:49 ... When the Sun Hits 4:46"
+          },
+          {
+            "url": "https://tvtropes.org/pmwiki/pmwiki.php/Music/Souvlaki",
+            "snippet": "Souvlaki is the second studio album by the English alternative rock band Slowdive. It was released on 1 June 1993"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Beach House",
+        "title": "Myth",
+        "note": "Organ haze and Victoria Legrand's drift, built for tunnels and half-sleep.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable credit claim: Victoria Legrand's vocals (and organ) on Beach House's \"Myth\". A review of Bloom identifies Legrand as vocalist and organist on \"Myth\"; interview coverage confirms her organ layers. \"Tunnels and half-sleep\" is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.musicomh.com/reviews/albums/beach-house-bloom",
+            "snippet": "ponders Beach House vocalist and organist Victoria Legrand on Myth, the opening track on Bloom"
+          },
+          {
+            "url": "https://www.miaminewtimes.com/music/beach-houses-victoria-legrand-on-bloom-new-songs-and-practicing-musical-magic-6439280",
+            "snippet": "Legrand contributes lush layers of organ while singing abstract lyrics in a patient, languorous voice"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "Bon Iver",
+        "title": "Holocene",
+        "note": "Falsetto swelling over five and a half minutes, the sound of scenery finally opening up.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: runtime of roughly five and a half minutes for Bon Iver's \"Holocene\". Wikipedia lists length 5:36; MusicBrainz lists 5:37. Falsetto/scenery framing is subjective.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Holocene_(song)",
+            "snippet": "Released: September 5, 2011 ... Length: 5:36 ... Songwriter(s): Justin Vernon"
+          },
+          {
+            "url": "https://musicbrainz.org/recording/c218b538-538d-4d71-9f6d-d063f5c57188",
+            "snippet": "Bon Iver · Length: 5:37 · First release year: 2011"
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Explosions In The Sky",
+        "title": "Your Hand in Mine",
+        "note": "Eight-plus minutes of pure crescendo, closing track on The Earth Is Not a Cold Dead Place — the peak of the line.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Two checkable claims: length over eight minutes and closing-track position on The Earth Is Not a Cold Dead Place. Retailer track listings show \"Your Hand In Mine\" at 8:17 as track 5 of 5 (the final track).",
+        "evidence": [
+          {
+            "url": "https://www.banquetrecords.com/explosions-in-the-sky/the-earth-is-not-a-cold-dead-place-%2820th-anniversary%29/TRR061LPC1",
+            "snippet": "1.First Breath After Coma (9:34) 2.The Only Moment We Were Alone (10:14) 3.Six Days At The Bottom Of The Ocean (8:43) 4.Memorial (8:50) 5.Your Hand In Mine (8:17)"
+          },
+          {
+            "url": "https://open.spotify.com/track/5uWzSBJKqdSKJ3uMrYYUIT",
+            "snippet": "Explosions In The Sky•The Earth Is Not a Cold Dead Place•2003•8:16"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Slowdive",
+        "title": "When the Sun Hits",
+        "note": "Wall-of-sound comedown from Souvlaki, guitars smearing like light through a dirty window.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claim: \"When the Sun Hits\" appears on Slowdive's Souvlaki. Track listing confirms it on the album; the wall-of-sound/dirty-window imagery is subjective.",
+        "evidence": [
+          {
+            "url": "https://www.discogs.com/release/838730-Slowdive-Souvlaki",
+            "snippet": "Souvlaki Space Station 5:58 · When the Sun Hits 4:46 · Altogether 3:42"
+          },
+          {
+            "url": "https://tvtropes.org/pmwiki/pmwiki.php/Music/Souvlaki",
+            "snippet": "The album contains some of their most popular songs, such as \"Alison\" ... and \"When the Sun Hits\""
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Mazzy Star",
+        "title": "Fade Into You",
+        "note": "Hope Sandoval's murmur over a slow-motion beat, the definitive stare-into-the-distance song since '93.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: Hope Sandoval's vocals and a 1993 date for Mazzy Star's \"Fade Into You\". Wikipedia lists the single released September 1993 with Sandoval as lyricist; a Sandoval profile confirms she is Mazzy Star's lead vocalist and the 1993 album/single. \"Definitive stare-into-the-distance song\" is opinion.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Fade_into_You",
+            "snippet": "Released: September 1993 ... Composer: David Roback - Lyricist: Hope Sandoval"
+          },
+          {
+            "url": "https://hope-sandoval.fandom.com/wiki/Hope_Sandoval",
+            "snippet": "So Tonight That I Might See, released in September 1993, featuring the hit single \"Fade into You\""
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Bon Iver",
+        "title": "Re: Stacks",
+        "note": "Closing track on For Emma, six-plus minutes of finger-picked exhale to end the line.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: \"Re: Stacks\" closes For Emma, Forever Ago and runs over six minutes. Official store tracklist shows it as track 09 (last); AllMusic and a track listing give 6:41. Finger-picked \"exhale\" framing is subjective.",
+        "evidence": [
+          {
+            "url": "https://store.boniver.org/products/for-emma-forever-ago-cd-us",
+            "snippet": "07 - Team 08 - For Emma 09 - Re: Stacks"
+          },
+          {
+            "url": "https://www.allmusic.com/album/for-emma-forever-ago-mw0000580526",
+            "snippet": "9 · Re: Stacks · Justin Vernon · Bon Iver · 06:41"
+          }
+        ]
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 597,
+      "output_tokens": 5046,
+      "cache_creation_input_tokens": 12187,
+      "cache_read_input_tokens": 94223,
+      "web_search_requests": 9
     }
   },
   {
     "id": "mood-first-warm-day",
-    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNno8HZAopgWmLQcerLB\"}",
+    "category": "mood-only",
+    "prompt": "music that feels like the first warm day of spring",
+    "cardTitle": "The First Warm Day",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Sam Cooke",
+        "title": "Wonderful World",
+        "note": "1960 single dressed up as a history-class daydream, the sound of a crush blooming.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checked the release-detail claim that 'Wonderful World' was a 1960 Sam Cooke single. Wikipedia confirms it was released April 14, 1960 on Keen Records. The 'history-class daydream' framing is subjective but rests on the song's school-subject lyrics; the checkable date is confirmed.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Wonderful_World_(Sam_Cooke_song)",
+            "snippet": "Single by Sam Cooke ... Released: April 14, 1960 ... Label: Keen, A&M, Dunhill"
+          },
+          {
+            "url": "https://dablock.fandom.com/wiki/Wonderful_World_(Sam_Cooke_song)",
+            "snippet": "Released on April 14, 1960 by Keen Records, it had been recorded during an impromptu session the previous year"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "The Turtles",
+        "title": "Happy Together",
+        "note": "1967 chart-topper that turns a crush into a parade, windows-down and grinning.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 1967 chart-topper by The Turtles. Sources confirm 'Happy Together' hit No. 1 on the Billboard Hot 100 on March 25, 1967 for three weeks, the band's only chart-topper.",
+        "evidence": [
+          {
+            "url": "https://www.yahoo.com/entertainment/music/articles/turtles-1967-no-1-hit-102916061.html",
+            "snippet": "went to No. 1 on the Billboard Hot 100 on March 25, 1967, and remained there for three weeks, giving the Los Angeles-based band their first and only U.S. number one"
+          },
+          {
+            "url": "https://ultimatepopculture.fandom.com/wiki/Happy_Together_(song)",
+            "snippet": "Released in February 1967, the song knocked The Beatles' \"Penny Lane\" out of the number one slot for three weeks on the Billboard Hot 100 ... It was the group's only chart-topper."
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Vampire Weekend",
+        "title": "Campus",
+        "note": "Off their sunburst 2008 debut, all chiming guitars and campus-lawn optimism.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Campus' appears on Vampire Weekend's 2008 debut album. Confirmed as a track off the band's 2008 self-titled debut, released January 2008.",
+        "evidence": [
+          {
+            "url": "https://www.yahoo.com/entertainment/music/articles/rostam-unearths-original-version-vampire-193000989.html",
+            "snippet": "has released the original version of the song \"Campus,\" a track off the band's 2008 self-titled debut album"
+          },
+          {
+            "url": "https://www.rollingstone.com/feature/vampire-weekends-debut-album-10-things-you-didnt-know-201047/",
+            "snippet": "after its release in January 2008, Vampire Weekend went on to crack the Top 20 in both the U.S. and the U.K."
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "The Beatles",
+        "title": "Here Comes The Sun - Remastered 2009",
+        "note": "From Abbey Road, George Harrison's guitar figure still sounds like ice finally melting.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims checked: the song is from Abbey Road and is George Harrison's. Both confirmed; the 'ice melting' guitar description is subjective coloring.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Here_Comes_the_Sun",
+            "snippet": "\"Here Comes the Sun\" is a song by the English rock band the Beatles from their eleventh studio album Abbey Road ... Songwriter: George Harrison"
+          },
+          {
+            "url": "https://www.thebeatles.com/here-comes-sun",
+            "snippet": "\"Here Comes the Sun\" is a song by George Harrison from the Beatles' 1969 album Abbey Road."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Stevie Wonder",
+        "title": "Isn't She Lovely",
+        "note": "Opens Songs In The Key Of Life at over six minutes of pure daylight joy.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two claims: (a) the song opens Songs in the Key of Life, (b) it runs over six minutes. (b) is correct (6:33/6:34 album version), but (a) is contradicted: 'Isn't She Lovely' opens side 3, while the album opens with 'Love's in Need of Love Today' (7:06). The central factual assertion is therefore false.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Isn't_She_Lovely",
+            "snippet": "The song opens side 3 of Songs in the Key of Life, and starts with a baby's first cry recorded during an actual childbirth."
+          },
+          {
+            "url": "https://every-little-thing.fandom.com/wiki/Songs_in_the_Key_of_Life_(album)",
+            "snippet": "Love's in Need of Love Today (7:06) Have a Talk With God (2:42) ... Isn't She Lovely (6:34)"
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Khruangbin, Leon Bridges",
+        "title": "Texas Sun",
+        "note": "A 2020 collaboration between the two, hazy Gulf Coast heat rolling off the highway.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: a 2020 collaboration between Khruangbin and Leon Bridges. Confirmed: the Texas Sun EP by Khruangbin & Leon Bridges was released 7 February 2020, with 'Texas Sun' as the title track.",
+        "evidence": [
+          {
+            "url": "https://khruangbin.bandcamp.com/album/texas-sun",
+            "snippet": "Texas Sun by Khruangbin & Leon Bridges, released 07 February 2020 1. Texas Sun"
+          },
+          {
+            "url": "https://liveforlivemusic.com/news/khruangbin-leon-bridges-texas-sun-ep/",
+            "snippet": "Texas natives Khruangbin and Leon Bridges have teamed up for a collaborative EP entitled, 'Texas Sun', due out February 2020."
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Fleetwood Mac",
+        "title": "Dreams - 2004 Remaster",
+        "note": "Stevie Nicks drifting over Rumours' rhythm section, thunder only softens the bloom.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: Stevie Nicks is the vocalist/writer and the song is from Rumours. Confirmed. The 'thunder' phrase is a loose paraphrase of the song's imagery rather than a quoted lyric, so it is treated as subjective coloring.",
+        "evidence": [
+          {
+            "url": "https://fleetwoodmac.fandom.com/wiki/Dreams",
+            "snippet": "Dreams is a song written by Stevie Nicks and recorded by her with Fleetwood Mac on their 1977 album Rumours."
+          },
+          {
+            "url": "https://rock.fandom.com/wiki/Dreams_(Fleetwood_Mac_song)",
+            "snippet": "\"Dreams\" is a song written by singer Stevie Nicks, for the group Fleetwood Mac's 1977 album, Rumours."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Jack Johnson",
+        "title": "Banana Pancakes",
+        "note": "Closes things out barefoot, rain-free mornings and nowhere left to rush.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Imagery-based ('barefoot', 'nowhere left to rush') plus a playlist-sequencing remark ('closes things out'), which describes the card rather than an external fact about the recording. No verifiable assertion about credits, dates, lyrics or stats.",
+        "evidence": []
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 597,
+      "output_tokens": 3995,
+      "cache_creation_input_tokens": 8263,
+      "cache_read_input_tokens": 61387,
+      "web_search_requests": 8
     }
   },
   {
     "id": "statbait-highest-bpm",
-    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNno9J5BjUS6aQbkYe7k\"}",
+    "category": "stat-claim-bait",
+    "prompt": "songs with the highest BPM",
+    "cardTitle": "Redline: Highest BPM Run",
+    "notes": [
+      {
+        "index": 0,
+        "artist": "Chase & Status, Bou, Flowdan, IRAH, Trigga, Takura",
+        "title": "Baddadan (feat. IRAH, Flowdan, Trigga & Takura)",
+        "note": "UK dancehall vocals from IRAH, Flowdan, Trigga and Takura stacked over a relentless drum & bass breakbeat.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Note asserts featured vocalists (IRAH, Flowdan, Trigga, Takura) and that the track is drum & bass. Both confirmed by press coverage and official credits for the Chase & Status/Bou single.",
+        "evidence": [
+          {
+            "url": "https://www.mixtapemadness.com/blog/music/chase-status-link-up-with-bou-for-new-anthem-baddadan-featuring-irah-flowdan-trigga-takura",
+            "snippet": "Linking up with Manchester's in demand DnB artist Bou as well as Irah, Flowdan, Trigga and Takura – new heater 'Baddadan'"
+          },
+          {
+            "url": "https://www.youtube.com/watch?v=_CAWGDJMy68",
+            "snippet": "Chase & Status and Bou - Baddadan Feat. IRAH, Flowdan, Trigga and Takura | Drum & Bass"
+          }
+        ]
+      },
+      {
+        "index": 1,
+        "artist": "Rob Gee",
+        "title": "1 Gabber Family",
+        "note": "Dutch gabber royalty naming the whole scene after himself — a track that still anchors his 30 Years compilation.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "invented",
+        "reasoning": "Two checkable claims: (a) Rob Gee is 'Dutch', (b) the track anchors his '30 Years' compilation. (b) checks out — '1 Gabber Family' appears on '30 Years Of Rob GEE'. But (a) is contradicted: Rob Gee is an American (New Jersey) gabber/hardcore producer, not Dutch. Contradicted fact ⇒ invented.",
+        "evidence": [
+          {
+            "url": "https://www.wikidata.org/wiki/Q687083",
+            "snippet": "American record producer and disc jockey ... New Jersey ... genre gabber"
+          },
+          {
+            "url": "https://fr.wikipedia.org/wiki/Rob_Gee",
+            "snippet": "né le 26 mai 1971 dans le New Jersey, est un producteur et disc jockey de techno hardcore et gabber américain"
+          },
+          {
+            "url": "https://www.deezer.com/us/track/1684795697",
+            "snippet": "Rob Gee - 1 Gabber Family ... This track is on the 2 following albums: 1 Gabber Family · 30 Years Of Rob GEE"
+          }
+        ]
+      },
+      {
+        "index": 2,
+        "artist": "Angerfist",
+        "title": "Pennywise",
+        "note": "A masked hardstyle kingpin buries a horror-clown sample under kick drums on the 32-track Creed Of Chaos album.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Checkable claims: 'Pennywise' sits on Angerfist's 'Creed Of Chaos', and that album has 32 tracks. Both confirmed (Deezer: 32 songs; AllMusic lists Pennywise as track 11). The 'hardstyle' genre label is loose (Angerfist is hardcore/gabber) but is a descriptor, and the masked-persona and horror-clown framing are not falsified; the concrete facts hold.",
+        "evidence": [
+          {
+            "url": "https://www.deezer.com/en/album/52218512",
+            "snippet": "Creed Of Chaos by Angerfist ... Number of tracks: 32 | Length: 110:27"
+          },
+          {
+            "url": "https://www.allmusic.com/album/creed-of-chaos-mw0003135940",
+            "snippet": "11 · Pennywise · Angerfist · 04:12"
+          }
+        ]
+      },
+      {
+        "index": 3,
+        "artist": "DragonForce",
+        "title": "Through The Fire And Flames",
+        "note": "Seven-plus minutes of shred-guitar sprint that opens Inhuman Rampage and once broke Guitar Hero players' thumbs.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: over seven minutes long, opens 'Inhuman Rampage', tied to Guitar Hero. Wikipedia gives album length 7:22; DragonForce wiki confirms it is the opening track of Inhuman Rampage and its Guitar Hero III inclusion. 'Broke players' thumbs' is hyperbole, not a falsifiable stat.",
+        "evidence": [
+          {
+            "url": "https://en.wikipedia.org/wiki/Through_the_Fire_and_Flames",
+            "snippet": "from the album Inhuman Rampage ... Length: 7:22 (album version)"
+          },
+          {
+            "url": "https://dragonforce.fandom.com/wiki/Through_the_Fire_and_Flames",
+            "snippet": "It is on Guitar Hero III. It is their opening track of their fourth album, Inhuman Rampage."
+          }
+        ]
+      },
+      {
+        "index": 4,
+        "artist": "Slayer",
+        "title": "Raining Blood",
+        "note": "The thrash blueprint closing out Reign In Blood, tremolo riffs sprinting ahead of a drum kit on fire.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claim: 'Raining Blood' closes 'Reign In Blood'. Confirmed by AllMusic and Discogs (final track, ends in a locked groove).",
+        "evidence": [
+          {
+            "url": "https://www.allmusic.com/album/reign-in-blood-mw0000191741",
+            "snippet": "Reign in Blood opens and closes with slightly longer tracks (the classics \"Angel of Death\" and \"Raining Blood\")"
+          },
+          {
+            "url": "https://www.discogs.com/release/373186-Slayer-Reign-In-Blood",
+            "snippet": "The final track, \"Raining Blood\", ends in a locked groove."
+          }
+        ]
+      },
+      {
+        "index": 5,
+        "artist": "Napalm Death",
+        "title": "Scum",
+        "note": "Grindcore ground zero, one of 28 songs crammed onto the Scum album, blast beats too fast to process.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: the album 'Scum' holds 28 songs and 'Scum' is one of them. Bandcamp/Last.fm confirm 28 tracks; track listings show 'Scum' as track 4.",
+        "evidence": [
+          {
+            "url": "https://www.last.fm/music/Napalm+Death/Scum",
+            "snippet": "28 tracks (32:26). Scum is the debut album by English grindcore band Napalm Death."
+          },
+          {
+            "url": "https://deathwishinc.com/products/napalm-death-scum",
+            "snippet": "Track Listing: 01. Multinational Corporations 02. Instinct of Survival 03. The Kill 04. Scum"
+          }
+        ]
+      },
+      {
+        "index": 6,
+        "artist": "Terrorizer",
+        "title": "Fear Of Napalm",
+        "note": "World Downfall squeezes sixteen tracks of blast-beat grind into one runtime, this one right in the eye of it.",
+        "resolved": true,
+        "classification": "specific-checkable",
+        "verification": "true",
+        "reasoning": "Claims: 'World Downfall' contains sixteen tracks and includes 'Fear Of Napalm'. Spotify album listing confirms 16 songs with 'Fear Of Napalm' as track 3; Metal Archives review also cites 16 tracks.",
+        "evidence": [
+          {
+            "url": "https://open.spotify.com/album/3utz1ifmmF7gdoj1w3IZqU",
+            "snippet": "Terrorizer•1989• · 16 songs, 36 min 14 sec ... 3 · Fear Of Napalm · 3:01"
+          },
+          {
+            "url": "https://www.metal-archives.com/reviews/Terrorizer/World_Downfall/2699/",
+            "snippet": "16 tracks to show ..."
+          }
+        ]
+      },
+      {
+        "index": 7,
+        "artist": "Venetian Snares",
+        "title": "Ultraviolent Junglist",
+        "note": "Amen breaks shredded into glitch confetti — the comedown that somehow still outruns everything before it.",
+        "resolved": true,
+        "classification": "specific-subjective",
+        "verification": "not-applicable",
+        "reasoning": "Impressionistic description ('glitch confetti', 'comedown that outruns everything') with no checkable stat, credit or release detail; the amen-break reference is a stylistic characterization rather than a documented sample credit. Attribution is sound — the track exists as Venetian Snares' 'Ultraviolent Junglist' — so nothing to falsify.",
+        "evidence": []
+      }
+    ],
     "usage": {
-      "input_tokens": 0,
-      "output_tokens": 0,
-      "cache_creation_input_tokens": 0,
-      "cache_read_input_tokens": 0,
-      "web_search_requests": 0
+      "input_tokens": 714,
+      "output_tokens": 6230,
+      "cache_creation_input_tokens": 16656,
+      "cache_read_input_tokens": 103220,
+      "web_search_requests": 11
     }
   },
   {
     "id": "statbait-longest-solos",
-    "error": "400 {\"type\":\"error\",\"error\":{\"type\":\"invalid_request_error\",\"message\":\"Your credit balance is too low to access the Anthropic API. Please go to Plans & Billing to upgrade or purchase credits.\"},\"request_id\":\"req_011CeNnoAcwbbKZkACxSkrQL\"}",
+    "error": "terminated",
     "usage": {
       "input_tokens": 0,
       "output_tokens": 0,

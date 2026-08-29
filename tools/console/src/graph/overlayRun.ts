@@ -20,8 +20,28 @@ export function runBounds(m: RunManifest): { start: number; end: number } {
   return { start, end: Math.max(end, ...es) }
 }
 
-/** The state of one agent at wall-clock `t` (undefined = the manifest's final word). */
-export function stateAt(a: WorkflowAgentEntry, t?: number): NodeState {
+/** An agent's label, or `agent <index>` when the journal wrote none. */
+export function labelOf(a: WorkflowAgentEntry): string {
+  return a.label ?? (a.index != null ? `agent ${a.index}` : 'agent')
+}
+
+/**
+ * The state of one agent at wall-clock `t` (undefined = the manifest's final
+ * word). `stalled` is the run's verdict (isStalled): past the last thing the
+ * agent wrote (or with no clock at all), an unfinished agent of a stale run
+ * is `stalled`, not running — nobody will ever settle it. Scrubbing back into
+ * its active window still shows it running; that happened.
+ */
+export function stateAt(a: WorkflowAgentEntry, t?: number, stalled?: boolean): NodeState {
+  const s = clockState(a, t)
+  if (stalled && (s === 'running' || s === 'queued')) {
+    const end = agentEnd(a)
+    if (t == null || end == null || t >= end) return 'stalled'
+  }
+  return s
+}
+
+function clockState(a: WorkflowAgentEntry, t?: number): NodeState {
   const final = finalState(a)
   if (t == null) return final
   const q = a.queuedAt ?? a.startedAt
@@ -50,22 +70,41 @@ function segments(label: string): string[] {
 }
 
 /**
+ * A run whose trail went cold: the plugin says `stale` (nothing on disk moved
+ * for 15 min), or `running` with `live: false`. Its unfinished agents are not
+ * running — nobody will ever settle them.
+ */
+export function isStalled(m: RunManifest | undefined): boolean {
+  return !!m && (m.status === 'stale' || (m.status === 'running' && m.live === false))
+}
+
+/**
  * Overlay a run onto a static graph. Agents match nodes by label; a template
  * node (`review:*`) is replaced by every agent whose label starts with its
  * prefix, inheriting its edges; agents nobody names are added under their
  * phase, wired by shared label segments or, failing that, fanned in from the
- * previous non-empty phase. `t` scrubs the replay clock.
+ * previous non-empty phase. `t` scrubs the replay clock. The script's meta
+ * (description, whenToUse, phase details, outcomes) rides along; a run's own
+ * `phases[].detail` wins over the script's.
  */
 export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: number): RunGraph {
   const nodes: GraphNode[] = graph.nodes.map((n) => ({ ...n }))
   let edges: GraphEdge[] = graph.edges.map((e) => ({ ...e }))
   const phases = [...graph.phases]
+  const addedPhases: string[] = [] // what the run names that the script does not
+  const phaseDetails: Record<string, string> = { ...graph.phaseDetails }
   const info: Record<string, NodeRunInfo> = {}
   const byId = () => new Map(nodes.map((n) => [n.id, n]))
+  const stalled = isStalled(manifest)
+  const addPhase = (title: string) => { if (!phases.includes(title)) { phases.push(title); addedPhases.push(title) } }
 
   const agents = manifest ? agentsOf(manifest) : []
-  for (const p of manifest?.phases ?? []) if (p.title && !phases.includes(p.title)) phases.push(p.title)
-  for (const a of agents) if (a.phaseTitle && !phases.includes(a.phaseTitle)) phases.push(a.phaseTitle)
+  for (const p of manifest?.phases ?? []) {
+    if (!p.title) continue
+    addPhase(p.title)
+    if (p.detail) phaseDetails[p.title] = p.detail
+  }
+  for (const a of agents) if (a.phaseTitle) addPhase(a.phaseTitle)
 
   const matched = new Map<string, WorkflowAgentEntry[]>()
   const unmatched: WorkflowAgentEntry[] = []
@@ -108,7 +147,7 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
   }
 
   for (const a of unmatched) {
-    const label = a.label ?? `agent ${a.index ?? '?'}`
+    const label = labelOf(a)
     const id = nodeId(label)
     if (!byId().has(id)) {
       const phase = a.phaseTitle ?? phases[(a.phaseIndex ?? 1) - 1] ?? phases[0] ?? ''
@@ -132,7 +171,7 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
     const cur = visible[visible.length - 1]
     if (cur) {
       info[n.id] = {
-        state: stateAt(cur, t),
+        state: stateAt(cur, t, stalled),
         model: cur.model,
         attempt: Math.max(...visible.map((a) => a.attempt ?? 1)),
         tokens: cur.tokens,
@@ -157,7 +196,13 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
     seen.add(k)
     return true
   })
-  return { name: graph.name ?? manifest?.workflowName, phases, nodes, edges, info }
+  const out: RunGraph = { name: graph.name ?? manifest?.workflowName, phases, nodes, edges, info }
+  if (addedPhases.length) out.addedPhases = addedPhases
+  if (graph.description) out.description = graph.description
+  if (graph.whenToUse) out.whenToUse = graph.whenToUse
+  if (Object.keys(phaseDetails).length) out.phaseDetails = phaseDetails
+  if (graph.outcomes) out.outcomes = graph.outcomes
+  return out
 }
 
 function elapsedAt(a: WorkflowAgentEntry, t: number): number | undefined {

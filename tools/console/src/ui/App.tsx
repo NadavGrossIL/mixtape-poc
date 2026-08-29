@@ -1,25 +1,30 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
-import { graphFor, overlayRun, runBounds } from '../graph'
-import { Workflows, cardsFrom } from './Workflows'
+import { graphFor, isStalled, overlayRun, runBounds } from '../graph'
+import { Workflows, cardsFrom, runForms, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Replay, type ReplayState } from './Replay'
 import { NodePanel } from './NodePanel'
-import { fmtDuration, fmtTokens, fmtUsd, projectTag, dash } from './format'
+import { dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, specOf, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
+
+const COPY = {
+  runNote: 'The console never starts a run. Paste one of these in a terminal; the driver writes the RUNS.md row.',
+} as const
 
 export function App() {
   const [files, setFiles] = useState<WorkflowFile[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
   const [ledger, setLedger] = useState<Ledger>({})
-  const [meta, setMeta] = useState<{ projectDirs?: string[]; exists?: boolean }>({})
+  const [meta, setMeta] = useState<ConsoleMeta>({})
   const [error, setError] = useState<string>()
   const [workflow, setWorkflow] = useState<string>()
   const [runId, setRunId] = useState<string>()
   const [replay, setReplay] = useState<ReplayState>({ playing: false, speed: 20 })
   const [selected, setSelected] = useState<string>()
+  const [railOpen, setRailOpen] = useState(true) // false = the rail is a strip of dots while the panel is open
   const [conn, setConn] = useState<Conn>('connecting')
   const [tick, setTick] = useState(0) // journal events; the node panel reloads an open transcript on it
   const [now, setNow] = useState(() => Date.now())
@@ -48,76 +53,176 @@ export function App() {
   }, [loadFiles, loadRuns, loadLedger])
 
   const cards = useMemo(() => cardsFrom(files, runs), [files, runs])
-  const skills = useMemo(() => files.filter((f) => f.kind === 'skill'), [files])
   const card = cards.find((c) => c.name === workflow)
   const wfRuns = useMemo(() => runs.filter((r) => (r.workflowName ?? 'unnamed') === workflow), [runs, workflow])
   const run = runs.find((r) => r.runId === runId) ?? wfRuns[0]
   const live = !!run?.live
+  const stalled = isStalled(run)
   const bounds = useMemo(() => (run ? runBounds(run) : { start: 0, end: 0 }), [run])
   const total = bounds.end - bounds.start
   // A live run follows "now": the scrubber is ignored (and hidden) until it finishes.
-  const t = live || replay.pos == null ? undefined : bounds.start + replay.pos
+  // At or past the end of the replay the manifest's final word is shown, not the
+  // clock's — an agent whose end lies after the run's own `durationMs` would
+  // otherwise read RUNNING forever (A6).
+  const t = live || replay.pos == null || replay.pos >= total ? undefined : bounds.start + replay.pos
   const graph = useMemo(() => overlayRun(graphFor(card?.file, run), run, t), [card, run, t])
   const selectedNode = graph.nodes.find((n) => n.id === selected)
 
+  // The clock ticks every second while something is live (the selected run on the
+  // canvas, or any card's last run on the workflows screen); otherwise every 30 s so
+  // "2h ago" and "last progress 9m ago" stay honest.
+  const ticking = live || (!workflow && cards.some((c) => isLive(c.lastRun)))
   useEffect(() => {
-    if (!live) return
-    const id = setInterval(() => setNow(Date.now()), 1000)
+    const id = setInterval(() => setNow(Date.now()), ticking ? 1000 : 30_000)
     return () => clearInterval(id)
-  }, [live])
+  }, [ticking])
 
-  const open = (name: string) => { setWorkflow(name); setRunId(undefined); setReplay({ playing: false, speed: 20 }); setSelected(undefined) }
+  const open = (name: string) => { setWorkflow(name); setRunId(undefined); setReplay({ playing: false, speed: 20 }); setSelected(undefined); setRailOpen(true) }
   const pickRun = (id: string) => {
     const r = runs.find((x) => x.runId === id)
     if (r && (r.workflowName ?? 'unnamed') !== workflow) setWorkflow(r.workflowName ?? 'unnamed')
-    setRunId(id); setReplay((s) => ({ ...s, playing: false, pos: undefined })); setSelected(undefined)
+    setRunId(id); setReplay((s) => ({ ...s, playing: false, pos: undefined })); setSelected(undefined); setRailOpen(true)
   }
+  // Opening a node folds the rail to a strip so the canvas keeps its width (A10); `Runs` on the strip unfolds it.
+  const select = useCallback((id?: string) => { setSelected(id); if (id) setRailOpen(false); else setRailOpen(true) }, [])
   const onReplay = useCallback((s: ReplayState) => setReplay(s), [])
-  const connLabel = conn === 'connected' ? 'live' : conn
 
-  if (error) return <main className="shell"><p className="err">Could not reach the console plugin: {error}</p></main>
+  // Esc closes the panel (IA-SPEC §9). Not from inside a file editor — its unsaved
+  // text would go with the panel, and inside CodeMirror Esc is the search panel's
+  // own close key.
+  useEffect(() => {
+    if (!workflow) return
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return
+      const el = e.target as HTMLElement | null
+      if (el?.tagName === 'TEXTAREA') return
+      if (el?.closest?.('.cm-editor')) return
+      if (selected) { e.preventDefault(); select(undefined) }
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [workflow, selected, select])
+
+  const connLabel = conn === 'connected' ? 'live' : conn
+  const connTitle = conn === 'reconnecting' ? 'the event stream dropped; the browser retries on its own' : 'event stream'
+  if (error) {
+    return (
+      <main className="shell">
+        <section className="workflows">
+          <header className="screen-head"><h1>Workflows</h1></header>
+          <div className="state">
+            <p className="err">Could not reach the console plugin at {window.location.host || '127.0.0.1:5174'}.</p>
+            <p>Start it from the repo root: <code>npm run console</code></p>
+            <p>Then reload this page.</p>
+            <pre className="mono">{error}</pre>
+          </div>
+        </section>
+      </main>
+    )
+  }
   if (!workflow) {
     return (
       <main className="shell">
-        <Workflows cards={cards} skills={skills} onOpen={open} />
+        <Workflows cards={cards} files={files} ledger={ledger} meta={meta} now={now} onOpen={open} />
         <p className="muted small foot">
-          <span className="conn" data-state={conn} title="event stream">{connLabel}</span>
-          {' · '}Reads {meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'}{meta.exists === false ? ' (repo dir not found' + (meta.projectDirs?.length ? ')' : ' — showing fixtures)') : ''}. Local only; nothing here can start a run.
+          <span className="conn" data-state={conn} title={connTitle}>{connLabel}</span>
+          {' · '}reads {meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'}{meta.exists === false ? ' (repo dir not found)' : ''}
+          {' · '}local only
         </p>
       </main>
     )
   }
-  const elapsed = live && bounds.start ? Math.max(now - bounds.start, run?.durationMs ?? 0) : t != null ? t - bounds.start : run?.durationMs
+  // Elapsed: a scrubbed replay shows the clock; else a live run counts from its start and a stale one stops at what the journal last wrote (A5).
+  const elapsed = t != null ? t - bounds.start : elapsedOf(run, now)
+  const outcome = outcomeOf(run)
+  const usd = usdOf(run, ledger)
+  const progress = live || stalled ? lastProgress(run, now) : undefined
+  const description = card?.file?.meta?.description ?? graph.description
+  const tag = projectTag(run?.projectSlug)
   return (
     <main className="shell canvas-shell">
       <header className="run-head">
-        <button className="btn btn-small" onClick={() => setWorkflow(undefined)}>All workflows</button>
-        <h1>{workflow}</h1>
-        {card?.file && <span className="badge" data-engine={card.file.engine}>{card.file.engine}</span>}
-        <span className="pill" data-status={run?.status ?? 'idle'}>{run?.status ?? 'no run'}</span>
-        {live && <span className="badge" data-live title={`from the ${run?.source ?? 'manifest'}`}>live</span>}
-        {run?.fixture && <span className="badge">fixture</span>}
-        {projectTag(run?.projectSlug) && <span className="badge" title={run?.projectSlug}>{projectTag(run?.projectSlug)}</span>}
-        <dl className="stats">
-          <div><dt>elapsed</dt><dd className="clock">{fmtDuration(elapsed)}</dd></div>
-          <div><dt>tokens</dt><dd>{fmtTokens(run?.totalTokens)}</dd></div>
-          <div><dt>agents</dt><dd>{run?.agentCount ?? dash}</dd></div>
-          <div><dt>USD</dt><dd title="from docs/factory/RUNS.md">{fmtUsd(run?.runId ? ledger[run.runId]?.cost : undefined)}</dd></div>
-        </dl>
-        <span className="conn" data-state={conn} title="event stream">{connLabel}</span>
+        <div className="run-head-1">
+          <button className="btn btn-small" onClick={() => setWorkflow(undefined)}>All workflows</button>
+          <h1>{workflow}</h1>
+          {card?.file && <span className="badge" data-engine={card.file.engine}>{card.file.engine}</span>}
+          <span className="pill" data-status={run?.status ?? 'idle'} data-outcome={run ? outcome.word : undefined} title={run ? outcome.title : undefined}>{run ? outcome.word : 'no run'}</span>
+          {live && !stalled && <span className="badge" data-live title={`from the ${run?.source ?? 'manifest'}`}>live</span>}
+          {tag && <span className="badge" title={run?.projectSlug}>{tag}</span>}
+          {run?.fixture && <span className="badge">fixture</span>}
+          <dl className="stats">
+            <div><dt>elapsed</dt><dd className="clock">{fmtDuration(elapsed)}</dd></div>
+            <div><dt>tokens</dt><dd>{fmtTokens(run?.totalTokens)}</dd></div>
+            <div><dt>agents</dt><dd>{run?.agentCount ?? dash}</dd></div>
+            <div><dt>USD</dt><dd title={usd.title}>{run ? usd.text : dash}</dd></div>
+            {progress && <div><dt>last progress</dt><dd title={whenAbs(lastProgressAt(run))}>{progress.replace(/^last progress /, '')}</dd></div>}
+          </dl>
+          <span className="conn" data-state={conn} title={connTitle}>{connLabel}</span>
+        </div>
+        {description && <p className="run-desc muted">{description}</p>}
+        <RunSentence run={run} ledger={ledger} now={now} outcome={outcome} forms={runForms(workflow, card?.file?.meta)} />
       </header>
       <div className="stage">
-        <Canvas graph={graph} selectedId={selected} onSelect={setSelected} />
-        <RunList runs={runs} ledger={ledger} selectedId={run?.runId} onSelect={pickRun} />
+        <Canvas graph={graph} files={files} run={run} selectedId={selected} onSelect={select} />
+        <RunList runs={runs} ledger={ledger} files={files} meta={meta} now={now} selectedId={run?.runId} workflow={workflow}
+          collapsed={!!selectedNode && !railOpen} onSelect={pickRun} onExpand={() => setRailOpen(true)} />
         {selectedNode && (
-          <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files}
+          <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files} now={now}
             scriptPath={card?.file && !card.file.fixture && card.file.kind !== 'skill' ? card.file.path : undefined}
-            onClose={() => setSelected(undefined)} onSaved={() => { void loadFiles().catch(() => {}) }} />
+            onClose={() => select(undefined)} onSaved={() => { void loadFiles().catch(() => {}) }} />
         )}
       </div>
-      {live
-        ? <footer className="replay following"><span className="muted small">Following the run as it happens ({run?.source}). Replay is available once it finishes.</span></footer>
-        : <Replay total={total} state={replay} onChange={onReplay} />}
+      <Replay total={total} start={bounds.start} state={replay} run={run} phases={graph.phases} now={now} onChange={onReplay} />
     </main>
   )
+}
+
+/**
+ * Header row 3, the run in one sentence (IA-SPEC §1.3): run id first, then
+ * `<outcome> — <reason> · <spec> · <when>` for a finished run, `running <phase> ›
+ * <label> for <elapsed> · <spec> · started 13:58` for a live one; no run at all
+ * shows how to start one. The reason is `result.reason`; a run that returned
+ * none says why the engine stopped instead (killed, stale, the first error agent).
+ */
+function RunSentence({ run, ledger, now, outcome, forms }: { run?: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; forms: ReturnType<typeof runForms> }) {
+  if (!run) {
+    return (
+      <div className="run-sentence run-none">
+        <p>No run of this workflow yet.</p>
+        <div className="run-it">
+          <div className="run-line"><span className="how muted">In a session</span><code>{forms.session}</code></div>
+          {forms.headless && <div className="run-line"><span className="how muted">Headless</span><code>{forms.headless}</code></div>}
+          <p className="run-note muted">{COPY.runNote}</p>
+        </div>
+      </div>
+    )
+  }
+  const start = startOf(run)
+  const spec = specOf(run, ledger)
+  if (isLive(run) && !isStalled(run)) {
+    return (
+      <p className="run-sentence">
+        <code className="run-id">{run.runId ?? dash}</code>{' · '}
+        <span data-tone="warn">{nowAt(run, now) ?? 'between steps'}</span>{' · '}
+        <span className="spec">{spec}</span>{' · '}
+        <span title={whenAbs(start)}>started {fmtClock(start)}</span>
+      </p>
+    )
+  }
+  return (
+    <p className="run-sentence">
+      <code className="run-id">{run.runId ?? dash}</code>{' · '}
+      <span className="outcome-word" data-tone={toneOf(run, outcome)} title={outcome.title}>{outcome.word}</span>
+      {' — '}<span className="reason">{reasonOf(run)}</span>{' · '}
+      <span className="spec">{spec}</span>{' · '}
+      <span title={whenAbs(start)}>{whenRel(start, now)}</span>
+    </p>
+  )
+}
+
+/** `result.reason`; without one, why the engine stopped (`stopReason`: stale, killed, the first error agent); else `—`. */
+function reasonOf(run: RunManifest): string {
+  const r = run.result as { reason?: unknown } | null | undefined
+  if (r && typeof r === 'object' && typeof r.reason === 'string' && r.reason.trim()) return r.reason
+  return stopReason(run) ?? dash
 }

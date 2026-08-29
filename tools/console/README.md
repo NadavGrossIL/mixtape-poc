@@ -4,7 +4,7 @@ A local page that draws the feature factory's workflows as a graph, replays
 their runs, and edits the files the line is made of. It reads two things:
 
 - workflow definitions in this repo — `.claude/workflows/*.js`,
-  `.claude/skills/*/SKILL.md`, `.archon/workflows/*.yaml`
+  `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml`
 - run records Claude Code writes under `~/.claude/projects/<repo-slug>/`
   (`<session>/workflows/wf_*.json` manifests and the agent transcripts next to them),
   and under every sibling dir named `<repo-slug>.x` or `<repo-slug>-x` — the driver
@@ -26,7 +26,13 @@ npm run fixtures   # regenerate the redacted fixture from the real run on this m
 Endpoints (served by the Vite dev-server plugin in `src/plugin.ts`; everything is
 GET except the one POST below):
 
-- `/api/workflows` — `[{ name, engine, kind, path, source, sha }]` (`sha` = sha256 of `source`)
+- `/api/workflows` — `[{ name, engine, kind, path, source, sha, meta }]` (`sha` = sha256 of `source`;
+  `kind` is `script | skill | agent | yaml`, an `agent` being `.claude/agents/<name>.md`). `meta` is
+  what the file says about itself: a script's `export const meta` — `description`, `whenToUse`,
+  `phases: [{ title, detail }]` — plus `outcomes`, the `|`-separated words after the description's
+  last `→` (else every `status: '…'` a `return {` can produce, `needs-human` last); a skill's or
+  agent's frontmatter — `description`, `argumentHint`, `model`, `tools`, `disableModelInvocation` —
+  read as `key: value` lines, no YAML library. A file without a header gets `{}`.
 - `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet)
 - `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
 - `POST /api/file` — the only write, see "Tweak" below
@@ -55,25 +61,48 @@ Live runs. The manifest is written only when the run ends (measured 2026-08-29 o
 timestamps or labels) and the `agent-*.jsonl` transcripts next to it (timestamps, model,
 usage, tool calls, the prompt). The derived record has `status: 'running'` (`'stale'` once
 nothing moved for 15 min), agents in state `running` / `done` / `error`, and the workflow
-name from the copied `workflows/scripts/<name>-<runId>.js` when the journal has none;
-without that, labels fall back to the prompt's first line. Merge rule per runId: a manifest
+name from the copied `workflows/scripts/<name>-<runId>.js` when the journal has none.
+That copy also names the agents: each transcript's prompt is matched against the script's
+prompt literals (the text before the first `${`, compared verbatim, longest match wins), so a
+journal-only run reads `implement`, `gate:1`, `contract:1`, `review:1` with the node's phase,
+templates numbered in start order (`gate:after-review-fix` draws as `gate:2`); without the copy,
+or when nothing matches, the label is the prompt's first line. Merge rule per runId: a manifest
 with a terminal status (`completed` / `failed` / `error` / `cancelled`) is final; otherwise
 the journal is overlaid — the journal wins for an agent's `state` and `lastProgressAt`, the
 manifest wins for everything else it knows, totals are recomputed. Every record says where
 it came from (`source: 'manifest' | 'journal' | 'merged'`) and whether it is `live`.
 
-Layout: `src/graph/` turns a script or YAML into nodes and edges, overlays a run's
-`workflowProgress` by label, and lays phases out as swimlanes with dagre; `src/ui/`
-is the Workflows screen, the Canvas, the run rail, the replay scrubber and a
-read-only node panel. The page keeps one `EventSource` open and refetches on each
-event; a live run follows "now" and the scrubber is offered once it finishes.
+Layout: `src/graph/` turns a script or YAML into nodes and edges (`parseScript` also
+reads the script's `meta` — description, whenToUse, phase details, the outcomes it can
+return), overlays a run's `workflowProgress` by label, and lays phases out as swimlanes
+with dagre; `layout.ts` also routes every edge (orthogonal step edges; the `fix:*` loops
+run under the fix shelf on their own y with the `≤n` bound as a pill) and places the
+OUTCOME column. `purpose.ts` gives each node its one-line purpose (a table per label
+pattern, else the skill's or agent's description, else the prompt's first sentence).
+`src/ui/` is the Workflows screen (a card per workflow: description, last run in one
+line, phase strip, run-it block; a skills-and-agents table), the Canvas (lanes with
+subtitles, nodes with a purpose line, the outcome column, a legend), the run rail
+(grouped by workflow, filterable), the replay bar (phase ticks, one bar per agent) and
+the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
+and is drag-resizable. The panel's width is the only browser-side state (`localStorage`
+`console.panelWidth`, a per-viewer convenience); runs and definitions are never stored
+there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
+(`result.status` in the workflow's words, else the engine status), `specOf` (args →
+result → ledger → prompt), `usdOf` ("no cost yet" while live, "not in RUNS.md" after),
+`stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's unfinished
+agents are drawn `stalled`. The page keeps
+one `EventSource` open and refetches on each event; a live run follows "now" and the
+scrubber is offered once it finishes. Esc closes the panel; Enter opens a focused node.
 All CSS lives in `src/styles.css`.
 
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
 skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as
 the reviewer; a literal prompt is read-only), *Knobs* (`factory.config.json`) and
-*Script* (the workflow file, edited as code: the graph is drawn from that text). Save
-shows a line diff first (`src/ui/diff.ts`, an LCS, no library), then writes through
+*Script* (the workflow file, edited as code: the graph is drawn from that text). All
+three are CodeMirror 6 (`src/ui/CodeEditor.tsx`): highlighting by extension, search on
+⌘F, ⌘S for Save…, one theme built from the CSS tokens so dark and light both work.
+Save shows the file side by side with what it would become — `@codemirror/merge`'s
+merge view, both sides read-only, unchanged stretches collapsed — then writes through
 
 - `POST /api/file` with `{ path, content, base }` (JSON, ≤ 256 kB). `path` is
   repo-relative and must match one of `.claude/workflows/*.js`,

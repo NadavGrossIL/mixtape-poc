@@ -74,15 +74,36 @@ export type ConsoleEvent = { kind: 'runs' } | { kind: 'journal'; runId: string }
 export interface LedgerEntry { cost?: number; date?: string; spec?: string; outcome?: string; notes?: string }
 export type Ledger = Record<string, LedgerEntry>
 
+/**
+ * What a definition file says about itself. A script's `export const meta`
+ * (description, whenToUse, phases, outcomes) or a SKILL.md / agent .md
+ * frontmatter (description, argument-hint, model, tools,
+ * disable-model-invocation). Every field optional: a file without a header
+ * is still listed.
+ */
+export interface WorkflowMeta {
+  description?: string
+  whenToUse?: string
+  phases?: { title: string; detail?: string }[]
+  /** The words a script can `return { status }` with, e.g. `ready-for-pr | ready-for-eval | needs-human`. */
+  outcomes?: string[]
+  argumentHint?: string
+  model?: string
+  tools?: string[]
+  disableModelInvocation?: boolean
+}
+
 export interface WorkflowFile {
   name: string
   engine: 'native' | 'archon'
-  kind: 'script' | 'skill' | 'yaml'
+  /** `agent` = `.claude/agents/<name>.md`, a named subagent a script calls by `agentType`. */
+  kind: 'script' | 'skill' | 'agent' | 'yaml'
   path: string
   source: string
   /** sha256 of `source`: the `base` a `POST /api/file` must carry (C4). */
   sha: string
   fixture?: boolean
+  meta?: WorkflowMeta
 }
 
 /** `GET /api/file` and the success reply of `POST /api/file`. */
@@ -96,7 +117,8 @@ export interface AgentDetail {
 
 // --- graph -----------------------------------------------------------------
 
-export type NodeState = 'idle' | 'queued' | 'running' | 'done' | 'error' | 'waiting'
+/** `stalled`: the run is `stale` (nothing on disk moved for 15 min) and this agent never settled — it was running or queued when the trail went cold. */
+export type NodeState = 'idle' | 'queued' | 'running' | 'done' | 'error' | 'waiting' | 'stalled'
 export type NodeKind = 'agent' | 'gate' | 'human'
 
 export interface GraphNode {
@@ -125,7 +147,16 @@ export interface GraphEdge {
 
 export interface Graph {
   name?: string
+  /** `meta.description` of a script: `spec → /implement → … → ready-for-pr | needs-human`. */
+  description?: string
+  /** `meta.whenToUse` of a script. */
+  whenToUse?: string
+  /** Phase titles in order; the lanes. */
   phases: string[]
+  /** `meta.phases[i].detail` by title (a run's own `phases[].detail` wins in overlayRun). Only titles that have one. */
+  phaseDetails?: Record<string, string>
+  /** The terminal statuses the script can return, `needs-human` last. */
+  outcomes?: string[]
   nodes: GraphNode[]
   edges: GraphEdge[]
 }
@@ -144,4 +175,6 @@ export interface NodeRunInfo {
 
 export interface RunGraph extends Graph {
   info: Record<string, NodeRunInfo>
+  /** Phase titles the run brought that the script does not name (its `phases[]` or an agent's `phaseTitle`); the canvas subtitles these `not in the script`. */
+  addedPhases?: string[]
 }

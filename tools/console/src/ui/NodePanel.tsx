@@ -2,7 +2,8 @@ import { useEffect, useState } from 'react'
 import type { AgentDetail, GraphNode, NodeRunInfo, RunManifest } from '../types'
 import { fmtDuration, fmtTokens, shortModel, dash } from './format'
 
-export function NodePanel({ node, info, run, onClose }: { node: GraphNode; info?: NodeRunInfo; run?: RunManifest; onClose: () => void }) {
+/** `tick` bumps when the run's journal moved; a transcript already on screen is reloaded then. */
+export function NodePanel({ node, info, run, tick, onClose }: { node: GraphNode; info?: NodeRunInfo; run?: RunManifest; tick?: number; onClose: () => void }) {
   const a = info?.agent
   const [detail, setDetail] = useState<AgentDetail | { error: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -16,6 +17,8 @@ export function NodePanel({ node, info, run, onClose }: { node: GraphNode; info?
       setDetail(res.ok ? await res.json() : { error: `${res.status}: ${(await res.json().catch(() => ({}))).error ?? 'not found'}` })
     } catch (e) { setDetail({ error: String(e) }) } finally { setLoading(false) }
   }
+  const loaded = !!detail && 'prompt' in detail
+  useEffect(() => { if (loaded && tick) void load() }, [tick]) // eslint-disable-line react-hooks/exhaustive-deps
   const rows: [string, string][] = [
     ['phase', node.phase || dash],
     ['kind', node.kind],

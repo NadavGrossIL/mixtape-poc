@@ -42,6 +42,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pill[data-status="completed"] { color: var(--accent); border-color: var(--accent); }
 .pill[data-status="error"], .pill[data-status="failed"] { color: var(--err); border-color: var(--err); }
 .pill[data-status="running"] { color: var(--warn); border-color: var(--warn); }
+.pill[data-status="stale"] { color: var(--muted); border-style: dashed; }
+.badge[data-live] { color: var(--warn); border-color: var(--warn); }
+/* live feed: a dot before the word, green when the event stream is open, amber and blinking while the browser reconnects */
+.conn { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.conn::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--line-2); }
+.conn[data-state="connected"]::before { background: var(--accent); }
+.conn[data-state="reconnecting"]::before { background: var(--warn); animation: blink 1s steps(2) infinite; }
+@keyframes blink { to { opacity: .2; } }
+@media (prefers-reduced-motion: reduce) { .conn::before { animation: none; } }
 
 /* workflows screen */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; padding: 24px 48px 40px; }
@@ -126,6 +135,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .dot[data-status="completed"] { background: var(--accent); border-color: var(--accent); }
 .dot[data-status="error"], .dot[data-status="failed"] { background: var(--err); border-color: var(--err); border-radius: 2px; }
 .dot[data-status="running"] { border-color: var(--warn); border-style: dashed; }
+.dot[data-status="stale"] { border-style: dashed; }
 
 /* node panel */
 .panel { position: absolute; top: 0; right: 0; bottom: 0; width: 400px; background: var(--bg-2); border-left: 1px solid var(--line); box-shadow: var(--shadow); padding: 18px 20px 32px; overflow: auto; animation: slide .18s ease-out; }
@@ -143,3 +153,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .speeds { display: flex; gap: 4px; }
 .scrub { flex: 1; accent-color: var(--accent); }
 .replay .clock { min-width: 140px; text-align: right; color: var(--muted); font-size: 13px; }
+.replay.following { min-height: 58px; }

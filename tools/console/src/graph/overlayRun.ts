@@ -38,6 +38,7 @@ function finalState(a: WorkflowAgentEntry): NodeState {
     case 'done': return 'done'
     case 'error': return 'error'
     case 'running': return 'running'
+    case 'progress': return 'running' // what the engine actually writes for a live agent (observed 2026-08-29, wf_2a52cfdf-b8a)
     case 'queued': return 'queued'
     default: return a.error ? 'error' : a.state ? 'done' : 'idle'
   }

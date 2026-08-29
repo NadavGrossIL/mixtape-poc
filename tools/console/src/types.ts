@@ -57,7 +57,16 @@ export interface RunManifest {
   workflowProgress?: ProgressEntry[]
   /** Set by the plugin when the manifest came from fixtures/, not ~/.claude. */
   fixture?: boolean
+  /** Set by the plugin: something of this run moved on disk in the last 15 min (C3). */
+  live?: boolean
+  /** Set by the plugin: the terminal manifest, the journal fallback, or a non-terminal manifest overlaid with the journal. */
+  source?: 'manifest' | 'journal' | 'merged'
+  /** Newest agent timestamp; the plugin fills it for journal-derived and merged runs. */
+  lastProgressAt?: number
 }
+
+/** What `GET /api/events` streams (one JSON object per SSE `data:` line). */
+export type ConsoleEvent = { kind: 'runs' } | { kind: 'journal'; runId: string } | { kind: 'workflows' }
 
 export interface WorkflowFile {
   name: string

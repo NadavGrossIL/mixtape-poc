@@ -52,23 +52,66 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes blink { to { opacity: .2; } }
 @media (prefers-reduced-motion: reduce) { .conn::before { animation: none; } }
 
-/* workflows screen */
-.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 20px; padding: 24px 48px 40px; }
-.card { text-align: left; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 14px; transition: border-color .15s, transform .15s; }
-.card:hover { border-color: var(--accent); transform: translateY(-1px); }
-.card-head { display: flex; align-items: center; gap: 10px; } .card-name { font-weight: 600; font-size: 15px; flex: 1; }
-.card-foot { display: flex; flex-wrap: wrap; gap: 6px 14px; align-items: center; color: var(--muted); font-size: 12px; }
-.skills { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; padding: 0 48px 8px; font-size: 13px; }
-.skills .chip { font-size: 12px; padding: 4px 10px; }
-.thumb { width: 100%; height: 120px; display: block; }
-.thumb-lane { fill: var(--bg-3); stroke: var(--line); stroke-width: 2; }
-.thumb-edge { stroke: var(--line-2); stroke-width: 3; }
-.thumb-node { fill: var(--bg-2); stroke: var(--line-2); stroke-width: 4; }
-.thumb-node[data-state="done"] { stroke: var(--accent); }
-.thumb-node[data-state="running"] { stroke: var(--accent); fill: var(--accent-dim); }
-.thumb-node[data-state="queued"] { stroke-dasharray: 8 8; }
-.thumb-node[data-state="error"] { stroke: var(--err); stroke-width: 7; }
-.thumb-node[data-state="waiting"] { stroke: var(--warn); }
+/* workflows screen: cards that wrap, never clip — long specs, commands and reasons break anywhere */
+.cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; padding: 24px 48px 32px; }
+.card { min-width: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
+.card h3 { margin: 6px 0 0; }
+.card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.card-name { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font-weight: 600; font-size: 15px; color: var(--text); overflow-wrap: anywhere; }
+.card-name:hover { color: var(--accent); }
+.card-desc, .card-when { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.card-when { color: var(--text); }
+.last-run { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.last-run .spec { font-family: var(--mono); font-size: 12px; }
+.last-run .badge { margin-left: 6px; }
+.last-run-2 { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.outcome-word { font-weight: 600; }
+[data-tone="ok"] { color: var(--accent); } [data-tone="err"] { color: var(--err); } [data-tone="warn"] { color: var(--warn); }
+/* the phase strip: one bar per phase, the canvas node palette — dashed idle, dotted queued, solid done, pulsing running, thick error, amber dashed stalled */
+.strip { display: flex; align-items: flex-start; gap: 8px; margin-top: 2px; }
+.strip-seg { flex: 1 1 0; min-width: min-content; display: flex; flex-direction: column; gap: 5px; }
+.strip-bar { display: block; height: 4px; border-radius: 2px; background: var(--line-2); }
+.strip-seg[data-state="idle"] .strip-bar { background: repeating-linear-gradient(90deg, var(--line-2) 0 8px, transparent 8px 13px); }
+.strip-seg[data-state="queued"] .strip-bar { background: repeating-linear-gradient(90deg, var(--line-2) 0 3px, transparent 3px 7px); }
+.strip-seg[data-state="done"] .strip-bar { background: var(--accent); }
+.strip-seg[data-state="running"] .strip-bar { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); animation: blink 1.4s ease-in-out infinite alternate; }
+.strip-seg[data-state="error"] .strip-bar { background: var(--err); height: 6px; margin-top: -1px; }
+.strip-seg[data-state="stalled"] .strip-bar { background: repeating-linear-gradient(90deg, var(--warn) 0 8px, transparent 8px 13px); }
+.strip-seg[data-state="waiting"] .strip-bar { background: var(--warn); }
+.strip-name { font-size: 11px; line-height: 1.2; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); overflow-wrap: normal; }
+.strip-seg[data-state="error"] .strip-name { color: var(--err); font-weight: 700; }
+.strip-seg[data-state="running"] .strip-name, .strip-seg[data-state="done"] .strip-name { color: var(--accent); }
+.strip-seg[data-state="stalled"] .strip-name { color: var(--warn); }
+.strip-chip { flex-shrink: 1; max-width: 45%; font: 12px/1.2 var(--mono); color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 10px; overflow-wrap: anywhere; }
+.strip-chip[data-tone="ok"] { border-color: var(--accent); } .strip-chip[data-tone="err"] { border-color: var(--err); } .strip-chip[data-tone="warn"] { border-color: var(--warn); }
+@media (prefers-reduced-motion: reduce) { .strip-bar { animation: none; } }
+/* run it: two commands to paste, a Copy per line; the code is selectable text, never a button */
+.run-it { display: flex; flex-direction: column; gap: 6px; }
+.run-line { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 12px; }
+.run-line .how { padding-top: 5px; }
+.run-line code, .state code { display: block; min-width: 0; font: 12px/1.5 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.copy[data-copied] { color: var(--accent); border-color: var(--accent); }
+.run-note { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
+.card-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+.link { background: none; border: 0; padding: 0; color: var(--accent); font-size: 13px; }
+.link:hover { text-decoration: underline; }
+.card-name:focus-visible, .copy:focus-visible, .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+/* skills and agents: a table that scrolls inside its own box if it must, wraps before that */
+.skills { padding: 8px 48px 24px; }
+.skills p { margin: 4px 0 12px; font-size: 13px; }
+.table-wrap { overflow-x: auto; max-width: 100%; }
+.skills-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.skills-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 6px 14px 6px 0; border-bottom: 1px solid var(--line); }
+.skills-table td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
+.skills-table code { font: 12px/1.5 var(--mono); }
+.row-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.badge[data-kind="agent"] { color: var(--accent); border-color: var(--accent-dim); }
+/* states: nothing on disk, plugin down, fixture data */
+.state { padding: 12px 48px 24px; display: flex; flex-direction: column; gap: 6px; max-width: 760px; font-size: 13px; }
+.state p { margin: 0; overflow-wrap: anywhere; }
+.state .mono { max-height: 240px; }
+.banner { margin: 10px 48px 0; padding: 10px 14px; font-size: 13px; color: var(--warn); border: 1px solid var(--warn); border-radius: 10px; background: color-mix(in srgb, var(--warn) 10%, transparent); overflow-wrap: anywhere; }
+.foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; overflow-wrap: anywhere; }
 
 /* run header */
 .run-head { display: flex; align-items: center; gap: 14px; padding: 14px 24px; border-bottom: 1px solid var(--line); flex-wrap: wrap; }
@@ -148,7 +191,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .react-flow__edge-path { stroke: var(--muted); stroke-width: 2; opacity: .8; }
 .react-flow__edge.edge-loop .react-flow__edge-path { stroke-dasharray: 5 5; opacity: .7; }
 .edge-label { position: absolute; z-index: 1001; pointer-events: none; font: 11px/1 var(--mono); color: var(--text); background: var(--bg-3); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 8px; }
-.thumb-edge[data-loop] { stroke-dasharray: 8 8; fill: none; }
 .react-flow__edge.edge-queued .react-flow__edge-path { opacity: .6; }
 .react-flow__edge.edge-running .react-flow__edge-path { stroke: var(--accent); stroke-width: 2.5; opacity: 1; }
 .react-flow__edge.edge-done .react-flow__edge-path { stroke: var(--edge-done); opacity: 1; }

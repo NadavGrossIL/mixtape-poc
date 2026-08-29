@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
 import { graphFor, overlayRun, runBounds } from '../graph'
-import { Workflows, cardsFrom } from './Workflows'
+import { Workflows, cardsFrom, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Replay, type ReplayState } from './Replay'
 import { NodePanel } from './NodePanel'
-import { fmtDuration, fmtTokens, fmtUsd, projectTag, dash } from './format'
+import { fmtDuration, fmtTokens, fmtUsd, isLive, projectTag, dash } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 
@@ -14,7 +14,7 @@ export function App() {
   const [files, setFiles] = useState<WorkflowFile[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
   const [ledger, setLedger] = useState<Ledger>({})
-  const [meta, setMeta] = useState<{ projectDirs?: string[]; exists?: boolean }>({})
+  const [meta, setMeta] = useState<ConsoleMeta>({})
   const [error, setError] = useState<string>()
   const [workflow, setWorkflow] = useState<string>()
   const [runId, setRunId] = useState<string>()
@@ -48,7 +48,6 @@ export function App() {
   }, [loadFiles, loadRuns, loadLedger])
 
   const cards = useMemo(() => cardsFrom(files, runs), [files, runs])
-  const skills = useMemo(() => files.filter((f) => f.kind === 'skill'), [files])
   const card = cards.find((c) => c.name === workflow)
   const wfRuns = useMemo(() => runs.filter((r) => (r.workflowName ?? 'unnamed') === workflow), [runs, workflow])
   const run = runs.find((r) => r.runId === runId) ?? wfRuns[0]
@@ -60,11 +59,13 @@ export function App() {
   const graph = useMemo(() => overlayRun(graphFor(card?.file, run), run, t), [card, run, t])
   const selectedNode = graph.nodes.find((n) => n.id === selected)
 
+  // The clock ticks while something is live: the selected run on the canvas, or any card's last run on the workflows screen.
+  const ticking = live || (!workflow && cards.some((c) => isLive(c.lastRun)))
   useEffect(() => {
-    if (!live) return
+    if (!ticking) return
     const id = setInterval(() => setNow(Date.now()), 1000)
     return () => clearInterval(id)
-  }, [live])
+  }, [ticking])
 
   const open = (name: string) => { setWorkflow(name); setRunId(undefined); setReplay({ playing: false, speed: 20 }); setSelected(undefined) }
   const pickRun = (id: string) => {
@@ -75,14 +76,30 @@ export function App() {
   const onReplay = useCallback((s: ReplayState) => setReplay(s), [])
   const connLabel = conn === 'connected' ? 'live' : conn
 
-  if (error) return <main className="shell"><p className="err">Could not reach the console plugin: {error}</p></main>
+  const connTitle = conn === 'reconnecting' ? 'the event stream dropped; the browser retries on its own' : 'event stream'
+  if (error) {
+    return (
+      <main className="shell">
+        <section className="workflows">
+          <header className="screen-head"><h1>Workflows</h1></header>
+          <div className="state">
+            <p className="err">Could not reach the console plugin at {window.location.host || '127.0.0.1:5174'}.</p>
+            <p>Start it from the repo root: <code>npm run console</code></p>
+            <p>Then reload this page.</p>
+            <pre className="mono">{error}</pre>
+          </div>
+        </section>
+      </main>
+    )
+  }
   if (!workflow) {
     return (
       <main className="shell">
-        <Workflows cards={cards} skills={skills} onOpen={open} />
+        <Workflows cards={cards} files={files} ledger={ledger} meta={meta} now={now} onOpen={open} />
         <p className="muted small foot">
-          <span className="conn" data-state={conn} title="event stream">{connLabel}</span>
-          {' · '}Reads {meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'}{meta.exists === false ? ' (repo dir not found' + (meta.projectDirs?.length ? ')' : ' — showing fixtures)') : ''}. Local only; nothing here can start a run.
+          <span className="conn" data-state={conn} title={connTitle}>{connLabel}</span>
+          {' · '}reads {meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'}{meta.exists === false ? ' (repo dir not found)' : ''}
+          {' · '}local only
         </p>
       </main>
     )

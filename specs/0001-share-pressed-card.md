@@ -1,7 +1,7 @@
 ---
 id: 0001
 title: Share control on the pressed card
-status: ready            # draft → ready (human approves) → done | escalated
+status: implemented      # draft → ready (human approves) → implemented (gate passed) → done | escalated
 touches_prompt: false    # client only — no server, no curator, no eval case
 flag: none               # client-only button; a build-time VITE_ var can't switch it off at runtime — a revert is the switch
 ---
@@ -214,3 +214,15 @@ running, after pressing a mixtape:
      when the click wasn't a user gesture, or a platform rejecting the
      payload) fall back to copy or announce an error? [Fall back to copy —
      the user asked to share; a copied link is the nearest thing to that.]
+
+## Run record
+
+- date: 2026-08-29
+- attempts: 1
+- gate: passed
+- files:
+  - server/test/share.test.ts
+  - client/src/share.ts
+  - client/src/App.tsx
+  - specs/0001-share-pressed-card.md
+- notes: slices 6 and 7 came up green with no code change and were kept as guards, as the spec predicted; the DOM lib's non-optional `navigator.share` type accepted the truthiness ternary without complaint.

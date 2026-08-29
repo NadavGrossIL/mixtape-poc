@@ -20,6 +20,8 @@ file is a map. The reasoning lives next to the code as comments; read those.
 - `docs/` — `reviews/` (2026-08-14 audit) · `research/` · `decisions/`
   (ADRs) · `playbooks/` (how we do X) · `factory/plan.md` (this workflow).
 - `specs/` — feature tickets, from `specs/_template.md`.
+- `.claude/skills/` — `/spec`, `/implement`, `/review` (the factory line, M3);
+  `.claude/agents/reviewer.md` is the read-only reviewer `/review` calls.
 - `scripts/` — `eval-baseline.sh` (one-shot, quota-preflighted),
   `list-tokens.ts`, `deploy-wizard.sh`. `hermes/` — a client of the public
   API, touches nothing in the app.

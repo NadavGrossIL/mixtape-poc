@@ -241,6 +241,22 @@ holds the template and rubric next to the instructions.
 **Done when** `/spec` → `/implement` → `/review` runs end to end by hand on
 a toy spec.
 
+**Verified 2026-08-29** on a toy spec (`GET /api/health` with `uptimeSeconds`;
+kept as `specs/0000-toy-health-uptime.md`, `status: toy`, never merged), run
+headless in a throwaway worktree: `/spec` $0.95 (16 turns) → `/implement`
+$0.98 (22 turns: tdd skill, red → green, `npm run gate` passed first time) →
+`/review` $0.71 → `{ "verdict": "pass", "findings": [] }`; with one comment
+line planted in `server/caps.ts`, `/review` $0.72 → `fail`, one `high`
+finding naming the file. Reviewer on `model: sonnet` both times.
+
+Two corrections to the text above, from the run: an agent's frontmatter
+`tools:` takes tool *names* only — `Bash(git diff *)` granted Bash wholesale
+(measured: the agent ran `git status`, `ls`, `cat`), so `reviewer.md` is
+`tools: Read, Grep, Glob` and `/review` pastes the diff into the prompt.
+And the implementer's allowlisted commands must be typed verbatim — the
+first transcript showed `npm run gate 2>&1 | tail -40`, which is a
+different command to the rule engine; the skill now says so.
+
 ### M4 · Assembly — twice, same blocks
 
 M1–M3 are engine-agnostic: the map, the rules, the skills and the reviewer

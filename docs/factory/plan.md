@@ -251,8 +251,14 @@ finding naming the file. Reviewer on `model: sonnet` both times.
 
 Two corrections to the text above, from the run: an agent's frontmatter
 `tools:` takes tool *names* only — `Bash(git diff *)` granted Bash wholesale
-(measured: the agent ran `git status`, `ls`, `cat`), so `reviewer.md` is
-`tools: Read, Grep, Glob` and `/review` pastes the diff into the prompt.
+(measured: the agent ran `git status`, `ls`, `cat`). First fix was to paste
+the diff into the prompt; Nadav rejected that (2026-08-29) and the reviewer
+now has `Bash` and collects the diff itself — the repo's allowlist
+(`git diff*`/`status*`/`log*`) is what scopes it in a headless run, one
+layer below the frontmatter. Verified: empty tree → the `empty diff`
+finding ($0.40); planted `server/caps.ts` comment → `fail`, high finding
+on that file ($0.44). `git diff --no-index` is denied by that allowlist, so
+untracked files are read with `Read`.
 And the implementer's allowlisted commands must be typed verbatim — the
 first transcript showed `npm run gate 2>&1 | tail -40`, which is a
 different command to the rule engine; the skill now says so.

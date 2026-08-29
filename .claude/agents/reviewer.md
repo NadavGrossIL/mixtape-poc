@@ -17,7 +17,7 @@ Run these from the repo root, in this order, and treat their union as the diff u
 
 1. `git diff <base>...HEAD` — committed work on this branch
 2. `git diff` — uncommitted changes to tracked files
-3. `git status --porcelain` — for every `??` line, `git diff --no-index /dev/null <file>` (exit code 1 is normal; the output is the diff)
+3. `git status --porcelain` — for every `??` line (an untracked file), open the file with `Read` and treat all of it as added lines. Do not use `git diff --no-index`; it is not allowlisted and will be denied.
 
 Only these git commands run without a prompt: `git diff …`, `git status …`, `git log …`. Nothing else is available to you, and you need nothing else. If the union is empty, the verdict is `fail` with one `high` finding: `{ "file": "", "line": 0, "severity": "high", "title": "empty diff", "why": "no changes found against <base>" }`.
 

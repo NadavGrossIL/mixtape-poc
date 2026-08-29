@@ -795,6 +795,26 @@ One correction to 11.5 and 11.7: the console *can* write never-tier files
 agent's: a human edits the line from the panel; the agent, verifying it,
 edits and reverts.
 
+**UX pass 1, 2026-08-29 (branch `console/ux-pass-1`)** — the console
+audited as a monitoring product, in a real browser against the six runs
+on this machine, and reworked screen by screen. What the reader now gets:
+a card says what the workflow does (`meta.description`, `whenToUse`), its
+last run in one line (outcome in the workflow's own words · spec · when ·
+duration · USD, then where it stopped or what runs now), a phase strip in
+place of the unlabelled thumbnail, and a copyable "run it" block under the
+reminder that the console never starts a run; a skills-and-agents table
+says what each file does and which step calls it. The canvas reads left
+to right — lane subtitles from the phase `detail`, a purpose line per step,
+orthogonal edges routed by `layout.ts` (the fix loops run under the shelf
+with their `≤n` bound readable), and an OUTCOME column lit by
+`result.status`. A journal-only run takes its step labels from the copied
+script; a stale run's unfinished agents are `stalled`, not `running`. The
+panel never clips a label, sits beside the canvas, and edits files in
+CodeMirror 6 with a side-by-side diff (the one dependency added on
+purpose; the write path is unchanged). The rail groups runs by workflow
+with a filter; the replay bar marks phases and agents. Deferred items and
+the ranked audit are in the PR.
+
 ### 11.7 Rules
 
 - Local only, forever. It reads `~/.claude`; the shareable artifacts are

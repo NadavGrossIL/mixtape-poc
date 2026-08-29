@@ -72,11 +72,24 @@ the journal is overlaid — the journal wins for an agent's `state` and `lastPro
 manifest wins for everything else it knows, totals are recomputed. Every record says where
 it came from (`source: 'manifest' | 'journal' | 'merged'`) and whether it is `live`.
 
-Layout: `src/graph/` turns a script or YAML into nodes and edges, overlays a run's
-`workflowProgress` by label, and lays phases out as swimlanes with dagre; `src/ui/`
-is the Workflows screen, the Canvas, the run rail, the replay scrubber and a
-read-only node panel. The page keeps one `EventSource` open and refetches on each
-event; a live run follows "now" and the scrubber is offered once it finishes.
+Layout: `src/graph/` turns a script or YAML into nodes and edges (`parseScript` also
+reads the script's `meta` — description, whenToUse, phase details, the outcomes it can
+return), overlays a run's `workflowProgress` by label, and lays phases out as swimlanes
+with dagre; `layout.ts` also routes every edge (orthogonal step edges; the `fix:*` loops
+run under the fix shelf on their own y with the `≤n` bound as a pill) and places the
+OUTCOME column. `purpose.ts` gives each node its one-line purpose (a table per label
+pattern, else the skill's or agent's description, else the prompt's first sentence).
+`src/ui/` is the Workflows screen (a card per workflow: description, last run in one
+line, phase strip, run-it block; a skills-and-agents table), the Canvas (lanes with
+subtitles, nodes with a purpose line, the outcome column, a legend), the run rail
+(grouped by workflow, filterable), the replay bar (phase ticks, one bar per agent) and
+the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
+and is drag-resizable. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
+(`result.status` in the workflow's words, else the engine status), `specOf` (args →
+result → ledger → prompt), `usdOf` ("no cost yet" while live, "not in RUNS.md" after),
+`stoppedAt`, `nowAt`. A stale run's unfinished agents are drawn `stalled`. The page keeps
+one `EventSource` open and refetches on each event; a live run follows "now" and the
+scrubber is offered once it finishes. Esc closes the panel; Enter opens a focused node.
 All CSS lives in `src/styles.css`.
 
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the

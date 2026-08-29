@@ -82,8 +82,11 @@ All CSS lives in `src/styles.css`.
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
 skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as
 the reviewer; a literal prompt is read-only), *Knobs* (`factory.config.json`) and
-*Script* (the workflow file, edited as code: the graph is drawn from that text). Save
-shows a line diff first (`src/ui/diff.ts`, an LCS, no library), then writes through
+*Script* (the workflow file, edited as code: the graph is drawn from that text). All
+three are CodeMirror 6 (`src/ui/CodeEditor.tsx`): highlighting by extension, search on
+⌘F, ⌘S for Save…, one theme built from the CSS tokens so dark and light both work.
+Save shows the file side by side with what it would become — `@codemirror/merge`'s
+merge view, both sides read-only, unchanged stretches collapsed — then writes through
 
 - `POST /api/file` with `{ path, content, base }` (JSON, ≤ 256 kB). `path` is
   repo-relative and must match one of `.claude/workflows/*.js`,

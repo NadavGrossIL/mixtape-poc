@@ -6,6 +6,8 @@
   --bg: #0f1115; --bg-2: #161a21; --bg-3: #1d222b; --line: #2b323d; --line-2: #3a4351;
   --text: #e6e9ef; --muted: #8a93a3; --accent: #5fd3b3; --accent-dim: #2b6b5b; --edge-done: #3fa88a;
   --err: #f0716a; --warn: #e2b04a; --shadow: 0 10px 30px rgba(0, 0, 0, .45);
+  /* syntax (CodeMirror): every one ≥ 4.5:1 on --bg, in both themes */
+  --syn-kw: #c792ea; --syn-str: #7ee2a8; --syn-comment: #98a2b3; --syn-num: #f5a97f; --syn-prop: #82aaff;
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
@@ -15,6 +17,7 @@
     --bg: #f6f7f9; --bg-2: #eceef2; --bg-3: #ffffff; --line: #d5d9e0; --line-2: #b9c0cb;
     --text: #171a20; --muted: #626b7a; --accent: #0b7a5f; --accent-dim: #4fae90; --edge-done: #2f8f70;
     --err: #c8372f; --warn: #a5720a; --shadow: 0 10px 30px rgba(20, 30, 50, .12);
+    --syn-kw: #7b2fb5; --syn-str: #0b6e45; --syn-comment: #5a6371; --syn-num: #8a4b00; --syn-prop: #0b4fa8;
   }
 }
 * { box-sizing: border-box; }
@@ -297,20 +300,21 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; font-size: 13px; color: var(--muted); margin-bottom: -1px; }
 .tab:hover { color: var(--text); } .tab[data-on] { color: var(--accent); border-bottom-color: var(--accent); }
 .editor { display: flex; flex-direction: column; gap: 8px; }
-.editor textarea { font: 12px/1.5 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 360px; resize: vertical; tab-size: 2; white-space: pre; overflow: auto; }
-.editor textarea:focus { outline: none; border-color: var(--accent); }
+/* the CodeMirror box: 360 px, dragged taller from its corner as the textarea was; the view fills it */
+.cm-wrap { min-height: 360px; height: 360px; resize: vertical; overflow: hidden; border-radius: 8px; }
+.cm-wrap .cm-host, .cm-wrap .cm-editor { height: 100%; }
 .editor-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .editor-bar .path { font: 11px/1 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .chip[data-agent] { color: var(--accent); border-color: var(--accent-dim); }
-/* the diff preview: colour plus a sign column, never colour alone; long lines scroll inside the box */
-.diff { font: 12px/1.5 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; max-height: 420px; overflow: auto; margin: 0; }
-.diff div { display: flex; white-space: pre; }
-.diff div::before { content: attr(data-sign); width: 18px; flex-shrink: 0; text-align: center; color: var(--muted); }
-.diff [data-kind="ctx"] { color: var(--muted); }
-.diff [data-kind="add"] { color: #7ee2a8; background: rgba(95, 211, 179, .12); }
-.diff [data-kind="del"] { color: #f59a94; background: rgba(240, 113, 106, .12); }
-.diff [data-kind="skip"] { color: var(--muted); font-style: italic; background: var(--bg-2); }
-@media (prefers-color-scheme: light) { .diff [data-kind="add"] { color: #0b6e45; } .diff [data-kind="del"] { color: #a12a22; } }
+/* the save preview: @codemirror/merge side by side — left the file on disk, right what Write file would put there */
+.cm-diff { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.cm-diff-heads { display: flex; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.cm-diff-heads span { flex: 1 1 50%; min-width: 0; }
+.cm-diff-body { overflow: auto; max-height: 420px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); }
+.cm-diff-body .cm-mergeView, .cm-diff-body .cm-mergeViewEditors { min-width: 100%; }
+.cm-diff-body .cm-editor { border: 0; border-radius: 0; }
+.cm-diff-body .cm-mergeViewEditor:first-child .cm-editor { border-right: 1px solid var(--line); }
+.cm-diff-body .cm-merge-revert { background: var(--bg-2); border-inline: 1px solid var(--line); }
 
 /* keyboard: one focus ring everywhere (IA-SPEC §9); nothing here removes an outline without a replacement */
 .run:focus-visible, .tab:focus-visible, .btn:focus-visible, .filter:focus-visible, .group-head:focus-visible, .rail-toggle:focus-visible, .strip-dot:focus-visible, .agent-bar:focus-visible, .mono-toggle:focus-visible, .scrub:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -89,14 +89,16 @@ export function App() {
   const select = useCallback((id?: string) => { setSelected(id); if (id) setRailOpen(false); else setRailOpen(true) }, [])
   const onReplay = useCallback((s: ReplayState) => setReplay(s), [])
 
-  // Esc closes the panel (IA-SPEC §9). Not from inside the editor's textarea — its
-  // unsaved text would go with the panel.
+  // Esc closes the panel (IA-SPEC §9). Not from inside a file editor — its unsaved
+  // text would go with the panel, and inside CodeMirror Esc is the search panel's
+  // own close key.
   useEffect(() => {
     if (!workflow) return
     const onKey = (e: KeyboardEvent) => {
       if (e.key !== 'Escape') return
       const el = e.target as HTMLElement | null
       if (el?.tagName === 'TEXTAREA') return
+      if (el?.closest?.('.cm-editor')) return
       if (selected) { e.preventDefault(); select(undefined) }
     }
     document.addEventListener('keydown', onKey)

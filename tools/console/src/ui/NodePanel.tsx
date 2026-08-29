@@ -2,7 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEve
 import type { AgentDetail, FileRead, GraphNode, NodeRunInfo, NodeState, RunManifest, WorkflowAgentEntry, WorkflowFile } from '../types'
 import { agentsOf, isStalled, purposeOf, stateAt } from '../graph'
 import { fmtDuration, fmtTime, fmtTokens, isLive, shortModel, whenAbs, whenRel, dash } from './format'
-import { diffLines, hunks, changed, type DiffLine } from './diff'
+import { CodeEditor, DiffEditor } from './CodeEditor'
 
 type Tab = 'prompt' | 'knobs' | 'script' | 'result' | 'transcript'
 const TABS: [Tab, string][] = [['prompt', 'Prompt'], ['knobs', 'Knobs'], ['script', 'Script'], ['result', 'Result'], ['transcript', 'Transcript']]
@@ -302,9 +302,10 @@ const validJson = (s: string) => { try { JSON.parse(s); return undefined } catch
 type Status = { kind: 'idle' } | { kind: 'busy' } | { kind: 'saved' } | { kind: 'error'; text: string } | { kind: 'conflict'; current: string }
 
 /**
- * One file, one textarea, one Save that shows the diff before it writes.
- * `base` is the sha the plugin gave us for what we loaded; a 409 means the
- * disk moved underneath us and Reload is the only way forward — no merge here.
+ * One file, one CodeMirror editor, one Save that shows the diff before it
+ * writes. `base` is the sha the plugin gave us for what we loaded; a 409 means
+ * the disk moved underneath us and Reload is the only way forward — no merge
+ * here (the merge view is a preview, both sides read-only).
  */
 function FileEditor({ path, note, onSaved, validate }: { path: string; note: string; onSaved: () => void; validate?: (s: string) => string | undefined }) {
   const [file, setFile] = useState<FileRead | { error: string } | null>(null) // null = loading; sha '' = does not exist yet
@@ -325,7 +326,9 @@ function FileEditor({ path, note, onSaved, validate }: { path: string; note: str
   const loaded = file && 'content' in file ? file : undefined
   const dirty = !!loaded && text !== loaded.content
   const invalid = validate?.(text)
-  const diff = useMemo(() => (preview && loaded ? hunks(diffLines(loaded.content, text)) : []), [preview, loaded, text])
+
+  // Save… — the button and the editor's Mod-s, one door: it opens the diff, it never writes.
+  const save = () => { if (dirty && !invalid) setPreview(true) }
 
   const write = async () => {
     if (!loaded) return
@@ -350,19 +353,27 @@ function FileEditor({ path, note, onSaved, validate }: { path: string; note: str
       </div>
       {preview ? (
         <>
-          <DiffView lines={diff} />
+          <DiffEditor original={loaded!.content} modified={text} path={path} />
           <div className="editor-bar">
-            <button className="btn btn-small" data-on onClick={write} disabled={status.kind === 'busy' || !changed(diff)}>{status.kind === 'busy' ? 'Writing…' : 'Write file'}</button>
+            <button className="btn btn-small" data-on onClick={write} disabled={status.kind === 'busy' || !dirty}>{status.kind === 'busy' ? 'Writing…' : 'Write file'}</button>
             <button className="btn btn-small" onClick={() => { setPreview(false); setStatus({ kind: 'idle' }) }}>Cancel</button>
-            {!changed(diff) && <span className="muted small">No changes.</span>}
+            {!dirty && <span className="muted small">No changes.</span>}
           </div>
         </>
       ) : (
         <>
-          <textarea value={text} spellCheck={false} onChange={(e) => { setText(e.target.value); if (status.kind === 'saved') setStatus({ kind: 'idle' }) }} />
+          <div className="cm-wrap">
+            <CodeEditor
+              path={path}
+              value={text}
+              onChange={(v) => { setText(v); setStatus((s) => (s.kind === 'saved' ? { kind: 'idle' } : s)) }}
+              onSave={save}
+            />
+          </div>
           <div className="editor-bar">
-            <button className="btn btn-small" onClick={() => setPreview(true)} disabled={!dirty || !!invalid}>Save…</button>
+            <button className="btn btn-small" onClick={save} disabled={!dirty || !!invalid}>Save…</button>
             <button className="btn btn-small" onClick={() => setText(loaded!.content)} disabled={!dirty}>Revert</button>
+            <span className="muted small">⌘S diff · ⌘F find</span>
             {invalid && <span className="err small">{invalid}</span>}
             {status.kind === 'saved' && <span className="small" style={{ color: 'var(--accent)' }}>Written.</span>}
           </div>
@@ -373,15 +384,5 @@ function FileEditor({ path, note, onSaved, validate }: { path: string; note: str
         <p className="err small">Changed on disk — reload to see the current file (your edits stay in this box until you do). <button className="btn btn-small" onClick={reload}>Reload</button></p>
       )}
     </section>
-  )
-}
-
-function DiffView({ lines }: { lines: DiffLine[] }) {
-  return (
-    <pre className="diff" aria-label="diff preview">
-      {lines.map((l, i) => l.kind === 'skip'
-        ? <div key={i} data-kind="skip" data-sign="…">{l.count} unchanged line{l.count === 1 ? '' : 's'}</div>
-        : <div key={i} data-kind={l.kind} data-sign={l.kind === 'add' ? '+' : l.kind === 'del' ? '−' : ' '}>{l.text || ' '}</div>)}
-    </pre>
   )
 }

@@ -4,5 +4,6 @@
   "reviewer": "reviewer",
   "maxTurns": 60,
   "maxBudgetUsd": 5,
-  "permissionMode": "acceptEdits"
+  "permissionMode": "acceptEdits",
+  "implementModel": "sonnet"
 }

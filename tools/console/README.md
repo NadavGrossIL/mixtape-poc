@@ -76,10 +76,14 @@ shows a line diff first (`src/ui/diff.ts`, an LCS, no library), then writes thro
   page then refetches `/api/workflows` so the graph re-parses the new script text.
 
 `factory.config.json` (repo root, free tier) holds the knobs a driver reads:
-`maxGateRounds`, `base`, `reviewer` go to the script as `args.config`; `maxTurns`,
-`maxBudgetUsd`, `permissionMode` are the `claude -p` hard-stop flags a driver composes.
-Note that `/implement-from-spec specs/…` in a session hands the script a plain string
-as `args`, so `config` only reaches it when a driver passes `{ spec, config }`.
+`maxGateRounds`, `base`, `reviewer`, `implementModel` go to the script as
+`args.config`; `maxTurns`, `maxBudgetUsd`, `permissionMode` are the `claude -p`
+hard-stop flags a driver composes. The driver is `scripts/factory-run.sh`: it
+passes `{ spec, config }` to the script as one JSON string
+(`/implement-from-spec {"spec":"specs/…","config":{…}}`), because the slash form
+always hands the script a plain string as `args`; the script parses a string that
+starts with `{`. The bare form `/implement-from-spec specs/…` in a session still
+works and uses the script's defaults — `config` reaches it only through the driver.
 
 The static graph reads `agent(prompt, { label, phase, agentType })` calls anywhere in
 the script — single, double or backtick quotes; a `${expr}` in a label becomes `*`

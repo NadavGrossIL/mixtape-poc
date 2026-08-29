@@ -14,6 +14,8 @@ export type AgentNodeData = {
   tokens?: number
   durationMs?: number
   error?: string
+  /** a named subagent (`agentType: 'reviewer'`) — its own file, its own chip */
+  agentType?: string
 }
 export type AgentRFNode = Node<AgentNodeData, 'agent'>
 
@@ -33,6 +35,7 @@ function Shape({ kind, className }: { kind: NodeKind; className: string }) {
 function AgentNodeView({ data, selected }: NodeProps<AgentRFNode>) {
   const { state, kind } = data
   const chips = [
+    data.agentType && `@${data.agentType}`,
     data.model && shortModel(data.model),
     data.attempt != null && data.attempt > 1 && `attempt ${data.attempt}`,
     data.tokens != null && fmtTokens(data.tokens),
@@ -51,7 +54,7 @@ function AgentNodeView({ data, selected }: NodeProps<AgentRFNode>) {
           <span className="node-label">{data.label}</span>
           {state !== 'idle' && <span className="node-state">{state}</span>}
         </div>
-        {chips.length > 0 && <div className="chips">{chips.map((c) => <span key={c} className="chip">{c}</span>)}</div>}
+        {chips.length > 0 && <div className="chips">{chips.map((c) => <span key={c} className="chip" data-agent={c.startsWith('@') || undefined}>{c}</span>)}</div>}
       </div>
       <Handle type="source" position={Position.Right} className="port" />
     </div>

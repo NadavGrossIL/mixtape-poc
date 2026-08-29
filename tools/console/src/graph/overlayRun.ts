@@ -79,7 +79,8 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
     if (exact && !exact.template) push(matched, id, a)
     else if (tpl) {
       if (!byId().has(id)) {
-        nodes.push({ id, label, phase: a.phaseTitle ?? tpl.phase, kind: kindOf(label) })
+        // `gate:1` is the template's call with `round` filled in: same prompt, same agentType, same files to edit.
+        nodes.push({ id, label, phase: a.phaseTitle ?? tpl.phase, kind: kindOf(label), agentType: tpl.agentType, skill: tpl.skill, prompt: tpl.prompt })
         push(expansion, tpl.id, id)
       }
       push(matched, id, a)

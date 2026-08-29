@@ -1,5 +1,6 @@
 import type { Plugin } from 'vite'
 import type { IncomingMessage, ServerResponse } from 'node:http'
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -7,12 +8,25 @@ import type { ConsoleEvent, RunManifest, WorkflowAgentEntry } from './types'
 
 // The console's only "backend": a Vite dev-server middleware that READS
 // workflow files in this repo and run records Claude Code wrote under
-// ~/.claude/projects/<slug>/. It never writes and never starts a run.
-// That is also why this directory is never deployed anywhere.
+// ~/.claude/projects/<slug>/. It never starts a run. That is also why this
+// directory is never deployed anywhere.
 // C3 adds one long-lived GET (/api/events, SSE) so the page hears about
-// changes instead of polling; the allowlisted write comes with C4.
+// changes instead of polling. C4 adds the one write, POST /api/file, fenced
+// by EDITABLE below: the workflow definitions and factory.config.json, and
+// nothing else — the console tweaks the line, it cannot reach the product.
 
 const ID = /^[\w-]+$/ // run ids and agent ids; anything else is a 400
+// Repo-relative paths POST /api/file may write and GET /api/file may read. A
+// tight character class per segment: no `..`, no separators, no globbing.
+const EDITABLE = [
+  /^\.claude\/workflows\/[\w.-]+\.js$/,
+  /^\.claude\/skills\/[\w.-]+\/SKILL\.md$/,
+  /^\.claude\/agents\/[\w.-]+\.md$/,
+  /^\.archon\/workflows\/[\w.-]+\.ya?ml$/,
+  /^factory\.config\.json$/,
+]
+const MAX_BODY = 256 * 1024
+const CONFIG_FILE = 'factory.config.json'
 const SUPPORTED_MANIFEST = /^wf_[\w-]+\.json$/
 const RUN_DIR = /^wf_[\w-]+$/
 const TERMINAL = new Set(['completed', 'failed', 'error', 'cancelled', 'killed']) // 'killed' = a --max-budget-usd / --max-turns stop (observed 2026-08-29)
@@ -42,9 +56,15 @@ export function consolePlugin(opts: ConsoleOptions): Plugin {
       server.middlewares.use((req: IncomingMessage, res: ServerResponse, next: () => void) => {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1')
         if (!url.pathname.startsWith('/api/')) return next()
-        if (req.method !== 'GET') return json(res, 405, { error: 'read-only' })
+        if (req.method === 'POST' && url.pathname === '/api/file') {
+          readBody(req).then((body) => { const r = writeFile(opts.repoRoot, body); json(res, r.status, r.body) }, (err: Error) => json(res, err.message === 'too large' ? 413 : 400, { error: err.message }))
+          return
+        }
+        if (req.method !== 'GET') return json(res, 405, { error: 'GET only (POST /api/file is the one write)' })
         try {
           if (url.pathname === '/api/workflows') return json(res, 200, listWorkflows(opts))
+          if (url.pathname === '/api/file') { const r = readFile(opts.repoRoot, url.searchParams.get('path') ?? ''); return json(res, r.status, r.body) }
+          if (url.pathname === '/api/config') return json(res, 200, readConfig(opts.repoRoot))
           if (url.pathname === '/api/runs') return json(res, 200, listRuns(projectDir, opts.fixturesDir, url.searchParams.get('full') === '1'))
           if (url.pathname === '/api/events') return live.subscribe(res)
           const m = /^\/api\/runs\/([^/]+)\/agents\/([^/]+)$/.exec(url.pathname)
@@ -67,24 +87,91 @@ export function consolePlugin(opts: ConsoleOptions): Plugin {
 // --- workflows ---------------------------------------------------------------
 
 function listWorkflows(opts: ConsoleOptions) {
-  const out: { name: string; engine: 'native' | 'archon'; kind: 'script' | 'skill' | 'yaml'; path: string; source: string; fixture?: boolean }[] = []
+  const out: { name: string; engine: 'native' | 'archon'; kind: 'script' | 'skill' | 'yaml'; path: string; source: string; sha: string; fixture?: boolean }[] = []
   const rel = (p: string) => path.relative(opts.repoRoot, p)
+  const entry = (name: string, engine: 'native' | 'archon', kind: 'script' | 'skill' | 'yaml', file: string) => {
+    const source = read(file)
+    return { name, engine, kind, path: rel(file), source, sha: sha256(source) } // sha = the `base` a later POST /api/file must carry
+  }
   const scripts = path.join(opts.repoRoot, '.claude', 'workflows')
   for (const f of safeList(scripts).filter((f) => f.endsWith('.js') || f.endsWith('.mjs')))
-    out.push({ name: f.replace(/\.m?js$/, ''), engine: 'native', kind: 'script', path: rel(path.join(scripts, f)), source: read(path.join(scripts, f)) })
+    out.push(entry(f.replace(/\.m?js$/, ''), 'native', 'script', path.join(scripts, f)))
   const skills = path.join(opts.repoRoot, '.claude', 'skills')
   for (const d of safeList(skills)) {
     const md = path.join(skills, d, 'SKILL.md')
-    if (fs.existsSync(md)) out.push({ name: d, engine: 'native', kind: 'skill', path: rel(md), source: read(md) })
+    if (fs.existsSync(md)) out.push(entry(d, 'native', 'skill', md))
   }
   const archon = path.join(opts.repoRoot, '.archon', 'workflows')
   for (const f of safeList(archon).filter((f) => /\.ya?ml$/.test(f)))
-    out.push({ name: f.replace(/\.ya?ml$/, ''), engine: 'archon', kind: 'yaml', path: rel(path.join(archon, f)), source: read(path.join(archon, f)) })
+    out.push(entry(f.replace(/\.ya?ml$/, ''), 'archon', 'yaml', path.join(archon, f)))
   if (out.length) return out
   const sample = path.join(opts.fixturesDir, 'implement-from-spec.sample.js')
   return fs.existsSync(sample)
-    ? [{ name: 'implement-from-spec', engine: 'native' as const, kind: 'script' as const, path: 'tools/console/fixtures/implement-from-spec.sample.js', source: read(sample), fixture: true }]
+    ? [{ ...entry('implement-from-spec', 'native', 'script', sample), path: 'tools/console/fixtures/implement-from-spec.sample.js', fixture: true }]
     : []
+}
+
+// --- the one write ----------------------------------------------------------------
+//
+// POST /api/file { path, content, base }: `path` must match EDITABLE after
+// normalisation and resolve (through symlinks) inside the repo; `base` is the
+// sha256 of the content the client last read, so two consoles — or a console
+// and an editor — cannot silently overwrite each other (409 carries the current
+// text; no lock file). The write is temp-file + rename, so a reader never sees
+// half a file. The console still cannot start a run: nothing here executes.
+
+const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex')
+
+type Reply = { status: number; body: unknown }
+
+/** Repo-relative → absolute, or the 4xx explaining why not. */
+function resolveEditable(repoRoot: string, rel: string): { abs: string } | Reply {
+  const norm = rel.replace(/\\/g, '/').replace(/^\.\//, '')
+  if (!EDITABLE.some((re) => re.test(norm)) || path.posix.normalize(norm) !== norm) return { status: 403, body: { error: 'path not allowlisted' } }
+  const abs = path.join(repoRoot, norm)
+  let root: string, parent: string
+  try { root = fs.realpathSync(repoRoot); parent = fs.realpathSync(path.dirname(abs)) } catch { return { status: 404, body: { error: 'parent directory missing' } } }
+  if (parent !== root && !parent.startsWith(root + path.sep)) return { status: 403, body: { error: 'path not allowlisted' } } // a symlinked dir pointing out
+  try { if (fs.lstatSync(abs).isSymbolicLink()) return { status: 403, body: { error: 'path not allowlisted' } } } catch { /* absent: fine for a create */ }
+  return { abs }
+}
+
+function readFile(repoRoot: string, rel: string): Reply {
+  const r = resolveEditable(repoRoot, rel)
+  if ('status' in r) return r
+  if (!fs.existsSync(r.abs)) return { status: 404, body: { error: 'no such file' } }
+  const content = read(r.abs)
+  return { status: 200, body: { path: rel, content, sha: sha256(content) } }
+}
+
+function writeFile(repoRoot: string, body: unknown): Reply {
+  const b = (body ?? {}) as Record<string, unknown>
+  if (typeof b.path !== 'string' || typeof b.content !== 'string' || typeof b.base !== 'string') return { status: 400, body: { error: 'expected { path, content, base } strings' } }
+  const r = resolveEditable(repoRoot, b.path)
+  if ('status' in r) return r
+  const current = fs.existsSync(r.abs) ? read(r.abs) : ''
+  if (sha256(current) !== b.base && !(current === '' && b.base === '')) return { status: 409, body: { error: 'file changed on disk', current } }
+  const tmp = `${r.abs}.${process.pid}.${Date.now()}.tmp`
+  fs.writeFileSync(tmp, b.content, 'utf8')
+  fs.renameSync(tmp, r.abs)
+  return { status: 200, body: { ok: true, path: b.path, sha: sha256(b.content) } }
+}
+
+function readConfig(repoRoot: string): Record<string, unknown> {
+  const file = path.join(repoRoot, CONFIG_FILE)
+  if (!fs.existsSync(file)) return {}
+  const v = JSON.parse(read(file)) // a broken file is a 500 with the parse error, not a silent {}
+  return v && typeof v === 'object' ? v : {}
+}
+
+function readBody(req: IncomingMessage): Promise<unknown> {
+  return new Promise((resolve, reject) => {
+    const chunks: Buffer[] = []
+    let size = 0
+    req.on('data', (c: Buffer) => { size += c.length; if (size > MAX_BODY) { reject(new Error('too large')); req.destroy() } else chunks.push(c) })
+    req.on('end', () => { try { resolve(JSON.parse(Buffer.concat(chunks).toString('utf8'))) } catch { reject(new Error('body is not JSON')) } })
+    req.on('error', reject)
+  })
 }
 
 // --- runs ------------------------------------------------------------------------

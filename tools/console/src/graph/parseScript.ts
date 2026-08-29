@@ -2,9 +2,11 @@ import type { Graph, GraphEdge, GraphNode, NodeKind } from '../types'
 
 // Static reading of a native workflow script. The factory scripts are short and
 // regular: `export const meta = { phases: [{ title }] }` and `agent(prompt, {
-// label, phase })` calls, sometimes inside `pipeline(` / `parallel(` blocks.
-// Labels and phases are string literals — or start with one (`'review:' + key`),
-// which becomes a template node `review:*` that a run expands into real nodes.
+// label, phase })` calls — top-level or inside helper functions (`runGate`),
+// sometimes inside `pipeline(` / `parallel(` blocks. Labels and phases are
+// string literals in any quote style, or start with one (`'review:' + key`,
+// `` `gate:${round}` ``), which becomes a template node `review:*` that a run
+// expands into real nodes. Nothing here evaluates the script.
 
 export function kindOf(label: string): NodeKind {
   const l = label.toLowerCase()
@@ -17,6 +19,13 @@ export function nodeId(label: string): string {
   return label.replace(/[^\w:*.-]+/g, '_').toLowerCase()
 }
 
+/** Index just past the string literal opening at `i` (a quote or backtick). */
+function skipString(src: string, i: number): number {
+  const q = src[i++]
+  while (i < src.length && src[i] !== q) i += src[i] === '\\' ? 2 : 1
+  return i + 1
+}
+
 /** Index of the paren that closes the one at `open`, skipping strings/templates/comments. */
 function matchParen(src: string, open: number): number {
   let depth = 0
@@ -25,13 +34,7 @@ function matchParen(src: string, open: number): number {
     const c = src[i]
     if (c === '/' && src[i + 1] === '/') { i = src.indexOf('\n', i); if (i < 0) return src.length; continue }
     if (c === '/' && src[i + 1] === '*') { i = src.indexOf('*/', i); if (i < 0) return src.length; i += 2; continue }
-    if (c === "'" || c === '"' || c === '`') {
-      const q = c
-      i++
-      while (i < src.length && src[i] !== q) { if (src[i] === '\\') i++; i++ }
-      i++
-      continue
-    }
+    if (c === "'" || c === '"' || c === '`') { i = skipString(src, i); continue }
     if (c === '(' || c === '[' || c === '{') depth++
     if (c === ')' || c === ']' || c === '}') { depth--; if (depth === 0) return i }
     i++
@@ -39,23 +42,81 @@ function matchParen(src: string, open: number): number {
   return src.length
 }
 
-/** `key: 'literal'` → literal; `key: 'lit' + expr` → `lit*`; template with ${} → prefix + `*`. */
-function readStringOption(options: string, key: string): string | undefined {
-  const m = new RegExp(`\\b${key}\\s*:\\s*(['"\`])`).exec(options)
-  if (!m) return undefined
-  const q = m[1]
-  const start = m.index + m[0].length
-  let i = start
-  let out = ''
-  while (i < options.length && options[i] !== q) {
-    if (options[i] === '\\') { out += options[i + 1]; i += 2; continue }
-    if (q === '`' && options[i] === '$' && options[i + 1] === '{') return out + '*'
-    out += options[i]
-    i++
+/**
+ * The options object of an argument list: the last `{` at depth 0. Found by
+ * walking, not `lastIndexOf('{')` — a template label `` `gate:${round}` ``
+ * ends in a `{` too, and that mistake once emptied the Gate lane.
+ */
+function optionsOf(body: string): string {
+  let depth = 0, at = -1
+  for (let i = 0; i < body.length; i++) {
+    const c = body[i]
+    if (c === "'" || c === '"' || c === '`') { i = skipString(body, i) - 1; continue }
+    if (c === '(' || c === '[' || c === '{') { if (depth === 0 && c === '{') at = i; depth++ }
+    else if (c === ')' || c === ']' || c === '}') depth--
   }
-  const rest = options.slice(i + 1).trimStart()
-  if (rest.startsWith('+')) return out + '*'
-  return out
+  return at < 0 ? '' : body.slice(at, matchParen(body, at) + 1)
+}
+
+/** The literal opening at `i`, unescaped; a template's `${…}` becomes `*` when `star`, else stays as text. */
+function readLiteral(src: string, i: number, star: boolean): { text: string; end: number; open: boolean } {
+  const q = src[i]
+  let out = ''
+  let open = false
+  i++
+  while (i < src.length && src[i] !== q) {
+    if (src[i] === '\\') { out += src[i + 1] === 'n' ? '\n' : src[i + 1]; i += 2; continue }
+    if (q === '`' && src[i] === '$' && src[i + 1] === '{') {
+      const close = matchParen(src, i + 1)
+      if (star) return { text: out + '*', end: skipToClose(src, close, q), open: true }
+      out += src.slice(i, close + 1); i = close + 1; continue
+    }
+    out += src[i++]
+  }
+  return { text: out, end: i + 1, open }
+}
+function skipToClose(src: string, from: number, q: string): number {
+  let i = from
+  while (i < src.length && src[i] !== q) i += src[i] === '\\' ? 2 : 1
+  return i + 1
+}
+
+/** `key: 'literal'` → literal; `key: 'lit' + expr` → `lit*`; template with ${} → prefix + `*`; `key: IDENT` → the const's literal. */
+function readStringOption(src: string, options: string, key: string): string | undefined {
+  const m = new RegExp(`\\b${key}\\s*:\\s*(['"\`]|[A-Za-z_$][\\w$]*)`).exec(options)
+  if (!m) return undefined
+  if (!/^['"`]$/.test(m[1])) return constLiteral(src, m[1])
+  const lit = readLiteral(options, m.index + m[0].length - 1, true)
+  if (lit.open) return lit.text
+  return options.slice(lit.end).trimStart().startsWith('+') ? lit.text + '*' : lit.text
+}
+
+/**
+ * `const NAME = 'x'` → x. When the initializer is an expression (`typeof
+ * config.reviewer === 'string' ? config.reviewer : 'reviewer'`) the last
+ * literal on the line is the fallback, which is what a static drawing wants.
+ */
+function constLiteral(src: string, name: string): string | undefined {
+  const m = new RegExp(`\\b(?:const|let|var)\\s+${name}\\s*=([^\\n;]*)`).exec(src)
+  if (!m) return undefined
+  const lits = [...m[1].matchAll(/(['"`])((?:\\.|(?!\1).)*)\1/g)].map((x) => x[2])
+  return lits.length ? lits[lits.length - 1] : undefined
+}
+
+/** The prompt argument as text: a literal, or a `const NAME = [(…) =>] \`…\`` the call names (also `NAME(args)`). */
+function promptText(src: string, arg: string): string | undefined {
+  const a = arg.trim()
+  if (/^['"`]/.test(a)) return readLiteral(a, 0, false).text
+  const name = /^([A-Za-z_$][\w$]*)\s*(?:\(|$)/.exec(a)?.[1]
+  if (!name) return undefined
+  const m = new RegExp(`\\b(?:const|let|var)\\s+${name}\\s*=\\s*(?:\\([^)]*\\)\\s*=>\\s*|[A-Za-z_$][\\w$]*\\s*=>\\s*)?(['"\`])`).exec(src)
+  return m ? readLiteral(src, m.index + m[0].length - 1, false).text : undefined
+}
+
+/** `Skill({ skill: "x" })` or a `/x` command in the prompt → x. The panel checks it against the skills on disk. */
+export function skillOf(prompt: string | undefined): string | undefined {
+  if (!prompt) return undefined
+  return /\bSkill\(\s*\{\s*skill\s*:\s*['"`]([\w-]+)/.exec(prompt)?.[1] ?? /(?:^|[\s`'"(])\/([a-z][\w-]*)\b/.exec(prompt)?.[1]
 }
 
 function readMetaPhases(src: string): { name?: string; phases: string[] } {
@@ -75,7 +136,7 @@ function readMetaPhases(src: string): { name?: string; phases: string[] } {
   return { name, phases }
 }
 
-interface Call { label: string; phase: string; group: number | null; at: number }
+interface Call { label: string; phase: string; group: number | null; at: number; agentType?: string; prompt?: string }
 
 export function parseScript(src: string): Graph {
   const { name, phases: metaPhases } = readMetaPhases(src)
@@ -95,14 +156,15 @@ export function parseScript(src: string): Graph {
     const open = a.index + a[0].length - 1
     const close = matchParen(src, open)
     const body = src.slice(open + 1, close)
-    // options object = last top-level `{ … }` in the argument list
-    const optAt = body.lastIndexOf('{')
-    const options = optAt >= 0 ? body.slice(optAt, matchParen(body, optAt) + 1) : ''
-    const phase = readStringOption(options, 'phase') ?? ''
-    const label = readStringOption(options, 'label') ?? (phase ? phase.toLowerCase() : `agent ${++anon}`)
+    const options = optionsOf(body)
+    const phase = readStringOption(src, options, 'phase') ?? ''
+    const label = readStringOption(src, options, 'label') ?? (phase ? phase.toLowerCase() : `agent ${++anon}`)
+    const agentType = readStringOption(src, options, 'agentType')
+    const firstArg = options ? body.slice(0, body.lastIndexOf(options)).replace(/,\s*$/, '') : body
+    const prompt = promptText(src, firstArg)
     let group: number | null = null
     groups.forEach((gr, i) => { if (a!.index > gr.start && a!.index < gr.end) group = i })
-    calls.push({ label, phase, group, at: a.index })
+    calls.push({ label, phase, group, at: a.index, agentType, prompt })
   }
 
   const phases = [...metaPhases]
@@ -115,6 +177,8 @@ export function parseScript(src: string): Graph {
     const id = nodeId(c.label)
     if (seen.has(id)) continue
     const n: GraphNode = { id, label: c.label, phase: c.phase || phases[0] || '', kind: kindOf(c.label), template: c.label.endsWith('*') }
+    if (c.agentType) n.agentType = c.agentType
+    if (c.prompt) { n.prompt = c.prompt; const s = skillOf(c.prompt); if (s) n.skill = s }
     seen.set(id, n)
     nodes.push(n)
   }
@@ -148,5 +212,5 @@ export function parseScript(src: string): Graph {
 
 /** A `/skill` is one node: the skill itself. */
 export function parseSkill(name: string): Graph {
-  return { name, phases: [name], nodes: [{ id: nodeId(name), label: name, phase: name, kind: kindOf(name) }], edges: [] }
+  return { name, phases: [name], nodes: [{ id: nodeId(name), label: name, phase: name, kind: kindOf(name), skill: name }], edges: [] }
 }

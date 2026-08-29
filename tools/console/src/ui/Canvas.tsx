@@ -43,7 +43,7 @@ function build(graph: RunGraph, selectedId?: string): { nodes: Node[]; edges: Ed
     const i = graph.info[n.id]
     return {
       id: n.id, type: 'agent', parentId: p.lane, position: { x: p.x, y: p.y }, selected: n.id === selectedId, zIndex: 1, style: { width: p.w, height: p.h },
-      data: { label: n.label, phase: n.phase, kind: n.kind, state: i?.state ?? 'idle', model: i?.model, attempt: i?.attempt, tokens: i?.tokens, durationMs: i?.durationMs, error: i?.agent?.error },
+      data: { label: n.label, phase: n.phase, kind: n.kind, state: i?.state ?? 'idle', model: i?.model, attempt: i?.attempt, tokens: i?.tokens, durationMs: i?.durationMs, error: i?.agent?.error, agentType: n.agentType },
     }
   })
   const edges: Edge[] = graph.edges.map((e) => {

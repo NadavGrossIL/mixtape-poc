@@ -74,8 +74,13 @@ export interface WorkflowFile {
   kind: 'script' | 'skill' | 'yaml'
   path: string
   source: string
+  /** sha256 of `source`: the `base` a `POST /api/file` must carry (C4). */
+  sha: string
   fixture?: boolean
 }
+
+/** `GET /api/file` and the success reply of `POST /api/file`. */
+export interface FileRead { path: string; content: string; sha: string }
 
 export interface AgentDetail {
   prompt: string
@@ -95,6 +100,12 @@ export interface GraphNode {
   kind: NodeKind
   /** A node whose label ended in an expression, e.g. `review:*`; a run expands it. */
   template?: boolean
+  /** `agentType:` from the call's options (the reviewer node); its file is `.claude/agents/<agentType>.md`. */
+  agentType?: string
+  /** The prompt invokes this skill (`Skill({ skill: "x" })` or `/x`); its file is `.claude/skills/<skill>/SKILL.md`. */
+  skill?: string
+  /** The prompt's literal text when the script spells it out (a string or a `const` the call names). */
+  prompt?: string
 }
 
 export interface GraphEdge {

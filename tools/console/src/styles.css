@@ -154,3 +154,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .scrub { flex: 1; accent-color: var(--accent); }
 .replay .clock { min-width: 140px; text-align: right; color: var(--muted); font-size: 13px; }
 .replay.following { min-height: 58px; }
+
+/* node panel tabs and the file editor (C4) */
+.tabs { display: flex; gap: 2px; margin: 18px 0 10px; border-bottom: 1px solid var(--line); }
+.tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin-bottom: -1px; }
+.tab:hover { color: var(--text); } .tab[data-on] { color: var(--accent); border-bottom-color: var(--accent); }
+.editor { display: flex; flex-direction: column; gap: 8px; }
+.editor textarea { font: 12px/1.5 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; min-height: 360px; resize: vertical; tab-size: 2; white-space: pre; overflow: auto; }
+.editor textarea:focus { outline: none; border-color: var(--accent); }
+.editor-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.editor-bar .path { font: 11px/1 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
+.chip[data-agent] { color: var(--accent); border-color: var(--accent-dim); }
+/* the diff preview: colour plus a sign column, never colour alone */
+.diff { font: 12px/1.5 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 8px; max-height: 420px; overflow: auto; margin: 0; }
+.diff div { display: flex; white-space: pre; }
+.diff div::before { content: attr(data-sign); width: 18px; flex-shrink: 0; text-align: center; color: var(--muted); }
+.diff [data-kind="ctx"] { color: var(--muted); }
+.diff [data-kind="add"] { color: #7ee2a8; background: rgba(95, 211, 179, .12); }
+.diff [data-kind="del"] { color: #f59a94; background: rgba(240, 113, 106, .12); }
+.diff [data-kind="skip"] { color: var(--muted); font-style: italic; background: var(--bg-2); }
+@media (prefers-color-scheme: light) { .diff [data-kind="add"] { color: #0b6e45; } .diff [data-kind="del"] { color: #a12a22; } }

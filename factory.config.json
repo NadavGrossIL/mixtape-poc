@@ -1,0 +1,8 @@
+{
+  "maxGateRounds": 2,
+  "base": "origin/main",
+  "reviewer": "reviewer",
+  "maxTurns": 60,
+  "maxBudgetUsd": 5,
+  "permissionMode": "acceptEdits"
+}

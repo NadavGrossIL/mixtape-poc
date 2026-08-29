@@ -1,7 +1,7 @@
 # Mixtape factory console
 
-A local page that draws the feature factory's workflows as a graph and replays
-their runs. It reads two things and writes nothing:
+A local page that draws the feature factory's workflows as a graph, replays
+their runs, and edits the files the line is made of. It reads two things:
 
 - workflow definitions in this repo — `.claude/workflows/*.js`,
   `.claude/skills/*/SKILL.md`, `.archon/workflows/*.yaml`
@@ -18,9 +18,13 @@ npm run build      # typecheck (tsc --noEmit) + vite build, nothing is deployed
 npm run fixtures   # regenerate the redacted fixture from the real run on this machine
 ```
 
-Endpoints (served by the Vite dev-server plugin in `src/plugin.ts`, GET only):
+Endpoints (served by the Vite dev-server plugin in `src/plugin.ts`; everything is
+GET except the one POST below):
 
-- `/api/workflows` — `[{ name, engine, kind, path, source }]`
+- `/api/workflows` — `[{ name, engine, kind, path, source, sha }]` (`sha` = sha256 of `source`)
+- `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet)
+- `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
+- `POST /api/file` — the only write, see "Tweak" below
 - `/api/runs` — manifests newest first, without `script`/`args` (`?full=1` includes them)
 - `/api/runs/:runId/agents/:agentId` — `{ prompt, result, events }` from the transcript (404 for fixtures)
 - `/api/meta` — which projects directory is being read (`CONSOLE_PROJECTS_DIR` overrides `~/.claude/projects`)
@@ -52,6 +56,36 @@ read-only node panel. The page keeps one `EventSource` open and refetches on eac
 event; a live run follows "now" and the scrubber is offered once it finishes.
 All CSS lives in `src/styles.css`.
 
+Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
+skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as
+the reviewer; a literal prompt is read-only), *Knobs* (`factory.config.json`) and
+*Script* (the workflow file, edited as code: the graph is drawn from that text). Save
+shows a line diff first (`src/ui/diff.ts`, an LCS, no library), then writes through
+
+- `POST /api/file` with `{ path, content, base }` (JSON, ≤ 256 kB). `path` is
+  repo-relative and must match one of `.claude/workflows/*.js`,
+  `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml|yml`,
+  `factory.config.json` after normalisation — no `..`, no absolute paths, no
+  symlinks, and the parent's real path must stay inside the repo. Anything else is
+  `403 { error: 'path not allowlisted' }`.
+- `base` is the sha256 of the content the client last read (from `/api/workflows`
+  or `/api/file`; `""` for a file that does not exist yet). If the file on disk no
+  longer hashes to it the reply is `409 { error: 'file changed on disk', current }`
+  and the page offers Reload — optimistic concurrency, no lock file.
+- Success writes atomically (temp file + rename) and returns `{ ok, path, sha }`; the
+  page then refetches `/api/workflows` so the graph re-parses the new script text.
+
+`factory.config.json` (repo root, free tier) holds the knobs a driver reads:
+`maxGateRounds`, `base`, `reviewer` go to the script as `args.config`; `maxTurns`,
+`maxBudgetUsd`, `permissionMode` are the `claude -p` hard-stop flags a driver composes.
+Note that `/implement-from-spec specs/…` in a session hands the script a plain string
+as `args`, so `config` only reaches it when a driver passes `{ spec, config }`.
+
+The static graph reads `agent(prompt, { label, phase, agentType })` calls anywhere in
+the script — single, double or backtick quotes; a `${expr}` in a label becomes `*`
+(`gate:*`), and a run's `gate:1` lights that node. `agentType` draws an `@reviewer` chip.
+
 Rules: local only. It reads `~/.claude`, so it is never deployed and is not part of
-the product build. It never starts a run — starting is `claude -p` or Archon; this
-page only watches. Every manifest field is optional and shows "—" when missing.
+the product build. It never starts a run — starting is `claude -p` with the hard-stop
+flags, or Archon; this page watches and edits, and the write endpoint executes nothing.
+Every manifest field is optional and shows "—" when missing.

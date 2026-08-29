@@ -105,7 +105,11 @@ export function App() {
       <div className="stage">
         <Canvas graph={graph} selectedId={selected} onSelect={setSelected} />
         <RunList runs={runs} selectedId={run?.runId} onSelect={pickRun} />
-        {selectedNode && <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} onClose={() => setSelected(undefined)} />}
+        {selectedNode && (
+          <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files}
+            scriptPath={card?.file && !card.file.fixture && card.file.kind !== 'skill' ? card.file.path : undefined}
+            onClose={() => setSelected(undefined)} onSaved={() => { void loadFiles().catch(() => {}) }} />
+        )}
       </div>
       {live
         ? <footer className="replay following"><span className="muted small">Following the run as it happens ({run?.source}). Replay is available once it finishes.</span></footer>

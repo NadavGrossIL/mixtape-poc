@@ -5,8 +5,11 @@
 # here — they cost money and Spotify quota; selftest is the free part.
 #
 # Each step is the exact command CLAUDE.md documents, run from the same
-# directory. The build step is `vite build` alone because `tsc -b` already
-# ran as the client typecheck. Step 0 is the ask tier (scripts/protected-check.sh):
+# directory: ask-tier check → server typecheck → client typecheck → unit
+# tests → evals selftest → workflow selftest (the never-tier factory line
+# against stub agents, scripts/workflow-selftest.mjs) → client build. The
+# build step is `vite build` alone because `tsc -b` already ran as the
+# client typecheck. Step 0 is the ask tier (scripts/protected-check.sh):
 # free, deterministic, and the one check permission rules can't do.
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -28,6 +31,7 @@ step "server typecheck" server "npm run typecheck"
 step "client typecheck" client "npm run typecheck"
 step "unit tests"       server "node --test"
 step "evals selftest"   .      "node evals/selftest.ts"
+step "workflow selftest" .     "node scripts/workflow-selftest.mjs"
 step "client build"     client "npx vite build"
 
 printf '\n== gate passed in %ds\n' $((SECONDS - GATE_START))

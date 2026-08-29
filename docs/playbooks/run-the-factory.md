@@ -76,4 +76,9 @@ run whose row is meant to say "autonomous".
 the line — the JSON `args` form, the `implementModel` knob, the
 `ready-for-eval` status — is prepared as a patched copy outside the repo and
 applied by a human, then the stub simulation is rerun before the next run.
+Before editing the script, and again after: `node scripts/workflow-selftest.mjs`
+(also `npm run selftest:workflows`, and a step of `npm run gate`) drives the
+line against stub agents — every status, retry and label the driver and the
+console rely on, offline and free. `WORKFLOWS_DIR=<dir>` points it at a
+patched copy outside the repo, test-only.
 The driver itself, `scripts/factory-run.sh`, is free tier.

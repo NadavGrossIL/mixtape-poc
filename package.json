@@ -12,6 +12,7 @@
     "start": "node server/index.ts",
     "typecheck": "npm --prefix server run typecheck",
     "gate": "bash scripts/gate.sh",
+    "selftest:workflows": "node scripts/workflow-selftest.mjs",
     "console": "npm --prefix tools/console run dev"
   }
 }

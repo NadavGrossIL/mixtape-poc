@@ -87,6 +87,8 @@ shows a line diff first (`src/ui/diff.ts`, an LCS, no library), then writes thro
   and the page offers Reload — optimistic concurrency, no lock file.
 - Success writes atomically (temp file + rename) and returns `{ ok, path, sha }`; the
   page then refetches `/api/workflows` so the graph re-parses the new script text.
+  The gate runs `scripts/workflow-selftest.mjs` against the script, so a panel
+  edit that breaks the flow (a renamed status, a lost retry) fails `npm run gate`.
 
 `factory.config.json` (repo root, free tier) holds the knobs a driver reads:
 `maxGateRounds`, `base`, `reviewer`, `implementModel` go to the script as

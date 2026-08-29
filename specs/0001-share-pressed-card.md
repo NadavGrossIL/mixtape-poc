@@ -1,7 +1,7 @@
 ---
 id: 0001
 title: Share control on the pressed card
-status: draft            # draft → ready (human approves) → done | escalated
+status: ready            # draft → ready (human approves) → done | escalated
 touches_prompt: false    # client only — no server, no curator, no eval case
 flag: none               # client-only button; a build-time VITE_ var can't switch it off at runtime — a revert is the switch
 ---

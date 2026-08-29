@@ -1,21 +1,38 @@
-import { useEffect, useMemo, useState } from 'react'
-import type { AgentDetail, FileRead, GraphNode, NodeRunInfo, RunManifest, WorkflowFile } from '../types'
-import { fmtDuration, fmtTokens, shortModel, dash } from './format'
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
+import type { AgentDetail, FileRead, GraphNode, NodeRunInfo, NodeState, RunManifest, WorkflowAgentEntry, WorkflowFile } from '../types'
+import { agentsOf, isStalled, purposeOf, stateAt } from '../graph'
+import { fmtDuration, fmtTime, fmtTokens, isLive, shortModel, whenAbs, whenRel, dash } from './format'
 import { diffLines, hunks, changed, type DiffLine } from './diff'
 
 type Tab = 'prompt' | 'knobs' | 'script' | 'result' | 'transcript'
-const TABS: [Tab, string][] = [['prompt', 'Prompt'], ['knobs', 'Knobs'], ['script', 'Script'], ['result', 'Last result'], ['transcript', 'Transcript']]
+const TABS: [Tab, string][] = [['prompt', 'Prompt'], ['knobs', 'Knobs'], ['script', 'Script'], ['result', 'Result'], ['transcript', 'Transcript']]
 const CONFIG = 'factory.config.json'
 
+const COPY = {
+  notRun: 'This step has not run in the selected run.',
+  noResult: 'No result was recorded for this attempt.',
+  fixture: 'Fixture run: results and transcripts are not shipped with the repo.',
+  live: 'Live — reloads as the transcript grows.',
+  literal: 'Literal prompt from the script, read-only. ${…} is filled in at run time. Edit it under Script.',
+  noFile: 'No workflow file on disk for this run.',
+  noFileCopy: 'No workflow file on disk for this run. The script the engine copied, read-only:',
+} as const
+
+// The panel's width is the one per-viewer convenience kept in the browser.
+const WIDTH_KEY = 'console.panelWidth'
+const WIDTH = { min: 360, max: 720, default: 440 }
+
 /**
- * The node panel. Prompt / Knobs / Script edit the files a node is drawn from
- * (plan §11.5: prompts and knobs in place, the script as text with a diff);
- * Last result / Transcript read the selected run. `tick` bumps when the run's
- * journal moved; a transcript already on screen is reloaded then. `onSaved`
- * asks the page to refetch workflows so the graph re-parses the new text.
+ * The node panel: the full label, what the step is for, the facts of its last
+ * attempt, then tabs. Prompt / Knobs / Script edit the files a node is drawn
+ * from (plan §11.5: prompts and knobs in place, the script as text with a
+ * diff); Result / Transcript read the selected run. `tick` bumps when the
+ * run's journal moved; a transcript already on screen is reloaded then.
+ * `onSaved` asks the page to refetch workflows so the graph re-parses the new
+ * text. A flex sibling of the canvas (A10), resizable from its left edge.
  */
-export function NodePanel({ node, info, run, tick, files, scriptPath, onClose, onSaved }: {
-  node: GraphNode; info?: NodeRunInfo; run?: RunManifest; tick?: number; files: WorkflowFile[]; scriptPath?: string; onClose: () => void; onSaved: () => void
+export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date.now(), onClose, onSaved }: {
+  node: GraphNode; info?: NodeRunInfo; run?: RunManifest; tick?: number; files: WorkflowFile[]; scriptPath?: string; now?: number; onClose: () => void; onSaved: () => void
 }) {
   const a = info?.agent
   const [tab, setTab] = useState<Tab>('prompt')
@@ -33,78 +50,250 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, onClose, o
   }
   const loaded = !!detail && 'prompt' in detail
   useEffect(() => { if (loaded && tick) void load() }, [tick]) // eslint-disable-line react-hooks/exhaustive-deps
+  const { width, grip } = usePanelWidth()
 
   // Which file the Prompt tab owns: a skill the prompt invokes (only if it exists on disk), else a named subagent's file.
   const skill = node.skill && files.some((f) => f.kind === 'skill' && f.name === node.skill) ? node.skill : undefined
   const promptFile = skill ? `.claude/skills/${skill}/SKILL.md` : node.agentType ? `.claude/agents/${node.agentType}.md` : undefined
 
-  const rows: [string, string][] = [
+  const purpose = purposeOf(node, files)
+  const kind = node.agentType ? `${node.kind} · @${node.agentType}` : node.kind
+  const attempts = useMemo(() => (info ? attemptRows(info.agents, node, run) : []), [info, node, run])
+  const last = attempts[attempts.length - 1]
+  const live = isLive(run) && !isStalled(run)
+  const ran = !!a
+  const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : undefined
+  const loadButton = (label: string) => canLoad && !detail && <button type="button" className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : label}</button>
+
+  const rows: [string, string, string?][] = [
     ['phase', node.phase || dash],
-    ['kind', node.agentType ? `${node.kind} · @${node.agentType}` : node.kind],
+    ['kind', kind],
     ['state', info?.state ?? 'idle'],
+    ['outcome', last?.outcome ?? dash],
     ['model', shortModel(a?.model)],
     ['attempt', a ? String(info?.attempt ?? a.attempt ?? 1) : dash],
     ['tokens', fmtTokens(a?.tokens)],
     ['tool calls', a?.toolCalls != null ? String(a.toolCalls) : dash],
-    ['duration', fmtDuration(a?.durationMs)],
+    ['duration', fmtDuration(info?.durationMs ?? a?.durationMs)],
+    ['started', whenRel(a?.startedAt, now), a?.startedAt != null ? whenAbs(a.startedAt) : undefined],
     ['last tool', a?.lastToolName ?? dash],
     ['agent id', a?.agentId ?? dash],
   ]
   return (
-    <aside className="panel" aria-label="node details">
-      <header className="panel-head">
-        <h2>{node.label}</h2>
-        <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
-      </header>
-      <dl className="facts">{rows.map(([k, v]) => <div key={k}><dt>{k}</dt><dd>{v}</dd></div>)}</dl>
-      {a?.error && <section><h3>error</h3><pre className="mono err">{a.error}</pre></section>}
-      <nav className="tabs" role="tablist">
-        {TABS.map(([id, name]) => <button key={id} role="tab" className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
-      </nav>
-      {tab === 'prompt' && (promptFile
-        ? <FileEditor key={promptFile} path={promptFile} note={skill ? `This node invokes the \`${skill}\` skill; this is its SKILL.md.` : `This node runs as the \`${node.agentType}\` subagent; this is its definition.`} onSaved={onSaved} />
-        : <section>
-            <p className="muted small">Literal prompt from the script, read-only{node.prompt ? ' (`${…}` are filled in at run time)' : ''}. Edit it under Script.</p>
-            <pre className="mono tall">{node.prompt ?? a?.promptPreview ?? dash}</pre>
-          </section>)}
-      {tab === 'knobs' && <FileEditor key={CONFIG} path={CONFIG} note="factory.config.json — what a driver passes to the run as args.config (maxGateRounds, base, reviewer) and the claude -p hard stops (maxTurns, maxBudgetUsd, permissionMode). Created on first save." onSaved={onSaved} validate={validJson} />}
-      {tab === 'script' && (scriptPath
-        ? <FileEditor key={scriptPath} path={scriptPath} note="The graph is drawn from this text; edit it as code." onSaved={onSaved} />
-        : <section>
-            <p className="muted small">No workflow file on disk for this run{run?.script ? '; the script the engine copied, read-only:' : '.'}</p>
-            {run?.script && <pre className="mono tall">{run.script}</pre>}
-          </section>)}
-      {tab === 'result' && (
-        <section>
-          <h3>result preview</h3>
-          <pre className="mono">{a?.resultPreview ?? dash}</pre>
-          {info && info.agents.length > 1 && (
-            <><h3>attempts</h3><ul className="muted small">{info.agents.map((x, i) => <li key={i}>attempt {x.attempt ?? i + 1}: {x.state ?? dash} · {fmtDuration(x.durationMs)} · {fmtTokens(x.tokens)} tok</li>)}</ul></>
-          )}
-          {canLoad && !detail && <p><button className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Load full result'}</button></p>}
-          {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
-          {detail && 'prompt' in detail && <><h3>result</h3><pre className="mono tall">{detail.result || dash}</pre></>}
-        </section>
-      )}
-      {tab === 'transcript' && (
-        <section>
-          <h3>prompt preview</h3>
-          <pre className="mono">{a?.promptPreview ?? dash}</pre>
-          {!a && <p className="muted small">This node has not run in the selected run.</p>}
-          {a && run?.fixture && <p className="muted small">Fixture run: the transcript is not shipped with the repo.</p>}
-          {canLoad && !detail && <p><button className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : 'Load transcript'}</button></p>}
-          {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
-          {detail && 'prompt' in detail && (
-            <>
-              <h3>full prompt</h3>
-              <pre className="mono tall">{detail.prompt || dash}</pre>
-              <h3>events ({detail.events.length})</h3>
-              <ol className="events">{detail.events.map((e, i) => <li key={i}><span className="muted">{e.ts.slice(11, 19)}</span> <b>{e.kind}{e.name ? ` ${e.name}` : ''}</b> <span className="mono">{e.summary}</span></li>)}</ol>
-            </>
-          )}
-        </section>
-      )}
+    <aside className="panel" aria-label="node details" style={{ width }}>
+      <div className="panel-grip" role="separator" aria-orientation="vertical" aria-label="resize the panel" aria-valuenow={width} aria-valuemin={WIDTH.min} aria-valuemax={WIDTH.max} tabIndex={0} title="drag to resize" {...grip} />
+      <div className="panel-body">
+        <header className="panel-head">
+          <h2 title={node.label}>{node.label}</h2>
+          <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
+        </header>
+        <p className="panel-sub muted small">{node.phase || dash} › {kind} · {purpose}</p>
+        <dl className="facts">{rows.map(([k, v, title]) => <div key={k}><dt>{k}</dt><dd title={title}>{v}</dd></div>)}</dl>
+        {a?.error && <section><h3>error</h3><Mono className="err">{a.error}</Mono></section>}
+        <nav className="tabs" role="tablist">
+          {TABS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
+        </nav>
+        {tab === 'prompt' && (promptFile
+          ? <FileEditor key={promptFile} path={promptFile} note={skill ? `This node invokes the \`${skill}\` skill; this is its SKILL.md.` : `This node runs as the \`${node.agentType}\` subagent; this is its definition.`} onSaved={onSaved} />
+          : node.prompt
+            ? <section>
+                <p className="muted small">{COPY.literal}</p>
+                <Mono tall>{node.prompt}</Mono>
+              </section>
+            : <section>
+                {/* A journal-only node: the manifest carries an 80-char preview; the full prompt is in the agent's transcript file (A18). */}
+                <h3>prompt preview (journal)</h3>
+                <Mono>{a?.promptPreview ?? dash}</Mono>
+                {!ran && <p className="muted small">{COPY.notRun}</p>}
+                {canLoad && !detail && <p>{loadButton('Load full prompt')}</p>}
+                {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
+                {detail && 'prompt' in detail && <><h3>full prompt</h3><Mono tall>{detail.prompt || dash}</Mono></>}
+              </section>)}
+        {tab === 'knobs' && <FileEditor key={CONFIG} path={CONFIG} note="factory.config.json — what a driver passes to the run as args.config (maxGateRounds, base, reviewer) and the claude -p hard stops (maxTurns, maxBudgetUsd, permissionMode). Created on first save." onSaved={onSaved} validate={validJson} />}
+        {tab === 'script' && (scriptPath
+          ? <FileEditor key={scriptPath} path={scriptPath} note="The graph is drawn from this text; edit it as code." onSaved={onSaved} />
+          : <section>
+              <p className="muted small">{run?.script ? COPY.noFileCopy : COPY.noFile}</p>
+              {run?.script && <Mono tall>{run.script}</Mono>}
+            </section>)}
+        {tab === 'result' && (
+          <section>
+            {!ran
+              ? <p className="muted small">{COPY.notRun}</p>
+              : <>
+                  <h3>attempts</h3>
+                  <div className="table-wrap">
+                    <table className="attempts">
+                      <thead><tr><th>attempt</th><th>outcome</th><th>duration</th><th>tokens</th><th>failing step</th></tr></thead>
+                      <tbody>
+                        {attempts.map((r) => (
+                          <tr key={r.key} data-state={r.state}>
+                            <td>{r.attempt}</td><td>{r.outcome}</td><td className="clock">{r.duration}</td><td>{r.tokens}</td><td>{r.step}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                  {run?.fixture
+                    ? <p className="muted small">{COPY.fixture}</p>
+                    : <>
+                        <h3>result preview</h3>
+                        {a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{COPY.noResult}</p>}
+                        {canLoad && !detail && <p>{loadButton('Load full result')}</p>}
+                        {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
+                        {detail && 'prompt' in detail && <><h3>result</h3><Mono tall>{detail.result || dash}</Mono></>}
+                      </>}
+                </>}
+          </section>
+        )}
+        {tab === 'transcript' && (
+          <section>
+            {empty
+              ? <p className="muted small">{empty}</p>
+              : <>
+                  <h3>prompt preview</h3>
+                  <Mono>{a?.promptPreview ?? dash}</Mono>
+                  <p className="load-row">
+                    {loadButton('Load transcript')}
+                    {live && <span className="muted small">{COPY.live}</span>}
+                  </p>
+                  {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
+                  {detail && 'prompt' in detail && (
+                    <>
+                      <h3>full prompt</h3>
+                      <Mono tall>{detail.prompt || dash}</Mono>
+                      <h3>events ({detail.events.length})</h3>
+                      <ol className="events">{detail.events.map((e, i) => <li key={i}><span className="muted clock" title={e.ts}>{fmtTime(e.ts)}</span> <b>{e.kind}{e.name ? ` ${e.name}` : ''}</b> <span className="mono">{e.summary}</span></li>)}</ol>
+                    </>
+                  )}
+                </>}
+          </section>
+        )}
+      </div>
     </aside>
+  )
+}
+
+// --- attempts ---------------------------------------------------------------------
+
+interface AttemptRow { key: string; attempt: string; outcome: string; duration: string; tokens: string; step: string; state: NodeState }
+
+/**
+ * One row per matched agent (IA-SPEC §5): the outcome read from the agent's
+ * `resultPreview` — a gate's `ok`, a reviewer's `verdict` with its findings
+ * count, apply's `applied`/`skipped`, implement's `status` — else its settled
+ * state. The failing step is a gate's `step`; for the last gate of a finished
+ * run the manifest's `result.gate.step` wins when it says something.
+ */
+function attemptRows(agents: WorkflowAgentEntry[], node: GraphNode, run?: RunManifest): AttemptRow[] {
+  const isGate = node.kind === 'gate' || /^gate(?::|$)/i.test(node.label)
+  const stalled = isStalled(run)
+  const finished = !!run && !isLive(run)
+  const gates = agentsOf(run).filter((x) => /^gate(?::|$)/i.test(x.label ?? '')).sort((x, y) => (x.startedAt ?? x.queuedAt ?? 0) - (y.startedAt ?? y.queuedAt ?? 0))
+  const lastGate = gates[gates.length - 1]
+  const gateStep = ((run?.result as { gate?: { step?: unknown } } | null | undefined)?.gate?.step)
+  const resultStep = typeof gateStep === 'string' && gateStep.trim() ? gateStep.trim() : undefined
+  return agents.map((x, i) => {
+    let state = stateAt(x)
+    if (stalled && (state === 'running' || state === 'queued')) state = 'stalled'
+    const p = parseResult(x.resultPreview)
+    let outcome: string
+    if (p?.ok != null) outcome = p.ok ? 'passed' : 'failed'
+    else if (p?.verdict) outcome = p.findings != null ? `${p.verdict} (${p.findings} finding${p.findings === 1 ? '' : 's'})` : p.verdict
+    else if (p?.applied != null) outcome = `applied ${p.applied}, skipped ${p.skipped ?? 0}`
+    else if (p?.status) outcome = p.status
+    else outcome = state
+    let step = dash
+    if (isGate) {
+      if (finished && lastGate && x === lastGate && resultStep) step = resultStep
+      else if (p?.step) step = p.step
+    }
+    return { key: x.agentId ?? String(i), attempt: String(x.attempt ?? i + 1), outcome, duration: fmtDuration(x.durationMs), tokens: fmtTokens(x.tokens), step, state }
+  })
+}
+
+interface Parsed { ok?: boolean; status?: string; verdict?: string; findings?: number; step?: string; applied?: number; skipped?: number }
+type TextKey = 'status' | 'verdict' | 'step'
+
+/** `resultPreview` as JSON; a clipped preview falls back to picking the known keys out of the text. */
+function parseResult(rp?: string): Parsed | undefined {
+  if (!rp || !rp.trim()) return undefined
+  const str = (v: unknown) => (typeof v === 'string' && v.trim() ? v.trim() : undefined)
+  const count = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : Array.isArray(v) ? v.length : undefined)
+  try {
+    const o = JSON.parse(rp)
+    if (o && typeof o === 'object') {
+      return { ok: typeof o.ok === 'boolean' ? o.ok : undefined, status: str(o.status), verdict: str(o.verdict), findings: Array.isArray(o.findings) ? o.findings.length : undefined, step: str(o.step), applied: count(o.applied), skipped: count(o.skipped) }
+    }
+  } catch { /* truncated: fall through to the regex */ }
+  // Only the top level: a clipped `{"claims":[{"verdict":…` must not lend its nested verdict to the agent.
+  const top = rp.slice(rp.indexOf('{') + 1).replace(/[[{][\s\S]*$/, '')
+  const p: Parsed = {}
+  const re = /"(status|ok|verdict|step|applied|skipped)":\s*("(?:[^"\\]|\\.)*"|[\w-]+)/g
+  for (let m = re.exec(top); m; m = re.exec(top)) {
+    const key = m[1] as keyof Parsed
+    const raw = m[2]
+    const val = raw.startsWith('"') ? raw.slice(1, -1) : raw
+    if (key === 'ok') p.ok = val === 'true' ? true : val === 'false' ? false : undefined
+    else if (key === 'applied' || key === 'skipped') p[key] = Number.isFinite(Number(val)) ? Number(val) : undefined
+    else if (val) p[key as TextKey] = val
+  }
+  return Object.keys(p).length ? p : undefined
+}
+
+// --- width -----------------------------------------------------------------------
+
+const clampWidth = (w: number) => (Number.isFinite(w) ? Math.min(WIDTH.max, Math.max(WIDTH.min, Math.round(w))) : WIDTH.default)
+function readWidth(): number {
+  try { const v = localStorage.getItem(WIDTH_KEY); return v ? clampWidth(Number(v)) : WIDTH.default } catch { return WIDTH.default }
+}
+function saveWidth(w: number) { try { localStorage.setItem(WIDTH_KEY, String(w)) } catch { /* private window or storage blocked: the width lives for this page only */ } }
+
+/** The panel's width: dragged from its left edge (pointer events, no library), nudged with ← → when the grip has focus, kept in localStorage. */
+function usePanelWidth() {
+  const [width, setWidth] = useState(readWidth)
+  const drag = useRef<{ right: number } | null>(null)
+  const onPointerDown = (e: PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return
+    const panel = e.currentTarget.parentElement
+    if (!panel) return
+    e.preventDefault()
+    e.currentTarget.setPointerCapture(e.pointerId)
+    drag.current = { right: panel.getBoundingClientRect().right }
+  }
+  const onPointerMove = (e: PointerEvent<HTMLDivElement>) => { if (drag.current) setWidth(clampWidth(drag.current.right - e.clientX)) }
+  const onPointerUp = (e: PointerEvent<HTMLDivElement>) => {
+    if (!drag.current) return
+    drag.current = null
+    e.currentTarget.releasePointerCapture(e.pointerId)
+    setWidth((w) => { saveWidth(w); return w })
+  }
+  const onKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    const step = e.key === 'ArrowLeft' ? 16 : e.key === 'ArrowRight' ? -16 : 0 // the panel grows leftwards
+    if (!step) return
+    e.preventDefault()
+    setWidth((w) => { const n = clampWidth(w + step); saveWidth(n); return n })
+  }
+  return { width, grip: { onPointerDown, onPointerMove, onPointerUp, onPointerCancel: onPointerUp, onKeyDown } }
+}
+
+// --- a scrolling text box with "show all" ------------------------------------------
+
+/** A `.mono` block: 240 px (480 px tall) and scrolling; when the text is longer, a `show all` toggle lets the whole thing through. */
+function Mono({ children, tall, className }: { children: ReactNode; tall?: boolean; className?: string }) {
+  const ref = useRef<HTMLPreElement>(null)
+  const [all, setAll] = useState(false)
+  const [overflows, setOverflows] = useState(false)
+  useLayoutEffect(() => {
+    const el = ref.current
+    if (!el) return
+    setOverflows(all || el.scrollHeight > el.clientHeight + 1)
+  }, [children, all])
+  return (
+    <>
+      <pre ref={ref} className={`mono${tall ? ' tall' : ''}${className ? ` ${className}` : ''}`} data-all={all || undefined}>{children}</pre>
+      {overflows && <button type="button" className="mono-toggle" onClick={() => setAll((v) => !v)}>{all ? 'show less' : 'show all'}</button>}
+    </>
   )
 }
 

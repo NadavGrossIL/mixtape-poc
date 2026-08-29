@@ -62,6 +62,14 @@ export function fmtTime(ts?: number | string): string {
   return `${pad2(d.getHours())}:${pad2(d.getMinutes())}:${pad2(d.getSeconds())}`
 }
 
+/** `13:58`, local — the rail's and header's `started 13:58`. */
+export function fmtClock(ts?: number | string): string {
+  const t = toMs(ts)
+  if (t == null) return dash
+  const d = new Date(t)
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`
+}
+
 /** `29 Aug 12:03`, local. */
 function dayClock(t: number): string {
   const d = new Date(t)

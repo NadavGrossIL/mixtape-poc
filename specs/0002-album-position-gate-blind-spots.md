@@ -73,9 +73,11 @@ cases the row cannot refute.
     "prompt": "the greatest album-opening tracks of all time" }`.
     Category per the playbook's rule: an album position is a catalog stat,
     the same kind of lie as BPM and solo length, not a new kind. The prompt
-    invites "opens X" in album context on all eight notes — the exact shape
-    — and the canonical answers are multi-disc and reissued albums, which
-    exercises the new `SYSTEM` line where the gate is blind.
+    invites "opens X" in album context on all eight notes — the exact
+    shape. Most canonical answers are true track-1s, so the case chiefly
+    guards against over-bouncing; it reaches the blind spots only when the
+    curator cites a deluxe/reissue or multi-disc row, which the pilot read
+    should note either way.
   - `specs/0002-album-position-gate-blind-spots.md` — run record.
 - ask (identity, caps, tokens — a headless run stops here): none. Stated
   explicitly: the lever needs no new `trimItem` field. `disc_number` would
@@ -101,29 +103,36 @@ as read on 2026-08-29; `total_tracks` under `album`):
 | `starisborn` | Shallow | A Star Is Born Soundtrack | album | 12 of 34 |
 | `reignexp` | Raining Blood | Reign In Blood (Expanded) | album | 10 of 12 |
 | `telex` | Killer Cars | High & Dry / Planet Telex | single | 5 of 6 |
-| `lz4deluxe` | Stairway to Heaven | Led Zeppelin IV (Deluxe Edition) | album | 4 of 16 |
+| `lz4deluxe` | Stairway to Heaven - Remaster | Led Zeppelin IV (Deluxe Edition) | album | 4 of 16 |
 
-Each row also carries `release_date` from the same cache read —
+Rows follow the `monochrome2` shape in `ROWS`: `name`, `uri:
+"spotify:track:<key>"`, `artists: [{ name }]`, `track_number`, `album: {
+name, release_date, album_type, total_tracks }`; no `duration_ms`. Each
+row also carries `release_date` from the same cache read —
 `janebordeaux` "2014-12-17", `montand1955` "1955", `salon` "2025-05-09",
-`starisborn` "2018-10-05", `reignexp` "1986-10-07", `telex` "1995-02-27" —
-and no `duration_ms`, like the existing position rows. The years in the
-slice notes (2014, 1955, 1986, 1995) all match, so rule 1 is silent and a
-flag or a pass comes from rule 3 alone. For `montand1955` use the album
-name with its parenthetical removed, `C'est si bon + 49 succès de Yves
-Montand`: with the parenthetical kept, slice 5's edition rule would make
-the closer claim a no-op for a second reason and slice 2 would stop
-guarding the window. This table is the whole fixture; the implementer
-opens neither `server/.search-cache.json` nor `evals/runs/**`.
+`starisborn` "2018-10-05", `reignexp` "1986-10-07", `telex` "1995-02-27",
+`lz4deluxe` "1971-11-08" — like the existing position rows. The years in
+the slice notes (2014, 1955, 1986, 1995) all match, so rule 1 is silent
+and a flag or a pass comes from rule 3 alone. `montand1955` keeps its
+full album name, parenthetical included — "(Chanson française)" is not an
+edition word, so slice 2 is guarded by the window alone. This table is
+the whole fixture; the implementer opens neither
+`server/.search-cache.json` nor `evals/runs/**`.
 
 Window rule, used by slices 1, 2 and 6: tokens are the note split on
 whitespace with leading/trailing punctuation stripped, compared
 case-insensitively; "within N tokens after the keyword" means tokens 1..N
 following the match, "within N before" means tokens 1..N preceding it, and
 a multi-token album name counts as present when its last token falls
-inside the window. `stripSuffixes` (server/spotify.ts) removes every `(…)`
-/ `[…]` segment, not only edition words — so as written, slice 5 also
-disables closer checks on "(Chanson française)" or "(Live)" rows; see open
-question 5.
+inside the window. Slice 5 keys on edition words (`EDITION_RE`), not on
+any parenthetical.
+
+Precedence inside the album-position check: the tape-object guard (slice
+3) first — when it matches, the keyword is not an album claim; then the
+determiner/possessive idiom (slice 4), which cancels only the link
+signal; then the album word within its window, the album name (scope per
+slice 6), or an off/from/on link within 3 tokens after — any one of those
+makes the claim an album claim.
 
 1. `grounding FLAGS 'opens their self-titled record' — record, LP, EP,
    debut and self-titled are album words (Jane Bordeaux, 2 of 11)` —
@@ -145,7 +154,7 @@ question 5.
    before the record runs out', Montand, 3 of 50)` — Act: same call with
    `"1955 closer that turns the last grey light pink before the record
    runs out"`. Assert: `null`. The album word must sit within 5 tokens
-   after the keyword or 3 before it; "record" nine tokens on is the tape
+   after the keyword or 3 before it; "record" ten tokens on is the tape
    metaphor. A slice that is green with no code change is kept as a guard.
 3. `grounding PASSES 'opens the tape' even when the row's album is named
    elsewhere in the note (Apple, 11 of 45)` — Act: `"The dance craze of
@@ -165,25 +174,29 @@ question 5.
    room in silence"` on `starisborn`. Assert: `null`. (Red today.) The
    existing wrong-album form `"Closing cut off Memories …"` (fixture
    `pylon`) must still flag — that assertion already exists; leave it.
-   The determiners are the articles `a`, `an`, `the` only (compare after
-   stripping non-letters). A possessive after the link (`off their
-   Memories`) is still a link. This one exclusion applies wherever a link
-   is checked — the noun forms of slice 6 included.
+   The determiners are `a|an|the|his|her|their|its` (compare after
+   stripping non-letters), immediately after `off|from|on`; a determiner
+   or possessive there cancels only the link signal — album words in the
+   window and the album name still count. This one exclusion applies
+   wherever a link is checked, the noun forms of slice 6 included.
+   Accepted regression, stated: the wrong-album form with a possessive
+   ("closing cut off their Memories") is no longer flagged; the `pylon`
+   assertion "Closing cut off Memories …" has no determiner and must still
+   flag.
 5. `grounding PASSES a closer claim on a row whose album name carries an
-   edition suffix ('Reign In Blood closer', Expanded, 10 of 12)` — Act:
+   edition word ('Reign In Blood closer', Expanded, 10 of 12)` — Act:
    `"1986's Reign In Blood closer, thrash picking so relentless it barely
    pauses for air"` on `reignexp`. Assert: `null`. (Red today.) Rule:
-   when `stripSuffixes(album.name)` differs from `album.name`, the
-   shown `total_tracks` counts bonus tracks, so closer claims are a no-op;
-   opener claims keep checking (bonus tracks append, they do not prepend).
-   `stripSuffixes` is used exactly as imported from `server/spotify.ts`
-   and is not touched — it already drops every `(…)`/`[…]` and
-   `feat./ft./with` segment, so "differs" simply means the album name
-   carries one of those; there is no list of edition words (`Expanded`,
-   `Deluxe`, `Remastered`) to maintain, and `A Star Is Born Soundtrack`
-   does not differ. The check is one comparison,
-   `stripSuffixes(item.album.name) !== item.album.name`, and it skips only
-   the `CLOSER_RE` entry of rule 3's loop.
+   the closer check is skipped only when the row's album name carries an
+   edition word inside a `(…)` or `[…]` parenthetical — the shown
+   `total_tracks` then counts bonus tracks. Opener claims keep checking
+   (bonus tracks append, they do not prepend). One regex constant next to
+   `OPENER_RE`/`CLOSER_RE`:
+   `EDITION_RE = /[(\[][^)\]]*\b(Deluxe|Expanded|Remaster(ed)?|Edition|Bonus|Anniversary)\b[^)\]]*[)\]]/i`.
+   The check is `EDITION_RE.test(item.album.name)` and it skips only the
+   `CLOSER_RE` entry of rule 3's loop. `stripSuffixes` is not used for
+   this and not touched. "(Live)", "(Chanson française)" and "(Original
+   Motion Picture Soundtrack)" rows keep their closer checks.
 6. `grounding PASSES a bare 'opener'/'closer' whose album name is more
    than 3 tokens before it — that is the tape's arc (Killer Cars, 5 of 6)`
    — Act: `"Tucked on the High & Dry / Planet Telex single in 1995, a nervy
@@ -210,14 +223,15 @@ question 5.
    `"Eight minutes off Led Zeppelin IV, the slow-build closer"` on
    `lz4deluxe`. Assert: `null`. (Red today.) This is the note the Goal
    counts as the fourth false positive; it sits on the boundary of slice
-   6's 3-token window ("IV, the slow-build") and is also covered by slice
-   5's suffix rule — the test pins that at least one of them holds. Verify
-   `4 of 16` against the cached row for the `mainstream-classic-rock #7`
-   ref before typing the row.
+   6's 3-token window ("IV, the slow-build") and "(Deluxe Edition)" is an
+   edition word, so slice 5 covers it too — the test pins that at least
+   one of them holds.
 8. `layer-1 wording: the album-position line is pinned` — Assert:
    `SYSTEM.includes("opens or closes an album, record, LP or EP only when
    its shown position says so")`. Written after slices 1–7, before the
-   prompt edit; red until the bullet lands.
+   prompt edit; red until the bullet lands. Reuse the file's existing
+   `import { makeGroundingGate, SYSTEM } from "../curator.ts"` line; do
+   not add a second import.
 
 ### 2. Runnable gates
 
@@ -285,9 +299,10 @@ through `noteGroundingReason` against the cached row (`node -e` over
 `cards.json` + `recallByRef`), returns `null`, and each such note is judged
 true or subjective; (c) the false-positive half of the Goal has no read in
 the run directory — `evals/generate.ts` calls `generateCard(p.prompt)`
-without `onCommit`, so bounce reasons are never persisted (open question
-6). Until they are, (c) is checked only offline by the 248-note replay in
-Notes, not by this run. A judge error on the new card (4 of 18 cards
+without `onCommit`, so bounce reasons are never persisted (deferred to a
+follow-up spec: wire `onCommit` in `evals/generate.ts` and persist
+`groundingBounces` per card; decided 2026-08-29). Until they are, (c) is
+checked only offline by the 248-note replay in Notes, not by this run. A judge error on the new card (4 of 18 cards
 errored on 2026-08-24) yields no read at all; re-run `node evals/judge.ts`
 for that card before reading.
 
@@ -363,14 +378,22 @@ slow-build closer" (4 of 16 on the Deluxe Edition; covered by slices 5
 and 6). A fifth, `app-hebrew-indie #7` "A slow-dance closer from
 'אוקיינוסים,'" (3 of 11), keeps flagging: the from-link is a genuine album
 link and the judge did not check the position. Widening the album words
-(slice 1) adds exactly one new hit on the 248, "before the record runs
-out" (row 9 above), which slice 2's window removes. Across the 2026-08-24
+(slice 1) adds two hits on the 248: the intended Jane Bordeaux catch
+(2026-08-24 `app-hebrew-indie #0`) and one unwanted, "before the record
+runs out" (2026-08-23 `nonenglish-french-chanson #7`, row 9 above), which
+slice 2's window removes. Across the 2026-08-24
 run — generated with the gate live — the widened rule flags Jane Bordeaux
 and nothing else.
 
+### Why slices 4–7 share this spec
+
+Slices 4–7 (the false positives) share this spec with slices 1–3 because
+a second eval run costs the day's Spotify quota (see Cost of the eval
+leg), not because they depend on slice 1.
+
 ### Build order (the `tdd` loop, one seam, vertical slices)
 
-1. Add the six fixture rows to `ROWS`; add test 1; run
+1. Add the seven fixture rows to `ROWS`; add test 1; run
    `node --test server/test/curator.test.ts` from the repo root; watch it
    fail.
 2. Widen the album-word set with a window (5 after / 3 before the
@@ -418,7 +441,9 @@ to `SEARCH_BUDGET` = 20 searches. Wall clock has ranged 32 min to ~5 h.
    `server/test/spotify.test.ts`. Include it here, stopping the headless
    run, or defer? [Defer: 1 of 10 notes, and the `SYSTEM` bullet covers
    it in prose. A follow-up spec can add the field and the rule "track
-   1 on disc > 1 is not an opener" as a single slice.]
+   1 on disc > 1 is not an opener" as a single slice. The follow-up must
+   also flip `server/test/spotify.test.ts`, which asserts
+   `!("disc_number" in trimmed)` in the `trimItem` test.]
 2. Two runs in a row show 3–5 invented notes that copied the cited row's
    own year/album name from a compilation or reissue. Is that a curator
    failure to fix (e.g. show `album_type` to the model and have the prompt
@@ -437,55 +462,26 @@ to `SEARCH_BUDGET` = 20 searches. Wall clock has ranged 32 min to ~5 h.
 
 ## Panel review
 
-Decisions for the author — resolve when flipping `status:` to ready:
+Panel: `/review-spec` run `wf_48b9d383-e37` (2026-08-29, 65 claims, 0
+wrong, 2 fragile, 15 must-adds) plus the hand-run panel of the same day,
+`docs/reviews/0002-spec-panel-2026-08-29.md`; items the workflow missed
+were folded in by hand.
 
-- D1. Should `evals/generate.ts` persist grounding bounces (wire `onCommit`
-  and write `groundingBounces: [reason…]` per card into `cards.json`, the
-  way it already persists `shownReleaseDate`) as part of this spec, so the
-  false-positive half of the Goal is readable after the run? Options:
-  include it now (free tier, ~6 lines in `evals/generate.ts`, no ask-tier
-  touch, same eval run reads it) · defer to a follow-up spec and accept
-  that this run cannot measure the false-positive fix · drop the
-  false-positive claim from the Goal and keep it as a test-only refactor.
-  [Include it now. Without it the spec pays for one eval run that can only
-  observe half of what it changed; the pattern (`shownReleaseDate`) already
-  exists in the same file and the Goal sentence about true notes staying
-  intact becomes checkable.]
-- D2. Slice 5's rule keys on `stripSuffixes(album.name) !== album.name`,
-  and `stripSuffixes` strips every parenthetical (e.g. "(Chanson
-  française)", "(Live)", "(Original Motion Picture Soundtrack)"), not only
-  edition markers. Which condition should disable closer checks? Options:
-  an edition-word list matched inside the parenthetical
-  (`Expanded|Deluxe|Remaster|Anniversary|Edition|Bonus|Legacy|Super`) · any
-  parenthetical, as written (simplest, but silently widens the blind spot
-  to live albums and soundtracks). [The edition-word list. It closes the
-  two measured cases (Expanded, Deluxe Edition) without giving up closer
-  checks on the many "(Live)"/"(Soundtrack)" rows in the cache, and it is
-  one regex constant next to `OPENER_RE`.]
-- D3. Open question 1: add `disc_number` to `trimItem` (ask tier,
-  `server/spotify.ts`) in this spec to close the multi-disc miss (Stevie
-  Wonder, 1 of 21), or defer? Options: defer (1 of 10 notes, the `SYSTEM`
-  line covers it in prose, and the ask-tier touch would stop the headless
-  run) · include (one field plus one rule, "track 1 on disc > 1 is not an
-  opener", accepting a human step mid-run). [Defer, as the spec already
-  reads. This spec is the factory's first prompt-touching dry run; keeping
-  it free-tier only is worth more than one note, and the follow-up is a
-  single slice.]
-- D4. The eval case `statbait-album-openers` goes into the existing
-  `stat-claim-bait` category (the playbook: add a category only for a new
-  kind of lie). Keep, or give album-position claims their own category so
-  the per-category rate isolates the shape? Options: keep `stat-claim-bait`
-  (spec's reading; playbook-compliant; per-category rates on 2–3 cards are
-  noise anyway) · new category `catalog-position-bait`. [Keep. One card
-  cannot carry a category rate, and the pre-registered read is per-note in
-  `verdicts.json`, not per-category.]
-- D5. Is the Goal's fourth false positive (Led Zeppelin IV Deluxe, 4 of 16,
-  previously "covered by slices 5 and 6" with no test) a slice of its own?
-  Options: yes — add the fixture and the PASS test (now slice 7 above),
-  verified against the cache before typing · no — drop "four" from the
-  Goal and say three. [Yes. It costs one fixture row and one assertion, and
-  it is the only one of the four that sits on the window boundary, so it
-  is the test most likely to catch a tokenizer choice.]
+Decisions — resolved 2026-08-29 by the author:
+
+- D1. Persist grounding bounces in `evals/generate.ts` → deferred to a
+  follow-up spec (wire `onCommit`, write `groundingBounces` per card);
+  this run reads the false-positive half offline only.
+- D2. What disables the closer check → edition words only (`EDITION_RE`),
+  applied in slice 5; any-parenthetical rejected.
+- D3. `disc_number` in `trimItem` → defer, as the spec reads (open
+  question 1).
+- D4. Category for `statbait-album-openers` → keep `stat-claim-bait`.
+- D5. Led Zeppelin IV Deluxe as its own test → yes, slice 7 added.
+- Possessive after a link word (`off their Memories`) → idiom, applied in
+  slice 4; the possessive-with-wrong-album regression is accepted.
+- Bundling → slices 4–7 stay in this spec (Notes › Why slices 4–7 share
+  this spec).
 
 Fragile claims:
 
@@ -496,13 +492,11 @@ Fragile claims:
   2026-08-29, but the whole fixture table is time-bound: the cache is a
   7-day rotating file, not in git, so this row will expire — the spec's
   table, as read on 2026-08-29, is the record.
-- F2. Notes › Evidence — the rule's false positives: "Widening the album
-  words (slice 1) adds exactly one new hit on the 248, 'before the record
-  runs out'" — seen in a `node -e` simulation of the widened (unwindowed)
+- F2. Notes › Evidence — the rule's false positives, formerly "Widening the
+  album words (slice 1) adds exactly one new hit on the 248, 'before the
+  record runs out'" — seen in a `node -e` simulation of the widened (unwindowed)
   album-word set replayed over both runs' 248 notes via
   `server/.search-cache.json`: 2 new hits, not 1 (`app-hebrew-indie #0`
   2026-08-24, the intended Jane Bordeaux catch, plus
   `nonenglish-french-chanson #7` 2026-08-23, the unwanted Montand hit). The
-  sentence is true only if "new hit" means "new unwanted hit" excluding the
-  note the spec exists to catch; read literally against "the 248" it
-  undercounts by one.
+  spec now states two hits, naming both.

@@ -264,11 +264,16 @@ mkdir -p "$RUNS_DIR"
 # on Sonnet took 6m49s, the line was killed in its Review phase ("Background
 # tasks still running after 600s; terminating"), and claude still exited 0
 # with subtype success, 2 turns and no manifest (dry run 1's 4.4 min never
-# got near it). 0 = wait indefinitely; --max-turns/--max-budget-usd stay the
-# wall-clock stop. FACTORY_BG_WAIT_MS sets a ceiling back, by a human.
-BG_WAIT_MS="${FACTORY_BG_WAIT_MS:-0}"
+# got near it). The message says "Set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0
+# to wait indefinitely"; on 2.1.251 it does not — the binary computes
+# `ceiling = env ?? 600000` and treats 0 as already exceeded, so it swept
+# the workflow at once (attempt 2, wf_b0d5ee18-0a6: back in 15 s, subtype
+# success, $0.35, the implement agent orphaned). The driver therefore passes
+# a one-hour ceiling, comfortably above any line run; --max-turns and
+# --max-budget-usd stay the hard stop. FACTORY_BG_WAIT_MS overrides it.
+BG_WAIT_MS="${FACTORY_BG_WAIT_MS:-3600000}"
 LAUNCH_MS=$(node -e 'console.log(Date.now())')
-say "run: $(date '+%H:%M:%S') — max $MAX_TURNS turns, \$$MAX_BUDGET, bg-task ceiling ${BG_WAIT_MS}ms (0 = none; FACTORY_BG_WAIT_MS)"
+say "run: $(date '+%H:%M:%S') — max $MAX_TURNS turns, \$$MAX_BUDGET, bg-task ceiling $(( BG_WAIT_MS / 1000 ))s (FACTORY_BG_WAIT_MS)"
 RC=0
 (cd "$WT" && CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="$BG_WAIT_MS" "${CMD[@]}" > "$OUT") || RC=$?
 echo "   claude exited $RC after $(( ($(node -e 'console.log(Date.now())') - LAUNCH_MS) / 1000 ))s"

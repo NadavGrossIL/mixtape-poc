@@ -43,13 +43,17 @@ edits `main`.
    fix rounds only — the reviewer keeps the model in
    `.claude/agents/reviewer.md`. Stdout goes to
    `docs/factory/runs/<date>-NNNN.json` (small; not `evals/runs/`). The
-   driver runs it with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` because
-   `claude -p` otherwise waits at most 600 s for background tasks and a
-   Workflow runs as one — dry run 2 (2026-08-29, 2.1.251, `wf_0684802b-74d`)
-   was killed in its Review phase after implement on Sonnet took 6m49s,
-   and `claude` still exited 0 with `subtype: success` and no manifest;
-   `--max-turns`/`--max-budget-usd` stay the stop, and `FACTORY_BG_WAIT_MS`
-   sets a ceiling back by hand.
+   driver runs it with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=3600000`
+   because `claude -p` otherwise waits at most 600 s for background tasks
+   and a Workflow runs as one — dry run 2 (2026-08-29, 2.1.251,
+   `wf_0684802b-74d`) was killed in its Review phase after implement on
+   Sonnet took 6m49s, and `claude` still exited 0 with `subtype: success`
+   and no manifest. The terminate message says `=0` waits indefinitely; on
+   2.1.251 it does not — 0 is treated as already exceeded and the workflow
+   is swept at once (measured, attempt 2 `wf_b0d5ee18-0a6`: 15 s, $0.35,
+   implement agent orphaned) — so the driver passes a one-hour ceiling,
+   comfortably above any line run; `--max-turns`/`--max-budget-usd` stay
+   the hard stop, and `FACTORY_BG_WAIT_MS` overrides the ceiling.
 5. **The row.** After exit the script reads `total_cost_usd`, `num_turns`,
    `subtype` from that JSON and the run manifest from
    `~/.claude/projects/-Users-…-mixtape-poc-wt/<session>/workflows/wf_*.json`

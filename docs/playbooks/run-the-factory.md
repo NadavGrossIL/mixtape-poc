@@ -56,6 +56,46 @@ edits `main`.
    factory/NNNN-slug`, `gh pr create --draft`, and commit the ledger
    (`docs/factory/RUNS.md`, `docs/factory/runs/*.json`) on `main`.
 
+## Before status: ready — /review-spec
+
+The step before step 1. A spec is a draft until a human flips it, and the
+hand-run panel of 2026-08-29 showed why the flip needs a check first: on a
+carefully drafted spec it found 3 wrong claims and 16 must-adds
+(`docs/reviews/0002-spec-panel-2026-08-29.md`). `/review-spec` is that
+panel as a saved workflow, `.claude/workflows/review-spec.js` (Check →
+Clarity → Craft → Apply, `docs/factory/plan.md` M3): the `spec-checker`
+agent (`.claude/agents/spec-checker.md`, read-only, Sonnet) replays every
+factual claim against the code and data; a clarity pass finds every place two
+engineers would build different things and holds the acceptance checks
+against the implementer's allowlist and the reviewer's rubric; a craft
+pass judges structure, durability of snapshot-dependent claims, demo-able
+metrics against `evals/thresholds.json` and scope for one run. Then an
+Apply agent **edits the spec in place**: every wrong claim corrected, every
+must-add inserted as written, `status:` left exactly as it was, and a
+`## Panel review` section appended with the open decisions (recommendation
+in brackets) and one line per fragile claim. The human resolves those
+decisions when flipping to `status: ready`; the section stays in the spec
+as the record. Result: `reviewed`, or `needs-human` when an agent returns
+nothing or a wrong claim was left in the spec.
+
+```sh
+/review-spec specs/NNNN-slug.md                                  # in a session
+claude -p '/review-spec specs/NNNN-slug.md' --max-turns 40 --max-budget-usd 3 --output-format json
+claude -p '/review-spec {"spec":"specs/NNNN-slug.md","config":{"apply":false}}' …   # findings only, spec untouched
+```
+
+A saved workflow registers at session start: a session opened before the
+script existed does not have `/review-spec` — start a new one. `config.apply:
+false` returns the findings without editing; `config.checker` swaps the
+fact-checker's agent type (default `spec-checker`).
+
+The three files the workflow is made of are never-tier, so a human applies
+them from the patched copy an agent prepares outside the repo:
+`.claude/workflows/review-spec.js`, `.claude/agents/spec-checker.md`, and
+`.claude/settings.json` (one more `permissions.allow` line,
+`"Workflow(review-spec)"`). Then `node scripts/workflow-selftest.mjs` — it
+carries the review-spec cases and runs them once the script is in place.
+
 ## Testing the driver without spending
 
 ```sh

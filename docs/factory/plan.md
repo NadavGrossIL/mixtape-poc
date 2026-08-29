@@ -263,6 +263,30 @@ And the implementer's allowlisted commands must be typed verbatim — the
 first transcript showed `npm run gate 2>&1 | tail -40`, which is a
 different command to the rule engine; the skill now says so.
 
+**2026-08-29 — the sprint-contract checkpoint made mechanical:
+`/review-spec`** (`.claude/workflows/review-spec.js`, Check → Clarity →
+Craft → Apply). Approving a spec was the one human step with nothing
+behind it; the panel run by hand that day on a carefully drafted spec found
+3 wrong claims and 16 must-adds (`docs/reviews/0002-spec-panel-2026-08-29.md`),
+so the panel is now a saved workflow that runs before the flip. Three
+reviewers, sequential and read-only: `spec-checker`
+(`.claude/agents/spec-checker.md`, Sonnet) replays every factual claim
+against the code and data — line numbers, function behaviour, cache rows,
+run numbers, red/green-today — because a spec that cites the code is
+usually slightly wrong about it; a clarity reviewer states both readings
+wherever two engineers would build different things and holds the
+acceptance checks against the implementer's allowlist and the reviewer's
+rubric, because the implementer cannot ask; a craft reviewer (low effort)
+judges structure, durability of snapshot-dependent claims, demo-able
+metrics at the run's sample size and scope for one run. An Apply agent
+then writes the corrections and must-adds into the spec, leaves `status:`
+as it was and appends `## Panel review` with the open decisions — the
+human still flips to ready, now with the facts checked and the decisions
+listed. Verified offline: `scripts/workflow-selftest.mjs` drives it against
+stub agents (12 cases), and the console parser draws its four phases and
+four nodes. Playbook: `docs/playbooks/run-the-factory.md`, "Before
+status: ready".
+
 ### M4 · Assembly — twice, same blocks
 
 M1–M3 are engine-agnostic: the map, the rules, the skills and the reviewer

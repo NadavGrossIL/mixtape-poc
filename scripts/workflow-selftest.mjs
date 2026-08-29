@@ -174,6 +174,93 @@ const CASES = {
       ok(!/Run record/.test(p), 'the reviewer was handed the run record')
     })
   },
+
+  // The spec-review panel (Check → Clarity → Craft → Apply). The stubs mirror
+  // the hand-run panel in docs/reviews/0002-spec-panel-2026-08-29.md at a
+  // toy size: one wrong claim, one fragile, three must-adds, one decision.
+  async 'review-spec'(wf) {
+    const SPEC = 'specs/0002-album-position-gate-blind-spots.md'
+    const WRONG = { claim: 'Test 2: "record" is nine tokens after closer', verdict: 'WRONG', correction: 'it is the tenth token after closer; still outside the 5-token window', where: 'server/curator.ts albumPositionContext, replayed with node -e' }
+    const FRAGILE = { claim: 'all cited line numbers in server/curator.ts', verdict: 'FRAGILE', correction: 'cite the function name next to each line', where: 'server/curator.ts at HEAD' }
+    const RIGHT = { claim: '61 curator tests pass at HEAD', verdict: 'VERIFIED', correction: '', where: 'node --test server/test/curator.test.ts' }
+    const CHECK_OK = { claims: [WRONG, FRAGILE, RIGHT], design: [{ concern: 'rule precedence', why: 'the object guard must run before the album-word window or slice 3 stays red' }], summary: '3 claims, 1 wrong, 1 fragile' }
+    const CLARITY_OK = {
+      mustAdd: [
+        { where: '## Acceptance checks', text: 'node --test server/test/curator.test.ts   # red on slice 1 first, then all green', why: 'cd server && … is not on the implement skill allowlist' },
+        { where: '## Notes', text: 'Token = the existing albumPositionContext split (whitespace, non-letters stripped); the keyword itself is not counted.', why: 'two readings of "token"' },
+      ],
+      leaveToBuilder: [{ note: 'SYSTEM is exported and already imported in the test file' }],
+    }
+    const CRAFT_OK = {
+      mustAdd: [{ where: '## Notes', text: 'The table is the fixture, not the cache: copy these values verbatim into ROWS.', why: 'cache rows expire after 7 days' }],
+      decisions: [{ question: 'Closer no-op breadth (test 5)', options: ['edition words only inside the parenthetical', 'any parenthetical'], recommendation: 'edition words only, so "(Live)" rows stay checkable' }],
+    }
+    const APPLY_OK = { applied: 4, skipped: [], decisionsOpen: 1 }
+    const panel = () => ({ check: CHECK_OK, clarity: CLARITY_OK, craft: CRAFT_OK, apply: APPLY_OK })
+
+    await check('meta: name and phases', () => {
+      same(wf.meta.name, 'review-spec', 'name')
+      same(wf.meta.phases.map((p) => p.title), ['Check', 'Clarity', 'Craft', 'Apply'], 'phase titles')
+    })
+    await check('no args → needs-human, no agent calls', async () => {
+      const { result, calls } = await drive(wf, undefined, {})
+      same(result.status, 'needs-human', 'status'); same(calls.length, 0, 'calls')
+    })
+    await check('malformed JSON args → needs-human, no agent calls', async () => {
+      const { result, calls } = await drive(wf, '{not json', {})
+      same(result.status, 'needs-human', 'status'); same(calls.length, 0, 'calls')
+    })
+    await check('plain spec path, panel finds 1 wrong + 3 must-adds, all applied → reviewed', async () => {
+      const { result, calls, labels } = await drive(wf, SPEC, panel())
+      same(result.status, 'reviewed', 'status')
+      same(labels, ['check', 'clarity', 'craft', 'apply'], 'labels')
+      same(result.wrong, 1, 'wrong'); same(result.fragile, 1, 'fragile'); same(result.mustAdd, 3, 'mustAdd')
+      same(result.decisions.length, 1, 'decisions')
+      same(result.applied.applied, 4, 'applied count')
+      same(calls[0].opts.agentType, 'spec-checker', 'check agentType')
+      same(calls[2].opts.effort, 'low', 'craft effort')
+      for (const l of ['clarity', 'craft', 'apply']) ok(!('agentType' in calls.find((c) => c.opts.label === l).opts), `${l} carries an agentType`)
+      const p = calls[3].prompt
+      ok(p.includes(WRONG.correction), 'apply prompt lacks the WRONG correction')
+      for (const m of [...CLARITY_OK.mustAdd, ...CRAFT_OK.mustAdd]) ok(p.includes(m.text), `apply prompt lacks must-add "${m.text.slice(0, 30)}…"`)
+      ok(p.includes(FRAGILE.claim), 'apply prompt lacks the FRAGILE claim')
+      ok(p.includes(CRAFT_OK.decisions[0].recommendation), 'apply prompt lacks the decision recommendation')
+      ok(/status:/.test(p) && /Panel review/.test(p), 'apply prompt does not mention status: or ## Panel review')
+    })
+    await check('JSON args with apply: false → no apply call, reviewed, findings returned', async () => {
+      const args = JSON.stringify({ spec: SPEC, config: { apply: false } })
+      const { result, labels } = await drive(wf, args, panel())
+      same(result.status, 'reviewed', 'status')
+      same(labels, ['check', 'clarity', 'craft'], 'labels')
+      ok(!('applied' in result), 'result carries applied without an apply run')
+      same(result.mustAdd, 3, 'mustAdd'); ok(result.findings && result.findings.check, 'findings missing')
+    })
+    await check('JSON args with checker → that agentType on the check call', async () => {
+      const args = JSON.stringify({ spec: SPEC, config: { checker: 'reviewer' } })
+      const { calls } = await drive(wf, args, panel())
+      same(calls[0].opts.agentType, 'reviewer', 'check agentType')
+    })
+    await check('checker returns null → needs-human, no further calls', async () => {
+      const { result, calls } = await drive(wf, SPEC, { ...panel(), check: null })
+      same(result.status, 'needs-human', 'status'); same(calls.length, 1, 'calls')
+    })
+    await check('apply returns null → needs-human', async () => {
+      const { result } = await drive(wf, SPEC, { ...panel(), apply: null })
+      same(result.status, 'needs-human', 'status')
+    })
+    await check('apply skips a WRONG correction → needs-human naming the claim', async () => {
+      const skipped = { applied: 3, skipped: [{ text: WRONG.correction, why: 'the sentence it corrects is gone' }], decisionsOpen: 1 }
+      const { result, labels } = await drive(wf, SPEC, { ...panel(), apply: skipped })
+      same(result.status, 'needs-human', 'status')
+      same(labels, ['check', 'clarity', 'craft', 'apply'], 'labels')
+      ok(result.reason.includes(WRONG.claim), `reason does not name the claim: ${result.reason}`)
+    })
+    await check('apply skips only a must-add → still reviewed', async () => {
+      const skipped = { applied: 3, skipped: [{ text: CRAFT_OK.mustAdd[0].text, why: 'already present' }], decisionsOpen: 1 }
+      const { result } = await drive(wf, SPEC, { ...panel(), apply: skipped })
+      same(result.status, 'reviewed', 'status')
+    })
+  },
 }
 
 // --- main -------------------------------------------------------------------------

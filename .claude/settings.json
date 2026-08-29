@@ -7,7 +7,8 @@
       "Bash(node evals/selftest.ts)",
       "Bash(git status*)",
       "Bash(git diff*)",
-      "Bash(git log*)"
+      "Bash(git log*)",
+      "Workflow(implement-from-spec)"
     ],
     "ask": [
       "Edit(server/session.ts)",
@@ -25,5 +26,6 @@
       "Read(server/.env*)",
       "Edit(server/.env*)"
     ]
-  }
+  },
+  "subagentPromptCacheTtl": "1h"
 }

@@ -31,13 +31,27 @@ Chrome/Firefox users never see it and there is no fallback.
 - No toast, no new CSS: the existing `.btn-ghost` and `.pressed-actions`
   styles are enough.
 - No change to `spotifyLink.ts` (deep-linking is untouched).
+- No client test runner, no new dependency, no mocking library: the tests
+  are plain `node:test` with hand-written fake functions, like
+  `server/test/caps.test.ts`.
 
 ## Files touched, by tier
 
 - free:
-  - `client/src/share.ts` (new) — pure, no DOM globals (it is typechecked
-    by both `tsconfig.json` (no DOM lib) and `client/tsconfig.app.json`).
-    Exports:
+  - `server/test/share.test.ts` (new, written **first**) — `node:test` +
+    `node:assert`, first line a comment naming the property it guards
+    ("dismissing the share sheet is not a copy; a share that can't happen
+    becomes a copy; nothing here ever throws at the button"). Imports
+    `../../client/src/share.ts` and passes fake `share`/`copy` functions —
+    the only things the module needs from the browser. The fakes are the
+    test's own: a clipboard is `{ written: string[] }` plus a `copy` that
+    pushes to it; a share sheet is a `share` that records the payload it
+    received and then resolves or rejects as the test says. No spies, no
+    library.
+  - `client/src/share.ts` (new, written **second**, one slice at a time) —
+    pure, no DOM globals (it is typechecked by both `tsconfig.json` (no DOM
+    lib) and `client/tsconfig.app.json`). The seam under test is its one
+    export:
     ```ts
     export type ShareOutcome = "shared" | "dismissed" | "copied" | "failed";
     export async function shareOrCopy(
@@ -48,15 +62,13 @@ Chrome/Firefox users never see it and there is no fallback.
       },
     ): Promise<ShareOutcome>;
     ```
-    Rules: `deps.share` absent → `copy(url)` → `"copied"`; `share` resolves →
-    `"shared"`; `share` rejects with an error whose `name === "AbortError"`
-    (user closed the sheet) → `"dismissed"`, `copy` **not** called; `share`
-    rejects with anything else → fall back to `copy(url)` → `"copied"`;
-    `copy` rejects (in any path) → `"failed"`, never throws.
-  - `server/test/share.test.ts` (new) — `node:test` + `node:assert`, first
-    line a comment naming the property it guards; imports
-    `../../client/src/share.ts` with fake `share`/`copy` functions.
-  - `client/src/App.tsx` —
+    Rules (each one is a test below): `deps.share` absent → `copy(url)` →
+    `"copied"`; `share` resolves → `"shared"`; `share` rejects with an
+    error whose `name === "AbortError"` (user closed the sheet) →
+    `"dismissed"`, `copy` **not** called; `share` rejects with anything
+    else → fall back to `copy(url)` → `"copied"`; `copy` rejects (in any
+    path) → `"failed"`, never throws.
+  - `client/src/App.tsx` (wired **third**, after the tests are green) —
     - `copied` state widens to `"link" | "tracks" | "share" | null`
       (`App.tsx:583`).
     - `shareMixtape` (`App.tsx:1099`) calls `shareOrCopy` with
@@ -76,25 +88,60 @@ Chrome/Firefox users never see it and there is no fallback.
 
 ## Acceptance checks (each one runnable)
 
+### 1. The test list — `server/test/share.test.ts`, one slice at a time
+
+Written before `share.ts` exists. Each line is one `test(...)` with one
+logical assertion; type it, watch it fail, write the least code that
+passes it, then the next line. Test names say what the button does, not
+what the function is called. `URL` below is the literal
+`"https://open.spotify.com/playlist/37i9dQZF1DX0XUsuxWHRQd"`; `TITLE` is
+`"late-night drive"`; the fake clipboard starts as `{ written: [] }`.
+
+1. `without a native share sheet the link is copied` — Arrange: no
+   `share`, a fake clipboard. Act: `shareOrCopy({ title: TITLE, url: URL },
+   { copy })`. Assert: resolves `"copied"` and `clipboard.written` deep-equals
+   `[URL]`.
+2. `with a native share sheet the link is shared, not copied` — Arrange: a
+   `share` that resolves, a fake clipboard. Act: same call with both deps.
+   Assert: resolves `"shared"` and `clipboard.written` deep-equals `[]`.
+3. `closing the share sheet is not a copy` — Arrange: a `share` that rejects
+   with an error whose `name` is `"AbortError"`, a fake clipboard. Act: same
+   call. Assert: resolves `"dismissed"` and `clipboard.written` deep-equals
+   `[]`.
+4. `a share sheet that refuses the payload falls back to copying the link`
+   — Arrange: a `share` that rejects with a `TypeError`, a fake clipboard.
+   Act: same call. Assert: resolves `"copied"` and `clipboard.written`
+   deep-equals `[URL]`.
+5. `without a share sheet a refused clipboard reports failure instead of
+   throwing` — Arrange: no `share`, a `copy` that rejects. Act: same call.
+   Assert: the promise resolves (`await assert.doesNotReject(...)`) with
+   `"failed"`.
+6. `when both the share sheet and the clipboard refuse, the outcome is failed`
+   — Arrange: a `share` that rejects with a `TypeError`, a `copy` that
+   rejects. Act: same call. Assert: resolves `"failed"`, no throw.
+7. `the share sheet receives exactly the title and the url` — Arrange: a
+   `share` that records its argument and resolves. Act: same call. Assert:
+   the recorded argument deep-equals `{ title: TITLE, url: URL }`
+   (`assert.deepStrictEqual` — no extra keys).
+
+A slice that comes up green with no code change (7 may, depending on how 2
+was written) is kept as a guard; write no code for it.
+
+### 2. Runnable gates
+
 ```sh
-cd server && node --test test/share.test.ts
-# asserts, at minimum (fakes record their calls):
-#   no share, copy ok            → "copied";   copy called once with data.url
-#   share resolves               → "shared";   copy never called
-#   share rejects AbortError     → "dismissed"; copy never called
-#   share rejects TypeError      → "copied";   copy called once with data.url
-#   share rejects, copy rejects  → "failed";   promise resolves (does not throw)
-#   no share, copy rejects       → "failed"
-#   share receives exactly { title, url } (deep-equal, no extra keys)
+cd server && node --test test/share.test.ts   # red on the missing import first, then 7/7
 cd server && npm test
 npm run typecheck
 cd client && npm run build
 npm run gate
 ```
 
-Observable, with `cd server && npm run dev` and `cd client && npm run dev`
-running, after pressing a mixtape (checked by hand — there is no client
-test runner):
+### 3. Hand-checked browser behaviour
+
+Checked by hand — the repo has no client test runner and this spec adds
+none. With `cd server && npm run dev` and `cd client && npm run dev`
+running, after pressing a mixtape:
 
 - Chrome/Firefox on desktop (no `navigator.share`): `.pressed-actions`
   holds two buttons, "copy link" then "share". Clicking "share" puts the
@@ -112,6 +159,32 @@ test runner):
 
 ## Notes
 
+- Build order (the `tdd` skill's loop, one seam — `shareOrCopy` — and
+  vertical slices):
+  1. Create `server/test/share.test.ts` with test 1 only; run
+     `cd server && node --test test/share.test.ts` and watch it fail on the
+     missing `../../client/src/share.ts` import.
+  2. Create the smallest `client/src/share.ts` that passes test 1 (copy,
+     return `"copied"`). Then tests 2 → 7 in order: add one, see it red,
+     add only the branch it needs, see it green.
+  3. Wire `App.tsx` (`copied` state, `shareMixtape`, the button) — no new
+     tests here; the DOM wiring is thin and covered by the hand checks.
+  4. `npm run gate`.
+  Refactoring is not a step of this loop: per the skill it belongs to
+  review (`code-review`), after the run record is written.
+- Two things changed to fit the `tdd` skill: (a) the old "asserts, at
+  minimum" block was a horizontal batch of seven; it is now an ordered list
+  of slices, one test → one implementation, because the skill rejects
+  writing all tests before any code; (b) the old assertions counted
+  `copy` calls ("copy called once"), which the skill lists as a red flag —
+  they now assert what the fake clipboard *holds* (`written` deep-equals
+  `[URL]` or `[]`), which is the observable outcome at this seam. `share`
+  and `copy` are the system boundary (`navigator.share`, the clipboard),
+  injected exactly as the skill's `mocking.md` prescribes, so faking them
+  is not mocking an internal collaborator.
+- Seam agreement: the skill wants the seams confirmed before any test is
+  written. The one seam here is `shareOrCopy(data, deps)`; a human flipping
+  this spec from draft to ready is that confirmation.
 - Playbook: none applies — this is neither a route, an eval case, nor a
   prompt change. `.claude/rules/` has no client rule.
 - ADR 0003 (tests vs evals): the share/copy/abort decision has one right

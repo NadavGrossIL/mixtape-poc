@@ -88,7 +88,7 @@ const highlight = HighlightStyle.define([
 const common = (path: string): Extension[] => [
   lineNumbers(), highlightActiveLineGutter(), highlightSpecialChars(),
   EditorState.tabSize.of(2), indentUnit.of('  '),
-  theme, syntaxHighlighting(highlight), ...langOf(path),
+  theme, EditorView.lineWrapping, syntaxHighlighting(highlight), ...langOf(path),
 ]
 
 /**

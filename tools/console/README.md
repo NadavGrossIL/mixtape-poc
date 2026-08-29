@@ -6,7 +6,12 @@ their runs, and edits the files the line is made of. It reads two things:
 - workflow definitions in this repo — `.claude/workflows/*.js`,
   `.claude/skills/*/SKILL.md`, `.archon/workflows/*.yaml`
 - run records Claude Code writes under `~/.claude/projects/<repo-slug>/`
-  (`<session>/workflows/wf_*.json` manifests and the agent transcripts next to them)
+  (`<session>/workflows/wf_*.json` manifests and the agent transcripts next to them),
+  and under every sibling dir named `<repo-slug>.x` or `<repo-slug>-x` — the driver
+  (`scripts/factory-run.sh`) runs in a worktree at `../mixtape-poc.wt`, whose slug is
+  the repo's plus `.wt`. Each run says which (`projectSlug`); the page tags a
+  worktree run `wt`.
+- the ledger, `docs/factory/RUNS.md` (cost per run — the manifest never has it)
 
 When neither exists yet, it shows the fixtures in `fixtures/` (flagged "fixture").
 
@@ -25,15 +30,23 @@ GET except the one POST below):
 - `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet)
 - `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
 - `POST /api/file` — the only write, see "Tweak" below
-- `/api/runs` — manifests newest first, without `script`/`args` (`?full=1` includes them)
+- `/api/runs` — manifests newest first, without `script`/`args` (`?full=1` includes them);
+  each carries `projectSlug`, the projects dir it was read from
 - `/api/runs/:runId/agents/:agentId` — `{ prompt, result, events }` from the transcript (404 for fixtures)
-- `/api/meta` — which projects directory is being read (`CONSOLE_PROJECTS_DIR` overrides `~/.claude/projects`)
+- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes } }` from the RUNS.md table
+  (columns found by header name; the `run` cell names the id in backticks; a row without one
+  is skipped, a missing file is `{}`). `docs/factory/runs/<date>-NNNN.json` (the raw `claude -p`
+  results, no run id) fill a missing `cost` when a row matches on date + spec number.
+- `/api/meta` — `{ slug, projectsBase, projectDirs, exists }`: the projects dirs being read
+  (`CONSOLE_PROJECTS_DIR` overrides `~/.claude/projects`; `exists` is the repo's own dir)
 - `/api/events` — Server-Sent Events; `data:` lines are `{ kind: 'runs' }` (a manifest or
-  copied script changed), `{ kind: 'journal', runId }` (a journal or agent transcript grew),
-  `{ kind: 'workflows' }` (a definition file changed). `fs.watch` recursive on the projects
-  dir and the three definition dirs, polling every 2 s where watch is unavailable, batched
-  into 300 ms windows, `: ping` every 15 s. Watchers start with the first subscriber and
-  stop with the last.
+  copied script changed, or a new project dir appeared), `{ kind: 'journal', runId }` (a
+  journal or agent transcript grew), `{ kind: 'workflows' }` (a definition file changed),
+  `{ kind: 'ledger' }` (RUNS.md or `docs/factory/runs/` changed). `fs.watch` recursive on
+  each project dir, the three definition dirs and `docs/factory`, polling every 2 s where
+  watch is unavailable; the projects base is re-scanned every 5 s for a new matching dir
+  (a worktree's appears with its first run). Batched into 300 ms windows, `: ping` every
+  15 s. Watchers start with the first subscriber and stop with the last.
 
 Live runs. The manifest is written only when the run ends (measured 2026-08-29 on
 `wf_9fda3778-dbf`: journal at 09:43:38, manifest at 09:48:00, nothing in between; a
@@ -88,6 +101,11 @@ works and uses the script's defaults — `config` reaches it only through the dr
 The static graph reads `agent(prompt, { label, phase, agentType })` calls anywhere in
 the script — single, double or backtick quotes; a `${expr}` in a label becomes `*`
 (`gate:*`), and a run's `gate:1` lights that node. `agentType` draws an `@reviewer` chip.
+A `fix:<checker>` label is a loop, not a step: the chain is `implement → gate:* →
+contract:* → review:*`, and `fix:gate-*` / `fix:review` get a dashed edge back from the
+gate / review node (drawn as a U underneath, labelled with the enclosing `for` bound —
+`≤2` from `round <= MAX_GATE_ROUNDS`, `≤1` outside a loop) and a dashed edge into the
+gate again. Dagre ranks only the chain; the fix nodes form a row under `implement`.
 
 Rules: local only. It reads `~/.claude`, so it is never deployed and is not part of
 the product build. It never starts a run — starting is `claude -p` with the hard-stop

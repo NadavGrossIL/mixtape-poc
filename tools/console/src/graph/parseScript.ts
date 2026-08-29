@@ -6,7 +6,9 @@ import type { Graph, GraphEdge, GraphNode, NodeKind } from '../types'
 // sometimes inside `pipeline(` / `parallel(` blocks. Labels and phases are
 // string literals in any quote style, or start with one (`'review:' + key`,
 // `` `gate:${round}` ``), which becomes a template node `review:*` that a run
-// expands into real nodes. Nothing here evaluates the script.
+// expands into real nodes. A `fix:<checker>` label is a loop, not a step:
+// it is drawn back from the checker it names and into the gate again, with
+// the enclosing `for` bound as its label. Nothing here evaluates the script.
 
 export function kindOf(label: string): NodeKind {
   const l = label.toLowerCase()
@@ -103,6 +105,34 @@ function constLiteral(src: string, name: string): string | undefined {
   return lits.length ? lits[lits.length - 1] : undefined
 }
 
+/** `const MAX = Number(config.maxGateRounds) || 2` → 2: the last integer on the line is the default. */
+function constNumber(src: string, name: string): number | undefined {
+  const m = new RegExp(`\\b(?:const|let|var)\\s+${name}\\s*=([^\\n;]*)`).exec(src)
+  const ns = m ? m[1].match(/\b\d+\b/g) : null
+  return ns ? Number(ns[ns.length - 1]) : undefined
+}
+
+/**
+ * How many times the call at `at` can run: the innermost enclosing `for`'s
+ * bound (`i <= N` → N, `i < N` → N-1; N a number or a const), 1 outside any
+ * loop, undefined when the loop head is not of that shape (`for … of`).
+ */
+function loopBoundAt(src: string, at: number): number | undefined {
+  let bound: number | undefined = 1
+  const re = /\bfor\s*\(/g
+  let m: RegExpExecArray | null
+  while ((m = re.exec(src))) {
+    const open = m.index + m[0].length - 1
+    const close = matchParen(src, open)
+    const body = src.indexOf('{', close)
+    if (body < 0 || at < body || at > matchParen(src, body)) continue
+    const c = /<(=?)\s*([A-Za-z_$][\w$]*|\d+)/.exec(src.slice(open + 1, close))
+    const n = !c ? undefined : /^\d/.test(c[2]) ? Number(c[2]) : constNumber(src, c[2])
+    bound = n == null ? undefined : c![1] ? n : n - 1
+  }
+  return bound
+}
+
 /** The prompt argument as text: a literal, or a `const NAME = [(…) =>] \`…\`` the call names (also `NAME(args)`). */
 function promptText(src: string, arg: string): string | undefined {
   const a = arg.trim()
@@ -136,7 +166,7 @@ function readMetaPhases(src: string): { name?: string; phases: string[] } {
   return { name, phases }
 }
 
-interface Call { label: string; phase: string; group: number | null; at: number; agentType?: string; prompt?: string }
+interface Call { label: string; phase: string; group: number | null; at: number; agentType?: string; prompt?: string; bound?: number }
 
 export function parseScript(src: string): Graph {
   const { name, phases: metaPhases } = readMetaPhases(src)
@@ -164,7 +194,7 @@ export function parseScript(src: string): Graph {
     const prompt = promptText(src, firstArg)
     let group: number | null = null
     groups.forEach((gr, i) => { if (a!.index > gr.start && a!.index < gr.end) group = i })
-    calls.push({ label, phase, group, at: a.index, agentType, prompt })
+    calls.push({ label, phase, group, at: a.index, agentType, prompt, bound: loopBoundAt(src, a.index) })
   }
 
   const phases = [...metaPhases]
@@ -186,9 +216,19 @@ export function parseScript(src: string): Graph {
   // Sequence: consecutive calls in the same group form one parallel block.
   // Declared phase order beats source order — helpers are often defined
   // above the code that calls them, and a phase is the author's own timeline.
-  const ordered = metaPhases.length
+  const sorted = metaPhases.length
     ? calls.map((c, i) => ({ c, i })).sort((a, b) => (rank(a.c.phase) - rank(b.c.phase)) || (a.i - b.i)).map((x) => x.c)
     : calls
+  // `fix:gate-*` loops back from the gate, `fix:review` from the review; both
+  // re-enter the gate. A fix whose checker is not in the chain stays a step.
+  const loops: { fix: Call; from: Call; into: Call }[] = []
+  const ordered = sorted.filter((c) => {
+    const checker = /^fix:([a-z]+)/i.exec(c.label)?.[1].toLowerCase()
+    const from = checker && sorted.find((o) => o !== c && o.label.toLowerCase().startsWith(checker))
+    if (!from) return true
+    loops.push({ fix: c, from, into: sorted.find((o) => o !== c && kindOf(o.label) === 'gate') ?? from })
+    return false
+  })
   const blocks: string[][] = []
   let lastGroup: number | null | undefined
   for (const c of ordered) {
@@ -206,6 +246,11 @@ export function parseScript(src: string): Graph {
       const e = { source: s, target: t }
       if (s !== t && !have.has(key(e))) { have.add(key(e)); edges.push(e) }
     }
+  }
+  for (const { fix, from, into } of loops) {
+    const id = nodeId(fix.label)
+    edges.push({ source: nodeId(from.label), target: id, loop: 'back', label: fix.bound == null ? 'loop' : `≤${fix.bound}` })
+    edges.push({ source: id, target: nodeId(into.label), loop: 'retry' })
   }
   return { name, phases, nodes, edges }
 }

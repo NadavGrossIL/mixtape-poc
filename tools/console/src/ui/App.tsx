@@ -1,19 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ConsoleEvent, RunManifest, WorkflowFile } from '../types'
+import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
 import { graphFor, overlayRun, runBounds } from '../graph'
 import { Workflows, cardsFrom } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Replay, type ReplayState } from './Replay'
 import { NodePanel } from './NodePanel'
-import { fmtDuration, fmtTokens, dash } from './format'
+import { fmtDuration, fmtTokens, fmtUsd, projectTag, dash } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 
 export function App() {
   const [files, setFiles] = useState<WorkflowFile[]>([])
   const [runs, setRuns] = useState<RunManifest[]>([])
-  const [meta, setMeta] = useState<{ projectDir?: string; exists?: boolean }>({})
+  const [ledger, setLedger] = useState<Ledger>({})
+  const [meta, setMeta] = useState<{ projectDirs?: string[]; exists?: boolean }>({})
   const [error, setError] = useState<string>()
   const [workflow, setWorkflow] = useState<string>()
   const [runId, setRunId] = useState<string>()
@@ -25,9 +26,10 @@ export function App() {
 
   const loadFiles = useCallback(() => fetch('/api/workflows').then((r) => r.json()).then(setFiles), [])
   const loadRuns = useCallback(() => fetch('/api/runs?full=1').then((r) => r.json()).then(setRuns), [])
+  const loadLedger = useCallback(() => fetch('/api/ledger').then((r) => r.json()).then(setLedger), [])
   useEffect(() => {
-    Promise.all([loadFiles(), loadRuns(), fetch('/api/meta').then((r) => r.json()).then(setMeta)]).catch((e) => setError(String(e)))
-  }, [loadFiles, loadRuns])
+    Promise.all([loadFiles(), loadRuns(), loadLedger(), fetch('/api/meta').then((r) => r.json()).then(setMeta)]).catch((e) => setError(String(e)))
+  }, [loadFiles, loadRuns, loadLedger])
 
   // One event stream for the page's life. The browser reconnects on its own;
   // a refetch that fails is left to the next event rather than blanking the page.
@@ -39,10 +41,11 @@ export function App() {
       let e: ConsoleEvent
       try { e = JSON.parse(m.data) } catch { return }
       if (e.kind === 'workflows') void loadFiles().catch(() => {})
+      else if (e.kind === 'ledger') void loadLedger().catch(() => {})
       else { void loadRuns().catch(() => {}); if (e.kind === 'journal') setTick((t) => t + 1) }
     }
     return () => es.close()
-  }, [loadFiles, loadRuns])
+  }, [loadFiles, loadRuns, loadLedger])
 
   const cards = useMemo(() => cardsFrom(files, runs), [files, runs])
   const skills = useMemo(() => files.filter((f) => f.kind === 'skill'), [files])
@@ -79,7 +82,7 @@ export function App() {
         <Workflows cards={cards} skills={skills} onOpen={open} />
         <p className="muted small foot">
           <span className="conn" data-state={conn} title="event stream">{connLabel}</span>
-          {' · '}Reads {meta.projectDir ?? '~/.claude/projects/<slug>'}{meta.exists === false ? ' (not found — showing fixtures)' : ''}. Local only; nothing here can start a run.
+          {' · '}Reads {meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'}{meta.exists === false ? ' (repo dir not found' + (meta.projectDirs?.length ? ')' : ' — showing fixtures)') : ''}. Local only; nothing here can start a run.
         </p>
       </main>
     )
@@ -94,17 +97,18 @@ export function App() {
         <span className="pill" data-status={run?.status ?? 'idle'}>{run?.status ?? 'no run'}</span>
         {live && <span className="badge" data-live title={`from the ${run?.source ?? 'manifest'}`}>live</span>}
         {run?.fixture && <span className="badge">fixture</span>}
+        {projectTag(run?.projectSlug) && <span className="badge" title={run?.projectSlug}>{projectTag(run?.projectSlug)}</span>}
         <dl className="stats">
           <div><dt>elapsed</dt><dd className="clock">{fmtDuration(elapsed)}</dd></div>
           <div><dt>tokens</dt><dd>{fmtTokens(run?.totalTokens)}</dd></div>
           <div><dt>agents</dt><dd>{run?.agentCount ?? dash}</dd></div>
-          <div><dt>USD</dt><dd>{dash}</dd></div>
+          <div><dt>USD</dt><dd title="from docs/factory/RUNS.md">{fmtUsd(run?.runId ? ledger[run.runId]?.cost : undefined)}</dd></div>
         </dl>
         <span className="conn" data-state={conn} title="event stream">{connLabel}</span>
       </header>
       <div className="stage">
         <Canvas graph={graph} selectedId={selected} onSelect={setSelected} />
-        <RunList runs={runs} selectedId={run?.runId} onSelect={pickRun} />
+        <RunList runs={runs} ledger={ledger} selectedId={run?.runId} onSelect={pickRun} />
         {selectedNode && (
           <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files}
             scriptPath={card?.file && !card.file.fixture && card.file.kind !== 'skill' ? card.file.path : undefined}

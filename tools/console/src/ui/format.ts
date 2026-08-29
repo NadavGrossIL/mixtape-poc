@@ -21,6 +21,15 @@ export function shortModel(m?: string): string {
   return m.replace(/^claude-/, '').replace(/-\d{8}$/, '')
 }
 
+export function fmtUsd(n?: number): string {
+  return n == null || !Number.isFinite(n) ? dash : `$${n.toFixed(2)}`
+}
+
+/** A short tag for where a run happened: `wt` for the driver's worktree (`<slug>.wt`), nothing for the repo itself. */
+export function projectTag(slug?: string): string | undefined {
+  return slug?.endsWith('.wt') ? 'wt' : undefined
+}
+
 export function fmtDate(ms?: number, iso?: string): string {
   const t = ms ?? (iso ? Date.parse(iso) : NaN)
   if (!Number.isFinite(t)) return dash

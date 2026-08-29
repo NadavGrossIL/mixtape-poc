@@ -116,8 +116,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes breathe { 0%, 100% { transform: scale(1); opacity: .15; } 50% { transform: scale(1.07); opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .node-shape .ring, .node-shape .breath { animation: none; } }
 
-/* edges */
+/* edges; a loop (checker → fix node, fix node → gate again) is dashed, and its bound sits in a pill at the bottom of the U */
 .react-flow__edge-path { stroke: var(--muted); stroke-width: 2; opacity: .8; }
+.react-flow__edge.edge-loop .react-flow__edge-path { stroke-dasharray: 5 5; opacity: .6; }
+.edge-label { position: absolute; font: 11px/1 var(--mono); color: var(--muted); background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 8px; pointer-events: none; }
+.thumb-edge[data-loop] { stroke-dasharray: 8 8; fill: none; }
 .react-flow__edge.edge-running .react-flow__edge-path { stroke: var(--accent); stroke-width: 2; }
 .react-flow__edge.edge-done .react-flow__edge-path { stroke: var(--accent-dim); }
 .react-flow__edge.edge-error .react-flow__edge-path { stroke: var(--err); opacity: .7; }

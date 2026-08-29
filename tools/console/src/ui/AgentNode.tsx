@@ -49,6 +49,9 @@ function AgentNodeView({ data, selected }: NodeProps<AgentRFNode>) {
         <Shape kind={kind} className="fill" />
       </svg>
       <Handle type="target" position={Position.Left} className="port" />
+      {/* loop-backs leave and land underneath, so a retry never shares a line with the step that feeds it */}
+      <Handle type="source" position={Position.Bottom} id="loop" className="port" />
+      <Handle type="target" position={Position.Bottom} id="loop" className="port" />
       <div className="node-body">
         <div className="node-title">
           <span className="node-label">{data.label}</span>

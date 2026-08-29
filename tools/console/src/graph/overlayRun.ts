@@ -99,7 +99,7 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
       const tsegs = segments(byId().get(t)?.label ?? '')
       let parents = both ? sources.filter((s) => segments(byId().get(s)?.label ?? '').some((x) => tsegs.includes(x))) : sources
       if (!parents.length) parents = sources
-      for (const s of parents) edges.push({ source: s, target: t })
+      for (const s of parents) edges.push({ ...e, source: s, target: t }) // a loop stays a loop once `gate:*` is `gate:1`
     }
   }
   for (const tplId of expansion.keys()) {

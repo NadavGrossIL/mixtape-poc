@@ -5,6 +5,10 @@ import type { Graph, NodeKind } from '../types'
 // own (rankdir LR, intra-lane edges only), then lanes are placed side by
 // side with a shared height so the bands line up. Cross-lane edges are
 // drawn by React Flow between absolute positions and need no layout help.
+// Loop edges are never ranked; the fix nodes they land on form a row under
+// the lane's steps (a shelf), chained by layout-only edges so a lane with
+// `implement` above `fix:gate-*` and `fix:review` reads as one step and its
+// retries, not as three steps.
 
 export const NODE_W = 216
 export const NODE_H = 88
@@ -33,7 +37,9 @@ export function layout(graph: Graph): Layout {
     g.setDefaultEdgeLabel(() => ({}))
     for (const n of ns) { const { w, h } = nodeSize(n.kind); g.setNode(n.id, { width: w, height: h }) }
     const ids = new Set(ns.map((n) => n.id))
-    for (const e of graph.edges) if (ids.has(e.source) && ids.has(e.target)) g.setEdge(e.source, e.target)
+    for (const e of graph.edges) if (!e.loop && ids.has(e.source) && ids.has(e.target)) g.setEdge(e.source, e.target)
+    const shelf = ns.filter((n) => graph.edges.some((e) => e.loop === 'back' && e.target === n.id) && !graph.edges.some((e) => !e.loop && e.target === n.id))
+    for (let i = 1; i < shelf.length; i++) g.setEdge(shelf[i - 1].id, shelf[i].id)
     let pos: { id: string; cx: number; cy: number; h: number }[]
     if (g.edgeCount() === 0 && ns.length > MAX_ROWS) {
       // A fan-out with nothing between its nodes: pack it into columns so a

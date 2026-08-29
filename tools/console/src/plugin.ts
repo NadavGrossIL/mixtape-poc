@@ -4,12 +4,14 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { ConsoleEvent, RunManifest, WorkflowAgentEntry } from './types'
+import type { ConsoleEvent, Ledger, LedgerEntry, RunManifest, WorkflowAgentEntry } from './types'
 
 // The console's only "backend": a Vite dev-server middleware that READS
 // workflow files in this repo and run records Claude Code wrote under
-// ~/.claude/projects/<slug>/. It never starts a run. That is also why this
-// directory is never deployed anywhere.
+// ~/.claude/projects/<slug>/ — and under every sibling of that dir named
+// `<slug>.x` / `<slug>-x`, because scripts/factory-run.sh runs the line in a
+// worktree at ../<repo>.wt whose slug is the repo's plus `.wt`. It never
+// starts a run. That is also why this directory is never deployed anywhere.
 // C3 adds one long-lived GET (/api/events, SSE) so the page hears about
 // changes instead of polling. C4 adds the one write, POST /api/file, fenced
 // by EDITABLE below: the workflow definitions and factory.config.json, and
@@ -34,14 +36,18 @@ const STALE_MS = 15 * 60_000 // nothing on disk moved for this long → not live
 const DEBOUNCE_MS = 300
 const PING_MS = 15_000
 const POLL_MS = 2_000
+const DIR_POLL_MS = 5_000 // how often the projects base is re-scanned for a new matching dir (the first worktree run creates one)
+const LEDGER_FILE = 'docs/factory/RUNS.md'
+const LEDGER_RAW_DIR = 'docs/factory/runs' // the driver's saved `claude -p` JSON results, <date>-NNNN.json
 
 export interface ConsoleOptions { repoRoot: string; fixturesDir: string }
 
 export function consolePlugin(opts: ConsoleOptions): Plugin {
   const slug = opts.repoRoot.replace(/[\\/]/g, '-')
   const projectsBase = process.env.CONSOLE_PROJECTS_DIR || path.join(os.homedir(), '.claude', 'projects')
-  const projectDir = path.join(projectsBase, slug)
-  const live = liveEvents(projectDir, opts.repoRoot)
+  // Re-listed per request: a worktree's dir appears with its first run.
+  const projectDirs = () => safeList(projectsBase).filter((d) => d === slug || d.startsWith(slug + '.') || d.startsWith(slug + '-')).map((d) => path.join(projectsBase, d))
+  const live = liveEvents(projectDirs, opts.repoRoot)
 
   const json = (res: ServerResponse, status: number, body: unknown) => {
     res.statusCode = status
@@ -65,16 +71,17 @@ export function consolePlugin(opts: ConsoleOptions): Plugin {
           if (url.pathname === '/api/workflows') return json(res, 200, listWorkflows(opts))
           if (url.pathname === '/api/file') { const r = readFile(opts.repoRoot, url.searchParams.get('path') ?? ''); return json(res, r.status, r.body) }
           if (url.pathname === '/api/config') return json(res, 200, readConfig(opts.repoRoot))
-          if (url.pathname === '/api/runs') return json(res, 200, listRuns(projectDir, opts.fixturesDir, url.searchParams.get('full') === '1'))
+          if (url.pathname === '/api/runs') return json(res, 200, listRuns(projectDirs(), opts.fixturesDir, url.searchParams.get('full') === '1'))
+          if (url.pathname === '/api/ledger') return json(res, 200, readLedger(opts.repoRoot))
           if (url.pathname === '/api/events') return live.subscribe(res)
           const m = /^\/api\/runs\/([^/]+)\/agents\/([^/]+)$/.exec(url.pathname)
           if (m) {
             const [, runId, agentId] = m
             if (!ID.test(runId) || !ID.test(agentId)) return json(res, 400, { error: 'bad id' })
-            const detail = readAgent(projectDir, runId, agentId)
+            const detail = readAgent(projectDirs(), runId, agentId)
             return detail ? json(res, 200, detail) : json(res, 404, { error: 'no transcript for this run/agent (fixtures have none)' })
           }
-          if (url.pathname === '/api/meta') return json(res, 200, { slug, projectDir, exists: fs.existsSync(projectDir) })
+          if (url.pathname === '/api/meta') { const dirs = projectDirs(); return json(res, 200, { slug, projectsBase, projectDirs: dirs, exists: dirs.includes(path.join(projectsBase, slug)) }) }
           return json(res, 404, { error: 'unknown endpoint' })
         } catch (err) {
           return json(res, 500, { error: err instanceof Error ? err.message : String(err) })
@@ -184,11 +191,13 @@ type Manifest = RunManifest
  * runFromJournal) is overlaid on it — or stands alone when there is no manifest
  * yet — and the record is flagged `live` / `source` so the UI can say so.
  */
-function listRuns(projectDir: string, fixturesDir: string, full: boolean) {
+function listRuns(projectDirs: string[], fixturesDir: string, full: boolean) {
   const manifests = new Map<string, { m: Manifest; mtime: number }>()
   const journals = new Map<string, string[]>() // runId → every session dir holding a piece of it
-  for (const session of safeList(projectDir)) {
+  const slugOf = new Map<string, string>() // runId → the project dir's name (first seen wins; a run never spans two)
+  for (const projectDir of projectDirs) for (const session of safeList(projectDir)) {
     const base = path.join(projectDir, session)
+    const found = (id: string) => { if (!slugOf.has(id)) slugOf.set(id, path.basename(projectDir)) }
     for (const f of safeList(path.join(base, 'workflows')).filter((f) => SUPPORTED_MANIFEST.test(f))) {
       const file = path.join(base, 'workflows', f)
       const m = readJson(file)
@@ -199,16 +208,20 @@ function listRuns(projectDir: string, fixturesDir: string, full: boolean) {
       const id = String(m.runId ?? f.replace(/\.json$/, ''))
       const prev = manifests.get(id)
       if (!prev || progressLen(m) > progressLen(prev.m)) manifests.set(id, { m, mtime: mtimeOf(file) })
+      found(id)
     }
-    for (const d of safeList(path.join(base, 'subagents', 'workflows')).filter((d) => RUN_DIR.test(d)))
+    for (const d of safeList(path.join(base, 'subagents', 'workflows')).filter((d) => RUN_DIR.test(d))) {
       journals.set(d, [...(journals.get(d) ?? []), base])
+      found(d)
+    }
   }
   let runs: Manifest[] = []
   for (const id of new Set([...manifests.keys(), ...journals.keys()])) {
     const hit = manifests.get(id)
-    if (hit && TERMINAL.has(String(hit.m.status))) { runs.push({ ...settle(hit.m), source: 'manifest' }); continue }
+    const projectSlug = slugOf.get(id)
+    if (hit && TERMINAL.has(String(hit.m.status))) { runs.push({ ...settle(hit.m), source: 'manifest', projectSlug }); continue }
     const j = journals.has(id) ? runFromJournal(id, journals.get(id)!) : undefined
-    runs.push(mergeRun(id, hit, j))
+    runs.push({ ...mergeRun(id, hit, j), projectSlug })
   }
   if (!runs.length) {
     runs = safeList(fixturesDir)
@@ -452,8 +465,8 @@ function transcript(file: string): Transcript | null {
   return t
 }
 
-function readAgent(projectDir: string, runId: string, agentId: string) {
-  for (const session of safeList(projectDir)) {
+function readAgent(projectDirs: string[], runId: string, agentId: string) {
+  for (const projectDir of projectDirs) for (const session of safeList(projectDir)) {
     const file = path.join(projectDir, session, 'subagents', 'workflows', runId, `agent-${agentId}.jsonl`)
     if (!fs.existsSync(file)) continue
     const lines = readJsonl<Line>(file)
@@ -490,6 +503,46 @@ function text(content: unknown): string {
 
 const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…' : s)
 
+// --- the ledger: docs/factory/RUNS.md ---------------------------------------------------
+//
+// Cost lives only in the `claude -p` JSON, which the manifest never sees; the
+// driver copies `total_cost_usd` into a RUNS.md row whose `run` cell names the
+// run id in backticks. Columns are found by header name, so a reordered table
+// still parses; a row without a run id is skipped, a missing file is {}.
+// docs/factory/runs/<date>-NNNN.json (the raw results) carry no run id and are
+// matched to a row by date + spec number, filling a cost the row lacks.
+
+function readLedger(repoRoot: string): Ledger {
+  const out: Ledger = {}
+  let raw: string
+  try { raw = read(path.join(repoRoot, LEDGER_FILE)) } catch { return out }
+  const rows = raw.split('\n').filter((l) => l.trim().startsWith('|')).map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()))
+  const header = rows.find((r) => r.some((c) => /^run$/i.test(c)))
+  if (!header) return out
+  const col = (name: RegExp) => header.findIndex((c) => name.test(c))
+  const ix = { date: col(/^date/i), spec: col(/^spec/i), outcome: col(/^outcome/i), cost: col(/cost/i), run: col(/^run$/i), notes: col(/^notes/i) }
+  const cell = (r: string[], i: number) => (i >= 0 && r[i] ? r[i] : undefined)
+  for (const r of rows) {
+    if (r === header || r.every((c) => /^:?-+:?$/.test(c))) continue
+    const id = /`(wf_[\w-]+)`/.exec(cell(r, ix.run) ?? '')?.[1]
+    if (!id) continue
+    const cost = parseFloat((cell(r, ix.cost) ?? '').replace(/[^\d.]/g, ''))
+    const e: LedgerEntry = { date: cell(r, ix.date), spec: cell(r, ix.spec), outcome: cell(r, ix.outcome), notes: cell(r, ix.notes) }
+    if (Number.isFinite(cost)) e.cost = cost
+    out[id] = e
+  }
+  const rawDir = path.join(repoRoot, LEDGER_RAW_DIR)
+  for (const f of safeList(rawDir)) {
+    const m = /^(\d{4}-\d{2}-\d{2})-(\d{4})\.json$/.exec(f)
+    if (!m) continue
+    const row = Object.values(out).find((e) => e.cost == null && e.date === m[1] && e.spec?.startsWith(m[2]))
+    if (!row) continue
+    const j = readJson(path.join(rawDir, f)) as { total_cost_usd?: unknown } | null
+    if (isNum(j?.total_cost_usd)) row.cost = j.total_cost_usd
+  }
+  return out
+}
+
 // --- live: fs.watch → SSE ------------------------------------------------------------
 
 /**
@@ -498,7 +551,7 @@ const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…'
  * 300 ms window (not a trailing debounce: a busy run appends every few
  * hundred ms and a trailing debounce would never fire).
  */
-function liveEvents(projectDir: string, repoRoot: string) {
+function liveEvents(projectDirs: () => string[], repoRoot: string) {
   const clients = new Set<ServerResponse>()
   const pending = new Map<string, ConsoleEvent>()
   let flush: NodeJS.Timeout | undefined
@@ -517,7 +570,7 @@ function liveEvents(projectDir: string, repoRoot: string) {
       res.writeHead(200, { 'content-type': 'text/event-stream', 'cache-control': 'no-store', connection: 'keep-alive' })
       res.write(': connected\n\n')
       clients.add(res)
-      stop ??= startWatching(projectDir, repoRoot, emit)
+      stop ??= startWatching(projectDirs, repoRoot, emit)
       const ping = setInterval(() => res.write(': ping\n\n'), PING_MS)
       res.on('close', () => {
         clearInterval(ping)
@@ -528,12 +581,30 @@ function liveEvents(projectDir: string, repoRoot: string) {
   }
 }
 
-function startWatching(projectDir: string, repoRoot: string, emit: (e: ConsoleEvent) => void): () => void {
+function startWatching(projectDirs: () => string[], repoRoot: string, emit: (e: ConsoleEvent) => void): () => void {
   const stops = [
-    watchTree(projectDir, (rel) => { const e = classifyRunFile(rel); if (e) emit(e) }),
     ...['.claude/workflows', '.claude/skills', '.archon/workflows'].map((d) => watchTree(path.join(repoRoot, d), () => emit({ kind: 'workflows' }))),
+    watchTree(path.join(repoRoot, 'docs', 'factory'), (rel) => { if (isLedgerFile(rel)) emit({ kind: 'ledger' }) }),
   ]
-  return () => { for (const s of stops) s() }
+  // One watcher per project dir. A worktree's dir does not exist until its
+  // first run, and its name is only known once it does: re-scan the base.
+  const watched = new Map<string, () => void>()
+  const attach = (first: boolean) => {
+    for (const d of projectDirs()) {
+      if (watched.has(d)) continue
+      watched.set(d, watchTree(d, (rel) => { const e = classifyRunFile(rel); if (e) emit(e) }))
+      if (!first) emit({ kind: 'runs' })
+    }
+  }
+  attach(true)
+  const timer = setInterval(() => attach(false), DIR_POLL_MS)
+  return () => { clearInterval(timer); for (const s of stops) s(); for (const s of watched.values()) s() }
+}
+
+/** RUNS.md or anything under runs/ (relative to docs/factory); plan.md edits stay quiet. */
+function isLedgerFile(rel: string): boolean {
+  const p = rel.split(/[\\/]/)
+  return rel === '' || rel === 'RUNS.md' || p[0] === 'runs'
 }
 
 // <session>/workflows/wf_x.json and workflows/scripts/* → runs;

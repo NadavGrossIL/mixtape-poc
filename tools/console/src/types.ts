@@ -63,10 +63,16 @@ export interface RunManifest {
   source?: 'manifest' | 'journal' | 'merged'
   /** Newest agent timestamp; the plugin fills it for journal-derived and merged runs. */
   lastProgressAt?: number
+  /** The ~/.claude/projects dir the run was read from: the repo's slug, or a sibling checkout's (`…-mixtape-poc.wt` for the driver's worktree). */
+  projectSlug?: string
 }
 
 /** What `GET /api/events` streams (one JSON object per SSE `data:` line). */
-export type ConsoleEvent = { kind: 'runs' } | { kind: 'journal'; runId: string } | { kind: 'workflows' }
+export type ConsoleEvent = { kind: 'runs' } | { kind: 'journal'; runId: string } | { kind: 'workflows' } | { kind: 'ledger' }
+
+/** One row of docs/factory/RUNS.md, keyed by run id (`GET /api/ledger`). `cost` is USD. */
+export interface LedgerEntry { cost?: number; date?: string; spec?: string; outcome?: string; notes?: string }
+export type Ledger = Record<string, LedgerEntry>
 
 export interface WorkflowFile {
   name: string
@@ -111,6 +117,10 @@ export interface GraphNode {
 export interface GraphEdge {
   source: string
   target: string
+  /** A loop, not a step: `back` runs from a checker to its fix node, `retry` from the fix node into the gate again. Layout ranks neither. */
+  loop?: 'back' | 'retry'
+  /** The loop's bound (`≤2`), read from the script when it can be. */
+  label?: string
 }
 
 export interface Graph {

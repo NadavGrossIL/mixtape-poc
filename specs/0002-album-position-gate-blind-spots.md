@@ -1,7 +1,7 @@
 ---
 id: 0002
 title: Album-position gate blind spots
-status: draft            # draft → ready (human approves) → done | escalated
+status: ready            # draft → ready (human approves) → done | escalated
 touches_prompt: true     # server/curator.ts (SYSTEM + gate) and evals/prompts.json change → one eval run, human-read
 flag: none               # the grounding gate has no runtime switch (6815090 shipped without one); a revert is the switch
 ---

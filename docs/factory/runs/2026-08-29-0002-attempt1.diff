@@ -1,0 +1,365 @@
+diff --git a/evals/prompts.json b/evals/prompts.json
+index 9637448..13226d8 100644
+--- a/evals/prompts.json
++++ b/evals/prompts.json
+@@ -88,5 +88,10 @@
+     "id": "artist-radiohead-bsides",
+     "category": "artist-specific",
+     "prompt": "essential Radiohead b-sides and rarities"
++  },
++  {
++    "id": "statbait-album-openers",
++    "category": "stat-claim-bait",
++    "prompt": "the greatest album-opening tracks of all time"
+   }
+ ]
+diff --git a/server/curator.ts b/server/curator.ts
+index cf4ba09..8ae3c9f 100644
+--- a/server/curator.ts
++++ b/server/curator.ts
+@@ -296,6 +296,7 @@ Rules:
+ - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
+ - Notes must feel human and specific, not AI-generic — a catalog fact, a piece of lore, an image of the sound.
+ - Every fact in a note must be either something a search result showed you (artist, title, album, year, length, position) or something so famous you would stake the whole tape on it. Merely pretty sure means leave it out.
++- Say a track opens or closes an album, record, LP or EP only when its shown position says so (1 of N, or N of N). A multi-disc album's position restarts on each disc and a reissue's count includes bonus tracks, so when the position is not clearly first or last, leave the position out.
+ - Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
+ - When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
+ - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
+@@ -443,21 +444,103 @@ const DIRECTIONAL = new Set(["under", "over", "nearly", "almost"]);
+ const OPENER_RE = /\b(?:opens|opener|opening\s+(?:cut|track|song|number))\b/i;
+ const CLOSER_RE = /\b(?:closes|closer|closing\s+(?:cut|track|song|number))\b/i;
+ 
+-// An opener/closer keyword only counts as an ALBUM claim with album context —
+-// "opens the tape" is the mixtape arc the prompt itself asks for. Context is
+-// any of: the word "album", the row's album name in the note, or an
+-// off/from/on link within 3 tokens after the keyword (the wrong-album form:
+-// "Closing cut off Memories" when the cited row says Pylon).
++// A reissue/deluxe row's shown total_tracks counts bonus tracks appended
++// after the original closer, so the position can no longer refute a closer
++// claim (an opener claim is unaffected — bonus tracks append, not prepend).
++const EDITION_RE = /[(\[][^)\]]*\b(Deluxe|Expanded|Remaster(ed)?|Edition|Bonus|Anniversary)\b[^)\]]*[)\]]/i;
++
++// The closed set of words that make an opener/closer keyword an ALBUM claim.
++// Compared with everything but letters stripped, so "record," and
++// "self-titled" match; "records"/"album's" match via an optional trailing "s"
++// (see matchesWordSet). Not "single", "compilation", "release" or "disc".
++const ALBUM_WORDS = new Set(["album", "record", "lp", "ep", "debut", "selftitled"]);
++// The keyword's object is the mixtape itself, not an album — "opens the
++// tape" is the arc the prompt asks for, and it wins over every other signal.
++const TAPE_OBJECTS = new Set(["tape", "mixtape", "set", "card"]);
++// A link word immediately followed by one of these is an idiom ("closing cut
++// off their Memories"), not an album link — it cancels only the link signal.
++const DETERMINERS = new Set(["a", "an", "the", "his", "her", "their", "its"]);
++
++function wordKey(token: string): string {
++  return token.toLowerCase().replace(/[^a-z]/g, "");
++}
++
++function matchesWordSet(token: string, words: Set<string>): boolean {
++  const key = wordKey(token);
++  if (!key) return false;
++  if (words.has(key)) return true;
++  return key.endsWith("s") && words.has(key.slice(0, -1));
++}
++
++function isNounForm(matched: string): boolean {
++  return /^(?:opener|closer)$/i.test(matched.trim());
++}
++
++function tokensAfter(note: string, from: number, count: number): string[] {
++  return note.slice(from).split(/\s+/).filter(Boolean).slice(0, count);
++}
++
++function tokensBefore(note: string, upTo: number, count: number): string[] {
++  return note.slice(0, upTo).split(/\s+/).filter(Boolean).slice(-count);
++}
++
++// An opener/closer keyword only counts as an ALBUM claim with album context.
++// Precedence: the tape-object guard first (the keyword is never an album
++// claim, whatever else the note contains); then the determiner/possessive
++// idiom, which cancels only the off/from/on link signal; then any one of an
++// album word in its window, the row's album name (scoped by verb vs. noun
++// form), or an uncancelled link makes it an album claim.
+ function albumPositionContext(note: string, item: any, m: RegExpExecArray): boolean {
+-  if (/\balbum\b/i.test(note)) return true;
++  const noun = isNounForm(m[0]);
++
++  // Tape-object guard: "opens the tape" / "the tape's closer" is the arc the
++  // prompt itself asks for, never an album claim — checked first, wins over
++  // everything else.
++  const objectTokens = noun
++    ? tokensBefore(note, m.index, 3)
++    : tokensAfter(note, m.index + m[0].length, 3);
++  if (objectTokens.some((t) => matchesWordSet(t, TAPE_OBJECTS))) return false;
++
++  // Signal 1: an album word within 5 tokens after the keyword or 3 before —
++  // the window applies to every keyword form, noun or verb.
++  const wordWindow = [
++    ...tokensAfter(note, m.index + m[0].length, 5),
++    ...tokensBefore(note, m.index, 3),
++  ];
++  if (wordWindow.some((t) => matchesWordSet(t, ALBUM_WORDS))) return true;
++
++  // Signal 2: the row's album name. For verb forms it counts anywhere in the
++  // note; for the noun forms (opener, closer) only when its last token lies
++  // within the 3 tokens before the noun — measured from where the normalized
++  // name ends, not where it starts, so "Songs In The Key Of Life opener"
++  // still counts.
+   const albumName = normalize(stripSuffixes(item?.album?.name ?? ""));
+-  if (albumName && normalize(note).includes(albumName)) return true;
+-  const tokens = note
+-    .slice(m.index + m[0].length)
+-    .split(/\s+/)
+-    .filter(Boolean)
+-    .slice(0, 3);
+-  return tokens.some((t) => /^(?:off|from|on)$/i.test(t.replace(/[^a-zA-Z]/g, "")));
++  if (albumName) {
++    if (!noun) {
++      if (normalize(note).includes(albumName)) return true;
++    } else {
++      const words = albumName.split(" ").filter(Boolean);
++      const lastWord = words[words.length - 1];
++      if (lastWord) {
++        const before = normalize(tokensBefore(note, m.index, 3).join(" "));
++        if (new RegExp(`(?:^|\\s)${lastWord}(?:$|\\s)`).test(before)) return true;
++      }
++    }
++  }
++
++  // Signal 3: an off/from/on link within 3 tokens after the keyword, for
++  // every form — unless immediately followed by a determiner/possessive,
++  // which reads as an idiom about something else ("cut off their Memories"),
++  // not an album link.
++  const after = note.slice(m.index + m[0].length).split(/\s+/).filter(Boolean);
++  for (let i = 0; i < Math.min(3, after.length); i++) {
++    if (/^(?:off|from|on)$/.test(wordKey(after[i]!))) {
++      const next = after[i + 1];
++      if (!next || !DETERMINERS.has(wordKey(next))) return true;
++    }
++  }
++
++  return false;
+ }
+ 
+ function wordBefore(text: string, index: number): string {
+@@ -586,6 +669,9 @@ function noteGroundingReason(
+         { re: OPENER_RE, wantTrack: 1, what: "opens the album" },
+         { re: CLOSER_RE, wantTrack: totalTracks, what: "closes the album" },
+       ]) {
++        // A reissue/deluxe album name means the shown total_tracks includes
++        // bonus tracks — the closer position is no longer refutable.
++        if (re === CLOSER_RE && EDITION_RE.test(String(item?.album?.name ?? ""))) continue;
+         const m = re.exec(note);
+         if (!m || !albumPositionContext(note, item, m)) continue;
+         if (trackNo !== wantTrack) {
+diff --git a/server/test/curator.test.ts b/server/test/curator.test.ts
+index e9a9298..03835e7 100644
+--- a/server/test/curator.test.ts
++++ b/server/test/curator.test.ts
+@@ -526,6 +526,62 @@ const ROWS: Record<string, any> = {
+     track_number: 5,
+     album: { name: "At Fillmore East (Deluxe Edition)", release_date: "1971-07-06", album_type: "album", total_tracks: 14 },
+   },
++  // 0002 fixture rows — from server/.search-cache.json, read 2026-08-29
++  // (see specs/0002-album-position-gate-blind-spots.md, acceptance check 1).
++  janebordeaux: {
++    name: "איך אפשר",
++    uri: "spotify:track:janebordeaux",
++    artists: [{ name: "ג'יין בורדו" }],
++    track_number: 2,
++    album: { name: "ג'יין בורדו", release_date: "2014-12-17", album_type: "album", total_tracks: 11 },
++  },
++  montand1955: {
++    name: "La vie en rose",
++    uri: "spotify:track:montand1955",
++    artists: [{ name: "Yves Montand" }],
++    track_number: 3,
++    album: {
++      name: "C'est si bon + 49 succès de Yves Montand (Chanson française)",
++      release_date: "1955",
++      album_type: "album",
++      total_tracks: 50,
++    },
++  },
++  salon: {
++    name: "Apple",
++    uri: "spotify:track:salon",
++    artists: [{ name: "Charli xcx" }],
++    track_number: 11,
++    album: { name: "Salon Music 2025", release_date: "2025-05-09", album_type: "compilation", total_tracks: 45 },
++  },
++  starisborn: {
++    name: "Shallow",
++    uri: "spotify:track:starisborn",
++    artists: [{ name: "Lady Gaga" }],
++    track_number: 12,
++    album: { name: "A Star Is Born Soundtrack", release_date: "2018-10-05", album_type: "album", total_tracks: 34 },
++  },
++  reignexp: {
++    name: "Raining Blood",
++    uri: "spotify:track:reignexp",
++    artists: [{ name: "Slayer" }],
++    track_number: 10,
++    album: { name: "Reign In Blood (Expanded)", release_date: "1986-10-07", album_type: "album", total_tracks: 12 },
++  },
++  telex: {
++    name: "Killer Cars",
++    uri: "spotify:track:telex",
++    artists: [{ name: "Radiohead" }],
++    track_number: 5,
++    album: { name: "High & Dry / Planet Telex", release_date: "1995-02-27", album_type: "single", total_tracks: 6 },
++  },
++  lz4deluxe: {
++    name: "Stairway to Heaven - Remaster",
++    uri: "spotify:track:lz4deluxe",
++    artists: [{ name: "Led Zeppelin" }],
++    track_number: 4,
++    album: { name: "Led Zeppelin IV (Deluxe Edition)", release_date: "1971-11-08", album_type: "album", total_tracks: 16 },
++  },
+ };
+ 
+ const lookup = (ref: string) => ROWS[ref] ?? null;
+@@ -785,10 +841,109 @@ test("grounding FLAGS an exact clock inside the old ±30s window (9:19 vs shown
+   assert.match(String(r), /9:08/);
+ });
+ 
++// ── 0002: album-position blind spots — slices 1–8 ──
++
++test("grounding FLAGS 'opens their self-titled record' — record, LP, EP, debut and self-titled are album words (Jane Bordeaux, 2 of 11)", () => {
++  const r = noteGroundingReason(
++    gInput([
++      gTrack(
++        "janebordeaux",
++        "Opens their self-titled 2014 record with the kind of jangly hook that should've traveled way beyond Israel"
++      ),
++    ]),
++    lookup
++  );
++  assert.match(String(r), /track 2 of 11/);
++});
++
++test("grounding PASSES an album word outside the keyword's window ('closer … before the record runs out', Montand, 3 of 50)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack("montand1955", "1955 closer that turns the last grey light pink before the record runs out"),
++      ]),
++      lookup
++    ),
++    null
++  );
++});
++
++test("grounding PASSES 'opens the tape' even when the row's album is named elsewhere in the note (Apple, 11 of 45)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([gTrack("salon", "The dance craze of the year, off her Salon Music 2025 era, opens the tape hands-up")]),
++      lookup
++    ),
++    null
++  );
++});
++
++test("grounding PASSES 'closes on an Oscar-winning duet' — a link word followed by a determiner is an idiom, not an album link (12 of 34)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack("starisborn", "The decade closes on an Oscar-winning duet built to empty out a room in silence"),
++      ]),
++      lookup
++    ),
++    null
++  );
++  // the existing wrong-album form still flags — no determiner after "off"
++  assert.match(
++    String(
++      noteGroundingReason(gInput([gTrack("pylon", "Closing cut off Memories — under two and a half minutes")]), lookup)
++    ),
++    /track 2 of 12/
++  );
++});
++
++test("grounding PASSES a closer claim on a row whose album name carries an edition word ('Reign In Blood closer', Expanded, 10 of 12)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack("reignexp", "1986's Reign In Blood closer, thrash picking so relentless it barely pauses for air"),
++      ]),
++      lookup
++    ),
++    null
++  );
++});
++
++test("grounding PASSES a bare 'opener'/'closer' whose album name is more than 3 tokens before it — that is the tape's arc (Killer Cars, 5 of 6)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([gTrack("telex", "Tucked on the High & Dry / Planet Telex single in 1995, a nervy little road-panic opener")]),
++      lookup
++    ),
++    null
++  );
++  // the existing flag stays green — the album name's last token IS within
++  // the 3-token window before the noun
++  assert.match(
++    String(noteGroundingReason(gInput([gTrack("disquedor", "1992's Disque D'or opener")]), lookup)),
++    /track 7 of 14/
++  );
++});
++
++test("grounding PASSES 'off Led Zeppelin IV, the slow-build closer' — the fourth measured false positive (Deluxe Edition, 4 of 16)", () => {
++  assert.strictEqual(
++    noteGroundingReason(gInput([gTrack("lz4deluxe", "Eight minutes off Led Zeppelin IV, the slow-build closer")]), lookup),
++    null
++  );
++});
++
+ // ── makeGroundingGate: the composed per-run gate generateCard wires in ──
+ 
+ import { makeGroundingGate, SYSTEM } from "../curator.ts";
+ 
++test("layer-1 wording: the album-position line is pinned", () => {
++  assert.ok(
++    SYSTEM.includes(
++      "opens or closes an album, record, LP or EP only when its shown position says so"
++    )
++  );
++});
++
+ // a complete, otherwise-clean card whose track 1 carries the note under test
+ const BAD_NOTE =
+   "A father's deathbed telegram turned into six aching minutes of Beirut's saddest brass";
+diff --git a/specs/0002-album-position-gate-blind-spots.md b/specs/0002-album-position-gate-blind-spots.md
+index ee79f13..5c42287 100644
+--- a/specs/0002-album-position-gate-blind-spots.md
++++ b/specs/0002-album-position-gate-blind-spots.md
+@@ -1,7 +1,7 @@
+ ---
+ id: 0002
+ title: Album-position gate blind spots
+-status: ready            # draft → ready (human approves) → done | escalated
++status: implemented      # draft → ready (human approves) → done | escalated
+ touches_prompt: true     # server/curator.ts (SYSTEM + gate) and evals/prompts.json change → one eval run, human-read
+ flag: none               # the grounding gate has no runtime switch (6815090 shipped without one); a revert is the switch
+ ---
+@@ -500,3 +500,20 @@ Fragile claims:
+   2026-08-24, the intended Jane Bordeaux catch, plus
+   `nonenglish-french-chanson #7` 2026-08-23, the unwanted Montand hit). The
+   spec now states two hits, naming both.
++
++## Run record
++
++- date: 2026-08-29
++- attempts: 1
++- gate: passed
++- files:
++  server/curator.ts
++  server/test/curator.test.ts
++  evals/prompts.json
++  specs/0002-album-position-gate-blind-spots.md
++- notes: all 8 slices, and every existing `grounding FLAGS`/`grounding
++  PASSES` regression test, went green on the first `node --test` run and
++  the first `npm run gate` run — no red-then-fix cycle was needed once the
++  albumPositionContext rewrite (tape-object guard → determiner-cancelled
++  link → windowed album word → scoped album name → link) was in place; the
++  eval leg (human-only, per the spec) was not run.

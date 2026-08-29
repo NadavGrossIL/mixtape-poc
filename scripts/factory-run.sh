@@ -19,12 +19,15 @@
 # step 3 checks ~/.claude.json and stops, rather than guessing.
 #
 # The script never commits, pushes or opens a PR: a run ends with the
-# branch in the worktree and the commands a human runs next. Exit codes:
+# branch in the worktree, a generated PR body in docs/factory/runs/, and the
+# commands a human runs next — including the two pre-merge checks the line
+# does not do (a /code-review for style and spec fit; the spec's hand-checked
+# bullets, which nobody has clicked). Exit codes:
 # 2 preflight, 3 not trusted, 4 claude produced no JSON, 5 the run escalated
 # (the row says why), 0 autonomous.
 set -euo pipefail
 
-ROOT=$(cd "$(dirname "$0")/.." && pwd)
+ROOT=$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)
 WT="$(dirname "$ROOT")/$(basename "$ROOT").wt"
 CONFIG="$ROOT/factory.config.json"
 RUNS_MD="$ROOT/docs/factory/RUNS.md"
@@ -35,6 +38,81 @@ PROJECTS_DIR="${HOME}/.claude/projects"
 for tool in git node npm jq; do
   command -v "$tool" >/dev/null || { echo "factory-run: $tool not found" >&2; exit 2; }
 done
+
+say() { printf '\n== %s\n' "$*"; }
+
+# --- helpers (sourceable: `source scripts/factory-run.sh` defines these and
+# --- returns, so they can be exercised without a run) ------------------------
+
+# The spec's hand checks, one per line: the `- ` bullets under the `### `
+# heading of `## Acceptance checks` whose title says "Hand-checked" or
+# "Post-review", else under its `### 3.` heading (the template's slot for
+# what the gate cannot run). Wrapped bullet lines are joined. Nested bullets
+# fold into their parent. No output = the spec has none.
+hand_checks() {
+  awk '
+    /^## /  { acc = ($0 ~ /^## Acceptance checks/); key = ""; open = 0; next }
+    acc && /^### / {
+      key = ($0 ~ /Hand-checked|Post-review/) ? "named" : ($0 ~ /^### 3\./) ? "third" : ""
+      open = 0; next
+    }
+    acc && key != "" {
+      if ($0 ~ /^- /)                    { n[key]++; b[key, n[key]] = substr($0, 3); open = 1 }
+      else if (open && $0 ~ /^ +[^ ]/)   { line = $0; sub(/^ +/, "", line); b[key, n[key]] = b[key, n[key]] " " line }
+      else                               { open = 0 }
+    }
+    END {
+      k = ("named" in n) ? "named" : "third"
+      for (i = 1; i <= n[k]; i++) print b[k, i]
+    }
+  ' "$1"
+}
+
+# The PR body, to stdout. Reads the row's variables (NNNN SLUG SPEC BRANCH
+# DATE PERMISSION_MODE MAX_TURNS MAX_BUDGET ATTEMPTS GATE REVIEW COST RUN
+# IMPLEMENT_MODEL) and the spec's hand checks; the shape is PR #1's, so the
+# next factory PR reads like the first. The two footer lines are PR #1's,
+# verbatim.
+pr_body() {
+  local check
+  cat <<EOF
+Spec $NNNN: $SLUG — \`$SPEC\` through \`scripts/factory-run.sh\` on \`$BRANCH\`, no human between approval and review (row of $DATE in \`docs/factory/RUNS.md\`).
+
+## Factory run
+
+| | |
+| --- | --- |
+| workflow | \`/implement-from-spec\`, headless \`claude -p --permission-mode $PERMISSION_MODE --max-turns $MAX_TURNS --max-budget-usd $MAX_BUDGET\` |
+| run | $RUN |
+| attempts | implement / gate / review: $ATTEMPTS |
+| gate | \`npm run gate\` $GATE |
+| review | \`reviewer\`: $REVIEW |
+| cost | \$$(printf '%.2f' "$COST") (\`total_cost_usd\`) |
+EOF
+  [ -n "$IMPLEMENT_MODEL" ] && echo "| implementModel | \`$IMPLEMENT_MODEL\` |"
+  cat <<EOF
+
+## Pre-merge, by a human
+
+- [ ] \`/code-review $BRANCH since main\` — Standards (the repo's documented conventions plus the smell baseline) and Spec (against \`$SPEC\`); the factory reviewer judged the contract only and was told not to grade style
+EOF
+  local any=0
+  while IFS= read -r check; do
+    any=1; echo "- [ ] $check"
+  done < <(hand_checks "$ROOT/$SPEC")
+  [ "$any" = "1" ] || echo "- hand checks: (none in the spec)"
+  cat <<'EOF'
+
+Do not merge from the agent side — the merge is the human gate.
+
+🤖 Generated with [Claude Code](https://claude.com/claude-code)
+
+https://claude.ai/code/session_013gws7xggrmqNrtGmAJgxgV
+EOF
+}
+
+# Sourced, not run: the helpers are defined, nothing else happens.
+[[ "${BASH_SOURCE[0]}" == "$0" ]] || return 0
 
 # --- args --------------------------------------------------------------------
 
@@ -49,8 +127,6 @@ for a in "$@"; do
   esac
 done
 [ -n "$SPEC" ] || { echo "usage: scripts/factory-run.sh specs/NNNN-slug.md [--dry-run]" >&2; exit 2; }
-
-say() { printf '\n== %s\n' "$*"; }
 
 # --- 1. preflight ------------------------------------------------------------
 
@@ -263,9 +339,29 @@ echo "$ROW"
 say "worktree: $WT"
 echo "   $(git -C "$WT" log --oneline -1)"
 git -C "$WT" status --short | sed 's/^/   /'
+# The PR body: generated when the run got as far as a manifest (the table
+# has something to say); a run that stopped earlier keeps the spec as body.
+BODY=$SPEC
+LEDGER="docs/factory/RUNS.md $OUT"
+if [ "$(mf 'has("runId")')" = "true" ]; then
+  PR_MD="$RUNS_DIR/$DATE-$NNNN.pr.md"
+  pr_body > "$PR_MD"
+  BODY=$PR_MD; LEDGER="$LEDGER $PR_MD"
+  say "PR body written to $PR_MD"
+fi
+
 say "next, by a human:"
 echo "   git -C $WT add -A && git -C $WT commit -m 'Spec $NNNN: $SLUG (factory)'"
 echo "   git -C $WT push -u origin $BRANCH"
-echo "   gh pr create --draft --head $BRANCH --title 'Spec $NNNN: $SLUG' --body-file $SPEC"
-echo "   git add docs/factory/RUNS.md $OUT   # the ledger, committed on main"
+echo "   gh pr create --draft --head $BRANCH --title 'Spec $NNNN: $SLUG' --body-file $BODY"
+echo "   git add $LEDGER   # the ledger, committed on main"
+say "pre-merge, by a human — the factory reviewer judged the contract, not style, and nobody has clicked the browser checks:"
+echo "   1. /code-review $BRANCH since main"
+echo "      Standards (the repo's documented conventions + smell baseline) and Spec (against $SPEC)"
+echo "   2. the spec's hand checks:"
+if [ -n "$(hand_checks "$ROOT/$SPEC")" ]; then
+  hand_checks "$ROOT/$SPEC" | sed 's/^/      - /'
+else
+  echo "      (none in the spec)"
+fi
 exit $EXIT

@@ -53,8 +53,22 @@ edits `main`.
    the script exits 5 so a timer can notice.
 6. **Then, by hand.** The script never commits, pushes or opens a PR; it
    prints the commands: commit in the worktree, `git push -u origin
-   factory/NNNN-slug`, `gh pr create --draft`, and commit the ledger
-   (`docs/factory/RUNS.md`, `docs/factory/runs/*.json`) on `main`.
+   factory/NNNN-slug`, `gh pr create --draft --body-file
+   docs/factory/runs/<date>-NNNN.pr.md` (a body the script generates from
+   the row — the run table, a pre-merge checklist, PR #1's shape; a run
+   that ended without a manifest falls back to the spec as body), and
+   commit the ledger (`docs/factory/RUNS.md`, `docs/factory/runs/*`) on
+   `main`.
+
+   Two checks stand between that draft PR and the merge, and the script
+   prints both: `/code-review factory/NNNN-slug since main` — the
+   two-axis review, Standards against the repo's documented conventions
+   plus a smell baseline, Spec against the originating spec — because the
+   factory's reviewer judges the contract only and is told not to grade
+   style, so this is the second opinion at the gate; and the spec's
+   hand-checked bullets (its `### 3.` under `## Acceptance checks`), which
+   are the spec's own browser checks and nobody has clicked them yet. The
+   generated PR body carries both as `- [ ]` items.
 
 ## Before status: ready — /review-spec
 

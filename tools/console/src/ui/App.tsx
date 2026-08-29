@@ -107,7 +107,7 @@ export function App() {
         <span className="conn" data-state={conn} title="event stream">{connLabel}</span>
       </header>
       <div className="stage">
-        <Canvas graph={graph} selectedId={selected} onSelect={setSelected} />
+        <Canvas graph={graph} files={files} run={run} selectedId={selected} onSelect={setSelected} />
         <RunList runs={runs} ledger={ledger} selectedId={run?.runId} onSelect={pickRun} />
         {selectedNode && (
           <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files}

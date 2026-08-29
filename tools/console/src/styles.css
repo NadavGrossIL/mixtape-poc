@@ -4,7 +4,7 @@
 :root {
   color-scheme: dark;
   --bg: #0f1115; --bg-2: #161a21; --bg-3: #1d222b; --line: #2b323d; --line-2: #3a4351;
-  --text: #e6e9ef; --muted: #8a93a3; --accent: #5fd3b3; --accent-dim: #2b6b5b;
+  --text: #e6e9ef; --muted: #8a93a3; --accent: #5fd3b3; --accent-dim: #2b6b5b; --edge-done: #3fa88a;
   --err: #f0716a; --warn: #e2b04a; --shadow: 0 10px 30px rgba(0, 0, 0, .45);
   --font: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Roboto, Helvetica, Arial, sans-serif;
   --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
@@ -13,7 +13,7 @@
   :root {
     color-scheme: light;
     --bg: #f6f7f9; --bg-2: #eceef2; --bg-3: #ffffff; --line: #d5d9e0; --line-2: #b9c0cb;
-    --text: #171a20; --muted: #626b7a; --accent: #0e8f70; --accent-dim: #a9dfd0;
+    --text: #171a20; --muted: #626b7a; --accent: #0b7a5f; --accent-dim: #4fae90; --edge-done: #2f8f70;
     --err: #c8372f; --warn: #a5720a; --shadow: 0 10px 30px rgba(20, 30, 50, .12);
   }
 }
@@ -79,29 +79,54 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* stage */
 .stage { flex: 1; display: flex; min-height: 0; position: relative; }
-.canvas { flex: 1; min-width: 0; }
+.canvas { flex: 1; min-width: 0; position: relative; }
 .react-flow { background: var(--bg); }
 .react-flow__controls { box-shadow: none; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
 .react-flow__controls button { background: var(--bg-3); border-bottom: 1px solid var(--line); fill: var(--text); }
-.react-flow__node-lane { pointer-events: none; }
-.lane { width: 100%; height: 100%; background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px; padding: 12px 18px; }
-.lane-title { font-size: 12px; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.react-flow__node.selectable:focus-visible, .react-flow__node:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 16px; }
+.react-flow__node-lane, .react-flow__node-outcome { pointer-events: none; }
+.lane { width: 100%; height: 100%; background: var(--bg-2); border: 1px solid var(--line); border-radius: 18px; padding: 12px 18px; display: flex; flex-direction: column; gap: 3px; }
+.lane-title { font-size: 12px; line-height: 1.45; font-weight: 600; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); }
+.lane-detail { font-size: 12px; line-height: 1.3; color: var(--muted); display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 3; overflow: hidden; overflow-wrap: anywhere; }
 
-/* nodes */
-.node { position: relative; width: 216px; height: 88px; color: var(--line-2); }
+/* the outcome column: the words the script can return, the one this run returned lit, its reason under */
+.outcome { border-style: dashed; pointer-events: auto; }
+.outcome-chips { display: flex; flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 12px; }
+.outcome-chip { font: 12px/1 var(--mono); color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 6px 12px; }
+.outcome-chip[data-on] { color: var(--bg); background: var(--accent); border-color: var(--accent); font-weight: 600; }
+.outcome-chip[data-on][data-tone="err"] { background: var(--err); border-color: var(--err); }
+.outcome-text { font-size: 12px; line-height: 1.4; color: var(--muted); margin: 12px 0 0; overflow-wrap: anywhere; overflow: hidden; }
+
+/* legend: what the strokes and shapes mean; static, over the canvas */
+.legend { position: absolute; left: 12px; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 6px 10px; font-size: 11px; color: var(--muted); background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; pointer-events: none; }
+.legend span { display: inline-flex; align-items: center; gap: 6px; }
+.lg-step { stroke: var(--muted); stroke-width: 2; fill: none; }
+.lg-loop { stroke: var(--muted); stroke-width: 2; fill: none; stroke-dasharray: 4 3; }
+.lg-node { display: inline-block; width: 18px; height: 11px; border-radius: 4px; border: 2px solid var(--line-2); background: var(--bg-3); }
+.lg-node[data-state="queued"] { border-style: dotted; }
+.lg-node[data-state="running"] { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); }
+.lg-node[data-state="done"] { border-color: var(--accent); }
+.lg-node[data-state="error"] { border-color: var(--err); border-width: 3px; }
+.lg-node[data-state="stalled"] { border-color: var(--warn); border-style: dashed; }
+.lg-node[data-state="waiting"] { border-color: var(--warn); box-shadow: 0 0 0 2px color-mix(in srgb, var(--warn) 40%, transparent); }
+
+/* nodes: a label that wraps to two lines, one purpose line, at most three chips */
+.node { position: relative; width: 216px; height: 112px; color: var(--line-2); }
 .node-shape { position: absolute; inset: 0; overflow: visible; }
 .node-shape .fill { fill: var(--bg-3); stroke: currentColor; stroke-width: 2; transition: stroke .2s; }
-.node-body { position: absolute; inset: 0; padding: 14px 22px; display: flex; flex-direction: column; justify-content: center; gap: 8px; color: var(--text); }
-.node[data-kind="gate"] .node-body { padding: 0 30px; align-items: center; text-align: center; gap: 6px; }
-.node[data-kind="gate"] .node-title { flex-direction: column; align-items: center; gap: 2px; }
-.node[data-kind="human"] .node-body { padding: 12px 30px; }
-.node-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; }
-.node-label { font-weight: 600; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.node-state { font-size: 10px; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); flex-shrink: 0; }
-.chips { display: flex; gap: 5px; flex-wrap: wrap; }
-.chip { font: 11px/1 var(--mono); color: var(--muted); background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 3px 6px; white-space: nowrap; }
-.node[data-kind="gate"] .chips { justify-content: center; max-width: 150px; }
-.port { opacity: 0; width: 6px; height: 6px; min-width: 0; min-height: 0; }
+.node-body { position: absolute; inset: 0; padding: 10px 18px; display: flex; flex-direction: column; justify-content: center; gap: 3px; color: var(--text); overflow: hidden; }
+.node[data-kind="gate"] .node-body { padding: 0 50px; align-items: center; text-align: center; }
+.node[data-kind="gate"] .node-title { justify-content: center; }
+.node[data-kind="gate"] .node-label { flex: 0 1 auto; }
+.node[data-kind="gate"] .chips { justify-content: center; }
+.node[data-kind="human"] .node-body { padding: 10px 30px; }
+.node-title { display: flex; align-items: baseline; justify-content: space-between; gap: 8px; min-width: 0; }
+.node-label { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; line-height: 1.2; overflow: hidden; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow-wrap: anywhere; }
+.node-state { font-size: 10px; line-height: 1.2; text-transform: uppercase; letter-spacing: .1em; color: var(--muted); flex-shrink: 0; }
+.node-purpose { font-size: 11px; line-height: 1.3; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+.chips { display: flex; gap: 4px 5px; flex-wrap: wrap; margin-top: 2px; }
+.chip { font: 10px/1 var(--mono); color: var(--muted); background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 2px 6px; white-space: nowrap; }
+.port { position: absolute; opacity: 0; width: 6px; height: 6px; min-width: 0; min-height: 0; right: auto; bottom: auto; transform: translate(-50%, -50%); }
 .node[data-selected] .node-shape .fill { stroke-width: 3; filter: drop-shadow(0 0 6px var(--accent)); }
 .node[data-state="queued"] { color: var(--line-2); } .node[data-state="queued"] .fill { stroke-dasharray: 3 5; stroke-linecap: round; }
 .node[data-state="running"] { color: var(--accent); }
@@ -110,21 +135,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .node[data-state="error"] { color: var(--err); } .node[data-state="error"] .fill { stroke-width: 3; }
 .node[data-state="error"] .node-state { color: var(--err); font-weight: 700; }
 .node[data-state="waiting"] { color: var(--warn); } .node[data-state="waiting"] .node-state { color: var(--warn); }
+/* stalled: the run went cold with this agent unfinished — amber, dashed, no motion */
+.node[data-state="stalled"] { color: var(--warn); } .node[data-state="stalled"] .fill { stroke-dasharray: 8 5; }
+.node[data-state="stalled"] .node-state { color: var(--warn); font-weight: 700; }
 .node-shape .ring { fill: none; stroke: var(--accent); stroke-width: 6; opacity: .6; transform-origin: 50% 50%; animation: pulse 1.4s ease-out infinite; }
 .node-shape .breath { fill: none; stroke: var(--warn); stroke-width: 5; opacity: .5; transform-origin: 50% 50%; animation: breathe 3.2s ease-in-out infinite; }
 @keyframes pulse { 0% { transform: scale(1); opacity: .6; } 100% { transform: scale(1.14); opacity: 0; } }
 @keyframes breathe { 0%, 100% { transform: scale(1); opacity: .15; } 50% { transform: scale(1.07); opacity: .55; } }
 @media (prefers-reduced-motion: reduce) { .node-shape .ring, .node-shape .breath { animation: none; } }
 
-/* edges; a loop (checker → fix node, fix node → gate again) is dashed, and its bound sits in a pill at the bottom of the U */
+/* edges: orthogonal steps; a loop (checker → fix node, fix node → gate again) is dashed and runs under the lanes, its bound in a pill on the horizontal run */
 .react-flow__edge-path { stroke: var(--muted); stroke-width: 2; opacity: .8; }
-.react-flow__edge.edge-loop .react-flow__edge-path { stroke-dasharray: 5 5; opacity: .6; }
-.edge-label { position: absolute; font: 11px/1 var(--mono); color: var(--muted); background: var(--bg-2); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 8px; pointer-events: none; }
+.react-flow__edge.edge-loop .react-flow__edge-path { stroke-dasharray: 5 5; opacity: .7; }
+.edge-label { position: absolute; z-index: 1001; pointer-events: none; font: 11px/1 var(--mono); color: var(--text); background: var(--bg-3); border: 1px solid var(--line-2); border-radius: 999px; padding: 3px 8px; }
 .thumb-edge[data-loop] { stroke-dasharray: 8 8; fill: none; }
-.react-flow__edge.edge-running .react-flow__edge-path { stroke: var(--accent); stroke-width: 2; }
-.react-flow__edge.edge-done .react-flow__edge-path { stroke: var(--accent-dim); }
-.react-flow__edge.edge-error .react-flow__edge-path { stroke: var(--err); opacity: .7; }
+.react-flow__edge.edge-queued .react-flow__edge-path { opacity: .6; }
+.react-flow__edge.edge-running .react-flow__edge-path { stroke: var(--accent); stroke-width: 2.5; opacity: 1; }
+.react-flow__edge.edge-done .react-flow__edge-path { stroke: var(--edge-done); opacity: 1; }
+.react-flow__edge.edge-error .react-flow__edge-path { stroke: var(--err); opacity: .9; }
+.react-flow__edge.edge-sel .react-flow__edge-path { stroke-width: 3; opacity: 1; }
 .react-flow__edge.animated .react-flow__edge-path { stroke-dasharray: 6 4; }
+@media (prefers-reduced-motion: reduce) { .react-flow__edge.animated .react-flow__edge-path { animation: none; } }
 
 /* run rail */
 .rail { width: 280px; border-left: 1px solid var(--line); padding: 16px 12px; overflow: auto; background: var(--bg); }

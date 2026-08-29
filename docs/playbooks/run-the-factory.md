@@ -21,13 +21,15 @@ edits `main`.
    from the npm cache) keeps anything the implementer installs out of the
    main checkout.
 3. **Trust, once.** Claude Code trusts workspaces per directory and ignores
-   the repo's `permissions.allow` until the worktree has been trusted, which
-   would park a headless run on the `Workflow(...)` approval card. If
-   `~/.claude.json` has no `hasTrustDialogAccepted` for the worktree path
-   the script stops (exit 3) and prints the one-time fix:
-   `cd ../mixtape-poc.wt && claude`, accept the dialog, quit, re-run. The
-   trust entry survives the worktree being removed and recreated at the
-   same path.
+   the repo's `permissions.allow` until the workspace has been trusted, which
+   would park a headless run on the `Workflow(...)` approval card. The driver
+   looks in `~/.claude.json` for the worktree's own `hasTrustDialogAccepted`
+   first, then the repo's (the main checkout's entry): on 2.1.251 a worktree
+   of a trusted repo shows no dialog and gets no entry of its own (measured
+   2026-08-29 — the headless probe ran an allowlisted `git status` with no
+   denial). Only when neither is trusted does the script stop (exit 3) and
+   print the one-time fix: `cd <repo> && claude`, accept the dialog, quit,
+   re-run.
 4. **The command.** Composed from `factory.config.json`:
 
    ```sh

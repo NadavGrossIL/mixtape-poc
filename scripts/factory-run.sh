@@ -14,9 +14,13 @@
 # The worktree sits next to the repo so its Claude project slug
 # (-Users-…-mixtape-poc.wt) starts with the repo's; the console globs on
 # that prefix. Claude Code trusts workspaces per directory and ignores the
-# repo's `permissions.allow` until the worktree has been trusted once, which
+# repo's `permissions.allow` until the workspace has been trusted once, which
 # would put the Workflow(...) approval card in front of a headless run — so
-# step 3 checks ~/.claude.json and stops, rather than guessing.
+# step 3 checks ~/.claude.json: the worktree's own entry first, then the
+# repo's, because a worktree of a trusted repo inherits the trust (measured
+# 2026-08-29 on 2.1.251: no dialog is shown, no entry is written for the
+# worktree path, and a headless `claude -p` in it ran an allowlisted
+# `git status` with no denial). It stops only when neither is trusted.
 #
 # The script never commits, pushes or opens a PR: a run ends with the
 # branch in the worktree, a generated PR body in docs/factory/runs/, and the
@@ -198,23 +202,31 @@ done
 # --- 3. trust ----------------------------------------------------------------
 
 say "trust: $WT"
+# The worktree's own entry wins when it exists; otherwise the repo's entry
+# counts, because a worktree of a trusted repo is trusted without a dialog
+# or an entry of its own (2.1.251, measured 2026-08-29). Prints wt|root|no.
 TRUSTED=$(node -e '
-  const fs = require("fs"); const [file, dir] = process.argv.slice(1)
-  let ok = false
-  try { const p = JSON.parse(fs.readFileSync(file, "utf8")).projects || {}; ok = p[dir] && p[dir].hasTrustDialogAccepted === true } catch {}
-  console.log(ok ? "yes" : "no")
-' "$CLAUDE_JSON" "$WT")
-if [ "$TRUSTED" = "yes" ]; then
-  echo "   trusted (hasTrustDialogAccepted in ~/.claude.json)"
-else
-  echo "   NOT trusted: the worktree's permissions.allow is ignored, so a headless run would stop at the Workflow(...) approval card."
-  echo "   Once, by hand:  cd $WT && claude   — accept the trust dialog, quit, then re-run this script."
-  if [ "$DRY_RUN" = "1" ]; then
-    echo "   (dry run: continuing; a real run would stop here with exit 3)"
-  else
-    exit 3
-  fi
-fi
+  const fs = require("fs"); const [file, wt, root] = process.argv.slice(1)
+  let p = {}
+  try { p = JSON.parse(fs.readFileSync(file, "utf8")).projects || {} } catch {}
+  const ok = (dir) => !!p[dir] && p[dir].hasTrustDialogAccepted === true
+  console.log(ok(wt) ? "wt" : ok(root) ? "root" : "no")
+' "$CLAUDE_JSON" "$WT" "$ROOT")
+case "$TRUSTED" in
+  wt)   echo "   trusted (hasTrustDialogAccepted for the worktree in ~/.claude.json)" ;;
+  root) echo "   trusted (inherited from $ROOT — a worktree of a trusted repo; measured 2026-08-29 on 2.1.251, no dialog is shown and no entry is written for the worktree path)" ;;
+  *)
+    echo "   NOT trusted: neither $WT nor $ROOT has hasTrustDialogAccepted in ~/.claude.json, so the repo's"
+    echo "   permissions.allow is ignored and a headless run would stop at the Workflow(...) approval card."
+    echo "   Once, by hand:  cd $ROOT && claude   — accept the trust dialog for the repo itself, quit, then re-run this script."
+    echo "   If the run still stops on the Workflow(...) approval card after that, report it — that is the thing to fix."
+    if [ "$DRY_RUN" = "1" ]; then
+      echo "   (dry run: continuing; a real run would stop here with exit 3)"
+    else
+      exit 3
+    fi
+    ;;
+esac
 
 # --- 4. compose --------------------------------------------------------------
 

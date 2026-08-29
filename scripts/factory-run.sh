@@ -12,8 +12,11 @@
 # neither problem, and the main checkout is never the thing being edited.
 #
 # The worktree sits next to the repo so its Claude project slug
-# (-Users-…-mixtape-poc.wt) starts with the repo's; the console globs on
-# that prefix. Claude Code trusts workspaces per directory and ignores the
+# (-Users-…-mixtape-poc-wt: every non-alphanumeric character of the cwd
+# becomes `-`, the dot included — measured on dry run 2, 2026-08-29, 2.1.251)
+# starts with the repo's; the console globs on that prefix and reads both
+# the dashed and the dotted form. Claude Code trusts workspaces per
+# directory and ignores the
 # repo's `permissions.allow` until the workspace has been trusted once, which
 # would put the Workflow(...) approval card in front of a headless run — so
 # step 3 checks ~/.claude.json: the worktree's own entry first, then the
@@ -256,10 +259,18 @@ fi
 
 command -v claude >/dev/null || { echo "factory-run: claude not found" >&2; exit 2; }
 mkdir -p "$RUNS_DIR"
+# `claude -p` waits at most 600 s for background tasks, and a Workflow runs
+# as one. Dry run 2 (2026-08-29, 2.1.251, wf_0684802b-74d) hit it: implement
+# on Sonnet took 6m49s, the line was killed in its Review phase ("Background
+# tasks still running after 600s; terminating"), and claude still exited 0
+# with subtype success, 2 turns and no manifest (dry run 1's 4.4 min never
+# got near it). 0 = wait indefinitely; --max-turns/--max-budget-usd stay the
+# wall-clock stop. FACTORY_BG_WAIT_MS sets a ceiling back, by a human.
+BG_WAIT_MS="${FACTORY_BG_WAIT_MS:-0}"
 LAUNCH_MS=$(node -e 'console.log(Date.now())')
-say "run: $(date '+%H:%M:%S') — max $MAX_TURNS turns, \$$MAX_BUDGET"
+say "run: $(date '+%H:%M:%S') — max $MAX_TURNS turns, \$$MAX_BUDGET, bg-task ceiling ${BG_WAIT_MS}ms (0 = none; FACTORY_BG_WAIT_MS)"
 RC=0
-(cd "$WT" && "${CMD[@]}" > "$OUT") || RC=$?
+(cd "$WT" && CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS="$BG_WAIT_MS" "${CMD[@]}" > "$OUT") || RC=$?
 echo "   claude exited $RC after $(( ($(node -e 'console.log(Date.now())') - LAUNCH_MS) / 1000 ))s"
 
 if ! jq -e 'type == "object"' "$OUT" >/dev/null 2>&1; then
@@ -272,24 +283,41 @@ SUBTYPE=$(jq -r '.subtype // "?"' "$OUT")
 echo "   subtype: $SUBTYPE · turns: $TURNS · cost: \$$COST"
 
 # The manifest is written at the end of the run under the worktree's project
-# slug (cwd with / → -). Newest one that started after we launched.
-WT_SLUG=$(printf '%s' "$WT" | tr '/' '-')
+# slug: the cwd with every non-alphanumeric character turned into `-`, the
+# dot included (-Users-…-mixtape-poc-wt; dry run 2 wrote its journal there
+# while the driver looked in …-mixtape-poc.wt). Both forms are searched, for
+# safety. Newest manifest that started after we launched; when there is
+# none but a journal (subagents/workflows/wf_*/journal.jsonl) is newer than
+# the launch, the run was cut before the manifest and the journal is the
+# evidence — its path rides along as `journal`.
+WT_SLUG=$(printf '%s' "$WT" | tr -c 'A-Za-z0-9' '-')
+WT_SLUG_DOTTED=$(printf '%s' "$WT" | tr '/' '-')
 MANIFEST=$(node -e '
   const fs = require("fs"), path = require("path")
-  const [dir, since] = process.argv.slice(1)
-  let best = null
-  for (const session of (fs.existsSync(dir) ? fs.readdirSync(dir) : [])) {
-    const wdir = path.join(dir, session, "workflows")
-    if (!fs.existsSync(wdir)) continue
-    for (const f of fs.readdirSync(wdir)) {
-      if (!/^wf_.*\.json$/.test(f)) continue
-      try {
-        const m = JSON.parse(fs.readFileSync(path.join(wdir, f), "utf8"))
-        if (Number(m.startTime) >= Number(since) && (!best || m.startTime > best.startTime)) best = { ...m, file: path.join(wdir, f) }
-      } catch {}
+  const [since, ...dirs] = process.argv.slice(1)
+  let best = null, journal = null
+  for (const dir of dirs) {
+    for (const session of (fs.existsSync(dir) ? fs.readdirSync(dir) : [])) {
+      const wdir = path.join(dir, session, "workflows")
+      for (const f of (fs.existsSync(wdir) ? fs.readdirSync(wdir) : [])) {
+        if (!/^wf_.*\.json$/.test(f)) continue
+        try {
+          const m = JSON.parse(fs.readFileSync(path.join(wdir, f), "utf8"))
+          if (Number(m.startTime) >= Number(since) && (!best || m.startTime > best.startTime)) best = { ...m, file: path.join(wdir, f) }
+        } catch {}
+      }
+      const jdir = path.join(dir, session, "subagents", "workflows")
+      for (const run of (fs.existsSync(jdir) ? fs.readdirSync(jdir) : [])) {
+        const j = path.join(jdir, run, "journal.jsonl")
+        if (!/^wf_/.test(run) || !fs.existsSync(j)) continue
+        const mtime = fs.statSync(j).mtimeMs
+        if (mtime < Number(since) || (journal && mtime <= journal.mtime)) continue
+        const results = fs.readFileSync(j, "utf8").split("\n").filter((l) => /"type":"result"/.test(l)).length
+        journal = { file: j, mtime, results }
+      }
     }
   }
-  if (!best) { process.stdout.write("{}"); process.exit(0) }
+  if (!best) { process.stdout.write(JSON.stringify(journal ? { journal: journal.file, journalResults: journal.results } : {})); process.exit(0) }
   const r = best.result || {}
   const model = (label) => ((best.workflowProgress || []).find((p) => p.label && p.label.startsWith(label)) || {}).model || ""
   process.stdout.write(JSON.stringify({
@@ -299,7 +327,7 @@ MANIFEST=$(node -e '
     agentCount: best.agentCount || 0, totalTokens: best.totalTokens || 0, durationMs: best.durationMs || 0,
     implementModel: model("implement"), reviewModel: model("review:"),
   }))
-' "$PROJECTS_DIR/$WT_SLUG" "$LAUNCH_MS")
+' "$LAUNCH_MS" "$PROJECTS_DIR/$WT_SLUG" "$PROJECTS_DIR/$WT_SLUG_DOTTED")
 
 # --- the row -----------------------------------------------------------------
 
@@ -321,8 +349,15 @@ if [ "$(mf 'has("runId")')" = "true" ]; then
   fi
   RUN="\`$(mf .runId)\` · $(mf .agentCount) agents · $(mf '.totalTokens / 1000 | round')k tok · $(mf '.durationMs / 6000 | round / 10') min"
 else
-  echo "   manifest: none found under $PROJECTS_DIR/$WT_SLUG since launch (a budget/turn stop can end before the script returns)"
+  echo "   manifest: none found under $PROJECTS_DIR/$WT_SLUG (or $WT_SLUG_DOTTED) since launch (a budget/turn stop can end before the script returns)"
+  [ -n "$(mf '.journal // empty')" ] && echo "   journal: $(mf .journal) ($(mf .journalResults) result lines — the run was cut before the manifest)"
   R_STATUS=""; R_REASON="claude result subtype $SUBTYPE, no workflow manifest"
+  # The 600 s ceiling leaves no trace in $OUT but the result text: claude's
+  # last turn says the workflow is "running in the background", then the
+  # terminate message goes to stderr. That text plus no manifest is the signal.
+  if jq -r '.result // ""' "$OUT" | grep -q 'running in the background'; then
+    R_REASON="headless bg-task ceiling hit before the run ended (no manifest); see the journal"
+  fi
   ATTEMPTS="— / — / —"; GATE="—"; REVIEW="—"; RUN="no manifest · $TURNS turns"
 fi
 case "$R_STATUS" in

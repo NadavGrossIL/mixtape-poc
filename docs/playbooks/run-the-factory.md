@@ -42,11 +42,26 @@ edits `main`.
    `args.config`. `implementModel` sets the model of the implementer and its
    fix rounds only — the reviewer keeps the model in
    `.claude/agents/reviewer.md`. Stdout goes to
-   `docs/factory/runs/<date>-NNNN.json` (small; not `evals/runs/`).
+   `docs/factory/runs/<date>-NNNN.json` (small; not `evals/runs/`). The
+   driver runs it with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` because
+   `claude -p` otherwise waits at most 600 s for background tasks and a
+   Workflow runs as one — dry run 2 (2026-08-29, 2.1.251, `wf_0684802b-74d`)
+   was killed in its Review phase after implement on Sonnet took 6m49s,
+   and `claude` still exited 0 with `subtype: success` and no manifest;
+   `--max-turns`/`--max-budget-usd` stay the stop, and `FACTORY_BG_WAIT_MS`
+   sets a ceiling back by hand.
 5. **The row.** After exit the script reads `total_cost_usd`, `num_turns`,
    `subtype` from that JSON and the run manifest from
-   `~/.claude/projects/-Users-…-mixtape-poc.wt/<session>/workflows/wf_*.json`
-   (the newest one started after launch), then appends one row: date · spec ·
+   `~/.claude/projects/-Users-…-mixtape-poc-wt/<session>/workflows/wf_*.json`
+   (the newest one started after launch; the project dir is the cwd with
+   every non-alphanumeric character turned into `-`, the dot included — the
+   driver also looks in the dotted `…-mixtape-poc.wt` form). When there is
+   no manifest but a journal newer than the launch,
+   `<session>/subagents/workflows/wf_*/journal.jsonl`, the script prints its
+   path and result-line count (`journal: … — the run was cut before the
+   manifest`) and, if the result text says the workflow was still "running
+   in the background", the row's reason says the bg-task ceiling was hit.
+   Then it appends one row: date · spec ·
    engine · attempts (implement / gate / review) · gate · review · outcome ·
    cost · run · notes. Outcome is `autonomous (ready-for-pr)` or
    `autonomous (ready-for-eval)` — the latter when the spec has

@@ -4,7 +4,8 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { ConsoleEvent, Ledger, LedgerEntry, RunManifest, WorkflowAgentEntry } from './types'
+import type { ConsoleEvent, Graph, Ledger, LedgerEntry, RunManifest, WorkflowAgentEntry, WorkflowFile, WorkflowMeta } from './types'
+import { parseScript, readMeta } from './graph/parseScript' // pure TS, no browser imports: Vite bundles it into the config with esbuild
 
 // The console's only "backend": a Vite dev-server middleware that READS
 // workflow files in this repo and run records Claude Code wrote under
@@ -39,6 +40,9 @@ const POLL_MS = 2_000
 const DIR_POLL_MS = 5_000 // how often the projects base is re-scanned for a new matching dir (the first worktree run creates one)
 const LEDGER_FILE = 'docs/factory/RUNS.md'
 const LEDGER_RAW_DIR = 'docs/factory/runs' // the driver's saved `claude -p` JSON results, <date>-NNNN.json
+const TITLE_LEN = 120 // a journal agent's fallback label: the prompt's first line, clipped (the UI wraps)
+const HEAD_LEN = 400 // how much of a transcript's prompt is kept to match it against the copied script's prompt literals
+const MIN_PREFIX = 8 // a prompt literal shorter than this (before its first `${`) names nothing — `## Goal\n` is exactly 8
 
 export interface ConsoleOptions { repoRoot: string; fixturesDir: string }
 
@@ -93,12 +97,13 @@ export function consolePlugin(opts: ConsoleOptions): Plugin {
 
 // --- workflows ---------------------------------------------------------------
 
-function listWorkflows(opts: ConsoleOptions) {
-  const out: { name: string; engine: 'native' | 'archon'; kind: 'script' | 'skill' | 'yaml'; path: string; source: string; sha: string; fixture?: boolean }[] = []
+function listWorkflows(opts: ConsoleOptions): WorkflowFile[] {
+  const out: WorkflowFile[] = []
   const rel = (p: string) => path.relative(opts.repoRoot, p)
-  const entry = (name: string, engine: 'native' | 'archon', kind: 'script' | 'skill' | 'yaml', file: string) => {
+  const entry = (name: string, engine: WorkflowFile['engine'], kind: WorkflowFile['kind'], file: string): WorkflowFile => {
     const source = read(file)
-    return { name, engine, kind, path: rel(file), source, sha: sha256(source) } // sha = the `base` a later POST /api/file must carry
+    const meta = kind === 'script' ? scriptMeta(source) : kind === 'skill' || kind === 'agent' ? frontmatter(source) : {}
+    return { name, engine, kind, path: rel(file), source, sha: sha256(source), meta } // sha = the `base` a later POST /api/file must carry
   }
   const scripts = path.join(opts.repoRoot, '.claude', 'workflows')
   for (const f of safeList(scripts).filter((f) => f.endsWith('.js') || f.endsWith('.mjs')))
@@ -108,6 +113,10 @@ function listWorkflows(opts: ConsoleOptions) {
     const md = path.join(skills, d, 'SKILL.md')
     if (fs.existsSync(md)) out.push(entry(d, 'native', 'skill', md))
   }
+  // Named subagents (`agentType: 'reviewer'` in a script) — their file is the prompt the node runs with.
+  const agents = path.join(opts.repoRoot, '.claude', 'agents')
+  for (const f of safeList(agents).filter((f) => f.endsWith('.md')))
+    out.push(entry(f.replace(/\.md$/, ''), 'native', 'agent', path.join(agents, f)))
   const archon = path.join(opts.repoRoot, '.archon', 'workflows')
   for (const f of safeList(archon).filter((f) => /\.ya?ml$/.test(f)))
     out.push(entry(f.replace(/\.ya?ml$/, ''), 'archon', 'yaml', path.join(archon, f)))
@@ -116,6 +125,44 @@ function listWorkflows(opts: ConsoleOptions) {
   return fs.existsSync(sample)
     ? [{ ...entry('implement-from-spec', 'native', 'script', sample), path: 'tools/console/fixtures/implement-from-spec.sample.js', fixture: true }]
     : []
+}
+
+/** A script's `export const meta` — description, whenToUse, phases with detail — and the outcomes it can return. A script without one gets `{}`. */
+function scriptMeta(source: string): WorkflowMeta {
+  const out: WorkflowMeta = {}
+  try {
+    const m = readMeta(source)
+    if (m.description) out.description = m.description
+    if (m.whenToUse) out.whenToUse = m.whenToUse
+    if (m.phases.length) out.phases = m.phases
+    if (m.outcomes) out.outcomes = m.outcomes
+  } catch { /* an unreadable script is still listed; its source is what the panel edits */ }
+  return out
+}
+
+/**
+ * The `---` block at the top of a SKILL.md or agent file, `key: value` lines
+ * only — the five keys the page uses. Not a YAML parser: a multi-line value or
+ * a nested map is not something these files have.
+ */
+function frontmatter(source: string): WorkflowMeta {
+  const out: WorkflowMeta = {}
+  const m = /^---\r?\n([\s\S]*?)\r?\n---(?:\r?\n|$)/.exec(source)
+  if (!m) return out
+  const kv = new Map<string, string>()
+  for (const line of m[1].split(/\r?\n/)) {
+    const h = /^([\w-]+)\s*:\s*(.*)$/.exec(line)
+    if (h) kv.set(h[1], h[2].trim().replace(/^(['"])(.*)\1$/, '$2'))
+  }
+  const v = (k: string) => kv.get(k) || undefined
+  if (v('description')) out.description = v('description')
+  if (v('argument-hint')) out.argumentHint = v('argument-hint')
+  if (v('model')) out.model = v('model')
+  const tools = v('tools')
+  if (tools) out.tools = tools.split(',').map((t) => t.trim()).filter(Boolean)
+  const dmi = kv.get('disable-model-invocation')
+  if (dmi != null) out.disableModelInvocation = dmi.trim() === 'true'
+  return out
 }
 
 // --- the one write ----------------------------------------------------------------
@@ -327,6 +374,8 @@ function runFromJournal(runId: string, sessions: string[]): Manifest {
   const agents = new Map<string, WorkflowAgentEntry>()
   const starts = new Map<string, number>() // prompt key → times started (retries)
   const keyOf = new Map<string, string>() // agentId → prompt key
+  const titled = new Set<WorkflowAgentEntry>() // agents whose label is the prompt's first line (the journal had none)
+  const heads = new Map<WorkflowAgentEntry, string>() // agent → the first HEAD_LEN chars of its prompt, for relabelFromScript
   let newest = 0, index = 0
   let workflowName: string | undefined, script: string | undefined, scriptPath: string | undefined
   for (const base of sessions) {
@@ -369,7 +418,8 @@ function runFromJournal(runId: string, sessions: string[]): Manifest {
       a.toolCalls = t.toolCalls
       a.lastToolName = t.lastToolName ?? a.lastToolName
       a.promptPreview = t.promptPreview ?? a.promptPreview
-      a.label ??= t.title
+      if (t.promptHead) heads.set(a, t.promptHead)
+      if (!a.label && t.title) { a.label = t.title; titled.add(a) }
       if (a.state === 'running' && t.apiError) { a.state = 'error'; a.error = t.apiError }
       else if (a.state === 'running' && t.ended) a.state = 'done'
       a.resultPreview ??= t.lastText
@@ -380,6 +430,8 @@ function runFromJournal(runId: string, sessions: string[]): Manifest {
     if (sf) { workflowName ??= sf.slice(0, -(runId.length + 4)); scriptPath = path.join(base, 'workflows', 'scripts', sf); script = read(scriptPath) }
   }
   const list = [...agents.values()].sort((a, b) => (a.startedAt ?? 0) - (b.startedAt ?? 0))
+  const meta = script ? safeMeta(script) : undefined
+  if (script) relabelFromScript(list, titled, heads, script)
   // Prompt-derived labels collide (ten reviewers open with the same sentence).
   // Retries share a key and must stack as attempts; distinct keys get a suffix
   // so a fan-out draws as a fan-out.
@@ -405,8 +457,49 @@ function runFromJournal(runId: string, sessions: string[]): Manifest {
     durationMs: startTime != null && lastProgressAt != null ? lastProgressAt - startTime : undefined,
     agentCount: list.length, totalTokens: sum(list.map((a) => a.tokens)), totalToolCalls: sum(list.map((a) => a.toolCalls)),
     defaultModel: models.sort((x, y) => models.filter((m) => m === y).length - models.filter((m) => m === x).length)[0],
-    phases: [...new Set(list.map((a) => a.phaseTitle).filter((p): p is string => !!p))].map((title) => ({ title })),
+    phases: meta?.phases.length ? meta.phases : [...new Set(list.map((a) => a.phaseTitle).filter((p): p is string => !!p))].map((title) => ({ title })),
     script, scriptPath, workflowProgress: list, live, source: 'journal',
+  }
+}
+
+function safeMeta(script: string) {
+  try { return readMeta(script) } catch { return undefined }
+}
+
+/**
+ * The journal names no agent; the copied script does. Each agent whose label
+ * is its prompt's first line is matched against every script node's prompt
+ * literal — the text before its first `${` (or the whole literal), compared
+ * verbatim, whitespace included, against the transcript's prompt — and the
+ * longest matching prefix wins. A template node (`gate:*`) becomes `gate:1`,
+ * `gate:2`… in start order, so a script's `gate:after-review-fix` is drawn as
+ * `gate:2` here. Two nodes can share one literal (`fix:gate-*` and
+ * `fix:review` both use `fixPrompt`): the one whose loop leaves the step
+ * matched just before wins. The phase comes from the node; the prompt line
+ * stays in `promptPreview`. No match → the prompt-line label stands.
+ */
+function relabelFromScript(list: WorkflowAgentEntry[], titled: Set<WorkflowAgentEntry>, heads: Map<WorkflowAgentEntry, string>, script: string) {
+  let graph: Graph
+  try { graph = parseScript(script) } catch { return }
+  const candidates = graph.nodes
+    .filter((n) => n.prompt)
+    .map((n) => ({ node: n, prefix: n.prompt!.split('${')[0].slice(0, HEAD_LEN) }))
+    .filter((c) => c.prefix.length >= MIN_PREFIX)
+  const counts = new Map<string, number>() // template id → agents seen
+  let prev: string | undefined // the node id the previous agent matched
+  for (const a of list) {
+    const head = heads.get(a)
+    if (!titled.has(a) || !head) continue
+    let best = candidates.filter((c) => head.startsWith(c.prefix))
+    if (!best.length) continue
+    const longest = Math.max(...best.map((c) => c.prefix.length))
+    best = best.filter((c) => c.prefix.length === longest)
+    let pick = best[0]
+    if (best.length > 1 && prev) pick = best.find((c) => graph.edges.some((e) => e.loop === 'back' && e.target === c.node.id && e.source === prev)) ?? pick
+    const n = pick.node
+    if (n.template) { const k = (counts.get(n.id) ?? 0) + 1; counts.set(n.id, k); a.label = n.label.slice(0, -1) + k } else a.label = n.label
+    if (n.phase) a.phaseTitle ??= n.phase
+    prev = n.id
   }
 }
 
@@ -419,6 +512,8 @@ interface Line {
 interface Transcript {
   mtime: number; startedAt?: number; lastAt?: number; model?: string; tokens?: number; toolCalls: number
   lastToolName?: string; promptPreview?: string; title?: string; apiError?: string; ended: boolean; lastText?: string
+  /** The first HEAD_LEN chars of the prompt, unclipped — what relabelFromScript matches the script's literals against. */
+  promptHead?: string
 }
 
 // Parsed once per (size, mtime): a live run re-reads only the file that grew,
@@ -436,8 +531,9 @@ function transcript(file: string): Transcript | null {
   const prompt = text(lines[0]?.message?.content)
   if (prompt) {
     t.promptPreview = clip(prompt, 300)
+    t.promptHead = prompt.slice(0, HEAD_LEN)
     const first = prompt.split('\n').find((l) => l.trim())?.trim()
-    if (first) t.title = clip(first, 48)
+    if (first) t.title = clip(first, TITLE_LEN)
   }
   for (const l of lines) {
     const at = when(l.timestamp)

@@ -4,7 +4,7 @@ A local page that draws the feature factory's workflows as a graph, replays
 their runs, and edits the files the line is made of. It reads two things:
 
 - workflow definitions in this repo — `.claude/workflows/*.js`,
-  `.claude/skills/*/SKILL.md`, `.archon/workflows/*.yaml`
+  `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml`
 - run records Claude Code writes under `~/.claude/projects/<repo-slug>/`
   (`<session>/workflows/wf_*.json` manifests and the agent transcripts next to them),
   and under every sibling dir named `<repo-slug>.x` or `<repo-slug>-x` — the driver
@@ -26,7 +26,13 @@ npm run fixtures   # regenerate the redacted fixture from the real run on this m
 Endpoints (served by the Vite dev-server plugin in `src/plugin.ts`; everything is
 GET except the one POST below):
 
-- `/api/workflows` — `[{ name, engine, kind, path, source, sha }]` (`sha` = sha256 of `source`)
+- `/api/workflows` — `[{ name, engine, kind, path, source, sha, meta }]` (`sha` = sha256 of `source`;
+  `kind` is `script | skill | agent | yaml`, an `agent` being `.claude/agents/<name>.md`). `meta` is
+  what the file says about itself: a script's `export const meta` — `description`, `whenToUse`,
+  `phases: [{ title, detail }]` — plus `outcomes`, the `|`-separated words after the description's
+  last `→` (else every `status: '…'` a `return {` can produce, `needs-human` last); a skill's or
+  agent's frontmatter — `description`, `argumentHint`, `model`, `tools`, `disableModelInvocation` —
+  read as `key: value` lines, no YAML library. A file without a header gets `{}`.
 - `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet)
 - `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
 - `POST /api/file` — the only write, see "Tweak" below
@@ -55,8 +61,12 @@ Live runs. The manifest is written only when the run ends (measured 2026-08-29 o
 timestamps or labels) and the `agent-*.jsonl` transcripts next to it (timestamps, model,
 usage, tool calls, the prompt). The derived record has `status: 'running'` (`'stale'` once
 nothing moved for 15 min), agents in state `running` / `done` / `error`, and the workflow
-name from the copied `workflows/scripts/<name>-<runId>.js` when the journal has none;
-without that, labels fall back to the prompt's first line. Merge rule per runId: a manifest
+name from the copied `workflows/scripts/<name>-<runId>.js` when the journal has none.
+That copy also names the agents: each transcript's prompt is matched against the script's
+prompt literals (the text before the first `${`, compared verbatim, longest match wins), so a
+journal-only run reads `implement`, `gate:1`, `contract:1`, `review:1` with the node's phase,
+templates numbered in start order (`gate:after-review-fix` draws as `gate:2`); without the copy,
+or when nothing matches, the label is the prompt's first line. Merge rule per runId: a manifest
 with a terminal status (`completed` / `failed` / `error` / `cancelled`) is final; otherwise
 the journal is overlaid — the journal wins for an agent's `state` and `lastProgressAt`, the
 manifest wins for everything else it knows, totals are recomputed. Every record says where

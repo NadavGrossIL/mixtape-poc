@@ -9,7 +9,7 @@ export interface WorkflowCard { name: string; file?: WorkflowFile; lastRun?: Run
 /** One card per workflow file, plus one per run whose workflow has no file (its script travels in the manifest). */
 export function cardsFrom(files: WorkflowFile[], runs: RunManifest[]): WorkflowCard[] {
   const cards = new Map<string, WorkflowCard>()
-  for (const f of files) if (f.kind !== 'skill') cards.set(f.name, { name: f.name, file: f, runs: 0 })
+  for (const f of files) if (f.kind === 'script' || f.kind === 'yaml') cards.set(f.name, { name: f.name, file: f, runs: 0 })
   for (const r of runs) {
     const name = r.workflowName ?? 'unnamed'
     const c = cards.get(name) ?? { name, runs: 0 }

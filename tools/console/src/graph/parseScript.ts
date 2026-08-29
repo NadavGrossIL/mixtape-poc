@@ -1,7 +1,8 @@
 import type { Graph, GraphEdge, GraphNode, NodeKind } from '../types'
 
 // Static reading of a native workflow script. The factory scripts are short and
-// regular: `export const meta = { phases: [{ title }] }` and `agent(prompt, {
+// regular: `export const meta = { description, whenToUse, phases: [{ title,
+// detail }] }` and `agent(prompt, {
 // label, phase })` calls — top-level or inside helper functions (`runGate`),
 // sometimes inside `pipeline(` / `parallel(` blocks. Labels and phases are
 // string literals in any quote style, or start with one (`'review:' + key`,
@@ -149,27 +150,109 @@ export function skillOf(prompt: string | undefined): string | undefined {
   return /\bSkill\(\s*\{\s*skill\s*:\s*['"`]([\w-]+)/.exec(prompt)?.[1] ?? /(?:^|[\s`'"(])\/([a-z][\w-]*)\b/.exec(prompt)?.[1]
 }
 
-function readMetaPhases(src: string): { name?: string; phases: string[] } {
+/** What `export const meta = { … }` says, plus the outcomes the script can return. Every field optional; no meta → `{ phases: [] }`. */
+export interface ScriptMeta {
+  name?: string
+  description?: string
+  whenToUse?: string
+  phases: { title: string; detail?: string }[]
+  /** `ready-for-pr | ready-for-eval | needs-human`: the words after the last `→` of the description, else every `status: '…'` a `return {` can produce. */
+  outcomes?: string[]
+}
+
+/** `key: 'literal'` inside `obj`, unescaped (a `\'` in a detail is one character), else undefined. */
+function literalProp(obj: string, key: string): string | undefined {
+  const m = new RegExp(`\\b${key}\\s*:\\s*(?=['"\`])`).exec(obj)
+  return m ? readLiteral(obj, m.index + m[0].length, false).text : undefined
+}
+
+/** The top-level `{ … }` objects of an array literal `[ … ]`. */
+function objectsOf(block: string): string[] {
+  const out: string[] = []
+  for (let i = 0; i < block.length; i++) {
+    const c = block[i]
+    if (c === "'" || c === '"' || c === '`') { i = skipString(block, i) - 1; continue }
+    if (c === '{') { const end = matchParen(block, i); out.push(block.slice(i, end + 1)); i = end }
+  }
+  return out
+}
+
+export function readMeta(src: string): ScriptMeta {
   const metaAt = src.search(/export\s+const\s+meta\s*=\s*\{/)
-  if (metaAt < 0) return { phases: [] }
-  const open = src.indexOf('{', metaAt)
-  const meta = src.slice(open, matchParen(src, open) + 1)
-  const name = /\bname\s*:\s*['"`]([^'"`]+)['"`]/.exec(meta)?.[1]
-  const phasesAt = meta.search(/\bphases\s*:\s*\[/)
-  if (phasesAt < 0) return { name, phases: [] }
-  const pOpen = meta.indexOf('[', phasesAt)
-  const block = meta.slice(pOpen, matchParen(meta, pOpen) + 1)
-  const phases: string[] = []
-  const re = /\btitle\s*:\s*['"`]([^'"`]+)['"`]/g
+  const out: ScriptMeta = { phases: [] }
+  if (metaAt >= 0) {
+    const open = src.indexOf('{', metaAt)
+    const meta = src.slice(open, matchParen(src, open) + 1)
+    out.name = literalProp(meta, 'name')
+    out.description = literalProp(meta, 'description')
+    out.whenToUse = literalProp(meta, 'whenToUse')
+    const phasesAt = meta.search(/\bphases\s*:\s*\[/)
+    if (phasesAt >= 0) {
+      const pOpen = meta.indexOf('[', phasesAt)
+      for (const obj of objectsOf(meta.slice(pOpen, matchParen(meta, pOpen) + 1))) {
+        const title = literalProp(obj, 'title')
+        if (!title) continue
+        const detail = literalProp(obj, 'detail')
+        out.phases.push(detail ? { title, detail } : { title })
+      }
+    }
+  }
+  const outcomes = outcomesOf(out.description, src)
+  if (outcomes.length) out.outcomes = outcomes
+  return out
+}
+
+/**
+ * The `|`-separated words after the description's last `→` when every one is
+ * a status word (`ready-for-pr`); otherwise every string literal a `return {
+ * status: … }` can evaluate to (a ternary's arms, not its `=== 'pass'` test).
+ * Deduped, first seen first, `needs-human` last.
+ */
+function outcomesOf(description: string | undefined, src: string): string[] {
+  const tail = description?.includes('→') ? description.slice(description.lastIndexOf('→') + 1) : ''
+  const words = tail.split('|').map((w) => w.trim()).filter(Boolean)
+  const found = words.length && words.every((w) => /^[\w-]+$/.test(w)) ? words : returnStatuses(src)
+  const seen = [...new Set(found)]
+  return [...seen.filter((w) => w !== 'needs-human'), ...seen.filter((w) => w === 'needs-human')]
+}
+
+function returnStatuses(src: string): string[] {
+  const out: string[] = []
+  const re = /\breturn\s*\{/g
   let m: RegExpExecArray | null
-  while ((m = re.exec(block))) phases.push(m[1])
-  return { name, phases }
+  while ((m = re.exec(src))) {
+    const open = m.index + m[0].length - 1
+    const body = src.slice(open + 1, matchParen(src, open))
+    const at = /\bstatus\s*:/.exec(body)
+    if (!at) continue
+    // the value: up to the next `,` at depth 0
+    let i = at.index + at[0].length, depth = 0
+    for (; i < body.length; i++) {
+      const c = body[i]
+      if (c === "'" || c === '"' || c === '`') { i = skipString(body, i) - 1; continue }
+      if (c === '(' || c === '[' || c === '{') depth++
+      else if (c === ')' || c === ']' || c === '}') depth--
+      else if (c === ',' && depth === 0) break
+    }
+    const value = body.slice(at.index + at[0].length, i)
+    const lit = /(['"`])((?:\\.|(?!\1).)*)\1/g
+    let l: RegExpExecArray | null
+    while ((l = lit.exec(value))) {
+      if (/[=!]=+\s*$/.test(value.slice(0, l.index))) continue // `x === 'pass' ? …` — the test, not an outcome
+      if (l[2] && !l[2].includes('$')) out.push(l[2])
+    }
+  }
+  return out
 }
 
 interface Call { label: string; phase: string; group: number | null; at: number; agentType?: string; prompt?: string; bound?: number }
 
 export function parseScript(src: string): Graph {
-  const { name, phases: metaPhases } = readMetaPhases(src)
+  const meta = readMeta(src)
+  const { name, description, whenToUse, outcomes } = meta
+  const metaPhases = meta.phases.map((p) => p.title)
+  const phaseDetails: Record<string, string> = {}
+  for (const p of meta.phases) if (p.detail) phaseDetails[p.title] = p.detail
   // Group ranges: pipeline( … ) / parallel( … ) — agents inside fan out together.
   const groups: { start: number; end: number }[] = []
   const gre = /\b(pipeline|parallel)\s*\(/g
@@ -252,7 +335,12 @@ export function parseScript(src: string): Graph {
     edges.push({ source: nodeId(from.label), target: id, loop: 'back', label: fix.bound == null ? 'loop' : `≤${fix.bound}` })
     edges.push({ source: id, target: nodeId(into.label), loop: 'retry' })
   }
-  return { name, phases, nodes, edges }
+  const graph: Graph = { name, phases, nodes, edges }
+  if (description) graph.description = description
+  if (whenToUse) graph.whenToUse = whenToUse
+  if (Object.keys(phaseDetails).length) graph.phaseDetails = phaseDetails
+  if (outcomes) graph.outcomes = outcomes
+  return graph
 }
 
 /** A `/skill` is one node: the skill itself. */

@@ -2,7 +2,7 @@ import { useMemo, useState } from 'react'
 import type { Ledger, RunManifest, WorkflowFile } from '../types'
 import { isStalled } from '../graph'
 import type { ConsoleMeta } from './Workflows'
-import { runForms } from './Workflows'
+import { runCommand } from './Workflows'
 import { RUN_COPY, dash, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
 
 // The run rail (IA-SPEC §6): runs grouped by workflow — the reader arrives from
@@ -141,18 +141,17 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   }
 }
 
-/** Nothing on disk: where the page looked, and how to start a run (the first workflow's two forms). */
+/** Nothing on disk: where the page looked, and the one command that starts a run (no spec to bind to yet — the placeholder). */
 function Empty({ files, meta }: { files: WorkflowFile[]; meta: ConsoleMeta }) {
   const dirs = meta.projectDirs?.length ? meta.projectDirs : ['~/.claude/projects/<slug>*']
   const first = files.filter((f) => f.kind === 'script' || f.kind === 'yaml').sort((a, b) => a.name.localeCompare(b.name))[0]
-  const forms = runForms(first?.name ?? 'implement-from-spec', first?.meta)
+  const command = runCommand(first?.name ?? 'implement-from-spec', undefined, first?.meta)
   return (
     <div className="rail-empty">
       <p>No runs on disk for this repo.</p>
       {dirs.map((d) => <p key={d} className="muted small dir">{d}</p>)}
       <p>Start one: </p>
-      <code>{forms.session}</code>
-      {forms.headless && <code>{forms.headless}</code>}
+      <code>{command}</code>
     </div>
   )
 }

@@ -71,6 +71,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .last-run { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .last-run .spec { font-family: var(--mono); font-size: 12px; }
 .last-run .badge { margin-left: 6px; }
+/* the last-run line is the link to that run on the canvas: a button that keeps the line's look, the spec underlining on hover */
+.last-run-open { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; font-family: inherit; color: var(--text); }
+.last-run-open:hover .spec { color: var(--accent); text-decoration: underline; }
 .last-run-2 { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .outcome-word { font-weight: 600; }
 [data-tone="ok"] { color: var(--accent); } [data-tone="err"] { color: var(--err); } [data-tone="warn"] { color: var(--warn); }
@@ -92,17 +95,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .strip-chip { flex-shrink: 1; max-width: 45%; font: 12px/1.2 var(--mono); color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 10px; overflow-wrap: anywhere; }
 .strip-chip[data-tone="ok"] { border-color: var(--accent); } .strip-chip[data-tone="err"] { border-color: var(--err); } .strip-chip[data-tone="warn"] { border-color: var(--warn); }
 @media (prefers-reduced-motion: reduce) { .strip-bar { animation: none; } }
-/* run it: two commands to paste, a Copy per line; the code is selectable text, never a button */
-.run-it { display: flex; flex-direction: column; gap: 6px; }
-.run-line { display: grid; grid-template-columns: 84px minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 12px; }
+/* run it: one command, bound to the run on screen, with a Copy; the code is selectable text, never a button */
+.run-cmd { display: flex; flex-direction: column; gap: 6px; }
+.run-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 12px; }
 .run-line .how { padding-top: 5px; }
+/* compact: the canvas header's row under the run sentence — label, command, Copy and the warnings on one wrapping line */
+.run-cmd[data-compact] { margin-top: 4px; }
+.run-cmd[data-compact] .run-line { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; }
+.run-cmd[data-compact] .how { padding-top: 0; }
+.run-cmd[data-compact] code { padding: 2px 6px; }
+.run-warn { font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.run-warn::before { content: "· "; }
 .run-line code, .state code { display: block; min-width: 0; font: 12px/1.5 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .copy[data-copied] { color: var(--accent); border-color: var(--accent); }
 .run-note { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .card-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
 .link { background: none; border: 0; padding: 0; color: var(--accent); font-size: 13px; }
 .link:hover { text-decoration: underline; }
-.card-name:focus-visible, .copy:focus-visible, .link:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+.card-name:focus-visible, .copy:focus-visible, .link:focus-visible, .last-run-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 /* skills and agents: a table that scrolls inside its own box if it must, wraps before that */
 .skills { padding: 8px 48px 24px; }
 .skills p { margin: 4px 0 12px; font-size: 13px; }
@@ -135,7 +145,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .run-sentence .run-id, .run-sentence .spec { font: 12px/1.5 var(--mono); }
 .run-sentence .reason { color: var(--text); }
 .run-none p { margin: 0 0 6px; }
-.run-none .run-it { max-width: 720px; }
+.run-none .run-cmd { max-width: 720px; }
 
 /* stage */
 .stage { flex: 1; display: flex; min-height: 0; min-width: 0; }

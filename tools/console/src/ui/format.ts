@@ -160,6 +160,41 @@ export function specShort(spec?: string): string {
   return spec.replace(/^specs\//, '').replace(/\.md$/, '')
 }
 
+/**
+ * The spec as a path a driver can take (`scripts/factory-run.sh specs/…md`),
+ * from whatever `specOf` found: a path as is, the ledger's own cell shape
+ * (`0002 album-position-gate-blind-spots`) rebuilt, `—` and anything else
+ * `undefined` — the caller then has no run to bind a command to.
+ */
+export function specPath(spec?: string): string | undefined {
+  if (!spec || spec === dash) return undefined
+  const m = SPEC_PATH.exec(spec)
+  if (m) return m[0]
+  const row = /^(\d{4})[ -]([\w-]+?)(?:\.md)?$/.exec(spec.trim())
+  return row ? `specs/${row[1]}-${row[2]}.md` : undefined
+}
+
+// --- the account window ------------------------------------------------------
+
+/**
+ * The account-window stop, as the engine writes it into the failing agent's
+ * `error`: `You've hit your session limit · resets 4:40pm (Asia/Jerusalem)`
+ * (`wf_66ec6c31-e3f`, review:1 and fix:review). Exported for slice 2's
+ * classifier, which needs the same match plus the rest of the rule table.
+ */
+export const SESSION_LIMIT_RE = /hit your session limit/i
+const RESETS_RE = /resets\s+([^·\n]+)/i
+
+/** The first agent stopped by the account window: when it resets, where it stopped, and the one line to show. Nothing when no agent hit it. */
+export function sessionLimit(run?: RunManifest): { text: string; resets?: string; at?: string } | undefined {
+  for (const a of agentsOf(run)) {
+    if (typeof a.error !== 'string' || !SESSION_LIMIT_RE.test(a.error)) continue
+    const resets = RESETS_RE.exec(a.error)?.[1]?.trim()
+    return { resets, at: labelOf(a), text: resets ? `session limit — resets ${resets}; re-run after` : 'session limit — re-run once the window resets' }
+  }
+  return undefined
+}
+
 /** Is the run still going (as far as the plugin can tell)? */
 export function isLive(run?: RunManifest): boolean {
   return !!run && (run.live === true || run.status === 'running')

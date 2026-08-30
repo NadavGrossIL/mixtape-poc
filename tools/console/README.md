@@ -80,7 +80,7 @@ run under the fix shelf on their own y with the `≤n` bound as a pill) and plac
 OUTCOME column. `purpose.ts` gives each node its one-line purpose (a table per label
 pattern, else the skill's or agent's description, else the prompt's first sentence).
 `src/ui/` is the Workflows screen (a card per workflow: description, last run in one
-line, phase strip, run-it block; a skills-and-agents table), the Canvas (lanes with
+line, the command that runs it again, phase strip; a skills-and-agents table), the Canvas (lanes with
 subtitles, nodes with a purpose line, the outcome column, a legend), the run rail
 (grouped by workflow, filterable), the timeline strip (phase ticks, one bar per agent)
 and the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
@@ -88,9 +88,12 @@ and is drag-resizable. The panel's width is the only browser-side state (`localS
 `console.panelWidth`, a per-viewer convenience); runs and definitions are never stored
 there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 (`result.status` in the workflow's words, else the engine status), `specOf` (args →
-result → ledger → prompt), `usdOf` ("no cost yet" while live, "not in RUNS.md" after),
-`stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's unfinished
-agents are drawn `stalled`. The page keeps
+result → ledger → prompt), `specPath` (that reading as a path a driver takes, the
+ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live, "not in
+RUNS.md" after), `sessionLimit` (the failing agent's `You've hit your session limit ·
+resets 4:40pm (Asia/Jerusalem)`, matched by `SESSION_LIMIT_RE` and split into the
+reset time), `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's
+unfinished agents are drawn `stalled`. The page keeps
 one `EventSource` open and refetches on each event, so a live run's nodes and timeline
 bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:
 every node shows the manifest's last word for it, and the strip is one bar per agent
@@ -98,6 +101,21 @@ from its start to its end (a live one runs to *now*), coloured by how it settled
 Hovering a bar names the agent, its clock and its tokens; clicking one opens that
 node's panel. Esc closes the panel; Enter opens a focused node.
 All CSS lives in `src/styles.css`.
+
+Running it again. Both screens carry one command, bound to the run in front of you:
+the card under LAST RUN (`Re-run`, or `Run` when the workflow has none yet), and a
+compact row under the canvas header's run sentence. It is the driver with that run's
+own spec — `scripts/factory-run.sh specs/0002-album-position-gate-blind-spots.md` —
+except where a workflow has no driver (`review-spec`, whose line is the in-session
+`/review-spec <spec>`); `specs/NNNN-slug.md` appears only when there is no run to read
+a spec from. No `--max-turns` / `--max-budget-usd` on screen: the driver reads them
+from `factory.config.json`, which is the Knobs tab. Copy copies exactly the line.
+Beside it on the canvas, when they apply: the driver wipes `../mixtape-poc.wt`
+(it cuts the worktree again from `origin/main`, so uncommitted work there goes), and
+the account window — an agent whose `error` says "You've hit your session limit"
+puts its reset time next to the command. The LAST RUN line is itself a button: it
+opens that run on the canvas, while the card's name and "Open canvas →" open the
+workflow at its newest.
 
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
 skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as

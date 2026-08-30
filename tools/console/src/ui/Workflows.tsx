@@ -1,13 +1,14 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
 import { firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
-import { dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 // The "all workflows" screen: one card per workflow that says what it does,
-// how its last run ended (one line), where each phase got to (the strip),
-// and how to start one — from a terminal, never from here. Under the cards,
-// the skills and agents the workflows are made of, each with who calls it.
-// Copy is docs/factory IA-SPEC §1–§3 and §8, pasted verbatim.
+// how its last run ended (one line that opens that run), where each phase got
+// to (the strip), and the one command that runs it again — bound to the spec
+// of the run on screen, pasted in a terminal, never started from here. Under
+// the cards, the skills and agents the workflows are made of, each with who
+// calls it. Copy is docs/factory IA-SPEC §1–§3 and §8, pasted verbatim.
 
 export interface WorkflowCard { name: string; file?: WorkflowFile; lastRun?: RunManifest; runs: number }
 /** `GET /api/meta`. */
@@ -15,18 +16,29 @@ export interface ConsoleMeta { slug?: string; projectsBase?: string; projectDirs
 
 const COPY = {
   subtitle: "The factory's saved workflows and their runs on this machine. Nothing here starts a run.",
-  runNote: 'The console never starts a run. Paste one of these in a terminal; the driver writes the RUNS.md row.',
+  runNote: 'The console never starts a run — paste this in a terminal. The driver writes the RUNS.md row.',
   skillsSub: 'The files the workflows are made of. Each line says who calls it.',
   definitionDirs: '.claude/workflows/, .claude/skills/, .archon/workflows/',
 } as const
 
-/** How to start each workflow, keyed by name; anything else gets the slash form only. */
-const RUN_FORMS: Record<string, { session: string; headless?: string }> = {
-  'implement-from-spec': { session: '/implement-from-spec specs/NNNN-slug.md', headless: 'scripts/factory-run.sh specs/NNNN-slug.md' },
-  'review-spec': { session: '/review-spec specs/NNNN-slug.md', headless: "claude -p '/review-spec specs/NNNN-slug.md' --max-turns 40 --max-budget-usd 3 --output-format json" },
+/**
+ * The one command that runs each workflow, keyed by name: the driver where
+ * there is one (it reads the knobs from `factory.config.json`, so no flags
+ * belong on screen), the in-session slash form where there is not —
+ * `review-spec` has no driver. Anything else gets the slash form.
+ */
+const RUN_FORMS: Record<string, (spec: string) => string> = {
+  'implement-from-spec': (spec) => `scripts/factory-run.sh ${spec}`,
+  'review-spec': (spec) => `/review-spec ${spec}`,
 }
-export function runForms(name: string, meta?: WorkflowMeta): { session: string; headless?: string } {
-  return RUN_FORMS[name] ?? { session: `/${name} ${meta?.argumentHint ?? 'specs/NNNN-slug.md'}` }
+
+/** Does this command start the driver, which cuts the worktree from scratch? */
+export const isDriverCommand = (command: string) => command.startsWith('scripts/factory-run.sh ')
+
+/** The command that runs a workflow again on one spec — `specPath(specOf(run))`; the `specs/NNNN-slug.md` placeholder only when there is no run to read a spec from. */
+export function runCommand(name: string, spec?: string, meta?: WorkflowMeta): string {
+  const arg = spec ?? meta?.argumentHint ?? 'specs/NNNN-slug.md'
+  return (RUN_FORMS[name] ?? ((s: string) => `/${name} ${s}`))(arg)
 }
 
 /** One card per workflow file, plus one per run whose workflow has no file (its script travels in the manifest). Files first, alphabetical; run-only cards after. */
@@ -44,7 +56,7 @@ export function cardsFrom(files: WorkflowFile[], runs: RunManifest[]): WorkflowC
 }
 
 export function Workflows({ cards, files, ledger, meta, now, onOpen }: {
-  cards: WorkflowCard[]; files: WorkflowFile[]; ledger: Ledger; meta: ConsoleMeta; now: number; onOpen: (name: string) => void
+  cards: WorkflowCard[]; files: WorkflowFile[]; ledger: Ledger; meta: ConsoleMeta; now: number; onOpen: (name: string, runId?: string) => void
 }) {
   const fixtureRun = cards.find((c) => c.file?.fixture || c.lastRun?.fixture)?.lastRun
   const fixture = cards.some((c) => c.file?.fixture || c.lastRun?.fixture)
@@ -62,7 +74,7 @@ export function Workflows({ cards, files, ledger, meta, now, onOpen }: {
       )}
       {cards.length === 0
         ? <Empty meta={meta} />
-        : <div className="cards">{cards.map((c) => <Card key={c.name} card={c} ledger={ledger} now={now} onOpen={() => onOpen(c.name)} />)}</div>}
+        : <div className="cards">{cards.map((c) => <Card key={c.name} card={c} ledger={ledger} now={now} onOpen={(runId) => onOpen(c.name, runId)} />)}</div>}
       {rows.length > 0 && <SkillsTable rows={rows} files={files} cards={cards} />}
     </section>
   )
@@ -70,20 +82,20 @@ export function Workflows({ cards, files, ledger, meta, now, onOpen }: {
 
 // --- the card -------------------------------------------------------------------
 
-function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledger; now: number; onOpen: () => void }) {
+function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledger; now: number; onOpen: (runId?: string) => void }) {
   const run = card.lastRun
   const graph = useMemo(() => overlayRun(graphFor(card.file, run), run), [card, run])
   const meta = card.file?.meta
   const engine = card.file?.engine ?? 'native'
   const description = meta?.description ?? graph.description
   const whenToUse = meta?.whenToUse ?? graph.whenToUse
-  const forms = runForms(card.name, meta)
+  const command = runCommand(card.name, specPath(specOf(run, ledger)), meta)
   const outcome = outcomeOf(run)
   const tag = projectTag(run?.projectSlug)
   return (
     <div className="card">
       <div className="card-head">
-        <button type="button" className="card-name" onClick={onOpen} title={card.file?.path}>{card.name}</button>
+        <button type="button" className="card-name" onClick={() => onOpen()} title={card.file?.path}>{card.name}</button>
         <span className="badge" data-engine={engine}>{engine}</span>
         {(card.file?.fixture || run?.fixture) && <span className="badge">fixture</span>}
       </div>
@@ -91,38 +103,35 @@ function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledge
       {whenToUse && <p className="card-when"><span className="muted">Use when: </span>{whenToUse}</p>}
 
       <h3>Last run</h3>
-      {run ? <LastRun run={run} ledger={ledger} now={now} outcome={outcome} tag={tag} /> : <p className="last-run muted">no runs yet</p>}
+      {run
+        ? <LastRun run={run} ledger={ledger} now={now} outcome={outcome} tag={tag} onOpen={() => onOpen(run.runId)} />
+        : <p className="last-run muted">no runs yet</p>}
+      <RunCommand label={run ? 'Re-run' : 'Run'} command={command} note={COPY.runNote} />
       <PhaseStrip graph={graph} run={run} now={now} outcome={run ? outcome : undefined} />
-
-      <h3>Run it</h3>
-      <div className="run-it">
-        <RunLine how="In a session" text={forms.session} />
-        {forms.headless && <RunLine how="Headless" text={forms.headless} />}
-        <p className="run-note muted">{COPY.runNote}</p>
-      </div>
 
       <div className="card-foot">
         <span className="muted">{card.runs === 0 ? 'no runs yet' : card.runs === 1 ? '1 run' : `${card.runs} runs`}</span>
-        <button type="button" className="link" onClick={onOpen}>Open canvas →</button>
+        <button type="button" className="link" onClick={() => onOpen()}>Open canvas →</button>
       </div>
     </div>
   )
 }
 
-function LastRun({ run, ledger, now, outcome, tag }: { run: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; tag?: string }) {
+/** Line 1 is the whole run, and it is the link: clicking it opens that run on the canvas (the card's other two paths open the workflow's newest). */
+function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; tag?: string; onOpen: () => void }) {
   const start = startOf(run)
   const duration = fmtDuration(elapsedOf(run, now))
   const usd = usdOf(run, ledger)
   return (
     <>
-      <p className="last-run">
+      <button type="button" className="last-run last-run-open" onClick={onOpen} title={`open ${run.runId ?? 'this run'} on the canvas`}>
         <span className="outcome-word" data-tone={toneOf(run, outcome)} title={outcome.title}>{outcome.word}</span>
         {' · '}<span className="spec">{specOf(run, ledger)}</span>
         {' · '}<span title={whenAbs(start)}>{whenRel(start, now)}</span>
         {' · '}<span className="clock">{duration}</span>
         {' · '}<span title={usd.title}>{usd.text}</span>
         {tag && <> <span className="badge" title={run.projectSlug}>{tag}</span></>}
-      </p>
+      </button>
       {lineTwo(run, outcome, now) && <p className="last-run-2 muted">{lineTwo(run, outcome, now)}</p>}
     </>
   )
@@ -183,12 +192,25 @@ function PhaseStrip({ graph, run, now, outcome }: { graph: ReturnType<typeof ove
 
 // --- run it ---------------------------------------------------------------------
 
-function RunLine({ how, text }: { how: string; text: string }) {
+/**
+ * One action row: what it would do, the exact line to paste, Copy. Used by the
+ * card (stacked, with the note under it) and by the canvas header (`compact`,
+ * a row under the run sentence, with the warnings as `children`). No flags —
+ * the driver reads `factory.config.json`, and the Knobs tab is where they live.
+ */
+export function RunCommand({ label, command, note, compact, children }: {
+  label: string; command: string; note?: string; compact?: boolean; children?: ReactNode
+}) {
   return (
-    <div className="run-line">
-      <span className="how muted">{how}</span>
-      <code>{text}</code>
-      <CopyButton text={text} />
+    <div className="run-cmd" data-compact={compact || undefined}>
+      <div className="run-line">
+        <span className="how muted">{label}</span>
+        <code>{command}</code>
+        <CopyButton text={command} />
+        {compact && children}
+      </div>
+      {!compact && children}
+      {note && <p className="run-note muted">{note}</p>}
     </div>
   )
 }
@@ -264,14 +286,12 @@ function calledBy(f: WorkflowFile, files: WorkflowFile[], graphs: { name: string
 
 function Empty({ meta }: { meta: ConsoleMeta }) {
   const dirs = meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'
-  const forms = runForms('implement-from-spec')
   return (
     <div className="state">
       <p>Nothing to show yet.</p>
       <p className="muted">This page reads {dirs} for runs and {COPY.definitionDirs} for definitions.</p>
       <p>Start a run from a terminal:</p>
-      <code>{forms.session}</code>
-      {forms.headless && <code>{forms.headless}</code>}
+      <code>{runCommand('implement-from-spec')}</code>
       <p className="muted">The console never starts a run.</p>
     </div>
   )

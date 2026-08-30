@@ -1,17 +1,20 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
 import { graphFor, isStalled, overlayRun, runBounds } from '../graph'
-import { Workflows, cardsFrom, runForms, type ConsoleMeta } from './Workflows'
+import { RunCommand, Workflows, cardsFrom, isDriverCommand, runCommand, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Timeline } from './Timeline'
 import { NodePanel } from './NodePanel'
-import { dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, specOf, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, sessionLimit, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 
 const COPY = {
-  runNote: 'The console never starts a run. Paste one of these in a terminal; the driver writes the RUNS.md row.',
+  runNote: 'The console never starts a run — paste this in a terminal. The driver writes the RUNS.md row.',
+  /** The driver removes and re-adds `../mixtape-poc.wt` before it starts (`scripts/factory-run.sh`, "worktree:"), so anything uncommitted in there goes with it. */
+  wipes: 're-running wipes the worktree',
+  wipesTitle: 'scripts/factory-run.sh removes ../mixtape-poc.wt and cuts it again from origin/main — uncommitted work in that worktree is gone',
 } as const
 
 export function App() {
@@ -118,7 +121,8 @@ export function App() {
   if (!workflow) {
     return (
       <main className="shell">
-        <Workflows cards={cards} files={files} ledger={ledger} meta={meta} now={now} onOpen={open} />
+        {/* The card's name and its "Open canvas" open the workflow at its newest run; its LAST RUN line names a run, and that run is the one selected. */}
+        <Workflows cards={cards} files={files} ledger={ledger} meta={meta} now={now} onOpen={(name, id) => (id ? pickRun(id) : open(name))} />
         <p className="muted small foot">
           <span className="conn" data-state={conn} title={connTitle}>{connLabel}</span>
           {' · '}reads {meta.projectDirs?.length ? meta.projectDirs.join(', ') : '~/.claude/projects/<slug>*'}{meta.exists === false ? ' (repo dir not found)' : ''}
@@ -155,7 +159,8 @@ export function App() {
           <span className="conn" data-state={conn} title={connTitle}>{connLabel}</span>
         </div>
         {description && <p className="run-desc muted">{description}</p>}
-        <RunSentence run={run} ledger={ledger} now={now} outcome={outcome} forms={runForms(workflow, card?.file?.meta)} />
+        <RunSentence run={run} ledger={ledger} now={now} outcome={outcome}
+          command={runCommand(workflow, specPath(specOf(run, ledger)), card?.file?.meta)} />
       </header>
       <div className="stage">
         <Canvas graph={graph} files={files} run={run} selectedId={selected} onSelect={select} />
@@ -178,24 +183,26 @@ export function App() {
  * <label> for <elapsed> · <spec> · started 13:58` for a live one; no run at all
  * shows how to start one. The reason is `result.reason`; a run that returned
  * none says why the engine stopped instead (killed, stale, the first error agent).
+ *
+ * Under it, the command that runs *this* run again — its own spec, not a
+ * placeholder — with the two things a manager needs before pasting it: the
+ * driver wipes the worktree, and the account window may still be shut. The
+ * sentence already wraps for a long reason, so the command is its own row
+ * rather than a tail that would push past 1400 px.
  */
-function RunSentence({ run, ledger, now, outcome, forms }: { run?: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; forms: ReturnType<typeof runForms> }) {
+function RunSentence({ run, ledger, now, outcome, command }: { run?: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; command: string }) {
   if (!run) {
     return (
       <div className="run-sentence run-none">
         <p>No run of this workflow yet.</p>
-        <div className="run-it">
-          <div className="run-line"><span className="how muted">In a session</span><code>{forms.session}</code></div>
-          {forms.headless && <div className="run-line"><span className="how muted">Headless</span><code>{forms.headless}</code></div>}
-          <p className="run-note muted">{COPY.runNote}</p>
-        </div>
+        <RunCommand label="Run" command={command} note={COPY.runNote} />
       </div>
     )
   }
   const start = startOf(run)
   const spec = specOf(run, ledger)
-  if (isLive(run) && !isStalled(run)) {
-    return (
+  const sentence = isLive(run) && !isStalled(run)
+    ? (
       <p className="run-sentence">
         <code className="run-id">{run.runId ?? dash}</code>{' · '}
         <span data-tone="warn">{nowAt(run, now) ?? 'between steps'}</span>{' · '}
@@ -203,15 +210,24 @@ function RunSentence({ run, ledger, now, outcome, forms }: { run?: RunManifest; 
         <span title={whenAbs(start)}>started {fmtClock(start)}</span>
       </p>
     )
-  }
+    : (
+      <p className="run-sentence">
+        <code className="run-id">{run.runId ?? dash}</code>{' · '}
+        <span className="outcome-word" data-tone={toneOf(run, outcome)} title={outcome.title}>{outcome.word}</span>
+        {' — '}<span className="reason">{reasonOf(run)}</span>{' · '}
+        <span className="spec">{spec}</span>{' · '}
+        <span title={whenAbs(start)}>{whenRel(start, now)}</span>
+      </p>
+    )
+  const limit = sessionLimit(run)
   return (
-    <p className="run-sentence">
-      <code className="run-id">{run.runId ?? dash}</code>{' · '}
-      <span className="outcome-word" data-tone={toneOf(run, outcome)} title={outcome.title}>{outcome.word}</span>
-      {' — '}<span className="reason">{reasonOf(run)}</span>{' · '}
-      <span className="spec">{spec}</span>{' · '}
-      <span title={whenAbs(start)}>{whenRel(start, now)}</span>
-    </p>
+    <>
+      {sentence}
+      <RunCommand label="Re-run" command={command} compact>
+        {isDriverCommand(command) && <span className="run-warn" title={COPY.wipesTitle}>{COPY.wipes}</span>}
+        {limit && <span className="run-warn" data-tone="warn" title={limit.at ? `the account window closed at ${limit.at}` : undefined}>{limit.text}</span>}
+      </RunCommand>
+    </>
   )
 }
 

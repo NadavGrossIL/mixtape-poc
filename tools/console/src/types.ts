@@ -48,7 +48,10 @@ export interface RunManifest {
   totalToolCalls?: number
   defaultModel?: string
   phases?: { title?: string; detail?: string }[]
+  /** The script's own `log()` lines, in order (`[review:1] failed: …`). */
   logs?: string[]
+  /** The engine's own error when it aborted the run (`Error: Workflow aborted` + a stack, on a `--max-budget-usd` / `--max-turns` stop). */
+  error?: string
   result?: unknown
   args?: unknown
   script?: string

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
-import { firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
-import { dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { classify, firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
+import { CAUSE_TAG, dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 // The "all workflows" screen: one card per workflow that says what it does,
 // how its last run ended (one line that opens that run), where each phase got
@@ -133,7 +133,25 @@ function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest;
         {tag && <> <span className="badge" title={run.projectSlug}>{tag}</span></>}
       </button>
       {lineTwo(run, outcome, now) && <p className="last-run-2 muted">{lineTwo(run, outcome, now)}</p>}
+      <WhyLine run={run} />
     </>
+  )
+}
+
+/**
+ * The card is a summary, so it carries the tag and the headline only — the
+ * action sentence, the evidence and the logs are on the canvas, one click away
+ * through the LAST RUN line above.
+ */
+function WhyLine({ run }: { run: RunManifest }) {
+  const v = classify(run)
+  const tag = CAUSE_TAG[v.cause]
+  if (!tag) return null
+  return (
+    <p className="why-line why-card" data-cause={v.cause}>
+      <span className="why-tag">{tag.text}</span>
+      <span className="why-head" title={tag.title}>{v.headline}</span>
+    </p>
   )
 }
 

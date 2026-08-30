@@ -144,6 +144,27 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .run-sentence { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .run-sentence .run-id, .run-sentence .spec { font: 12px/1.5 var(--mono); }
 .run-sentence .reason { color: var(--text); }
+/* why it stopped: infra (a human handles the machine) or spec (the ticket is wrong), the one action,
+   the raw string the rule fired on, the reviewer's findings, and the script's own log with that line lit */
+.why { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 0; padding: 8px 12px; max-width: 980px; background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--line-2); border-radius: 8px; }
+.why[data-cause="infra"] { border-left-color: var(--warn); }
+.why[data-cause="spec"] { border-left-color: var(--err); }
+.why-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; font-size: 13px; }
+.why-tag { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 1px 8px; }
+[data-cause="infra"] > .why-tag, .why[data-cause="infra"] .why-tag { color: var(--warn); border-color: var(--warn); }
+[data-cause="spec"] > .why-tag, .why[data-cause="spec"] .why-tag { color: var(--err); border-color: var(--err); }
+.why-head { font-weight: 600; overflow-wrap: anywhere; }
+.why-action { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.why-evidence { font: 12px/1.5 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; overflow-wrap: anywhere; }
+.why-findings { margin: 0; padding-left: 18px; font-size: 12px; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
+.why-finding-title { font-weight: 600; }
+.why-logs > summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+.why-logs > summary:hover { color: var(--text); }
+.why-logs ol { margin: 6px 0 0; padding: 10px 12px 10px 30px; display: flex; flex-direction: column; gap: 3px; }
+.why-logs li::marker { color: var(--muted); }
+.why-logs li[data-fired] { color: var(--warn); font-weight: 600; } /* the line the rule fired on */
+/* the home card's one-line version: the tag and the headline, no action — the canvas has the rest */
+.why-card { margin: 2px 0 0; font-size: 12px; }
 .run-none p { margin: 0 0 6px; }
 .run-none .run-cmd { max-width: 720px; }
 

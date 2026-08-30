@@ -20,6 +20,8 @@ cd tools/console
 npm install
 npm run dev        # http://127.0.0.1:5174
 npm run build      # typecheck (tsc --noEmit) + vite build, nothing is deployed
+npm test           # node --test on src/**/*.test.ts (Node ≥ 22.18 strips the types;
+                   # test/register-ts.mjs resolves the app's extensionless imports)
 npm run fixtures   # regenerate the redacted fixture from the real run on this machine
 ```
 
@@ -91,8 +93,9 @@ there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 result → ledger → prompt), `specPath` (that reading as a path a driver takes, the
 ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live, "not in
 RUNS.md" after), `sessionLimit` (the failing agent's `You've hit your session limit ·
-resets 4:40pm (Asia/Jerusalem)`, matched by `SESSION_LIMIT_RE` and split into the
-reset time), `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's
+resets 4:40pm (Asia/Jerusalem)`, or the script's own `[review:1] failed: …` log line
+when the agents carry no error, matched by `SESSION_LIMIT_RE` and split into the
+reset time), `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`, `CAUSE_TAG`. A stale run's
 unfinished agents are drawn `stalled`. The page keeps
 one `EventSource` open and refetches on each event, so a live run's nodes and timeline
 bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:
@@ -116,6 +119,30 @@ the account window — an agent whose `error` says "You've hit your session limi
 puts its reset time next to the command. The LAST RUN line is itself a button: it
 opens that run on the canvas, while the card's name and "Open canvas →" open the
 workflow at its newest.
+
+Why it stopped. A run that ended badly is classified once, in `src/graph/cause.ts`
+(`classify(run)` — pure, one manifest in, one verdict out, tested against the real
+runs on disk), into the only distinction that changes what the reader does next:
+**infra**, which a human handles and which says nothing about the spec, or **spec**,
+where the diff and the ticket disagree. The rules, in order, first match wins:
+an agent error or a `logs[]` line saying "You've hit your session limit" → *infra ·
+account window* (with the reset time); `status: killed` or an `Error: Workflow
+aborted` → *infra · budget/turn stop*; stale with no terminal manifest → *infra ·
+swept or session ended*; `result.gate.step` `ask-tier check` → *infra · dirty
+ask-tier file*; a `reason` of "no result" over an agent that wrote an error →
+*infra · the step died*; `result.review.verdict: 'fail'` with findings that are
+about the diff → *spec · the reviewer failed it*; "implementer escalated" → *spec*;
+the gate still failing → *spec/code*; anything else → *unknown · open the
+transcript*. The order is what makes it honest: `wf_66ec6c31-e3f` has a failed
+review verdict **and** a session limit, and it is infra — the reviewer's finding is
+its own "reviewer returned nothing" placeholder, which `findingsOf` drops. The
+canvas shows the tag, the headline, the one action, the raw string that fired the
+rule, the reviewer's real findings when there are any, and the script's `logs[]`
+behind a disclosure with the firing line lit; the home card shows tag + headline
+only; the rail says the headline on hover. `result.cause`, if a script ever
+returns one, wins over the table's class. Next to the outcome pill, `engine:
+<status>` appears only when the engine's own word is neither `completed` nor
+what the pill already says.
 
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
 skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as

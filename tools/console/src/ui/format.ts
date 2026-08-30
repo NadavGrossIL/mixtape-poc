@@ -185,14 +185,30 @@ export function specPath(spec?: string): string | undefined {
 export const SESSION_LIMIT_RE = /hit your session limit/i
 const RESETS_RE = /resets\s+([^·\n]+)/i
 
-/** The first agent stopped by the account window: when it resets, where it stopped, and the one line to show. Nothing when no agent hit it. */
-export function sessionLimit(run?: RunManifest): { text: string; resets?: string; at?: string } | undefined {
+/** `[review:1] failed: …` — how the script's `logs[]` names the agent that hit it. */
+const LOG_AT_RE = /^\[([^\]]+)\]/
+
+/**
+ * The first agent stopped by the account window: when it resets, where it
+ * stopped, the raw string that said so, and the one line to show. Agents
+ * first, then the script's own `logs[]` (a journal-derived run has the log
+ * lines but not always the agent errors). Nothing when neither hit it.
+ */
+export function sessionLimit(run?: RunManifest): { text: string; raw: string; resets?: string; at?: string } | undefined {
   for (const a of agentsOf(run)) {
     if (typeof a.error !== 'string' || !SESSION_LIMIT_RE.test(a.error)) continue
-    const resets = RESETS_RE.exec(a.error)?.[1]?.trim()
-    return { resets, at: labelOf(a), text: resets ? `session limit — resets ${resets}; re-run after` : 'session limit — re-run once the window resets' }
+    return { ...read(a.error), raw: a.error, at: labelOf(a) }
+  }
+  for (const line of run?.logs ?? []) {
+    if (typeof line !== 'string' || !SESSION_LIMIT_RE.test(line)) continue
+    return { ...read(line), raw: line, at: LOG_AT_RE.exec(line)?.[1] }
   }
   return undefined
+}
+
+function read(text: string): { text: string; resets?: string } {
+  const resets = RESETS_RE.exec(text)?.[1]?.trim()
+  return { resets, text: resets ? `session limit — resets ${resets}; re-run after` : 'session limit — re-run once the window resets' }
 }
 
 /** Is the run still going (as far as the plugin can tell)? */
@@ -238,6 +254,18 @@ export function stoppedAt(run?: RunManifest): string | undefined {
 /** `<phase> › <label>`, or the label alone when the agent has no phase. */
 export function whereOf(a: WorkflowAgentEntry): string {
   return a.phaseTitle ? `${a.phaseTitle} › ${labelOf(a)}` : labelOf(a)
+}
+
+/**
+ * The tag on "why it stopped": which of the manager's two questions this stop
+ * is (console-simplification §2), worded once for the canvas block, the home
+ * card and the rail's tooltips. Keyed by `classify().cause`; `ok` and
+ * `running` have no tag — nothing stopped.
+ */
+export const CAUSE_TAG: Record<string, { text: string; title: string }> = {
+  infra: { text: 'INFRA — you handle it', title: 'the machine, the account window or the budget stopped it; nothing about the spec is known yet' },
+  spec: { text: 'SPEC — the reviewer disagreed', title: 'the diff and the ticket disagree; the acceptance checks are the thing to change' },
+  unknown: { text: 'UNKNOWN', title: 'no rule matched this manifest — the transcript is the only source left' },
 }
 
 /** Why the engine stopped, worded once for the header, the card and the rail's tooltips (IA-SPEC §1.3, §2, §6). */

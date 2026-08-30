@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
-import { graphFor, isStalled, overlayRun, runBounds } from '../graph'
+import { classify, findingsOf, firedOn, graphFor, isStalled, overlayRun, runBounds } from '../graph'
 import { RunCommand, Workflows, cardsFrom, isDriverCommand, runCommand, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Timeline } from './Timeline'
 import { NodePanel } from './NodePanel'
-import { dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, sessionLimit, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { CAUSE_TAG, dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 
@@ -146,6 +146,7 @@ export function App() {
           <h1>{workflow}</h1>
           {card?.file && <span className="badge" data-engine={card.file.engine}>{card.file.engine}</span>}
           <span className="pill" data-status={run?.status ?? 'idle'} data-outcome={run ? outcome.word : undefined} title={run ? outcome.title : undefined}>{run ? outcome.word : 'no run'}</span>
+          {engineWord(run, outcome) && <span className="engine-word muted small" title={`manifest.status — the engine's own word for this run, which the outcome does not say`}>engine: {engineWord(run, outcome)}</span>}
           {live && !stalled && <span className="badge" data-live title={`from the ${run?.source ?? 'manifest'}`}>live</span>}
           {tag && <span className="badge" title={run?.projectSlug}>{tag}</span>}
           {run?.fixture && <span className="badge">fixture</span>}
@@ -219,16 +220,74 @@ function RunSentence({ run, ledger, now, outcome, command }: { run?: RunManifest
         <span title={whenAbs(start)}>{whenRel(start, now)}</span>
       </p>
     )
-  const limit = sessionLimit(run)
   return (
     <>
       {sentence}
+      <WhyStopped run={run} />
       <RunCommand label="Re-run" command={command} compact>
         {isDriverCommand(command) && <span className="run-warn" title={COPY.wipesTitle}>{COPY.wipes}</span>}
-        {limit && <span className="run-warn" data-tone="warn" title={limit.at ? `the account window closed at ${limit.at}` : undefined}>{limit.text}</span>}
       </RunCommand>
     </>
   )
+}
+
+/**
+ * Why it stopped (§2, Q2): infra or spec, in one tag, one headline and one
+ * action — the single source of truth for the account-window hint the Re-run
+ * row used to carry. Under it, what the manifest already knew and never showed:
+ * the string the rule fired on, the reviewer's findings when they are about the
+ * diff, and the script's own log lines with that string highlighted.
+ * A run that finished, or one still going, renders nothing.
+ */
+function WhyStopped({ run }: { run: RunManifest }) {
+  const v = classify(run)
+  const tag = CAUSE_TAG[v.cause]
+  if (!tag) return null
+  const findings = findingsOf(run)
+  const logs = run.logs ?? []
+  return (
+    <section className="why" data-cause={v.cause} aria-label="why it stopped">
+      <p className="why-line">
+        <span className="why-tag">{tag.text}</span>
+        <span className="why-head" title={tag.title}>{v.headline}</span>
+        {v.at && <span className="muted"> · at {v.at}</span>}
+      </p>
+      <p className="why-action">{v.action}</p>
+      {v.evidence && <code className="why-evidence">{v.evidence}</code>}
+      {findings.length > 0 && (
+        <ul className="why-findings">
+          {findings.map((f, i) => (
+            <li key={i}>
+              <span className="why-finding-title">{f.title ?? dash}</span>
+              {f.why ? <> — {f.why}</> : null}
+              {f.file ? <span className="muted"> · <code>{f.file}{f.line ? `:${f.line}` : ''}</code></span> : null}
+            </li>
+          ))}
+        </ul>
+      )}
+      {logs.length > 0 && (
+        <details className="why-logs">
+          <summary>what the script logged ({logs.length} {logs.length === 1 ? 'line' : 'lines'})</summary>
+          <ol className="mono tall">
+            {logs.map((l, i) => <li key={i} data-fired={firedOn(l, v) || undefined}>{l}</li>)}
+          </ol>
+        </details>
+      )}
+    </section>
+  )
+}
+
+/**
+ * The engine's own status word, shown only when the outcome pill does not
+ * already say it: a run that returned `needs-human` while the engine says
+ * `killed` reads as a workflow decision until you see the second word. A
+ * `completed` engine behind a script's own outcome is the normal case and
+ * stays off the screen.
+ */
+function engineWord(run: RunManifest | undefined, outcome: ReturnType<typeof outcomeOf>): string | undefined {
+  const s = run?.status
+  if (!s || s === 'completed' || s === outcome.word) return undefined
+  return s
 }
 
 /** `result.reason`; without one, why the engine stopped (`stopReason`: stale, killed, the first error agent); else `—`. */

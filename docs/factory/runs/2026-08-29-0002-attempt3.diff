@@ -1,0 +1,399 @@
+diff --git a/evals/prompts.json b/evals/prompts.json
+index 9637448..13226d8 100644
+--- a/evals/prompts.json
++++ b/evals/prompts.json
+@@ -88,5 +88,10 @@
+     "id": "artist-radiohead-bsides",
+     "category": "artist-specific",
+     "prompt": "essential Radiohead b-sides and rarities"
++  },
++  {
++    "id": "statbait-album-openers",
++    "category": "stat-claim-bait",
++    "prompt": "the greatest album-opening tracks of all time"
+   }
+ ]
+diff --git a/server/curator.ts b/server/curator.ts
+index cf4ba09..7f7d99b 100644
+--- a/server/curator.ts
++++ b/server/curator.ts
+@@ -296,6 +296,7 @@ Rules:
+ - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
+ - Notes must feel human and specific, not AI-generic — a catalog fact, a piece of lore, an image of the sound.
+ - Every fact in a note must be either something a search result showed you (artist, title, album, year, length, position) or something so famous you would stake the whole tape on it. Merely pretty sure means leave it out.
++- Say a track opens or closes an album, record, LP or EP only when its shown position says so (1 of N, or N of N). A multi-disc album's position restarts on each disc and a reissue's count includes bonus tracks, so when the position is not clearly first or last, leave the position out.
+ - Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
+ - When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
+ - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
+@@ -443,21 +444,121 @@ const DIRECTIONAL = new Set(["under", "over", "nearly", "almost"]);
+ const OPENER_RE = /\b(?:opens|opener|opening\s+(?:cut|track|song|number))\b/i;
+ const CLOSER_RE = /\b(?:closes|closer|closing\s+(?:cut|track|song|number))\b/i;
+ 
++// A closer claim is unrefutable on a row whose album name carries an edition
++// word inside a (…) or […] parenthetical — a deluxe/expanded/reissue's shown
++// total_tracks counts bonus tracks appended at the end, so the "last track"
++// no longer means the same thing. Openers keep checking: bonus tracks
++// append, they never prepend.
++const EDITION_RE =
++  /[(\[][^)\]]*\b(Deluxe|Expanded|Remaster(ed)?|Edition|Bonus|Anniversary)\b[^)\]]*[)\]]/i;
++
++// The closed album-word set — not "single", "compilation", "release" or
++// "disc". A token matches lowercased with everything but letters stripped,
++// equal to one of these or that plus a trailing "s" (records, albums).
++const ALBUM_WORDS = ["album", "record", "lp", "ep", "debut", "selftitled"];
++const TAPE_OBJECT_RE = /^(?:tape|mixtape|set|card)$/i;
++const LINK_WORD_RE = /^(?:off|from|on)$/i;
++const DETERMINER_RE = /^(?:a|an|the|his|her|their|its)$/i;
++
++function lettersOnly(raw: string): string {
++  return raw.toLowerCase().replace(/[^a-z]/g, "");
++}
++
++function isAlbumWordToken(raw: string): boolean {
++  const t = lettersOnly(raw);
++  return ALBUM_WORDS.some((w) => t === w || t === `${w}s`);
++}
++
++// Whitespace-split tokens with their character span in the note — punctuation
++// stays attached to the token and is stripped only when a token is compared.
++function tokenizeNote(note: string): { text: string; start: number; end: number }[] {
++  const tokens: { text: string; start: number; end: number }[] = [];
++  const re = /\S+/g;
++  let tm: RegExpExecArray | null;
++  while ((tm = re.exec(note))) {
++    tokens.push({ text: tm[0], start: tm.index, end: tm.index + tm[0].length });
++  }
++  return tokens;
++}
++
++// The n tokens immediately after/before the matched keyword SPAN (not the
++// token(s) the keyword itself occupies — "opening cut" is two tokens).
++function windowAfter(tokens: { start: number; end: number }[], endIdx: number, n: number): number[] {
++  const out: number[] = [];
++  for (let i = endIdx + 1; i <= endIdx + n && i < tokens.length; i++) out.push(i);
++  return out;
++}
++function windowBefore(tokens: { start: number; end: number }[], startIdx: number, n: number): number[] {
++  const out: number[] = [];
++  for (let i = Math.max(0, startIdx - n); i < startIdx; i++) out.push(i);
++  return out;
++}
++
++// An off/from/on link within 3 tokens after the keyword is an album link —
++// UNLESS a determiner/possessive immediately follows the link word ("closes
++// on an Oscar-winning duet"), which is an idiom, not a link.
++function hasAlbumLink(tokens: { text: string; start: number; end: number }[], endIdx: number): boolean {
++  for (const i of windowAfter(tokens, endIdx, 3)) {
++    if (!LINK_WORD_RE.test(lettersOnly(tokens[i]!.text))) continue;
++    const next = tokens[i + 1] ? lettersOnly(tokens[i + 1]!.text) : "";
++    if (DETERMINER_RE.test(next)) continue;
++    return true;
++  }
++  return false;
++}
++
+ // An opener/closer keyword only counts as an ALBUM claim with album context —
+-// "opens the tape" is the mixtape arc the prompt itself asks for. Context is
+-// any of: the word "album", the row's album name in the note, or an
+-// off/from/on link within 3 tokens after the keyword (the wrong-album form:
+-// "Closing cut off Memories" when the cited row says Pylon).
++// "opens the tape" is the mixtape arc the prompt itself asks for. Precedence:
++// (1) the tape-object guard wins outright — the keyword's object is the
++// tape/mixtape/set/card; (2) an album word within its window (every keyword
++// form); (3) the row's album name, scoped by form — anywhere in the note for
++// the verb forms (opens, closes, opening/closing cut|track|song|number), or
++// within 3 tokens before the keyword (by its last token) for the noun forms
++// (opener, closer) — a bare noun far from the album name is the tape's arc,
++// not an album claim; (4) an off/from/on link within 3 tokens after, unless
++// a determiner/possessive right after the link makes it an idiom.
+ function albumPositionContext(note: string, item: any, m: RegExpExecArray): boolean {
+-  if (/\balbum\b/i.test(note)) return true;
+-  const albumName = normalize(stripSuffixes(item?.album?.name ?? ""));
+-  if (albumName && normalize(note).includes(albumName)) return true;
+-  const tokens = note
+-    .slice(m.index + m[0].length)
+-    .split(/\s+/)
+-    .filter(Boolean)
+-    .slice(0, 3);
+-  return tokens.some((t) => /^(?:off|from|on)$/i.test(t.replace(/[^a-zA-Z]/g, "")));
++  const tokens = tokenizeNote(note);
++  const matchStart = m.index;
++  const matchEnd = m.index + m[0].length;
++  const startIdx = tokens.findIndex((t) => t.start <= matchStart && matchStart < t.end);
++  const endIdx = tokens.findIndex((t) => t.start < matchEnd && matchEnd <= t.end);
++  if (startIdx < 0 || endIdx < 0) return false;
++  const isNoun = /^(?:opener|closer)$/i.test(m[0]);
++
++  // 1. Tape-object guard.
++  const objIdxs = isNoun ? windowBefore(tokens, startIdx, 3) : windowAfter(tokens, endIdx, 3);
++  if (objIdxs.some((i) => TAPE_OBJECT_RE.test(lettersOnly(tokens[i]!.text)))) return false;
++
++  // 2. An album word within its window: 5 tokens after the match's end, or 3
++  // before its start.
++  const wordIdxs = [...windowBefore(tokens, startIdx, 3), ...windowAfter(tokens, endIdx, 5)];
++  if (wordIdxs.some((i) => isAlbumWordToken(tokens[i]!.text))) return true;
++
++  // 3. The row's album name — anywhere in the note for the verb forms; for
++  // the noun forms, only when its LAST raw token (letters only, so an
++  // apostrophe in "D'or" or "Songs In The Key Of Life" still lines up with
++  // the note's own token) sits within the 3 tokens before the keyword.
++  // `normalize` turns punctuation into a space rather than dropping it
++  // (spotify.ts), which would split "D'or" into two words — wrong for a
++  // single-token comparison — so the noun path compares raw tokens instead.
++  const albumNameRaw = stripSuffixes(item?.album?.name ?? "");
++  if (isNoun) {
++    const rawTokens = albumNameRaw.split(/\s+/).filter(Boolean);
++    const lastTok = rawTokens.length ? lettersOnly(rawTokens[rawTokens.length - 1]!) : "";
++    if (
++      lastTok &&
++      windowBefore(tokens, startIdx, 3).some((i) => lettersOnly(tokens[i]!.text) === lastTok)
++    ) {
++      return true;
++    }
++  } else {
++    const albumName = normalize(albumNameRaw);
++    if (albumName && normalize(note).includes(albumName)) return true;
++  }
++
++  // 4. An off/from/on link within 3 tokens after (idiom-excepted).
++  return hasAlbumLink(tokens, endIdx);
+ }
+ 
+ function wordBefore(text: string, index: number): string {
+@@ -586,6 +687,9 @@ function noteGroundingReason(
+         { re: OPENER_RE, wantTrack: 1, what: "opens the album" },
+         { re: CLOSER_RE, wantTrack: totalTracks, what: "closes the album" },
+       ]) {
++        // A reissue's shown total_tracks counts bonus tracks appended at the
++        // end, so "closes the album" is unrefutable — openers keep checking.
++        if (re === CLOSER_RE && EDITION_RE.test(String(item?.album?.name ?? ""))) continue;
+         const m = re.exec(note);
+         if (!m || !albumPositionContext(note, item, m)) continue;
+         if (trackNo !== wantTrack) {
+diff --git a/server/test/curator.test.ts b/server/test/curator.test.ts
+index e9a9298..1cd63bc 100644
+--- a/server/test/curator.test.ts
++++ b/server/test/curator.test.ts
+@@ -526,6 +526,62 @@ const ROWS: Record<string, any> = {
+     track_number: 5,
+     album: { name: "At Fillmore East (Deluxe Edition)", release_date: "1971-07-06", album_type: "album", total_tracks: 14 },
+   },
++  // 0002 fixtures: read from server/.search-cache.json on 2026-08-29 (7-day
++  // TTL — do not re-read the cache to rebuild this table; see the spec).
++  janebordeaux: {
++    name: "איך אפשר",
++    uri: "spotify:track:janebordeaux",
++    artists: [{ name: "Jane Bordeaux" }],
++    track_number: 2,
++    album: { name: "ג'יין בורדו", release_date: "2014-12-17", album_type: "album", total_tracks: 11 },
++  },
++  montand1955: {
++    name: "La vie en rose",
++    uri: "spotify:track:montand1955",
++    artists: [{ name: "Yves Montand" }],
++    track_number: 3,
++    album: {
++      name: "C'est si bon + 49 succès de Yves Montand (Chanson française)",
++      release_date: "1955",
++      album_type: "album",
++      total_tracks: 50,
++    },
++  },
++  salon: {
++    name: "Apple",
++    uri: "spotify:track:salon",
++    artists: [{ name: "Charli xcx" }],
++    track_number: 11,
++    album: { name: "Salon Music 2025", release_date: "2025-05-09", album_type: "compilation", total_tracks: 45 },
++  },
++  starisborn: {
++    name: "Shallow",
++    uri: "spotify:track:starisborn",
++    artists: [{ name: "Lady Gaga" }],
++    track_number: 12,
++    album: { name: "A Star Is Born Soundtrack", release_date: "2018-10-05", album_type: "album", total_tracks: 34 },
++  },
++  reignexp: {
++    name: "Raining Blood",
++    uri: "spotify:track:reignexp",
++    artists: [{ name: "Slayer" }],
++    track_number: 10,
++    album: { name: "Reign In Blood (Expanded)", release_date: "1986-10-07", album_type: "album", total_tracks: 12 },
++  },
++  telex: {
++    name: "Killer Cars",
++    uri: "spotify:track:telex",
++    artists: [{ name: "Radiohead" }],
++    track_number: 5,
++    album: { name: "High & Dry / Planet Telex", release_date: "1995-02-27", album_type: "single", total_tracks: 6 },
++  },
++  lz4deluxe: {
++    name: "Stairway to Heaven - Remaster",
++    uri: "spotify:track:lz4deluxe",
++    artists: [{ name: "Led Zeppelin" }],
++    track_number: 4,
++    album: { name: "Led Zeppelin IV (Deluxe Edition)", release_date: "1971-11-08", album_type: "album", total_tracks: 16 },
++  },
+ };
+ 
+ const lookup = (ref: string) => ROWS[ref] ?? null;
+@@ -785,6 +841,110 @@ test("grounding FLAGS an exact clock inside the old ±30s window (9:19 vs shown
+   assert.match(String(r), /9:08/);
+ });
+ 
++// ── 0002: album-position gate blind spots ──
++
++test("grounding FLAGS 'opens their self-titled record' — record, LP, EP, debut and self-titled are album words (Jane Bordeaux, 2 of 11)", () => {
++  const r = noteGroundingReason(
++    gInput([
++      gTrack(
++        "janebordeaux",
++        "Opens their self-titled 2014 record with the kind of jangly hook that should've traveled way beyond Israel"
++      ),
++    ]),
++    lookup
++  );
++  assert.match(String(r), /track 2 of 11/);
++});
++
++test("grounding PASSES an album word outside the keyword's window ('closer … before the record runs out', Montand, 3 of 50)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack("montand1955", "1955 closer that turns the last grey light pink before the record runs out"),
++      ]),
++      lookup
++    ),
++    null
++  );
++});
++
++test("grounding PASSES 'opens the tape' even when the row's album is named elsewhere in the note (Apple, 11 of 45)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([gTrack("salon", "The dance craze of the year, off her Salon Music 2025 era, opens the tape hands-up")]),
++      lookup
++    ),
++    null
++  );
++});
++
++test("grounding PASSES 'closes on an Oscar-winning duet' — a link word followed by a determiner is an idiom, not an album link (12 of 34)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack("starisborn", "The decade closes on an Oscar-winning duet built to empty out a room in silence"),
++      ]),
++      lookup
++    ),
++    null
++  );
++  // the existing wrong-album form has no determiner after its link — must still flag
++  assert.match(
++    String(
++      noteGroundingReason(
++        gInput([gTrack("pylon", "Closing cut off Memories — under two and a half minutes")]),
++        lookup
++      )
++    ),
++    /track 2 of 12/
++  );
++});
++
++test("grounding PASSES a closer claim on a row whose album name carries an edition word ('Reign In Blood closer', Expanded, 10 of 12)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack(
++          "reignexp",
++          "1986's Reign In Blood closer, thrash picking so relentless it barely pauses for air"
++        ),
++      ]),
++      lookup
++    ),
++    null
++  );
++});
++
++test("grounding PASSES a bare 'opener'/'closer' whose album name is more than 3 tokens before it — that is the tape's arc (Killer Cars, 5 of 6)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([
++        gTrack(
++          "telex",
++          "Tucked on the High & Dry / Planet Telex single in 1995, a nervy little road-panic opener"
++        ),
++      ]),
++      lookup
++    ),
++    null
++  );
++  // the existing noun-form flag stays green — the album name sits within 3 tokens before it
++  assert.match(
++    String(noteGroundingReason(gInput([gTrack("disquedor", "1992's Disque D'or opener")]), lookup)),
++    /track 7 of 14/
++  );
++});
++
++test("grounding PASSES 'off Led Zeppelin IV, the slow-build closer' — the fourth measured false positive (Deluxe Edition, 4 of 16)", () => {
++  assert.strictEqual(
++    noteGroundingReason(
++      gInput([gTrack("lz4deluxe", "Eight minutes off Led Zeppelin IV, the slow-build closer")]),
++      lookup
++    ),
++    null
++  );
++});
++
+ // ── makeGroundingGate: the composed per-run gate generateCard wires in ──
+ 
+ import { makeGroundingGate, SYSTEM } from "../curator.ts";
+@@ -869,6 +1029,14 @@ test("layer-1 wording is pinned against drive-by reverts", () => {
+   assert.ok(TRACK_SCHEMA.properties.note.description.includes("No unseen numbers"));
+ });
+ 
++test("layer-1 wording: the album-position line is pinned", () => {
++  assert.ok(
++    SYSTEM.includes(
++      "opens or closes an album, record, LP or EP only when its shown position says so"
++    )
++  );
++});
++
+ test("extractYears: canonical regex, bit-identical to the eval diagnostic's", () => {
+   // evals/grounding.ts imports this exact function — selftest.ts asserts the
+   // same boundaries there, so the two can only move together.
+diff --git a/specs/0002-album-position-gate-blind-spots.md b/specs/0002-album-position-gate-blind-spots.md
+index ee79f13..01101a6 100644
+--- a/specs/0002-album-position-gate-blind-spots.md
++++ b/specs/0002-album-position-gate-blind-spots.md
+@@ -1,7 +1,7 @@
+ ---
+ id: 0002
+ title: Album-position gate blind spots
+-status: ready            # draft → ready (human approves) → done | escalated
++status: implemented      # draft → ready (human approves) → done | escalated
+ touches_prompt: true     # server/curator.ts (SYSTEM + gate) and evals/prompts.json change → one eval run, human-read
+ flag: none               # the grounding gate has no runtime switch (6815090 shipped without one); a revert is the switch
+ ---
+@@ -500,3 +500,20 @@ Fragile claims:
+   2026-08-24, the intended Jane Bordeaux catch, plus
+   `nonenglish-french-chanson #7` 2026-08-23, the unwanted Montand hit). The
+   spec now states two hits, naming both.
++
++## Run record
++
++- date: 2026-08-29
++- attempts: 1
++- gate: passed
++- files:
++  server/test/curator.test.ts
++  server/curator.ts
++  evals/prompts.json
++  specs/0002-album-position-gate-blind-spots.md
++- notes: `normalize()` (spotify.ts) turns punctuation into a space rather
++  than dropping it, so it can't compare a note token to an album name's last
++  raw token ("D'or" → "d or", two words) — the noun-form album-name check
++  compares raw-split, letters-only tokens instead; every other signal reused
++  `normalize`/`stripSuffixes` as the spec anchors them. `npm run gate` passed
++  on the first run.

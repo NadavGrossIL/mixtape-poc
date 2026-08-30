@@ -843,7 +843,7 @@ test("grounding PASSES album-position claims that are true, arc-talk, or unverif
 // Slices 1-8 per specs/0002-album-position-gate-blind-spots.md Acceptance
 // check 1, one at a time.
 
-test("slice 1: grounding FLAGS 'opens their self-titled record' — record, LP, EP, debut and self-titled are album words (Jane Bordeaux, 2 of 11)", () => {
+test("grounding FLAGS 'opens their self-titled record' — record, LP, EP, debut and self-titled are album words (Jane Bordeaux, 2 of 11)", () => {
   const r = noteGroundingReason(
     gInput([
       gTrack(
@@ -856,7 +856,7 @@ test("slice 1: grounding FLAGS 'opens their self-titled record' — record, LP, 
   assert.match(String(r), /track 2 of 11/);
 });
 
-test("slice 2: grounding PASSES an album word outside the keyword's window ('closer … before the record runs out', Montand, 3 of 50)", () => {
+test("grounding PASSES an album word outside the keyword's window ('closer … before the record runs out', Montand, 3 of 50)", () => {
   assert.strictEqual(
     noteGroundingReason(
       gInput([
@@ -871,7 +871,7 @@ test("slice 2: grounding PASSES an album word outside the keyword's window ('clo
   );
 });
 
-test("slice 3: grounding PASSES 'opens the tape' even when the row's album is named elsewhere in the note (Apple, 11 of 45)", () => {
+test("grounding PASSES 'opens the tape' even when the row's album is named elsewhere in the note (Apple, 11 of 45)", () => {
   assert.strictEqual(
     noteGroundingReason(
       gInput([
@@ -883,7 +883,7 @@ test("slice 3: grounding PASSES 'opens the tape' even when the row's album is na
   );
 });
 
-test("slice 4: grounding PASSES 'closes on an Oscar-winning duet' — a link word followed by a determiner is an idiom, not an album link (12 of 34)", () => {
+test("grounding PASSES 'closes on an Oscar-winning duet' — a link word followed by a determiner is an idiom, not an album link (12 of 34)", () => {
   assert.strictEqual(
     noteGroundingReason(
       gInput([
@@ -905,7 +905,7 @@ test("slice 4: grounding PASSES 'closes on an Oscar-winning duet' — a link wor
   );
 });
 
-test("slice 5: grounding PASSES a closer claim on a row whose album name carries an edition word ('Reign In Blood closer', Expanded, 10 of 12)", () => {
+test("grounding PASSES a closer claim on a row whose album name carries an edition word ('Reign In Blood closer', Expanded, 10 of 12)", () => {
   assert.strictEqual(
     noteGroundingReason(
       gInput([
@@ -917,7 +917,7 @@ test("slice 5: grounding PASSES a closer claim on a row whose album name carries
   );
 });
 
-test("slice 6: grounding PASSES a bare 'opener'/'closer' whose album name is more than 3 tokens before it — that is the tape's arc (Killer Cars, 5 of 6)", () => {
+test("grounding PASSES a bare 'opener'/'closer' whose album name is more than 3 tokens before it — that is the tape's arc (Killer Cars, 5 of 6)", () => {
   assert.strictEqual(
     noteGroundingReason(
       gInput([
@@ -935,10 +935,59 @@ test("slice 6: grounding PASSES a bare 'opener'/'closer' whose album name is mor
   );
 });
 
-test("slice 7: grounding PASSES 'off Led Zeppelin IV, the slow-build closer' — the fourth measured false positive (Deluxe Edition, 4 of 16)", () => {
+test("grounding PASSES 'off Led Zeppelin IV, the slow-build closer' — the fourth measured false positive (Deluxe Edition, 4 of 16)", () => {
   assert.strictEqual(
     noteGroundingReason(gInput([gTrack("lz4deluxe", "Eight minutes off Led Zeppelin IV, the slow-build closer")]), lookup),
     null
+  );
+});
+
+// ── review fixes: a name coincidence, a keyword-adjacent comma, and a
+// determiner one token past the window — none of these were caught by the
+// slices above, each verified with its own reproduction.
+
+test("grounding PASSES a bare last-word coincidence, not the album name itself, before a noun-form keyword (Salon Music 2025, Disque d'or)", () => {
+  // "2025" alone is the album name's last token, but "her 2025 closer" never
+  // says "Salon Music 2025" — the name itself must be present, not just its
+  // last word landing in the window by chance.
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("salon", "Her 2025 closer, hands-up and grinning")]), lookup),
+    null
+  );
+  // normalize("Disque d'or") ends in the bare English word "or" — a
+  // coincidence, not the album name.
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("disquedor", "half spoken or sung opener")]), lookup),
+    null
+  );
+  // the real name, ending right where the noun starts, must still flag
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("disquedor", "1992's Disque D'or opener")]), lookup)),
+    /track 7 of 14/
+  );
+});
+
+test("grounding FLAGS 'Opens, side one of the record' — a comma glued to the keyword doesn't eat a window slot (Jane Bordeaux, 2 of 11)", () => {
+  assert.match(
+    String(
+      noteGroundingReason(
+        gInput([gTrack("janebordeaux", "Opens, side one of the record with a jangly hook")]),
+        lookup
+      )
+    ),
+    /track 2 of 11/
+  );
+});
+
+test("grounding PASSES a link's cancelling determiner sitting one token past the 3-token window (Pylon, 'off their Reckoning')", () => {
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("pylon", "Closing cut here now off their Reckoning")]), lookup),
+    null
+  );
+  // the identical link with no determiner must still flag
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("pylon", "Closing cut off Reckoning in a hush")]), lookup)),
+    /track 2 of 12/
   );
 });
 
@@ -956,7 +1005,7 @@ test("grounding FLAGS an exact clock inside the old ±30s window (9:19 vs shown 
 
 import { makeGroundingGate, SYSTEM } from "../curator.ts";
 
-test("slice 8: layer-1 wording: the album-position line is pinned", () => {
+test("layer-1 wording: the album-position line is pinned", () => {
   assert.ok(
     SYSTEM.includes(
       "opens or closes an album, record, LP or EP only when its shown position says so"

@@ -100,8 +100,8 @@ const common = (path: string): Extension[] => [
  * the rebuilt editor starts with a fresh undo history. `onSave` is Mod-s, the
  * same door as the Save… button: it opens the diff, it does not write.
  */
-export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
-  value: string; onChange?: (v: string) => void; path: string; readOnly?: boolean; onSave?: () => void; label?: string
+export function CodeEditor({ value, onChange, path, readOnly, onSave, label, scrollToLine }: {
+  value: string; onChange?: (v: string) => void; path: string; readOnly?: boolean; onSave?: () => void; label?: string; scrollToLine?: number
 }) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
@@ -148,6 +148,16 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
     if (cur !== value) v.dispatch({ changes: { from: 0, to: cur.length, insert: value } })
   }, [value])
 
+  // Open at a line — the ledger row of the run on screen. The cursor goes there
+  // (so the active-line highlight marks it) and the view scrolls it to the
+  // middle. A line past the end of the document is simply the last one.
+  useEffect(() => {
+    const v = view.current
+    if (!v || !scrollToLine) return
+    const line = v.state.doc.line(Math.min(Math.max(1, scrollToLine), v.state.doc.lines))
+    v.dispatch({ selection: { anchor: line.from }, effects: EditorView.scrollIntoView(line.from, { y: 'center' }) })
+  }, [scrollToLine, value])
+
   return <div className="cm-host" ref={host} />
 }
 
@@ -156,8 +166,10 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
  * loaded it, right is what Write file would put on disk. Both read-only (no
  * revert arrows: the only write path is the button below), unchanged stretches
  * collapsed so a one-line change in a 300-line script reads as one line.
+ * `heads` renames the two sides: slice 4 reuses this view to put the frozen
+ * script the engine ran next to the live repo file.
  */
-export function DiffEditor({ original, modified, path }: { original: string; modified: string; path: string }) {
+export function DiffEditor({ original, modified, path, heads = ['on disk', 'after write'] }: { original: string; modified: string; path: string; heads?: [string, string] }) {
   const host = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const parent = host.current
@@ -175,7 +187,7 @@ export function DiffEditor({ original, modified, path }: { original: string; mod
   }, [original, modified, path])
   return (
     <div className="cm-diff" aria-label="diff preview">
-      <div className="cm-diff-heads" aria-hidden="true"><span>on disk</span><span>after write</span></div>
+      <div className="cm-diff-heads" aria-hidden="true"><span>{heads[0]}</span><span>{heads[1]}</span></div>
       <div className="cm-diff-body" ref={host} />
     </div>
   )

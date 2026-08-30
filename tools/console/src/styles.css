@@ -165,6 +165,24 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .why-logs li[data-fired] { color: var(--warn); font-weight: 600; } /* the line the rule fired on */
 /* the home card's one-line version: the tag and the headline, no action — the canvas has the rest */
 .why-card { margin: 2px 0 0; font-size: 12px; }
+/* the card's one context line: branch · worktree, each with a copy */
+.card-git { margin: 2px 0 0; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; min-width: 0; }
+.card-git .mono { font: 11px/1.5 var(--mono); background: none; border: 0; padding: 0; max-height: none; color: var(--text); }
+.card-git .btn-small { padding: 1px 6px; font-size: 11px; }
+
+/* where the context lives: one line per artefact of the run — label, the value in
+   monospace (a long path truncates from the left, whole thing in the tooltip), Copy / Open */
+.ctx { margin: 6px 0 0; padding: 8px 12px; max-width: 980px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; }
+.ctx-head { margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 3px 22px; }
+.ctx-row { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
+.ctx-label { color: var(--muted); }
+.ctx-val { font: 11px/1.6 var(--mono); }
+.ctx-acts { display: flex; align-items: center; gap: 4px; }
+.ctx-acts .btn-small { padding: 1px 7px; font-size: 11px; }
+/* the ledger row's own words; notes run long, so two lines and the rest in the tooltip */
+.ctx-note { margin: 6px 0 0; font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.ctx-foot { margin: 4px 0 0; }
 .run-none p { margin: 0 0 6px; }
 .run-none .run-cmd { max-width: 720px; }
 
@@ -300,6 +318,14 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .events { padding-left: 18px; margin: 0; font-size: 12px; display: flex; flex-direction: column; gap: 6px; overflow-wrap: anywhere; }
 .events .mono { display: inline; background: none; border: 0; padding: 0; max-height: none; }
 .load-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+/* a file the panel is showing a reading of: its absolute path, and the path on the clipboard */
+.path-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 8px; margin: 0 0 10px; }
+.path-row .path { font: 11px/1.5 var(--mono); color: var(--muted); }
+/* A path, truncated from the LEFT: the tail (the file) is what identifies it, the
+   head (/Users/…/projects/) is the same on every row. `direction: rtl` moves the
+   ellipsis to the start; the LRM the markup puts around the text keeps the
+   slashes — bidi-neutral characters — reading left to right inside it. */
+.ell { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; direction: rtl; text-align: left; min-width: 0; }
 /* attempts: one row per try; wraps its cells, scrolls in its own box only if a cell cannot wrap */
 .attempts { width: 100%; border-collapse: collapse; font-size: 12px; }
 .attempts th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); padding: 4px 10px 4px 0; border-bottom: 1px solid var(--line); }

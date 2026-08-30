@@ -1,20 +1,27 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import type { ConsoleEvent, Ledger, RunManifest, WorkflowFile } from '../types'
+import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
+import type { ConsoleEvent, Ledger, LedgerEntry, RunManifest, WorkflowFile } from '../types'
 import { classify, findingsOf, firedOn, graphFor, isStalled, overlayRun, runBounds } from '../graph'
 import { RunCommand, Workflows, cardsFrom, isDriverCommand, runCommand, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
 import { Timeline } from './Timeline'
-import { NodePanel } from './NodePanel'
-import { CAUSE_TAG, dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { NodePanel, FilePanel, type PanelView } from './NodePanel'
+import { CopyButton, PathText, copyText } from './Copy'
+import { CAUSE_TAG, baseName, dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, ledgerLine, nowAt, outcomeOf, prefillRow, projectTag, repoRel, rowValuesOf, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
+const LEDGER_PATH = 'docs/factory/RUNS.md'
 
 const COPY = {
   runNote: 'The console never starts a run — paste this in a terminal. The driver writes the RUNS.md row.',
   /** The driver removes and re-adds `../mixtape-poc.wt` before it starts (`scripts/factory-run.sh`, "worktree:"), so anything uncommitted in there goes with it. */
   wipes: 're-running wipes the worktree',
   wipesTitle: 'scripts/factory-run.sh removes ../mixtape-poc.wt and cuts it again from origin/main — uncommitted work in that worktree is gone',
+  ctx: 'Where this run lives. Paths under ~/.claude are copy-only — the page cannot serve them; the repo files open here, read-only.',
+  addRow: 'A row for this run is on your clipboard, in the table\'s own column order. Paste it at the end of the table and fill the cells only you know (cost is in the driver\'s JSON). This page never writes RUNS.md.',
+  specNote: 'The spec this run worked on, read-only.',
+  frozenNote: 'The script the engine froze for this run, against the live repo file the Script tab edits.',
+  runsNote: 'The ledger. One row per run of the line.',
 } as const
 
 export function App() {
@@ -26,6 +33,7 @@ export function App() {
   const [workflow, setWorkflow] = useState<string>()
   const [runId, setRunId] = useState<string>()
   const [selected, setSelected] = useState<string>()
+  const [view, setView] = useState<PanelView>() // a file open in the panel (the context row's Open) — mutually exclusive with a selected node
   const [railOpen, setRailOpen] = useState(true) // false = the rail is a strip of dots while the panel is open
   const [conn, setConn] = useState<Conn>('connecting')
   const [tick, setTick] = useState(0) // journal events; the node panel reloads an open transcript on it
@@ -76,14 +84,17 @@ export function App() {
     return () => clearInterval(id)
   }, [ticking])
 
-  const open = (name: string) => { setWorkflow(name); setRunId(undefined); setSelected(undefined); setRailOpen(true) }
+  const open = (name: string) => { setWorkflow(name); setRunId(undefined); setSelected(undefined); setView(undefined); setRailOpen(true) }
   const pickRun = (id: string) => {
     const r = runs.find((x) => x.runId === id)
     if (r && (r.workflowName ?? 'unnamed') !== workflow) setWorkflow(r.workflowName ?? 'unnamed')
-    setRunId(id); setSelected(undefined); setRailOpen(true)
+    setRunId(id); setSelected(undefined); setView(undefined); setRailOpen(true)
   }
   // Opening a node folds the rail to a strip so the canvas keeps its width (A10); `Runs` on the strip unfolds it.
-  const select = useCallback((id?: string) => { setSelected(id); if (id) setRailOpen(false); else setRailOpen(true) }, [])
+  const select = useCallback((id?: string) => { setSelected(id); setView(undefined); if (id) setRailOpen(false); else setRailOpen(true) }, [])
+  // A file and a node share the one panel: opening either closes the other.
+  const openView = useCallback((v: PanelView) => { setView(v); setSelected(undefined); setRailOpen(false) }, [])
+  const closeView = useCallback(() => { setView(undefined); setRailOpen(true) }, [])
 
   // Esc closes the panel (IA-SPEC §9). Not from inside a file editor — its unsaved
   // text would go with the panel, and inside CodeMirror Esc is the search panel's
@@ -96,10 +107,11 @@ export function App() {
       if (el?.tagName === 'TEXTAREA') return
       if (el?.closest?.('.cm-editor')) return
       if (selected) { e.preventDefault(); select(undefined) }
+      else if (view) { e.preventDefault(); closeView() }
     }
     document.addEventListener('keydown', onKey)
     return () => document.removeEventListener('keydown', onKey)
-  }, [workflow, selected, select])
+  }, [workflow, selected, view, select, closeView])
 
   const connLabel = conn === 'connected' ? 'live' : conn
   const connTitle = conn === 'reconnecting' ? 'the event stream dropped; the browser retries on its own' : 'event stream'
@@ -138,6 +150,23 @@ export function App() {
   const progress = live || stalled ? lastProgress(run, now) : undefined
   const description = card?.file?.meta?.description ?? graph.description
   const tag = projectTag(run?.projectSlug)
+  const entry = run?.runId ? ledger[run.runId] : undefined
+  const livePath = card?.file && !card.file.fixture && card.file.kind !== 'skill' ? card.file.path : undefined
+
+  /** Opens RUNS.md at its last row with a row for this run on the clipboard, built from the table's own header. */
+  const addLedgerRow = async () => {
+    let line: number | undefined
+    try {
+      const res = await fetch(`/api/file?path=${encodeURIComponent(LEDGER_PATH)}`)
+      const body = await res.json().catch(() => ({}))
+      const text: string = res.ok && typeof body.content === 'string' ? body.content : ''
+      const rows = text.split('\n').map((l, i) => ({ line: i + 1, text: l.trim() })).filter((r) => r.text.startsWith('|'))
+      const header = rows.find((r) => /\|\s*run\s*\|/i.test(r.text))
+      line = rows[rows.length - 1]?.line
+      if (header) await copyText(prefillRow(header.text.replace(/^\||\|$/g, '').split('|').map((c) => c.trim()), rowValuesOf(run, ledger)))
+    } catch { /* the file still opens; only the clipboard is lost */ }
+    openView({ kind: 'file', path: LEDGER_PATH, title: 'RUNS.md — add a row', note: COPY.addRow, line })
+  }
   return (
     <main className="shell canvas-shell">
       <header className="run-head">
@@ -154,7 +183,10 @@ export function App() {
             <div><dt>elapsed</dt><dd className="clock">{fmtDuration(elapsed)}</dd></div>
             <div><dt>tokens</dt><dd>{fmtTokens(run?.totalTokens)}</dd></div>
             <div><dt>agents</dt><dd>{run?.agentCount ?? dash}</dd></div>
-            <div><dt>USD</dt><dd title={usd.title}>{run ? usd.text : dash}</dd></div>
+            {/* No row for this run: the cell is the way to write one, not a complaint. */}
+            <div><dt>USD</dt><dd title={usd.title}>{!run ? dash : usd.noRow
+              ? <button type="button" className="link" onClick={() => { void addLedgerRow() }} title="open RUNS.md and copy a row for this run">add to RUNS.md</button>
+              : usd.text}</dd></div>
             {progress && <div><dt>last progress</dt><dd title={whenAbs(lastProgressAt(run))}>{progress.replace(/^last progress /, '')}</dd></div>}
           </dl>
           <span className="conn" data-state={conn} title={connTitle}>{connLabel}</span>
@@ -162,16 +194,17 @@ export function App() {
         {description && <p className="run-desc muted">{description}</p>}
         <RunSentence run={run} ledger={ledger} now={now} outcome={outcome}
           command={runCommand(workflow, specPath(specOf(run, ledger)), card?.file?.meta)} />
+        {run && <ContextRow run={run} entry={entry} spec={specOf(run, ledger)} livePath={livePath} onOpen={openView} onAddRow={addLedgerRow} />}
       </header>
       <div className="stage">
         <Canvas graph={graph} files={files} run={run} selectedId={selected} onSelect={select} />
         <RunList runs={runs} ledger={ledger} files={files} meta={meta} now={now} selectedId={run?.runId} workflow={workflow}
-          collapsed={!!selectedNode && !railOpen} onSelect={pickRun} onExpand={() => setRailOpen(true)} />
-        {selectedNode && (
-          <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files} now={now}
-            scriptPath={card?.file && !card.file.fixture && card.file.kind !== 'skill' ? card.file.path : undefined}
-            onClose={() => select(undefined)} onSaved={() => { void loadFiles().catch(() => {}) }} />
-        )}
+          collapsed={(!!selectedNode || !!view) && !railOpen} onSelect={pickRun} onExpand={() => setRailOpen(true)} />
+        {selectedNode
+          ? <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files} now={now}
+              scriptPath={livePath}
+              onClose={() => select(undefined)} onSaved={() => { void loadFiles().catch(() => {}) }} />
+          : view ? <FilePanel view={view} onClose={closeView} /> : null}
       </div>
       <Timeline total={total} start={bounds.start} run={run} phases={graph.phases} now={now} onSelect={select} />
     </main>
@@ -276,6 +309,83 @@ function WhyStopped({ run }: { run: RunManifest }) {
     </section>
   )
 }
+
+/**
+ * Where the context lives (§4, Q3). Every artefact of the run on screen, named
+ * once: the spec it worked on, the branch and worktree it ran in (`cwd` /
+ * `gitBranch` off the first transcript line, which the loader used to drop),
+ * the run id, the manifest, the journal, the frozen script the engine actually
+ * ran, the ledger row, and the driver's saved JSON / diff / PR body. Repo files
+ * open in the panel read-only (`GET /api/file`, the read allowlist in
+ * src/allow.ts); the `~/.claude` ones cannot be served, so they are Copy only —
+ * which is what a terminal wants anyway. Visible without selecting a node: this
+ * is about the run, not about a step.
+ */
+function ContextRow({ run, entry, spec, livePath, onOpen, onAddRow }: {
+  run: RunManifest; entry?: LedgerEntry; spec: string; livePath?: string; onOpen: (v: PanelView) => void; onAddRow: () => Promise<void>
+}) {
+  const p = run.paths
+  const specFile = specPath(spec)
+  const df = entry?.driverFiles
+  const drivers: [string, string][] = [
+    ...(df?.json ?? []).map((f): [string, string] => ['driver json', f]),
+    ...(df?.diff ?? []).map((f): [string, string] => ['driver diff', f]),
+    ...(df?.pr ?? []).map((f): [string, string] => ['driver pr.md', f]),
+  ]
+  const row = ledgerLine(entry)
+  const openFile = (path: string, title: string, note?: string, line?: number) => () => onOpen({ kind: 'file', path, title, note, line })
+  return (
+    <section className="ctx" aria-label="where this run lives">
+      <p className="ctx-head">Context</p>
+      <div className="ctx-grid">
+        <Item label="spec" value={specFile ?? (spec !== dash ? spec : undefined)}>
+          {specFile && <button type="button" className="btn btn-small" onClick={openFile(specFile, baseName(specFile), COPY.specNote)}>Open</button>}
+          {specFile && <CopyButton text={specFile} label="copy" />}
+        </Item>
+        <Item label="branch" value={run.git?.branch}><CopyButton text={run.git!.branch!} label="copy" /></Item>
+        <Item label="worktree" value={run.git?.cwd}><CopyButton text={run.git!.cwd!} label="copy" /></Item>
+        <Item label="run id" value={run.runId}><CopyButton text={run.runId!} label="copy" /></Item>
+        <Item label="manifest" value={p?.manifest}><CopyButton text={p!.manifest!} label="copy path" /></Item>
+        <Item label="journal" value={p?.journal}><CopyButton text={p!.journal!} label="copy path" /></Item>
+        <Item label="frozen script" value={p?.scriptCopy} title={`${p?.scriptCopy} — the copy the engine ran, not the live repo file`}>
+          {run.script && <button type="button" className="btn btn-small" title="diff the frozen copy against the live repo file"
+            onClick={() => onOpen({ kind: 'diff', title: 'Frozen script vs live', note: COPY.frozenNote, frozenPath: p?.scriptCopy, frozen: run.script!, livePath })}>Diff</button>}
+          {p?.scriptCopy && <CopyButton text={p.scriptCopy} label="copy path" />}
+        </Item>
+        <Item label="RUNS.md row" value={entry ? `${LEDGER_PATH}${entry.line ? `:${entry.line}` : ''}` : 'no row for this run'}>
+          {entry
+            ? <button type="button" className="btn btn-small" onClick={openFile(LEDGER_PATH, `RUNS.md${entry.line ? `:${entry.line}` : ''}`, COPY.runsNote, entry.line)}>Open</button>
+            : <button type="button" className="btn btn-small" onClick={() => { void onAddRow() }}>add to RUNS.md</button>}
+        </Item>
+        {drivers.map(([label, file]) => {
+          const rel = repoRel(file)
+          return (
+            <Item key={file} label={label} value={file}>
+              {rel && <button type="button" className="btn btn-small" onClick={openFile(rel, baseName(file))}>Open</button>}
+              <CopyButton text={file} label="copy path" />
+            </Item>
+          )
+        })}
+      </div>
+      {row && <p className="ctx-note" title={row}><span className="muted">RUNS.md: </span>{row}</p>}
+      <p className="ctx-foot muted small">{COPY.ctx}</p>
+    </section>
+  )
+}
+
+/** One context line: what it is, the value (a long path truncates from the left, whole thing in the tooltip), what you can do with it. */
+function Item({ label, value, title, children }: { label: string; value?: string; title?: string; children?: ReactNode }) {
+  if (!value) return null
+  return (
+    <div className="ctx-row">
+      <span className="ctx-label">{label}</span>
+      <PathText path={value} className="ctx-val" title={title} />
+      <span className="ctx-acts">{children}</span>
+    </div>
+  )
+}
+
+
 
 /**
  * The engine's own status word, shown only when the outcome pill does not

@@ -1,7 +1,8 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react'
+import { useMemo, type ReactNode } from 'react'
 import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
 import { classify, firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
 import { CAUSE_TAG, dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { CopyButton, PathText } from './Copy'
 
 // The "all workflows" screen: one card per workflow that says what it does,
 // how its last run ended (one line that opens that run), where each phase got
@@ -134,7 +135,26 @@ function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest;
       </button>
       {lineTwo(run, outcome, now) && <p className="last-run-2 muted">{lineTwo(run, outcome, now)}</p>}
       <WhyLine run={run} />
+      <GitLine run={run} />
     </>
+  )
+}
+
+/**
+ * Where the run happened, one line: `branch · worktree`, each with a Copy —
+ * the two strings a manager types next after reading a card. Everything else
+ * about the context (spec, manifest, journal, transcripts, the ledger row, the
+ * driver's files) is on the canvas, one click away through the LAST RUN line.
+ */
+function GitLine({ run }: { run: RunManifest }) {
+  const { branch, cwd } = run.git ?? {}
+  if (!branch && !cwd) return null
+  return (
+    <p className="card-git muted small">
+      {branch && <><PathText path={branch} className="mono" /><CopyButton text={branch} label="copy" title="copy the branch" /></>}
+      {branch && cwd && <span aria-hidden="true"> · </span>}
+      {cwd && <><PathText path={cwd} className="mono" /><CopyButton text={cwd} label="copy" title="copy the worktree path" /></>}
+    </p>
   )
 }
 
@@ -231,22 +251,6 @@ export function RunCommand({ label, command, note, compact, children }: {
       {note && <p className="run-note muted">{note}</p>}
     </div>
   )
-}
-
-/** Copies with the clipboard API and says `copied` for 1.5 s; where the API is missing the code stays selectable and nothing else happens. */
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false)
-  useEffect(() => {
-    if (!copied) return
-    const id = setTimeout(() => setCopied(false), 1500)
-    return () => clearTimeout(id)
-  }, [copied])
-  const copy = () => {
-    const c = typeof navigator !== 'undefined' ? navigator.clipboard : undefined
-    if (!c) return
-    c.writeText(text).then(() => setCopied(true)).catch(() => {})
-  }
-  return <button type="button" className="btn btn-small copy" data-copied={copied || undefined} onClick={copy} aria-label={`Copy: ${text}`}>{copied ? 'copied' : 'Copy'}</button>
 }
 
 // --- skills and agents ---------------------------------------------------------

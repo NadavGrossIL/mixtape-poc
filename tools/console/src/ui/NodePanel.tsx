@@ -3,6 +3,7 @@ import type { AgentDetail, FileRead, GraphNode, NodeRunInfo, NodeState, RunManif
 import { agentsOf, isStalled, purposeOf, stateAt } from '../graph'
 import { fmtDuration, fmtTime, fmtTokens, isLive, shortModel, whenAbs, whenRel, dash } from './format'
 import { CodeEditor, DiffEditor } from './CodeEditor'
+import { PathRow } from './Copy'
 
 type Tab = 'prompt' | 'knobs' | 'script' | 'result' | 'transcript'
 const TABS: [Tab, string][] = [['prompt', 'Prompt'], ['knobs', 'Knobs'], ['script', 'Script'], ['result', 'Result'], ['transcript', 'Transcript']]
@@ -50,6 +51,11 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
   }
   const loaded = !!detail && 'prompt' in detail
   useEffect(() => { if (loaded && tick) void load() }, [tick]) // eslint-disable-line react-hooks/exhaustive-deps
+  // The Transcript tab loads itself (§4: the transcript was four clicks away —
+  // run, node, tab, button — and the button is the one nobody expected to need).
+  // The button stays for a load that failed and for a run whose transcript is
+  // not on this machine.
+  useEffect(() => { if (tab === 'transcript' && canLoad && !detail && !loading) void load() }, [tab, canLoad]) // eslint-disable-line react-hooks/exhaustive-deps
   const { width, grip } = usePanelWidth()
 
   // Which file the Prompt tab owns: a skill the prompt invokes (only if it exists on disk), else a named subagent's file.
@@ -63,6 +69,7 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
   const live = isLive(run) && !isStalled(run)
   const ran = (info?.agents.length ?? 0) > 0 // did the step run at all in this run
   const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : undefined
+  const transcriptPath = a?.agentId ? run?.paths?.agents?.[a.agentId]?.transcript : undefined
   const loadButton = (label: string) => canLoad && !detail && <button type="button" className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : label}</button>
 
   const rows: [string, string, string?][] = [
@@ -151,10 +158,13 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
             {empty
               ? <p className="muted small">{empty}</p>
               : <>
+                  {/* The file itself, named: the panel shows a reading of it, and the whole thing is one `cat` away. */}
+                  {transcriptPath && <PathRow path={transcriptPath} />}
                   <h3>prompt preview</h3>
                   <Mono>{a?.promptPreview ?? dash}</Mono>
                   <p className="load-row">
                     {loadButton('Load transcript')}
+                    {loading && !detail && <span className="muted small">Loading…</span>}
                     {live && <span className="muted small">{COPY.live}</span>}
                   </p>
                   {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
@@ -168,6 +178,83 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
                   )}
                 </>}
           </section>
+        )}
+      </div>
+    </aside>
+  )
+}
+
+// --- one file, read-only (the context row's Open) -----------------------------------
+
+/**
+ * What the canvas's context row can put in the panel. `file` is one
+ * allowlisted repo file (`GET /api/file`: the spec, RUNS.md, a driver result);
+ * `diff` is the script the engine froze for this run against the live repo file
+ * — the correctness note in §5, since the Script tab edits the live file and
+ * the run did not necessarily use it.
+ */
+export type PanelView =
+  | { kind: 'file'; path: string; title: string; note?: string; line?: number }
+  | { kind: 'diff'; title: string; note?: string; frozenPath?: string; frozen: string; livePath?: string }
+
+const VIEW_COPY = {
+  same: 'The frozen copy is identical to the live file — the script on disk is what this run ran.',
+  noLive: 'No workflow file on disk to compare with; this is the frozen copy the engine ran.',
+  readOnly: 'Read-only here. This page writes only the definition files (Prompt / Knobs / Script).',
+} as const
+
+/**
+ * The same aside as the node panel — same width, same grip — showing one file
+ * instead of one node. Read-only throughout: `POST /api/file` never accepts
+ * these paths (src/allow.ts), and the page says so rather than offering a Save
+ * that would 403.
+ */
+export function FilePanel({ view, onClose }: { view: PanelView; onClose: () => void }) {
+  const { width, grip } = usePanelWidth()
+  const target = view.kind === 'file' ? view.path : view.livePath
+  const [file, setFile] = useState<FileRead | { error: string } | null>(null)
+  useEffect(() => {
+    let live = true
+    setFile(null)
+    if (!target) return
+    void (async () => {
+      try {
+        const res = await fetch(`/api/file?path=${encodeURIComponent(target)}`)
+        const body = await res.json().catch(() => ({}))
+        if (live) setFile(res.ok ? body : { error: `${res.status}: ${body.error ?? 'failed'}` })
+      } catch (e) { if (live) setFile({ error: String(e) }) }
+    })()
+    return () => { live = false }
+  }, [target])
+  const content = file && 'content' in file ? file.content : undefined
+  const shown = view.kind === 'file' ? target : view.frozenPath
+  return (
+    <aside className="panel" aria-label={view.title} style={{ width }}>
+      <div className="panel-grip" role="separator" aria-orientation="vertical" aria-label="resize the panel" aria-valuenow={width} aria-valuemin={WIDTH.min} aria-valuemax={WIDTH.max} tabIndex={0} title="drag to resize" {...grip} />
+      <div className="panel-body">
+        <header className="panel-head">
+          <h2 title={view.title}>{view.title}</h2>
+          <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
+        </header>
+        {view.note && <p className="panel-sub muted small">{view.note}</p>}
+        {shown && <PathRow path={shown} />}
+        <p className="muted small">{VIEW_COPY.readOnly}</p>
+        {file && 'error' in file && <p className="err small">{file.error}</p>}
+        {view.kind === 'file' && (
+          !file ? <p className="muted small">Loading {target}…</p>
+            : content != null && (
+              <div className="cm-wrap">
+                <CodeEditor key={target} path={target!} value={content} readOnly scrollToLine={view.line} label={view.title} />
+              </div>
+            )
+        )}
+        {view.kind === 'diff' && (
+          !view.livePath ? <><p className="muted small">{VIEW_COPY.noLive}</p><Mono tall>{view.frozen}</Mono></>
+            : !file ? <p className="muted small">Loading {view.livePath}…</p>
+              : content == null ? <Mono tall>{view.frozen}</Mono>
+                : content === view.frozen
+                  ? <><p className="muted small">{VIEW_COPY.same}</p><div className="cm-wrap"><CodeEditor key={view.livePath} path={view.livePath} value={content} readOnly label={view.title} /></div></>
+                  : <DiffEditor original={view.frozen} modified={content} path={view.livePath} heads={['frozen copy (this run)', 'live repo file']} />
         )}
       </div>
     </aside>

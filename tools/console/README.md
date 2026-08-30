@@ -35,16 +35,30 @@ GET except the one POST below):
   last `→` (else every `status: '…'` a `return {` can produce, `needs-human` last); a skill's or
   agent's frontmatter — `description`, `argumentHint`, `model`, `tools`, `disableModelInvocation` —
   read as `key: value` lines, no YAML library. A file without a header gets `{}`.
-- `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet)
+- `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet).
+  Two allowlists, in `src/allow.ts` (pure, unit-tested in `src/allow.test.ts`): GET reads the
+  five writable definition files **plus**, read-only, `specs/*.md`, `docs/factory/RUNS.md` and
+  `docs/factory/runs/*.{json,diff,md}` — the context of a run. POST only ever asks for the
+  writable list, so the read-only additions are 403 on a write.
 - `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
 - `POST /api/file` — the only write, see "Tweak" below
 - `/api/runs` — manifests newest first, without `script`/`args` (`?full=1` includes them);
-  each carries `projectSlug`, the projects dir it was read from
+  each carries `projectSlug`, the projects dir it was read from, plus
+  `paths: { manifest?, journal?, scriptCopy?, sessionDir?, agents: { [agentId]: { transcript, meta? } } }`
+  — absolute paths to everything the run left on disk, the dirs the loader walked anyway —
+  and `git: { branch?, cwd? }`, read from the FIRST line of one agent transcript (`cwd` and
+  `gitBranch` are on every line; cached by that file's size+mtime, one line per run).
+  `scriptCopy` is the script the engine **froze** for this run (`manifest.scriptPath`, else the
+  copy in `workflows/scripts/`), which is not necessarily today's repo file.
 - `/api/runs/:runId/agents/:agentId` — `{ prompt, result, events }` from the transcript (404 for fixtures)
-- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes } }` from the RUNS.md table
-  (columns found by header name; the `run` cell names the id in backticks; a row without one
-  is skipped, a missing file is `{}`). `docs/factory/runs/<date>-NNNN.json` (the raw `claude -p`
-  results, no run id) fill a missing `cost` when a row matches on date + spec number.
+- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes, line, driverFiles } }` from the RUNS.md
+  table (columns found by header name; the `run` cell names the id in backticks; a row without one
+  is skipped, a missing file is `{}`). `line` is the row's 1-based line in RUNS.md, so the page can
+  open the file at it. `driverFiles: { json?, diff?, pr? }` are the driver's saved results under
+  `docs/factory/runs/`, absolute, oldest attempt first: `<date>-NNNN[-attemptN].{json,diff,pr.md}`
+  matched to a row by date + spec number and, when the row's notes name an attempt ("attempt 3 · …"),
+  by that attempt — several rows can share a date and a spec, and the attempt-suffixed names used to
+  match nothing at all. A row with no `cost` cell takes it from the last matched JSON's `total_cost_usd`.
 - `/api/meta` — `{ slug, projectsBase, projectDirs, exists }`: the projects dirs being read
   (`CONSOLE_PROJECTS_DIR` overrides `~/.claude/projects`; `exists` is the repo's own dir)
 - `/api/events` — Server-Sent Events; `data:` lines are `{ kind: 'runs' }` (a manifest or
@@ -144,6 +158,25 @@ returns one, wins over the table's class. Next to the outcome pill, `engine:
 <status>` appears only when the engine's own word is neither `completed` nor
 what the pill already says.
 
+Where the context lives. Under the canvas header, a **Context** section names every artefact
+of the run on screen — no clicking a node first: the spec (Open, read-only in the panel), the
+branch and the worktree it ran in (from `git`, which is `cwd` / `gitBranch` off the first
+transcript line), the run id, the manifest, the journal, the frozen script, the RUNS.md row and
+the driver's saved JSON / diff / PR body. Each line is a label, the value in monospace
+(a long path is truncated from the *left* — the tail identifies the file — with the whole thing
+in the tooltip), then Copy and, where the page can serve the file, Open. Paths under `~/.claude`
+are copy-only: they are outside the repo and `/api/file` will not serve them, which is fine —
+a terminal is where they are going. The frozen script's **Diff** puts the copy the engine ran
+beside the live repo file (the Script tab edits the live one), and says so when they are
+identical. Under the lines, the RUNS.md row in its own words — `outcome — notes`, clamped to
+two lines. When there is no row, the header's USD cell reads **add to RUNS.md**: it opens
+RUNS.md at its last row and copies a row for this run, built from the table's own header
+(`prefillRow`) — date, spec, engine, attempts, gate, review, outcome, run and notes filled from
+the manifest, cost left empty because only the driver's JSON knows it. The page never writes
+RUNS.md. The node panel's Transcript tab carries the transcript's absolute path with a Copy and
+loads itself when you open it (it was four clicks: run, node, tab, button). The home card keeps
+one line — `branch · worktree`, each with a copy — and leaves the rest to the canvas.
+
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
 skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as
 the reviewer; a literal prompt is read-only), *Knobs* (`factory.config.json`) and
@@ -158,7 +191,9 @@ merge view, both sides read-only, unchanged stretches collapsed — then writes 
   `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml|yml`,
   `factory.config.json` after normalisation — no `..`, no absolute paths, no
   symlinks, and the parent's real path must stay inside the repo. Anything else is
-  `403 { error: 'path not allowlisted' }`.
+  `403 { error: 'path not allowlisted' }`, including everything GET may read read-only
+  (`specs/`, RUNS.md, `docs/factory/runs/`): the write list is a separate array in
+  `src/allow.ts`, and `src/allow.test.ts` asserts it did not grow.
 - `base` is the sha256 of the content the client last read (from `/api/workflows`
   or `/api/file`; `""` for a file that does not exist yet). If the file on disk no
   longer hashes to it the reply is `409 { error: 'file changed on disk', current }`

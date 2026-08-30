@@ -287,6 +287,25 @@ stub agents (12 cases), and the console parser draws its four phases and
 four nodes. Playbook: `docs/playbooks/run-the-factory.md`, "Before
 status: ready".
 
+**First real run, 2026-08-29** on `specs/0002` (`wf_48b9d383-e37`,
+in-session, 4 agents, 392k tokens, 24 min): 65 claims replayed, 0 wrong,
+2 fragile, 15 must-adds, 5 decisions; `status: draft` kept. Against the
+hand-run panel of the same day
+(`docs/reviews/0002-spec-panel-2026-08-29.md`: 3 wrong, 16 must-adds, 3
+decisions): 12 of the 16 must-adds overlapped in substance; the workflow
+missed one wrong claim (a token count — "nine" for ten), the eval-case
+sentence, the bundling note and an import reuse, and it silently took one
+reading that was the author's decision (possessive after a link word); it
+found three things the hand panel had not — the `SYSTEM` bullet must be
+one physical line or its own test fails, the Led Zeppelin IV false
+positive deserved its own fixture and slice, and a "one new hit" count
+that was two. The Apply agent also told the implementer to "verify against
+the cache" in a spec that forbids opening the cache. Verdict: the panel is
+worth running before every flip, and the orchestrator still reads the
+diff. Nadav resolved the decisions (edition words only; possessive =
+idiom; slices 4–7 stay; persisting bounces deferred) and the misses were
+folded in by hand (`41d5884`); flipped to ready at `d1b15f3`.
+
 ### M4 · Assembly — twice, same blocks
 
 M1–M3 are engine-agnostic: the map, the rules, the skills and the reviewer
@@ -374,6 +393,30 @@ on the implement and fix agents only, `ready-for-eval` when the contract's
 `.claude/workflows/` is never tier. `factory.config.json` carries
 `implementModel: "sonnet"` for dry run 2.
 
+*2026-08-30:* `RUNS.md` has three rows — row 1 autonomous (PR #1), rows 2
+and 3 the two escalated attempts of dry run 2 (section 6) — so the "three
+rows" half of the done-when is met by escalations; the eval-case half is
+still open (the case exists on the attempt-3 branch, unmerged). Four
+driver corrections, each measured on the day: (1) the trust check was a
+false negative — on 2.1.251 a worktree of a trusted repo shows no dialog
+and gets no `~/.claude.json` entry; a headless `claude -p` in it ran an
+allowlisted `git status` with no denial ($0.26 probe); the check now falls
+back to the repo's entry (`f4a39e1`). (2) `claude -p` waits at most 600 s
+for a background task, and a Workflow is one; attempt 1 was killed in
+Review after 609 s. (3) `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0`, which the
+terminate message recommends "to wait indefinitely", sweeps at once on
+2.1.251 (`ceiling = env ?? 600000`, 0 counts as exceeded) — attempt 2 died
+after 15 s, $0.35; the driver passes a one-hour ceiling (`e0a0d42`). (4)
+the worktree's project dir is `-Users-…-mixtape-poc-wt` (every
+non-alphanumeric character becomes `-`, the dot included), not `.wt`; the
+finder reads both and prints the journal path when a run ends without a
+manifest. Two operational facts outside the driver: the auto-mode
+classifier blocks the agent from committing `scripts/factory-run.sh` and
+from launching it, so a human runs both lines (`! git commit …`,
+`! scripts/factory-run.sh …`); and the account's session limit ("You've
+hit your session limit · resets 4:40pm") can end a run mid-line —
+attempt 3's reviewer errored at 116 s and the fix round got 0 tokens.
+
 ### M6 · The console (visualization layer)
 
 The factory drawn, live, in a browser: every workflow as an animated DAG,
@@ -428,6 +471,31 @@ tweak is made from its node panel instead of the editor.
    and the one-shot eval read; on the Archon leg (item 3, section 10) the
    same spec is where the in-workflow approval node before the eval spend
    gets felt. Dry run 2 runs it with `implementModel: "sonnet"`.
+
+   **Verified 2026-08-29/30 — three attempts, no autonomous row yet.**
+   Spec 0002 reviewed by `/review-spec` and by hand (M3), flipped to
+   ready (`d1b15f3`), run through `scripts/factory-run.sh` with
+   `implementModel: "sonnet"`. Attempt 1 (`wf_0684802b-74d`, $3.26):
+   implement on Sonnet 6m49s, 106k tokens, gate passed first run,
+   contract extracted, reviewer cut at 2m14s by the 600 s ceiling — no
+   verdict; branch validated by hand (gate, 125 tests), diff kept as
+   `docs/factory/runs/2026-08-29-0002-attempt1.diff`. Attempt 2
+   (`wf_b0d5ee18-0a6`, $0.35): swept after 15 s by the ceiling set to 0.
+   Attempt 3 (`wf_66ec6c31-e3f`, $2.74): implement 6m36s, 101k tokens,
+   gate passed first run, contract extracted, then the reviewer and the
+   fix round hit the account session limit; branch validated by hand
+   again (gate, 125/125), diff kept as `…-attempt3.diff`. What the three
+   attempts already say: Sonnet implements this 8-slice spec in ~6.7 min
+   for ≈$2.5 against Fable's 2.5 min / $3.69 on the one-slice spec 0001 —
+   cheaper per run, not per minute, and the like-for-like row is still
+   owed; Sonnet wrote all eight tests and the code together and reported
+   "green on the first run" — no red-then-green per slice as the spec
+   asked, a point for the pre-merge `/code-review`. Headless spend for
+   the day: $0.26 + $3.26 + $0.35 + $2.74 = $6.61; `/review-spec` ran
+   in-session. Next: one more run when the session window allows (~10
+   min, ~180k subagent tokens), or salvage attempt 3 by reviewing its
+   diff by hand; then the PR, `/code-review`, and the eval leg — all
+   Nadav's.
 3. **The same feature on the other engine**, once each, so `RUNS.md` has a
    like-for-like row: lines of orchestration, cost, minutes, and where each
    one made you intervene.

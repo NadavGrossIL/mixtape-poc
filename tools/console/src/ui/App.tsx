@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react'
 import type { ConsoleEvent, Ledger, LedgerEntry, RunManifest, WorkflowFile } from '../types'
-import { classify, findingsOf, firedOn, graphFor, isStalled, overlayRun, runBounds } from '../graph'
+import { classify, findingsOf, firedOn, graphFor, hasCause, isStalled, overlayRun, runBounds } from '../graph'
 import { RunCommand, Workflows, cardsFrom, isDriverCommand, runCommand, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
@@ -8,7 +8,8 @@ import { Timeline } from './Timeline'
 import { NodePanel, FilePanel, type PanelView } from './NodePanel'
 import { CopyButton, PathText, copyText } from './Copy'
 import { useRemembered } from './remember'
-import { CAUSE_TAG, baseName, dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, ledgerLine, nowAt, outcomeOf, prefillRow, projectTag, repoRel, rowValuesOf, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { CauseTag } from './Cause'
+import { baseName, dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, ledgerLine, nowAt, outcomeOf, prefillRow, projectTag, repoRel, rowValuesOf, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 const LEDGER_PATH = 'docs/factory/RUNS.md'
@@ -17,11 +18,13 @@ const CONFIG_PATH = 'factory.config.json'
 const CTX_KEY = 'console.context'
 
 const COPY = {
-  runNote: 'The console never starts a run — paste this in a terminal. The driver writes the RUNS.md row.',
   settings: 'factory.config.json — the knobs of the whole line, not of one step: what a driver passes the script as `args.config` (maxGateRounds, base, reviewer, implementModel) and the `claude -p` hard stops (maxTurns, maxBudgetUsd, permissionMode). Created on first save.',
   /** The driver removes and re-adds `../mixtape-poc.wt` before it starts (`scripts/factory-run.sh`, "worktree:"), so anything uncommitted in there goes with it. */
   wipes: 're-running wipes the worktree',
   wipesTitle: 'scripts/factory-run.sh removes ../mixtape-poc.wt and cuts it again from origin/main — uncommitted work in that worktree is gone',
+  /** The second warning of §3: a line run costs about ten minutes of the account's five-hour window. */
+  window: '~10 min — check the 5-hour window',
+  windowTitle: 'a full line run takes about ten minutes; the account window is five hours, and a run that hits its end stops mid-line',
   ctx: 'Where this run lives. Paths under ~/.claude are copy-only — the page cannot serve them; the repo files open here, read-only.',
   addRow: 'A row for this run is on your clipboard, in the table\'s own column order. Paste it at the end of the table and fill the cells only you know (cost is in the driver\'s JSON). This page never writes RUNS.md.',
   specNote: 'The spec this run worked on, read-only.',
@@ -188,10 +191,9 @@ export function App() {
             <div><dt>elapsed</dt><dd className="clock">{fmtDuration(elapsed)}</dd></div>
             <div><dt>tokens</dt><dd>{fmtTokens(run?.totalTokens)}</dd></div>
             <div><dt>agents</dt><dd>{run?.agentCount ?? dash}</dd></div>
-            {/* No row for this run: the cell is the way to write one, not a complaint. */}
-            <div><dt>USD</dt><dd title={usd.title}>{!run ? dash : usd.noRow
-              ? <button type="button" className="link" onClick={() => { void addLedgerRow() }} title="open RUNS.md and copy a row for this run">add to RUNS.md</button>
-              : usd.text}</dd></div>
+            {/* A figure, or `—` when the ledger has no row for this run: writing that row is an
+                action, and it belongs in the Context line's RUNS.md slot, not in a stat cell. */}
+            <div><dt>USD</dt><dd title={usd.noRow ? 'no row in docs/factory/RUNS.md' : usd.title}>{!run || usd.noRow ? dash : usd.text}</dd></div>
             {progress && <div><dt>last progress</dt><dd title={whenAbs(lastProgressAt(run))}>{progress.replace(/^last progress /, '')}</dd></div>}
           </dl>
           {/* The knobs are of the line, not of a step: one entry point here, instead of the same file on every node's Knobs tab (§5). */}
@@ -224,6 +226,10 @@ export function App() {
  * <label> for <elapsed> · <spec> · started 13:58` for a live one; no run at all
  * shows how to start one. The reason is `result.reason`; a run that returned
  * none says why the engine stopped instead (killed, stale, the first error agent).
+ * A run whose stop the block below classifies drops the reason here: the block
+ * says it better, in the classifier's words, with the evidence under it — and
+ * the two of them side by side read as a contradiction ("no result" against
+ * "account session limit"), which is the one thing a reason must never do.
  *
  * Under it, the command that runs *this* run again — its own spec, not a
  * placeholder — with the warning a manager needs before pasting it: the driver
@@ -237,12 +243,15 @@ function RunSentence({ run, ledger, now, outcome, command }: { run?: RunManifest
     return (
       <div className="run-sentence run-none">
         <p>No run of this workflow yet.</p>
-        <RunCommand label="Run" command={command} note={COPY.runNote} />
+        <RunCommand label="Run" command={command} />
       </div>
     )
   }
   const start = startOf(run)
   const spec = specOf(run, ledger)
+  const why = classify(run)
+  const explained = hasCause(why.cause) // the block below carries the reason and its evidence
+  const tries = <Attempts run={run} />
   const sentence = isLive(run) && !isStalled(run)
     ? (
       <p className="run-sentence">
@@ -250,32 +259,54 @@ function RunSentence({ run, ledger, now, outcome, command }: { run?: RunManifest
         <span data-tone="warn">{nowAt(run, now) ?? 'between steps'}</span>{' · '}
         <span className="spec">{spec}</span>{' · '}
         <span title={whenAbs(start)}>started {fmtClock(start)}</span>
+        {tries}
       </p>
     )
     : (
       <p className="run-sentence">
         <code className="run-id">{run.runId ?? dash}</code>{' · '}
         <span className="outcome-word" data-tone={toneOf(run, outcome)} title={outcome.title}>{outcome.word}</span>
-        {' — '}<span className="reason">{reasonOf(run)}</span>{' · '}
-        <span className="spec">{spec}</span>{' · '}
+        {!explained && <>{' — '}<span className="reason">{reasonOf(run)}</span></>}
+        {' · '}<span className="spec">{spec}</span>{' · '}
         <span title={whenAbs(start)}>{whenRel(start, now)}</span>
+        {tries}
       </p>
     )
   const rerun = <ReRun command={command} />
-  const why = classify(run)
   return (
     <>
       {sentence}
-      {CAUSE_TAG[why.cause] ? <WhyStopped run={run} verdict={why} rerun={rerun} /> : rerun}
+      {explained ? <WhyStopped run={run} verdict={why} rerun={rerun} /> : rerun}
     </>
   )
 }
 
-/** The one command that runs this run again, wherever it is standing. */
+/**
+ * What the run spent its rounds on: `result.attempts` ({ implement, gate,
+ * review }), which the manifest has carried all along and no screen showed —
+ * one implement against two says the fix loop ran. Nothing when the script
+ * returned no counts.
+ */
+function Attempts({ run }: { run: RunManifest }) {
+  const a = (run.result as { attempts?: Record<string, unknown> } | null | undefined)?.attempts
+  if (!a || typeof a !== 'object') return null
+  const order = ['implement', 'gate', 'review']
+  const keys = [...order.filter((k) => k in a), ...Object.keys(a).filter((k) => !order.includes(k))]
+  const parts = keys.filter((k) => typeof a[k] === 'number').map((k) => `${k} ×${a[k]}`)
+  if (!parts.length) return null
+  return <span className="muted attempts-frag" title="result.attempts — how many rounds each step took"> · attempts {parts.join(' · ')}</span>
+}
+
+/** The one command that runs this run again, wherever it is standing, with the two warnings the driver form earns: what it wipes, and what it costs the account window. */
 function ReRun({ command }: { command: string }) {
   return (
     <RunCommand label="Re-run" command={command} compact>
-      {isDriverCommand(command) && <span className="run-warn" title={COPY.wipesTitle}>{COPY.wipes}</span>}
+      {isDriverCommand(command) && (
+        <>
+          <span className="run-warn" title={COPY.wipesTitle}>{COPY.wipes}</span>
+          <span className="run-warn" title={COPY.windowTitle}>{COPY.window}</span>
+        </>
+      )}
     </RunCommand>
   )
 }
@@ -292,15 +323,13 @@ function ReRun({ command }: { command: string }) {
  * its Re-run row stands on its own instead.
  */
 function WhyStopped({ run, verdict: v, rerun }: { run: RunManifest; verdict: ReturnType<typeof classify>; rerun: ReactNode }) {
-  const tag = CAUSE_TAG[v.cause]
-  if (!tag) return null
+  if (!hasCause(v.cause)) return null
   const findings = findingsOf(run)
   const logs = run.logs ?? []
   return (
     <section className="why" data-cause={v.cause} aria-label="why it stopped">
       <p className="why-line">
-        <span className="why-tag">{tag.text}</span>
-        <span className="why-head" title={tag.title}>{v.headline}</span>
+        <CauseTag verdict={v} />
         {v.at && <span className="muted"> · at {v.at}</span>}
       </p>
       <p className="why-action">{v.action}</p>
@@ -372,19 +401,23 @@ function ContextRow({ run, entry, spec, livePath, onOpen, onAddRow }: {
           : spec !== dash && <span className="ctx-one"><span className="ctx-val">{spec}</span></span>}
         {run.git?.branch && <span className="ctx-one"><span className="muted">branch</span>
           <span className="ctx-val" title={run.git.branch}>{run.git.branch}</span><CopyButton text={run.git.branch} label="copy" /></span>}
+        {/* The ledger row, and — when there is none — the one place that writes one. It used
+            to sit in the USD stat cell, where a button stood in for a figure (§4). */}
         <span className="ctx-one">
+          <span className="muted">RUNS.md</span>
           {ledgerAt
-            ? <><span className="ctx-val" title={row ?? LEDGER_PATH}>{ledgerAt}</span>
+            ? <><span className="ctx-val" title={row ?? LEDGER_PATH}>{entry!.line ? `row ${entry!.line}` : 'row'}</span>
                 <button type="button" className="btn btn-small" onClick={openFile(LEDGER_PATH, ledgerAt, COPY.runsNote, entry!.line)}>Open</button></>
-            : <><span className="ctx-val muted">no RUNS.md row</span>
-                <button type="button" className="btn btn-small" onClick={() => { void onAddRow() }}>add to RUNS.md</button></>}
+            : <button type="button" className="btn btn-small" title="open RUNS.md and copy a row for this run" onClick={() => { void onAddRow() }}>add row</button>}
         </span>
         <button type="button" className="link ctx-more" aria-expanded={open} onClick={() => setOpen(!open)}>
           {open ? 'less ▴' : 'more ▾'}
         </button>
       </p>
+      {/* Unfolded, the rest of the artefacts are a box of their own: 180 px, scrolling inside.
+          Grown into the header they took a third of the canvas, and the canvas is the page. */}
       {open && (
-        <>
+        <div className="ctx-open">
           <div className="ctx-grid">
             <Item label="worktree" value={run.git?.cwd}><CopyButton text={run.git!.cwd!} label="copy" /></Item>
             <Item label="run id" value={run.runId}><CopyButton text={run.runId!} label="copy" /></Item>
@@ -409,7 +442,7 @@ function ContextRow({ run, entry, spec, livePath, onOpen, onAddRow }: {
           {/* The ledger's own words about this run, in full — they are a human's note, and clamping them lost the half that said why. */}
           {row && <p className="ctx-note"><span className="muted">RUNS.md: </span>{row}</p>}
           <p className="ctx-foot muted small">{COPY.ctx}</p>
-        </>
+        </div>
       )}
     </section>
   )

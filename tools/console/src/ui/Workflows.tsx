@@ -1,7 +1,8 @@
 import { useMemo, type ReactNode } from 'react'
 import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
-import { classify, firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
-import { CAUSE_TAG, dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { classify, firstSentence, graphFor, hasCause, isStalled, overlayRun, stateAt } from '../graph'
+import { dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { CauseTag } from './Cause'
 import { CopyButton } from './Copy'
 import { useRemembered } from './remember'
 
@@ -18,7 +19,8 @@ export interface ConsoleMeta { slug?: string; projectsBase?: string; projectDirs
 
 const COPY = {
   subtitle: "The factory's saved workflows and their runs on this machine. Nothing here starts a run.",
-  runNote: 'The console never starts a run — paste this in a terminal. The driver writes the RUNS.md row.',
+  /** Where the command goes and what happens then — the h1 already says the console starts nothing, so this rides on Copy rather than under every card. */
+  copyTitle: 'paste in a terminal — the driver writes the RUNS.md row',
   skillsSub: 'The files the workflows are made of. Each line says who calls it.',
   definitionDirs: '.claude/workflows/, .claude/skills/, .archon/workflows/',
 } as const
@@ -113,7 +115,7 @@ function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledge
       {run
         ? <LastRun run={run} ledger={ledger} now={now} outcome={outcome} tag={tag} onOpen={() => onOpen(run.runId)} />
         : <p className="last-run muted">no runs yet</p>}
-      <RunCommand label={run ? 'Re-run' : 'Run'} command={command} note={COPY.runNote} />
+      <RunCommand label={run ? 'Re-run' : 'Run'} command={command} />
       <PhaseStrip graph={graph} run={run} now={now} outcome={run ? outcome : undefined} />
 
       <div className="card-foot">
@@ -161,14 +163,8 @@ function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest;
  */
 function WhyLine({ run }: { run: RunManifest }) {
   const v = classify(run)
-  const tag = CAUSE_TAG[v.cause]
-  if (!tag) return null
-  return (
-    <p className="why-line why-card" data-cause={v.cause}>
-      <span className="why-tag">{tag.text}</span>
-      <span className="why-head" title={tag.title}>{v.headline}</span>
-    </p>
-  )
+  if (!hasCause(v.cause)) return null
+  return <p className="why-line why-card" data-cause={v.cause}><CauseTag verdict={v} /></p>
 }
 
 /** Line 2 of the last-run block — the first that applies: stale (prefixed `stale — `, IA-SPEC §2), live, killed, an error agent (`stopReason`), a `needs-human` reason; else nothing. */
@@ -228,23 +224,25 @@ function PhaseStrip({ graph, run, now, outcome }: { graph: ReturnType<typeof ove
 
 /**
  * One action row: what it would do, the exact line to paste, Copy. Used by the
- * card (stacked, with the note under it) and by the canvas header (`compact`,
- * a row under the run sentence, with the warnings as `children`). No flags —
- * the driver reads `factory.config.json`, which the canvas header's Settings button opens.
+ * card (stacked) and by the canvas header (`compact`, a row under the run
+ * sentence, with the warnings as `children`). No flags — the driver reads
+ * `factory.config.json`, which the canvas header's Settings button opens. What
+ * to do with the line is the Copy button's tooltip: the screen title already
+ * says the console never starts a run, and the paragraph that repeated it under
+ * every card was two lines of boilerplate above the fold.
  */
-export function RunCommand({ label, command, note, compact, children }: {
-  label: string; command: string; note?: string; compact?: boolean; children?: ReactNode
+export function RunCommand({ label, command, compact, children }: {
+  label: string; command: string; compact?: boolean; children?: ReactNode
 }) {
   return (
     <div className="run-cmd" data-compact={compact || undefined}>
       <div className="run-line">
         <span className="how muted">{label}</span>
         <code>{command}</code>
-        <CopyButton text={command} />
+        <CopyButton text={command} title={COPY.copyTitle} />
         {compact && children}
       </div>
       {!compact && children}
-      {note && <p className="run-note muted">{note}</p>}
     </div>
   )
 }

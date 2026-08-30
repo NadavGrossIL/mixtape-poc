@@ -101,25 +101,33 @@ subtitles, nodes with a purpose line, the outcome column, a legend behind the `?
 zoom cluster), the run rail
 (grouped by workflow, filterable), the timeline strip (phase ticks, one bar per agent)
 and the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
-and is drag-resizable. Browser-side state is per-viewer convenience only, never runs or
-definitions: the panel's width (`console.panelWidth`) and three disclosures — the legend
-(`console.legend`), the context line's `more` (`console.context`), the home screen's
-skills table (`console.skills`) — through `ui/remember.ts`, which swallows a blocked
+and is drag-resizable; its title row and the two tabs stay stuck to the top of its scroll.
+Browser-side state is four per-viewer conveniences, never runs or
+definitions: the panel's width (`console.panelWidth`), the legend
+(`console.legend`), the context line's `more` (`console.context`) and the home screen's
+skills table (`console.skills`) — all through `ui/remember.ts`, which swallows a blocked
 `localStorage` and keeps the default. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 (`result.status` in the workflow's words, else the engine status), `specOf` (args →
 result → ledger → prompt), `specPath` (that reading as a path a driver takes, the
 ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live, "not in
-RUNS.md" after), `sessionLimit` (the failing agent's `You've hit your session limit ·
-resets 4:40pm (Asia/Jerusalem)`, or the script's own `[review:1] failed: …` log line
-when the agents carry no error, matched by `SESSION_LIMIT_RE` and split into the
-reset time), `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`, `CAUSE_TAG`. A stale run's
+RUNS.md" after), `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. The two
+signals the classifier needs are a layer below, in `src/graph/signals.ts` (`graph/`
+imports nothing from `ui/`): `isLive` and `sessionLimit` — the failing agent's `You've
+hit your session limit · resets 4:40pm (Asia/Jerusalem)`, or the script's own
+`[review:1] failed: …` log line when the agents carry no error, matched by
+`SESSION_LIMIT_RE` and split into the reset time; `ui/format.ts` re-exports both.
+`ui/Cause.tsx` owns the `CAUSE_TAG` copy and the one `<CauseTag>` the canvas block and
+the home card both render. A stale run's
 unfinished agents are drawn `stalled`. The page keeps
 one `EventSource` open and refetches on each event, so a live run's nodes and timeline
 bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:
 every node shows the manifest's last word for it, and the strip is one bar per agent
 from its start to its end (a live one runs to *now*), coloured by how it settled.
 Hovering a bar names the agent, its clock and its tokens; clicking one opens that
-node's panel. Esc closes the panel; Enter opens a focused node.
+node's panel. Esc closes the panel; Enter opens a focused node. Inside a CodeMirror
+editor the first Esc belongs to the editor — it closes the search panel, or leaves the
+editor (Tab indents, so Esc is the way out; Esc-then-Tab moves focus on too) — and only
+a second Esc, pressed with focus outside it, closes the panel. The editor bar says so.
 All CSS lives in `src/styles.css`.
 
 Running it again. Both screens carry one command, bound to the run in front of you:
@@ -130,11 +138,14 @@ except where a workflow has no driver (`review-spec`, whose line is the in-sessi
 `/review-spec <spec>`); `specs/NNNN-slug.md` appears only when there is no run to read
 a spec from. No `--max-turns` / `--max-budget-usd` on screen: the driver reads them
 from `factory.config.json`, which the canvas header's **Settings** button opens.
-Copy copies exactly the line.
+Copy copies exactly the line; where it goes and what happens then ("paste in a terminal
+— the driver writes the RUNS.md row") is the button's tooltip, since the screen title
+already says the console never starts a run.
 Beside it on the canvas, when they apply: the driver wipes `../mixtape-poc.wt`
-(it cuts the worktree again from `origin/main`, so uncommitted work there goes), and
-the account window — an agent whose `error` says "You've hit your session limit"
-puts its reset time next to the command. The LAST RUN line is itself a button: it
+(it cuts the worktree again from `origin/main`, so uncommitted work there goes) and it
+costs about ten minutes of the five-hour account window; the account window itself — an
+agent whose `error` says "You've hit your session limit" — puts its reset time in the
+block above. The LAST RUN line is itself a button: it
 opens that run on the canvas, while the card's name and "Open canvas →" open the
 workflow at its newest.
 
@@ -157,7 +168,12 @@ its own "reviewer returned nothing" placeholder, which `findingsOf` drops. The
 canvas shows the tag, the headline, the one action, the raw string that fired the
 rule, the reviewer's real findings when there are any, and — on the block's last
 line — the Re-run command that acts on the action, with the script's `logs[]` beside
-it behind a disclosure, the firing line lit. A run that ended well has no block, and
+it behind a disclosure (160 px, scrolling), the firing line lit. When the block
+renders, the run sentence above it drops its `— <reason>` fragment: the block says it
+better and the two side by side read as a contradiction ("no result" against "account
+session limit"). The sentence ends instead in `result.attempts`, when the script
+returned them — `attempts implement ×2 · gate ×1 · review ×1`.
+A run that ended well has no block, and
 its Re-run row stands on its own under the sentence. The home card shows tag +
 headline only, directly under the LAST RUN line; the rail says the headline on hover. `result.cause`, if a script ever
 returns one, wins over the table's class. Next to the outcome pill, `engine:
@@ -167,7 +183,8 @@ what the pill already says.
 Where the context lives. Under the canvas header, a **Context** *line* names the three
 artefacts a manager reaches for — no clicking a node first: the spec (Open, read-only in the
 panel), the branch (Copy) and the RUNS.md row at its line number (Open) — and ends in
-`more ▾`. Opening it unfolds the rest: the worktree it ran in (from `git`, which is `cwd` /
+`more ▾`. Opening it unfolds the rest in a box of its own — 180 px, scrolling inside, so
+unfolding it never takes the canvas off the screen: the worktree it ran in (from `git`, which is `cwd` /
 `gitBranch` off the first transcript line), the run id, the manifest, the journal, the frozen
 script, the spec's path and the driver's saved JSON / diff / PR body, then the ledger row in
 its own words, in full. Each unfolded line is a label, the value in monospace
@@ -177,7 +194,8 @@ are copy-only: they are outside the repo and `/api/file` will not serve them, wh
 a terminal is where they are going. The frozen script's **Diff** puts the copy the engine ran
 beside the live repo file (the Definition tab's Script editor edits the live one), and says so
 when they are identical; the same comparison sits folded under that editor.
-When there is no row, the line says so and the header's USD cell reads **add to RUNS.md**: it opens
+When there is no row, the header's USD cell is `—` ("no row in docs/factory/RUNS.md")
+and the Context line's RUNS.md slot carries the one action — **add row** — which opens
 RUNS.md at its last row and copies a row for this run, built from the table's own header
 (`prefillRow`) — date, spec, engine, attempts, gate, review, outcome, run and notes filled from
 the manifest, cost left empty because only the driver's JSON knows it. The page never writes
@@ -191,13 +209,17 @@ the canvas header is ~140 px for a clean run and ~225 px for one that stopped (m
 1552 px wide), the legend hides behind `?`, the home screen's skills-and-agents table hides
 behind a disclosure, the `native` chip is gone from both screens (it is a constant; the value
 is in the workflow name's tooltip), and the footer is one `LIVE` dot whose tooltip carries the
-dirs it reads. On a card, the outcome word and the spec are the largest text after the name.
+dirs it reads. On a card, the outcome word and the spec are the largest text on it, level
+with the workflow name. The paragraph that used to sit under each card's command ("The
+console never starts a run — paste this in a terminal…") is gone: the screen's subtitle
+already says it, and the rest is the Copy button's tooltip.
 
 Tweak (C4). The node panel has two tabs. *Definition* is what the step is made of, and it
 is the editable one: **Prompt** (the `SKILL.md` of the skill a node invokes, or
 `.claude/agents/<agentType>.md` for a named subagent such as the reviewer; a literal prompt
 from the script is read-only, and a journal-only node shows one prompt — the transcript's
-full text once it loads, the manifest's preview until then, twelve lines with `show all`)
+full text once it loads, the manifest's preview until then, cut off at twelve lines with
+`show all` under it — no scroll box of its own, so the wheel scrolls the panel)
 and **Script** (the workflow file, edited as code: the graph is drawn from that text), with
 the run's frozen copy of that script folded underneath. *This run* is what the run knows
 about the step: its facts, its error, its attempts, the reviewer's findings where they belong

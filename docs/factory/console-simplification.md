@@ -50,6 +50,9 @@ only as a tooltip on the right node after you click it (`AgentNode.tsx:69`,
 | `result.gate.ok === false`, other step, `/gate still failing/` | **spec/code** | "Gate failed at *step* after `maxGateRounds` — read the gate log." |
 | anything else | **unknown** | "Open the transcript." |
 
+Order note: `ok` and `running` are decided before rule 1 — a run that recovered
+from a session limit and returned a script outcome is **ok**, not infra.
+
 Trap verified on `wf_66ec6c31-e3f`: `result.review.verdict` is `fail`, so a naive
 rule says *spec*; the finding title "reviewer returned nothing" plus the agent's
 `error` ("You've hit your session limit") make it *infra*. Today the screen says
@@ -114,7 +117,9 @@ boilerplate; canvas — on the swimlane diagram, which is identical for every ru
   merge PROMPT PREVIEW / FULL PROMPT; no "—" grid on idle nodes (purpose + prompt only).
 - Correctness note found on the way: the Script tab edits the live repo file
   (`App.tsx:171`), not the frozen copy the engine ran (`scriptPath`, never shown).
-  In "This run" show the frozen path and a diff against the live file.
+  In "This run" show the frozen path and a diff against the live file. As built,
+  the frozen-vs-live diff lives under **Definition ▸ Script** (with the script it
+  is a diff of), not under This run.
 
 ## Not in the five, worth a line
 - Preflight failures (spec not `status: ready`, dirty checkout — `factory-run.sh`

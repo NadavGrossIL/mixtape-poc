@@ -123,7 +123,13 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label, scr
           search({ top: true }),
           keymap.of([
             { key: 'Mod-s', preventDefault: true, run: () => { cb.current.onSave?.(); return true } },
+            // Tab indents (`indentWithTab`), so Esc is the way out: last in the array, so
+            // CodeMirror's own Esc — simplify the selection, close the search panel — goes
+            // first and only an Esc with nothing else to do blurs the editor. Focus then
+            // sits outside `.cm-editor`, which is what lets a *second* Esc reach the page
+            // and close the panel. (Esc then Tab, CodeMirror's tab-focus mode, still works.)
             indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap,
+            { key: 'Escape', run: (v) => { v.contentDOM.blur(); return true } },
           ]),
           EditorState.readOnly.of(!!readOnly),
           EditorView.editable.of(!readOnly),
@@ -133,10 +139,12 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label, scr
       }),
     })
     view.current = v
-    // Esc belongs to the editor — it closes the search panel. The page's Esc (close
-    // the node panel) must not fire too, or dismissing the search bar would take the
-    // panel and the unsaved text with it. The target is already detached from the DOM
-    // by then, so App's `closest('.cm-editor')` guard cannot see it: stop it here.
+    // The first Esc belongs to the editor — it closes the search panel, or leaves the
+    // editor (the keymap above). The page's Esc (close the node panel) must not fire
+    // too, or dismissing the search bar would take the panel and the unsaved text with
+    // it. The target is already detached from the DOM by then, so App's
+    // `closest('.cm-editor')` guard cannot see it: stop it here. A second Esc is
+    // pressed with focus outside the editor, so it never reaches this listener.
     const stopEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') e.stopPropagation() }
     parent.addEventListener('keydown', stopEsc)
     return () => { parent.removeEventListener('keydown', stopEsc); v.destroy(); view.current = null }

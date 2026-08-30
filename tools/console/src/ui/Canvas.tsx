@@ -71,6 +71,11 @@ export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: Run
  * resize) rather than the flow's store, so the fit does not depend on React
  * Flow's own measuring cycle; the drawing's extent comes from layout(), not
  * from node bounds, so the loop band under the lanes is never cut off.
+ *
+ * Everything that changes the canvas's height changes it through this observer:
+ * the header's `more`, the logs disclosure, the panel opening beside it, the
+ * legend. The 100 ms debounce is what keeps a drag of the panel grip from
+ * re-fitting on every frame.
  */
 function Fitter({ extent, nodesKey, container }: { extent: { w: number; h: number }; nodesKey: string; container: RefObject<HTMLDivElement> }) {
   const { setViewport } = useReactFlow()
@@ -96,7 +101,7 @@ function Fitter({ extent, nodesKey, container }: { extent: { w: number; h: numbe
       last.current = key
       const zoom = Math.max(FIT.minZoom, Math.min(FIT.maxZoom, (width * (1 - 2 * FIT.padding)) / Math.max(extent.w, 1), (height * (1 - 2 * FIT.padding)) / Math.max(extent.h, 1)))
       void setViewport({ x: (width - extent.w * zoom) / 2, y: (height - extent.h * zoom) / 2, zoom })
-    }, 80)
+    }, 100)
     return () => clearTimeout(id)
   }, [size, extent.w, extent.h, nodesKey, setViewport, ready])
   return null

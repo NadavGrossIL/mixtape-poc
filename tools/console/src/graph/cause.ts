@@ -1,5 +1,5 @@
 import type { RunManifest, WorkflowAgentEntry } from '../types'
-import { isLive, sessionLimit } from '../ui/format'
+import { isLive, sessionLimit } from './signals'
 import { agentsOf, isStalled, labelOf } from './overlayRun'
 
 // Why a run stopped, in the one word the manager needs before deciding what to
@@ -12,9 +12,9 @@ import { agentsOf, isStalled, labelOf } from './overlayRun'
 //
 // Pure: one manifest in, one verdict out, no fetch and no clock of its own
 // (a stale run's 15-minute verdict is `isStalled`, the same one the rail draws
-// with, and it can be passed in). It reads `ui/format`'s account-window reading
-// so there is exactly one place that knows what "You've hit your session limit"
-// looks like.
+// with, and it can be passed in). It reads `graph/signals`' account-window
+// reading so there is exactly one place that knows what "You've hit your
+// session limit" looks like — and nothing under `graph/` imports `ui/`.
 
 export type Cause = 'infra' | 'spec' | 'unknown' | 'ok' | 'running'
 
@@ -34,6 +34,16 @@ export interface CauseVerdict {
 }
 
 export interface Finding { file?: string; line?: number; severity?: string; title?: string; why?: string }
+
+/**
+ * Did something stop this run that a human has to act on? `ok` (it returned
+ * one of the script's own words) and `running` are the two causes with nothing
+ * to handle — the one predicate the header block, the home card's line and the
+ * rail's tooltip all ask, instead of three spellings of the same comparison.
+ */
+export function hasCause(cause: Cause): boolean {
+  return cause !== 'ok' && cause !== 'running'
+}
 
 /** What `implement-from-spec.js` returns (`{ status, reason, review, gate, attempts, implemented }`), read defensively — every field is optional. */
 export interface RunResult {
@@ -155,7 +165,7 @@ function verdict(run: RunManifest, result: RunResult | undefined, stale: boolean
   }
 
   // 5 — the agent died and the reason erased it ("no result"); its error is the real story.
-  const dead = deadAgent(run)
+  const dead = deadAgent(run, reason)
   if (NOTHING.test(reason) && dead) {
     return {
       cause: 'infra', kind: 'agent-died', headline: 'Infrastructure — the step returned nothing',
@@ -207,10 +217,36 @@ function escalationOf(run: RunManifest): string {
   return ESCALATION
 }
 
-/** The first agent (by index) that wrote an error. */
-function deadAgent(run: RunManifest): WorkflowAgentEntry | undefined {
-  return agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
-    .find((a) => typeof a.error === 'string' && !!a.error.trim())
+/**
+ * Which agents a phase named in the reason owns: the script says `review fix
+ * round escalated`, `implementer escalated`, `gate still failing`, and names
+ * its agents `review:1` / `fix:review` / `implement` / `fix:gate-1` / `gate:1`.
+ * First match wins, so a reason that says both (`review fix round`) is a
+ * review, not a fix.
+ */
+const PHASE_AGENTS: [RegExp, RegExp][] = [
+  [/review/i, /^(review\b|review:|fix:review\b|contract\b)/i],
+  [/implement/i, /^(implement\b|fix:)/i],
+  [/gate/i, /^gate\b|^gate:/i],
+]
+
+/**
+ * The agent whose error the reason is about: when the reason names a phase
+ * (`review fix round escalated: no result`), the *last* errored agent of that
+ * phase — a run where implement failed early and review failed at the end must
+ * not blame implement. Nothing to go on falls back to the first errored agent
+ * by index.
+ */
+function deadAgent(run: RunManifest, reason?: string): WorkflowAgentEntry | undefined {
+  const errored = agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
+    .filter((a) => typeof a.error === 'string' && !!a.error.trim())
+  if (!errored.length) return undefined
+  const phase = reason ? PHASE_AGENTS.find(([names]) => names.test(reason)) : undefined
+  if (phase) {
+    const owned = errored.filter((a) => phase[1].test(labelOf(a)))
+    if (owned.length) return owned[owned.length - 1]
+  }
+  return errored[0]
 }
 
 /** Where a stopped run last was: the failing agent, else the last one the journal saw. */

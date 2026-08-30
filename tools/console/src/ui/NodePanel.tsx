@@ -4,6 +4,7 @@ import { agentsOf, findingsOf, isStalled, purposeOf, stateAt } from '../graph'
 import { fmtDuration, fmtTime, fmtTokens, isLive, shortModel, whenAbs, whenRel, dash } from './format'
 import { CodeEditor, DiffEditor } from './CodeEditor'
 import { PathRow, PathText } from './Copy'
+import { readNumber, saveNumber } from './remember'
 
 // Two tabs, not five (§5). A node answers two questions and they have different
 // lifetimes: what this step *is* — the prompt or skill it runs, the script it is
@@ -26,7 +27,7 @@ const COPY = {
   frozen: 'The copy the engine froze for this run. The editor above is the live repo file, which a later run would use.',
 } as const
 
-// The panel's width is the one per-viewer convenience kept in the browser.
+// The panel's width, one of the four per-viewer conveniences the browser keeps (remember.ts).
 const WIDTH_KEY = 'console.panelWidth'
 const WIDTH = { min: 360, max: 720, default: 440 }
 
@@ -104,14 +105,18 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
     <aside className="panel" aria-label="node details" style={{ width }}>
       <div className="panel-grip" role="separator" aria-orientation="vertical" aria-label="resize the panel" aria-valuenow={width} aria-valuemin={WIDTH.min} aria-valuemax={WIDTH.max} tabIndex={0} title="drag to resize" {...grip} />
       <div className="panel-body">
-        <header className="panel-head">
-          <h2 title={node.label}>{node.label}</h2>
-          <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
-        </header>
-        <p className="panel-sub muted small">{node.phase || dash} › {kind} · {purpose}</p>
-        <nav className="tabs" role="tablist">
-          {TABS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
-        </nav>
+        {/* Title, subtitle and the two tabs ride the top of the panel's scroll: reading down
+            "This run" used to take the tab strip off the screen, and with it the way back. */}
+        <div className="panel-top">
+          <header className="panel-head">
+            <h2 title={node.label}>{node.label}</h2>
+            <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
+          </header>
+          <p className="panel-sub muted small">{node.phase || dash} › {kind} · {purpose}</p>
+          <nav className="tabs" role="tablist">
+            {TABS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
+          </nav>
+        </div>
         {tab === 'def' && (
           <>
             <nav className="subtabs" role="tablist" aria-label="definition">
@@ -261,10 +266,12 @@ export function FilePanel({ view, onClose, onSaved }: { view: PanelView; onClose
     <aside className="panel" aria-label={view.title} style={{ width }}>
       <div className="panel-grip" role="separator" aria-orientation="vertical" aria-label="resize the panel" aria-valuenow={width} aria-valuemin={WIDTH.min} aria-valuemax={WIDTH.max} tabIndex={0} title="drag to resize" {...grip} />
       <div className="panel-body">
-        <header className="panel-head">
-          <h2 title={view.title}>{view.title}</h2>
-          <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
-        </header>
+        <div className="panel-top">
+          <header className="panel-head">
+            <h2 title={view.title}>{view.title}</h2>
+            <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
+          </header>
+        </div>
         {view.kind === 'edit'
           ? <FileEditor key={view.path} path={view.path} note={view.note} onSaved={onSaved ?? (() => {})} validate={view.path.endsWith('.json') ? validJson : undefined} />
           : (
@@ -398,12 +405,10 @@ function parseResult(rp?: string): Parsed | undefined {
 // --- width -----------------------------------------------------------------------
 
 const clampWidth = (w: number) => (Number.isFinite(w) ? Math.min(WIDTH.max, Math.max(WIDTH.min, Math.round(w))) : WIDTH.default)
-function readWidth(): number {
-  try { const v = localStorage.getItem(WIDTH_KEY); return v ? clampWidth(Number(v)) : WIDTH.default } catch { return WIDTH.default }
-}
-function saveWidth(w: number) { try { localStorage.setItem(WIDTH_KEY, String(w)) } catch { /* private window or storage blocked: the width lives for this page only */ } }
+const readWidth = () => readNumber(WIDTH_KEY, WIDTH.default, clampWidth)
+const saveWidth = (w: number) => saveNumber(WIDTH_KEY, w)
 
-/** The panel's width: dragged from its left edge (pointer events, no library), nudged with ← → when the grip has focus, kept in localStorage. */
+/** The panel's width: dragged from its left edge (pointer events, no library), nudged with ← → when the grip has focus, kept in localStorage through remember.ts — the one module that touches it. */
 function usePanelWidth() {
   const [width, setWidth] = useState(readWidth)
   const drag = useRef<{ right: number } | null>(null)
@@ -527,7 +532,8 @@ function FileEditor({ path, note, onSaved, validate }: { path: string; note: str
           <div className="editor-bar">
             <button className="btn btn-small" onClick={save} disabled={!dirty || !!invalid}>Save…</button>
             <button className="btn btn-small" onClick={() => setText(loaded!.content)} disabled={!dirty}>Revert</button>
-            <span className="muted small">⌘S diff · ⌘F find</span>
+            {/* The editor keeps Tab for indenting (CodeMirror's `indentWithTab`), so the way out is Esc — and Esc has to say what it did, since the page's Esc closes the panel. */}
+            <span className="muted small">⌘S diff · ⌘F find · Tab indents; Esc leaves the editor (Esc then Tab too), Esc again closes the panel</span>
             {invalid && <span className="err small">{invalid}</span>}
             {status.kind === 'saved' && <span className="small" style={{ color: 'var(--accent)' }}>Written.</span>}
           </div>

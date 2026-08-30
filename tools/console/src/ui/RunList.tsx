@@ -1,6 +1,6 @@
 import { useMemo, useState } from 'react'
 import type { Ledger, RunManifest, WorkflowFile } from '../types'
-import { classify, isStalled } from '../graph'
+import { classify, hasCause, isStalled } from '../graph'
 import type { ConsoleMeta } from './Workflows'
 import { runCommand } from './Workflows'
 import { RUN_COPY, dash, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
@@ -141,7 +141,7 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   return {
     run, id: run.runId ?? `run-${i}`, workflow: run.workflowName ?? 'unnamed', word, wordTitle: stalled ? TIP.stale : killed ? TIP.killed : oc.title, tone, dot,
     spec: specShort(specOf(run, ledger)), badges, line2, start,
-    why: cause.cause === 'ok' || cause.cause === 'running' ? undefined : cause.headline,
+    why: hasCause(cause.cause) ? cause.headline : undefined,
   }
 }
 

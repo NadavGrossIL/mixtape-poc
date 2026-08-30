@@ -132,6 +132,27 @@ test('rule 5 — the agent died and the reason erased it', () => {
   assert.equal(v.evidence, 'the agent process exited')
 })
 
+test('rule 5 — two dead agents: the reason says which phase it is about', () => {
+  const both: Partial<RunManifest> = {
+    workflowProgress: [
+      { type: 'workflow_agent', index: 1, label: 'implement', state: 'error', error: 'the implement agent exited\n  stack' },
+      { type: 'workflow_agent', index: 2, label: 'gate:1', state: 'done' },
+      { type: 'workflow_agent', index: 3, label: 'review:1', state: 'error', error: 'the reviewer agent exited\n  stack' },
+    ],
+  }
+  // the reason names the second phase — the review agent's error is the story, not the first error by index
+  const review = classify(needsHuman({ reason: 'review fix round escalated: no result' }, both))
+  assert.equal(review.kind, 'agent-died')
+  assert.equal(review.at, 'review:1')
+  assert.equal(review.evidence, 'the reviewer agent exited')
+  // the same manifest with a reason that names the first phase still points at it
+  const implement = classify(needsHuman({ reason: 'implement returned nothing' }, both))
+  assert.equal(implement.at, 'implement')
+  assert.equal(implement.evidence, 'the implement agent exited')
+  // a reason that names no phase falls back to the first errored agent
+  assert.equal(classify(needsHuman({ reason: 'the step returned nothing' }, both)).at, 'implement')
+})
+
 test('rule 5 does not fire without an error to point at', () => {
   assert.equal(classify(needsHuman({ reason: 'the implement agent returned nothing' })).kind, 'unknown')
 })

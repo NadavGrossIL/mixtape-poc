@@ -1,7 +1,9 @@
 import type { Ledger, LedgerEntry, RunManifest, WorkflowAgentEntry } from '../types'
 import { agentsOf, isStalled, labelOf, stateAt } from '../graph/overlayRun'
+import { isLive } from '../graph/signals'
 
 export { labelOf }
+export { isLive, sessionLimit, SESSION_LIMIT_RE } from '../graph/signals'
 
 // Pure formatters for the page. Every input is optional and a partial
 // manifest never throws: a field the engine did not write shows `—`. The
@@ -175,46 +177,8 @@ export function specPath(spec?: string): string | undefined {
 }
 
 // --- the account window ------------------------------------------------------
-
-/**
- * The account-window stop, as the engine writes it into the failing agent's
- * `error`: `You've hit your session limit · resets 4:40pm (Asia/Jerusalem)`
- * (`wf_66ec6c31-e3f`, review:1 and fix:review). Exported for slice 2's
- * classifier, which needs the same match plus the rest of the rule table.
- */
-export const SESSION_LIMIT_RE = /hit your session limit/i
-const RESETS_RE = /resets\s+([^·\n]+)/i
-
-/** `[review:1] failed: …` — how the script's `logs[]` names the agent that hit it. */
-const LOG_AT_RE = /^\[([^\]]+)\]/
-
-/**
- * The first agent stopped by the account window: when it resets, where it
- * stopped, the raw string that said so, and the one line to show. Agents
- * first, then the script's own `logs[]` (a journal-derived run has the log
- * lines but not always the agent errors). Nothing when neither hit it.
- */
-export function sessionLimit(run?: RunManifest): { text: string; raw: string; resets?: string; at?: string } | undefined {
-  for (const a of agentsOf(run)) {
-    if (typeof a.error !== 'string' || !SESSION_LIMIT_RE.test(a.error)) continue
-    return { ...read(a.error), raw: a.error, at: labelOf(a) }
-  }
-  for (const line of run?.logs ?? []) {
-    if (typeof line !== 'string' || !SESSION_LIMIT_RE.test(line)) continue
-    return { ...read(line), raw: line, at: LOG_AT_RE.exec(line)?.[1] }
-  }
-  return undefined
-}
-
-function read(text: string): { text: string; resets?: string } {
-  const resets = RESETS_RE.exec(text)?.[1]?.trim()
-  return { resets, text: resets ? `session limit — resets ${resets}; re-run after` : 'session limit — re-run once the window resets' }
-}
-
-/** Is the run still going (as far as the plugin can tell)? */
-export function isLive(run?: RunManifest): boolean {
-  return !!run && (run.live === true || run.status === 'running')
-}
+// Both live in graph/signals.ts now (`graph/` must not import `ui/`, and the
+// classifier reads them); re-exported here so every `./format` import stands.
 
 /** Elapsed: a live run counts from its start (never less than what it already reported); a stale or finished one is what the manifest says. */
 export function elapsedOf(run: RunManifest | undefined, now: number = Date.now()): number | undefined {
@@ -258,17 +222,7 @@ export function whereOf(a: WorkflowAgentEntry): string {
   return a.phaseTitle ? `${a.phaseTitle} › ${labelOf(a)}` : labelOf(a)
 }
 
-/**
- * The tag on "why it stopped": which of the manager's two questions this stop
- * is (console-simplification §2), worded once for the canvas block, the home
- * card and the rail's tooltips. Keyed by `classify().cause`; `ok` and
- * `running` have no tag — nothing stopped.
- */
-export const CAUSE_TAG: Record<string, { text: string; title: string }> = {
-  infra: { text: 'INFRA — you handle it', title: 'the machine, the account window or the budget stopped it; nothing about the spec is known yet' },
-  spec: { text: 'SPEC — the reviewer disagreed', title: 'the diff and the ticket disagree; the acceptance checks are the thing to change' },
-  unknown: { text: 'UNKNOWN', title: 'no rule matched this manifest — the transcript is the only source left' },
-}
+/* The tag on "why it stopped" moved to ui/Cause.tsx, with the component that renders it. */
 
 /** Why the engine stopped, worded once for the header, the card and the rail's tooltips (IA-SPEC §1.3, §2, §6). */
 export const RUN_COPY = {

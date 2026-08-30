@@ -28,8 +28,10 @@ h1 { font-size: 20px; } h2 { font-size: 13px; text-transform: uppercase; letter-
 h3 { font-size: 12px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); margin: 18px 0 6px; }
 button { font: inherit; color: inherit; cursor: pointer; }
 .muted { color: var(--muted); } .small { font-size: 12px; } .err { color: var(--err); }
-/* a text box: wraps, scrolls inside itself past 240 px (480 px tall); the panel's "show all" toggle lifts the cap */
-.mono { font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; margin: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; max-height: 240px; overflow: auto; }
+/* a text box: wraps, and stops at 240 px (480 px tall) — cut off, not scrolling. A scroll box
+   inside a scrolling panel swallows the wheel over the prompt, which is the tallest block there;
+   the "show all" toggle under it is how the rest of the text is asked for. */
+.mono { font: 12px/1.5 var(--mono); white-space: pre-wrap; word-break: break-word; margin: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; max-height: 240px; overflow: hidden; }
 .mono.tall { max-height: 480px; }
 .mono[data-all] { max-height: none; }
 .mono-toggle { display: inline-block; margin-top: 4px; background: none; border: 0; padding: 2px 4px; font-size: 12px; color: var(--accent); }
@@ -64,12 +66,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card { min-width: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
 .card h3 { margin: 6px 0 0; }
 .card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.card-name { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font-weight: 600; font-size: 15px; color: var(--text); overflow-wrap: anywhere; }
+.card-name { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font-weight: 600; font-size: 16px; color: var(--text); overflow-wrap: anywhere; }
 .card-name:hover { color: var(--accent); }
 /* the flow sentence and "use when" are what the workflow always does; the run is what happened — the run wins the size (§5) */
 .card-desc, .card-when { margin: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
-.last-run { margin: 0; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
-.last-run .spec { font-family: var(--mono); font-size: 13px; }
+.last-run { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
+.last-run .spec { font-family: var(--mono); font-size: 16px; }
 .last-run .badge { margin-left: 6px; }
 /* the last-run line is the link to that run on the canvas: a button that keeps the line's look, the spec underlining on hover */
 .last-run-open { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; font-family: inherit; color: var(--text); }
@@ -131,7 +133,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* states: nothing on disk, plugin down, fixture data */
 .state { padding: 12px 48px 24px; display: flex; flex-direction: column; gap: 6px; max-width: 760px; font-size: 13px; }
 .state p { margin: 0; overflow-wrap: anywhere; }
-.state .mono { max-height: 240px; }
+.state .mono { max-height: 240px; overflow: auto; } /* the plugin-is-down page has no "show all" under it */
 .banner { margin: 10px 48px 0; padding: 10px 14px; font-size: 13px; color: var(--warn); border: 1px solid var(--warn); border-radius: 10px; background: color-mix(in srgb, var(--warn) 10%, transparent); overflow-wrap: anywhere; }
 .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; overflow-wrap: anywhere; }
 
@@ -150,6 +152,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .run-sentence { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .run-sentence .run-id, .run-sentence .spec { font: 12px/1.5 var(--mono); }
 .run-sentence .reason { color: var(--text); }
+/* how many rounds each step took (`result.attempts`), at the end of the sentence and out of its way */
+.run-sentence .attempts-frag { font-size: 12px; }
 /* why it stopped: infra (a human handles the machine) or spec (the ticket is wrong), the one action,
    the raw string the rule fired on, the reviewer's findings, and the script's own log with that line lit */
 .why { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 0; padding: 6px 10px; max-width: 1100px; background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--line-2); border-radius: 8px; }
@@ -161,8 +165,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 [data-cause="spec"] > .why-tag, .why[data-cause="spec"] .why-tag { color: var(--err); border-color: var(--err); }
 .why-head { font-weight: 600; overflow-wrap: anywhere; }
 .why-action { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-/* the string the rule fired on: one line, the rest in the tooltip and, in full, in the logs below */
-.why-evidence { font: 11px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+/* the string the rule fired on, whole: it is one sentence out of an agent's error and it
+   only renders for a run that stopped — clipping it lost the half that said when the window resets */
+.why-evidence { font: 11px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; white-space: pre-wrap; word-break: break-word; }
 .why-findings { margin: 0; padding-left: 18px; font-size: 12px; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
 .why-finding-title { font-weight: 600; }
 /* the block's last line: the command that acts on the action, and the logs beside it rather than under them */
@@ -172,7 +177,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .why-logs > summary { font-size: 12px; color: var(--muted); cursor: pointer; }
 .why-logs[open] { flex: 1 0 100%; }
 .why-logs > summary:hover { color: var(--text); }
-.why-logs ol { margin: 6px 0 0; padding: 10px 12px 10px 30px; display: flex; flex-direction: column; gap: 3px; }
+/* open, the log is a box of its own and never grows the header past the canvas: 160 px, scrolling */
+.why-logs ol.mono { margin: 6px 0 0; padding: 10px 12px 10px 30px; display: flex; flex-direction: column; gap: 3px; max-height: 160px; overflow: auto; }
 .why-logs li::marker { color: var(--muted); }
 .why-logs li[data-fired] { color: var(--warn); font-weight: 600; } /* the line the rule fired on */
 /* the home card's one-line version: the tag and the headline, no action — the canvas has the rest */
@@ -188,6 +194,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ctx-one .ctx-val { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ctx-more { font-size: 12px; }
 .ctx-1 .btn-small { padding: 1px 7px; font-size: 11px; }
+/* `more`: the other nine artefacts and the ledger's note — capped at 180 px and scrolling inside,
+   so unfolding them never takes the canvas off the screen (it used to take a third of it) */
+.ctx-open { max-height: 180px; overflow: auto; }
 .ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 3px 22px; margin-top: 6px; padding: 6px 10px 0; border-top: 1px solid var(--line); }
 .ctx-row { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
 .ctx-label { color: var(--muted); }
@@ -324,7 +333,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .panel { flex: none; display: flex; min-width: 0; min-height: 0; background: var(--bg-2); border-left: 1px solid var(--line); }
 .panel-grip { flex: none; width: 6px; cursor: col-resize; background: transparent; }
 .panel-grip:hover, .panel-grip:focus-visible { background: var(--accent-dim); }
-.panel-body { flex: 1; min-width: 0; padding: 18px 20px 32px 14px; overflow-y: auto; overflow-x: hidden; }
+/* a flex column so an editor can own the rest of the height (its Save/Revert bar must be on
+   screen at 767 px, not below the fold); everything else keeps its own height and scrolls */
+.panel-body { flex: 1; min-width: 0; display: flex; flex-direction: column; padding: 18px 20px 32px 14px; overflow-y: auto; overflow-x: hidden; }
+/* the title, what the step is, and the two tabs: they ride the top of the scroll, so reading
+   down "This run" never takes the way back off the screen */
+.panel-top { position: sticky; top: -18px; z-index: 2; flex: none; margin: -18px -20px 0 -14px; padding: 18px 20px 8px 14px; background: var(--bg-2); }
+.panel-top .tabs { margin-bottom: 0; }
 .panel-head { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 6px; }
 .panel-head h2 { text-transform: none; letter-spacing: 0; font-size: 16px; line-height: 1.3; color: var(--text); overflow-wrap: anywhere; min-width: 0; }
 .panel-head .btn { flex-shrink: 0; }
@@ -384,9 +399,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* the frozen copy under the Script editor: closed unless asked, since most runs ran exactly what is on disk */
 .frozen { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
 .frozen p { margin: 6px 0; } .frozen .path { display: block; font: 11px/1.5 var(--mono); color: var(--muted); margin-bottom: 8px; }
-.editor { display: flex; flex-direction: column; gap: 8px; }
-/* the CodeMirror box: 360 px, dragged taller from its corner as the textarea was; the view fills it */
-.cm-wrap { min-height: 360px; height: 360px; resize: vertical; overflow: hidden; border-radius: 8px; }
+/* the editor owns whatever height is left in the panel, so its Save / Revert bar is always
+   the last thing on screen rather than the first thing below the fold (a 767 px window) */
+.editor { display: flex; flex-direction: column; gap: 8px; flex: 1 1 auto; min-height: 0; margin-top: 10px; }
+/* the CodeMirror box: 360 px, growing with the panel and dragged taller from its corner as the textarea was; the view fills it */
+.cm-wrap { flex: 1 1 auto; min-height: 160px; height: 360px; resize: vertical; overflow: hidden; border-radius: 8px; }
 .cm-wrap .cm-host, .cm-wrap .cm-editor { height: 100%; }
 .editor-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .editor-bar .path { font: 11px/1 var(--mono); color: var(--muted); overflow-wrap: anywhere; }

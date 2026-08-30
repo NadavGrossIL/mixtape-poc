@@ -1,4 +1,5 @@
-// CodeMirror 6 for the panel's three editable tabs (C4). Hand-wired rather
+// CodeMirror 6 for every editor the page has (C4) — the node panel's Definition
+// tab and the header's Settings. Hand-wired rather
 // than through a React wrapper package: the view is created once per file and
 // lives outside React's render, so the theme, the keymap and the lifecycle are
 // ours. Every colour is a `var(--…)` from styles.css, so one theme object

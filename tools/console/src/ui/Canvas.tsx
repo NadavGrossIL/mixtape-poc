@@ -1,14 +1,16 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
-import { ReactFlow, Background, BackgroundVariant, BaseEdge, Controls, EdgeLabelRenderer, MarkerType, Position, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node } from '@xyflow/react'
+import { ReactFlow, Background, BackgroundVariant, BaseEdge, ControlButton, Controls, EdgeLabelRenderer, MarkerType, Position, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node } from '@xyflow/react'
 import type { NodeState, RunGraph, RunManifest, WorkflowFile } from '../types'
 import { layout, purposeOf, isStalled } from '../graph'
 import { roundedPath, type Pt } from '../graph/layout'
 import { AgentNode, LaneNode, OutcomeNode, nodeHandles, type AgentRFNode, type LaneRFNode, type OutcomeRFNode } from './AgentNode'
 import { isLive, nowAt, outcomeOf } from './format'
+import { useRemembered } from './remember'
 
 const nodeTypes = { agent: AgentNode, lane: LaneNode, outcome: OutcomeNode }
 const edgeTypes = { route: RouteEdge }
 const FIT = { padding: 0.12, maxZoom: 1, minZoom: 0.15 }
+const LEGEND_KEY = 'console.legend'
 
 /**
  * The run as a picture: lanes per phase, one node per step, routed edges
@@ -16,9 +18,14 @@ const FIT = { padding: 0.12, maxZoom: 1, minZoom: 0.15 }
  * Node objects keep their identity as a live run moves — only `data` changes —
  * and every node carries explicit dimensions and handle geometry, so React
  * Flow never has to re-measure and never hides a node mid-run.
+ *
+ * The legend is off by default (§5): nine swatches that never change are
+ * reference material, and every badge already says `done` / `error` / `stalled`
+ * in words. `?` in the zoom cluster brings it back, and remembers.
  */
 export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: RunGraph; files: WorkflowFile[]; run?: RunManifest; selectedId?: string; onSelect: (id?: string) => void }) {
   const cache = useRef(new Map<string, { sig: string; node: Node }>())
+  const [legend, setLegend] = useRemembered(LEGEND_KEY, false)
   const container = useRef<HTMLDivElement>(null)
   const { nodes, edges, extent, nodesKey } = useMemo(() => build(graph, files, run, selectedId, cache.current), [graph, files, run, selectedId])
   const onKeyDown = (ev: KeyboardEvent<HTMLDivElement>) => {
@@ -44,10 +51,15 @@ export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: Run
         colorMode="system"
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-        <Controls showInteractive={false} position="top-right" />
+        <Controls showInteractive={false} position="top-right">
+          <ControlButton onClick={() => setLegend(!legend)} title={legend ? 'hide the legend' : 'what the strokes and shapes mean'}
+            aria-label="legend" aria-pressed={legend} data-on={legend || undefined}>
+            <span className="ctl-q" aria-hidden>?</span>
+          </ControlButton>
+        </Controls>
         <Fitter extent={extent} nodesKey={nodesKey} container={container} />
       </ReactFlow>
-      <Legend />
+      {legend && <Legend />}
     </div>
   )
 }
@@ -184,7 +196,7 @@ function RouteEdge({ data, markerEnd }: EdgeProps<RouteRFEdge>) {
   )
 }
 
-/** What the strokes and shapes mean (IA-SPEC §4.5). Static, bottom-left, over the canvas. */
+/** What the strokes and shapes mean (IA-SPEC §4.5). Bottom-left, over the canvas, behind the `?` in the controls. */
 function Legend() {
   return (
     <div className="legend" role="note" aria-label="legend">

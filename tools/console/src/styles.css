@@ -66,10 +66,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .card-name { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font-weight: 600; font-size: 15px; color: var(--text); overflow-wrap: anywhere; }
 .card-name:hover { color: var(--accent); }
-.card-desc, .card-when { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-.card-when { color: var(--text); }
-.last-run { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-.last-run .spec { font-family: var(--mono); font-size: 12px; }
+/* the flow sentence and "use when" are what the workflow always does; the run is what happened — the run wins the size (§5) */
+.card-desc, .card-when { margin: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+.last-run { margin: 0; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
+.last-run .spec { font-family: var(--mono); font-size: 13px; }
 .last-run .badge { margin-left: 6px; }
 /* the last-run line is the link to that run on the canvas: a button that keeps the line's look, the spec underlining on hover */
 .last-run-open { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; font-family: inherit; color: var(--text); }
@@ -113,8 +113,13 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .link { background: none; border: 0; padding: 0; color: var(--accent); font-size: 13px; }
 .link:hover { text-decoration: underline; }
 .card-name:focus-visible, .copy:focus-visible, .link:focus-visible, .last-run-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+/* a disclosure for reference material: the skills table, the frozen script. Closed by default, the state remembered */
+.fold > summary { cursor: pointer; font-size: 13px; color: var(--muted); }
+.fold > summary:hover { color: var(--text); }
+.fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
 /* skills and agents: a table that scrolls inside its own box if it must, wraps before that */
 .skills { padding: 8px 48px 24px; }
+.skills > summary { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; font-weight: 600; }
 .skills p { margin: 4px 0 12px; font-size: 13px; }
 .table-wrap { overflow-x: auto; max-width: 100%; }
 .skills-table { width: 100%; border-collapse: collapse; font-size: 13px; }
@@ -130,8 +135,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .banner { margin: 10px 48px 0; padding: 10px 14px; font-size: 13px; color: var(--warn); border: 1px solid var(--warn); border-radius: 10px; background: color-mix(in srgb, var(--warn) 10%, transparent); overflow-wrap: anywhere; }
 .foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px; overflow-wrap: anywhere; }
 
-/* run header: three rows — name, badges and stats; the workflow's description; the run in one sentence */
-.run-head { display: flex; flex-direction: column; gap: 6px; padding: 12px 24px 10px; border-bottom: 1px solid var(--line); }
+/* run header, kept under ~170 px so the canvas is the page (§5): name, badges, stats and Settings;
+   the run in one sentence; then either the Re-run row or the "why it stopped" block that carries it;
+   then one line of context. What the workflow always does lives on the home card, not here. */
+.run-head { display: flex; flex-direction: column; gap: 5px; padding: 10px 24px 8px; border-bottom: 1px solid var(--line); }
 .run-head-1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .stats { display: flex; gap: 22px; margin: 0 0 0 auto; flex-wrap: wrap; }
 .stats div { display: flex; flex-direction: column; } .stats dt { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .08em; }
@@ -140,13 +147,12 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pill[data-status="killed"], .pill[data-status="cancelled"] { color: var(--err); border-color: var(--err); }
 .pill[data-outcome="needs-human"] { color: var(--warn); border-color: var(--warn); }
 .pill[data-outcome="ready-for-pr"], .pill[data-outcome="ready-for-eval"], .pill[data-outcome="reviewed"] { color: var(--accent); border-color: var(--accent); }
-.run-desc { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .run-sentence { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
 .run-sentence .run-id, .run-sentence .spec { font: 12px/1.5 var(--mono); }
 .run-sentence .reason { color: var(--text); }
 /* why it stopped: infra (a human handles the machine) or spec (the ticket is wrong), the one action,
    the raw string the rule fired on, the reviewer's findings, and the script's own log with that line lit */
-.why { display: flex; flex-direction: column; gap: 5px; margin: 6px 0 0; padding: 8px 12px; max-width: 980px; background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--line-2); border-radius: 8px; }
+.why { display: flex; flex-direction: column; gap: 4px; margin: 2px 0 0; padding: 6px 10px; max-width: 1100px; background: var(--bg-2); border: 1px solid var(--line); border-left: 3px solid var(--line-2); border-radius: 8px; }
 .why[data-cause="infra"] { border-left-color: var(--warn); }
 .why[data-cause="spec"] { border-left-color: var(--err); }
 .why-line { margin: 0; display: flex; flex-wrap: wrap; align-items: baseline; gap: 3px 8px; font-size: 13px; }
@@ -155,34 +161,42 @@ button { font: inherit; color: inherit; cursor: pointer; }
 [data-cause="spec"] > .why-tag, .why[data-cause="spec"] .why-tag { color: var(--err); border-color: var(--err); }
 .why-head { font-weight: 600; overflow-wrap: anywhere; }
 .why-action { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
-.why-evidence { font: 12px/1.5 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; overflow-wrap: anywhere; }
+/* the string the rule fired on: one line, the rest in the tooltip and, in full, in the logs below */
+.why-evidence { font: 11px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .why-findings { margin: 0; padding-left: 18px; font-size: 12px; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
 .why-finding-title { font-weight: 600; }
+/* the block's last line: the command that acts on the action, and the logs beside it rather than under them */
+.why-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
+.why-foot .run-cmd { margin: 0; }
+.why-foot .btn-small { padding: 2px 8px; font-size: 11px; }
 .why-logs > summary { font-size: 12px; color: var(--muted); cursor: pointer; }
+.why-logs[open] { flex: 1 0 100%; }
 .why-logs > summary:hover { color: var(--text); }
 .why-logs ol { margin: 6px 0 0; padding: 10px 12px 10px 30px; display: flex; flex-direction: column; gap: 3px; }
 .why-logs li::marker { color: var(--muted); }
 .why-logs li[data-fired] { color: var(--warn); font-weight: 600; } /* the line the rule fired on */
 /* the home card's one-line version: the tag and the headline, no action — the canvas has the rest */
 .why-card { margin: 2px 0 0; font-size: 12px; }
-/* the card's one context line: branch · worktree, each with a copy */
-.card-git { margin: 2px 0 0; display: flex; align-items: center; flex-wrap: wrap; gap: 2px 6px; min-width: 0; }
-.card-git .mono { font: 11px/1.5 var(--mono); background: none; border: 0; padding: 0; max-height: none; color: var(--text); }
-.card-git .btn-small { padding: 1px 6px; font-size: 11px; }
 
 /* where the context lives: one line per artefact of the run — label, the value in
    monospace (a long path truncates from the left, whole thing in the tooltip), Copy / Open */
-.ctx { margin: 6px 0 0; padding: 8px 12px; max-width: 980px; background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; }
-.ctx-head { margin: 0 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
-.ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 3px 22px; }
+.ctx { margin: 0; max-width: 1100px; }
+.ctx-head { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+/* one line: the three artefacts a manager reaches for, then `more` for the other nine */
+.ctx-1 { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 14px; margin: 0; font-size: 12px; min-width: 0; }
+.ctx-one { display: inline-flex; align-items: center; gap: 6px; min-width: 0; max-width: 100%; }
+.ctx-one .ctx-val { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.ctx-more { font-size: 12px; }
+.ctx-1 .btn-small { padding: 1px 7px; font-size: 11px; }
+.ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 3px 22px; margin-top: 6px; padding: 6px 10px 0; border-top: 1px solid var(--line); }
 .ctx-row { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
 .ctx-label { color: var(--muted); }
 .ctx-val { font: 11px/1.6 var(--mono); }
 .ctx-acts { display: flex; align-items: center; gap: 4px; }
 .ctx-acts .btn-small { padding: 1px 7px; font-size: 11px; }
-/* the ledger row's own words; notes run long, so two lines and the rest in the tooltip */
-.ctx-note { margin: 6px 0 0; font-size: 12px; display: -webkit-box; -webkit-line-clamp: 2; line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.ctx-foot { margin: 4px 0 0; }
+/* the ledger row's own words, in full: it is a human's note about this run, and the half that got clamped was the half that said why */
+.ctx-note { margin: 6px 0 0; padding: 0 10px; font-size: 12px; overflow-wrap: anywhere; }
+.ctx-foot { margin: 4px 0 0; padding: 0 10px; }
 .run-none p { margin: 0 0 6px; }
 .run-none .run-cmd { max-width: 720px; }
 
@@ -208,7 +222,10 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* the reason wraps to four lines, then an ellipsis; the full text is the hover title */
 .outcome-text { font-size: 12px; line-height: 1.4; color: var(--muted); margin: 12px 0 0; overflow-wrap: anywhere; display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 4; overflow: hidden; }
 
-/* legend: what the strokes and shapes mean; static, over the canvas */
+/* the `?` in the zoom cluster: the legend's switch, lit while it is showing */
+.react-flow__controls-button[data-on] { color: var(--accent); }
+.ctl-q { font: 600 13px/1 var(--font); }
+/* legend: what the strokes and shapes mean; hidden until `?`, over the canvas */
 .legend { position: absolute; left: 12px; bottom: 12px; z-index: 5; display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; padding: 6px 10px; font-size: 11px; color: var(--muted); background: var(--bg-2); border: 1px solid var(--line); border-radius: 8px; pointer-events: none; }
 .legend span { display: inline-flex; align-items: center; gap: 6px; }
 .lg-step { stroke: var(--muted); stroke-width: 2; fill: none; }
@@ -353,9 +370,20 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .agent-bar:disabled { cursor: default; }
 
 /* node panel tabs and the file editor (C4): sentence case, wrap to a second line rather than clip (A9) */
-.tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: 18px 0 10px; border-bottom: 1px solid var(--line); }
+.tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: 14px 0 10px; border-bottom: 1px solid var(--line); }
 .tab { background: none; border: 0; border-bottom: 2px solid transparent; padding: 6px 10px; font-size: 13px; color: var(--muted); margin-bottom: -1px; }
 .tab:hover { color: var(--text); } .tab[data-on] { color: var(--accent); border-bottom-color: var(--accent); }
+/* Definition's two halves — the prompt and the script it is written in — a segmented switch, not a second tab bar */
+.subtabs { display: inline-flex; gap: 0; margin: 0 0 10px; border: 1px solid var(--line-2); border-radius: 8px; overflow: hidden; }
+.subtab { background: none; border: 0; padding: 4px 12px; font-size: 12px; color: var(--muted); }
+.subtab + .subtab { border-left: 1px solid var(--line-2); }
+.subtab:hover { color: var(--text); } .subtab[data-on] { color: var(--accent); background: var(--bg-3); }
+.subtab:focus-visible { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* a heading inside a tab's own section (transcript › prompt, events) */
+.sub-h { margin: 14px 0 6px; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+/* the frozen copy under the Script editor: closed unless asked, since most runs ran exactly what is on disk */
+.frozen { margin-top: 12px; border-top: 1px solid var(--line); padding-top: 10px; }
+.frozen p { margin: 6px 0; } .frozen .path { display: block; font: 11px/1.5 var(--mono); color: var(--muted); margin-bottom: 8px; }
 .editor { display: flex; flex-direction: column; gap: 8px; }
 /* the CodeMirror box: 360 px, dragged taller from its corner as the textarea was; the view fills it */
 .cm-wrap { min-height: 360px; height: 360px; resize: vertical; overflow: hidden; border-radius: 8px; }

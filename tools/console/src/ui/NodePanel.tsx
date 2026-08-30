@@ -1,22 +1,29 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEvent, type PointerEvent, type ReactNode } from 'react'
 import type { AgentDetail, FileRead, GraphNode, NodeRunInfo, NodeState, RunManifest, WorkflowAgentEntry, WorkflowFile } from '../types'
-import { agentsOf, isStalled, purposeOf, stateAt } from '../graph'
+import { agentsOf, findingsOf, isStalled, purposeOf, stateAt } from '../graph'
 import { fmtDuration, fmtTime, fmtTokens, isLive, shortModel, whenAbs, whenRel, dash } from './format'
 import { CodeEditor, DiffEditor } from './CodeEditor'
-import { PathRow } from './Copy'
+import { PathRow, PathText } from './Copy'
 
-type Tab = 'prompt' | 'knobs' | 'script' | 'result' | 'transcript'
-const TABS: [Tab, string][] = [['prompt', 'Prompt'], ['knobs', 'Knobs'], ['script', 'Script'], ['result', 'Result'], ['transcript', 'Transcript']]
-const CONFIG = 'factory.config.json'
+// Two tabs, not five (§5). A node answers two questions and they have different
+// lifetimes: what this step *is* — the prompt or skill it runs, the script it is
+// written in, all editable — and what it *did in this run*. The knobs were on
+// every node and were the same file on all of them; they are one Settings entry
+// point in the canvas header now.
+type Tab = 'def' | 'run'
+const TABS: [Tab, string][] = [['def', 'Definition'], ['run', 'This run']]
+type Sub = 'prompt' | 'script'
+const SUBS: [Sub, string][] = [['prompt', 'Prompt'], ['script', 'Script']]
 
 const COPY = {
-  notRun: 'This step has not run in the selected run.',
+  notRun: 'Did not run in this run.',
   noResult: 'No result was recorded for this attempt.',
   fixture: 'Fixture run: results and transcripts are not shipped with the repo.',
   live: 'Live — reloads as the transcript grows.',
   literal: 'Literal prompt from the script, read-only. ${…} is filled in at run time. Edit it under Script.',
   noFile: 'No workflow file on disk for this run.',
   noFileCopy: 'No workflow file on disk for this run. The script the engine copied, read-only:',
+  frozen: 'The copy the engine froze for this run. The editor above is the live repo file, which a later run would use.',
 } as const
 
 // The panel's width is the one per-viewer convenience kept in the browser.
@@ -24,22 +31,30 @@ const WIDTH_KEY = 'console.panelWidth'
 const WIDTH = { min: 360, max: 720, default: 440 }
 
 /**
- * The node panel: the full label, what the step is for, the facts of its last
- * attempt, then tabs. Prompt / Knobs / Script edit the files a node is drawn
- * from (plan §11.5: prompts and knobs in place, the script as text with a
- * diff); Result / Transcript read the selected run. `tick` bumps when the
- * run's journal moved; a transcript already on screen is reloaded then.
- * `onSaved` asks the page to refetch workflows so the graph re-parses the new
- * text. A flex sibling of the canvas (A10), resizable from its left edge.
+ * The node panel: the full label, what the step is for, then two tabs.
+ * *Definition* is what the step is made of — the SKILL.md or agent file its
+ * prompt invokes, and the script it lives in, both edited in place (plan §11.5)
+ * — with the frozen copy of that script under the editor when this run used
+ * one. *This run* is everything the run knows about the step: its facts, its
+ * error, its attempts, its result, the reviewer's findings where they belong to
+ * it, and the transcript, which loads itself. `tick` bumps when the run's
+ * journal moved; a transcript already on screen is reloaded then. `onSaved`
+ * asks the page to refetch workflows so the graph re-parses the new text.
+ * A flex sibling of the canvas (A10), resizable from its left edge.
+ *
+ * A node that never ran in this run opens on Definition and says so in one
+ * line: a twelve-row grid of "—" is not information (§5).
  */
 export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date.now(), onClose, onSaved }: {
   node: GraphNode; info?: NodeRunInfo; run?: RunManifest; tick?: number; files: WorkflowFile[]; scriptPath?: string; now?: number; onClose: () => void; onSaved: () => void
 }) {
   const a = info?.agent // the node's last attempt in this run — the facts follow it
-  const [tab, setTab] = useState<Tab>('prompt')
+  const ran = (info?.agents.length ?? 0) > 0 // did the step run at all in this run
+  const [tab, setTab] = useState<Tab>(ran ? 'run' : 'def')
+  const [sub, setSub] = useState<Sub>('prompt')
   const [detail, setDetail] = useState<AgentDetail | { error: string } | null>(null)
   const [loading, setLoading] = useState(false)
-  useEffect(() => { setDetail(null); setLoading(false) }, [node.id, run?.runId])
+  useEffect(() => { setDetail(null); setLoading(false); setTab(ran ? 'run' : 'def') }, [node.id, run?.runId]) // eslint-disable-line react-hooks/exhaustive-deps
   const canLoad = !!(run?.runId && a?.agentId && !run.fixture)
   const load = async () => {
     if (!canLoad) return
@@ -51,11 +66,11 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
   }
   const loaded = !!detail && 'prompt' in detail
   useEffect(() => { if (loaded && tick) void load() }, [tick]) // eslint-disable-line react-hooks/exhaustive-deps
-  // The Transcript tab loads itself (§4: the transcript was four clicks away —
-  // run, node, tab, button — and the button is the one nobody expected to need).
-  // The button stays for a load that failed and for a run whose transcript is
-  // not on this machine.
-  useEffect(() => { if (tab === 'transcript' && canLoad && !detail && !loading) void load() }, [tab, canLoad]) // eslint-disable-line react-hooks/exhaustive-deps
+  // "This run" loads the transcript itself (§4: it was four clicks away — run,
+  // node, tab, button — and the button is the one nobody expected to need). The
+  // button stays for a load that failed and for a run whose transcript is not on
+  // this machine.
+  useEffect(() => { if (tab === 'run' && canLoad && !detail && !loading) void load() }, [tab, canLoad]) // eslint-disable-line react-hooks/exhaustive-deps
   const { width, grip } = usePanelWidth()
 
   // Which file the Prompt tab owns: a skill the prompt invokes (only if it exists on disk), else a named subagent's file.
@@ -67,18 +82,16 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
   const attempts = useMemo(() => (info ? attemptRows(info.agents, node, run) : []), [info, node, run])
   const last = attempts[attempts.length - 1]
   const live = isLive(run) && !isStalled(run)
-  const ran = (info?.agents.length ?? 0) > 0 // did the step run at all in this run
-  const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : undefined
   const transcriptPath = a?.agentId ? run?.paths?.agents?.[a.agentId]?.transcript : undefined
   const loadButton = (label: string) => canLoad && !detail && <button type="button" className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : label}</button>
-
+  // The reviewer's findings are in the run's result, not in any agent's record; they belong to the node that produced them.
+  const findings = useMemo(() => (node.agentType === 'reviewer' || /^review\b/i.test(node.label) ? findingsOf(run) : []), [node, run])
+  // Phase and kind are already in the line under the title; these are the run's own facts about the step.
   const rows: [string, string, string?][] = [
-    ['phase', node.phase || dash],
-    ['kind', kind],
     ['state', info?.state ?? 'idle'],
     ['outcome', last?.outcome ?? dash],
-    ['model', shortModel(a?.model)],
     ['attempt', a ? String(info?.attempt ?? a.attempt ?? 1) : dash],
+    ['model', shortModel(a?.model)],
     ['tokens', fmtTokens(a?.tokens)],
     ['tool calls', a?.toolCalls != null ? String(a.toolCalls) : dash],
     ['duration', fmtDuration(info?.durationMs ?? a?.durationMs)],
@@ -86,6 +99,7 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
     ['last tool', a?.lastToolName ?? dash],
     ['agent id', a?.agentId ?? dash],
   ]
+  const promptText = detail && 'prompt' in detail ? detail.prompt : a?.promptPreview
   return (
     <aside className="panel" aria-label="node details" style={{ width }}>
       <div className="panel-grip" role="separator" aria-orientation="vertical" aria-label="resize the panel" aria-valuenow={width} aria-valuemin={WIDTH.min} aria-valuemax={WIDTH.max} tabIndex={0} title="drag to resize" {...grip} />
@@ -95,39 +109,47 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
           <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
         </header>
         <p className="panel-sub muted small">{node.phase || dash} › {kind} · {purpose}</p>
-        <dl className="facts">{rows.map(([k, v, title]) => <div key={k}><dt>{k}</dt><dd title={title}>{v}</dd></div>)}</dl>
-        {a?.error && <section><h3>error</h3><Mono className="err">{a.error}</Mono></section>}
         <nav className="tabs" role="tablist">
           {TABS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
         </nav>
-        {tab === 'prompt' && (promptFile
-          ? <FileEditor key={promptFile} path={promptFile} note={skill ? `This node invokes the \`${skill}\` skill; this is its SKILL.md.` : `This node runs as the \`${node.agentType}\` subagent; this is its definition.`} onSaved={onSaved} />
-          : node.prompt
-            ? <section>
-                <p className="muted small">{COPY.literal}</p>
-                <Mono tall>{node.prompt}</Mono>
-              </section>
-            : <section>
-                {/* A journal-only node: the manifest carries an 80-char preview; the full prompt is in the agent's transcript file (A18). */}
-                <h3>prompt preview (journal)</h3>
-                <Mono>{a?.promptPreview ?? dash}</Mono>
-                {!ran && <p className="muted small">{COPY.notRun}</p>}
-                {canLoad && !detail && <p>{loadButton('Load full prompt')}</p>}
-                {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
-                {detail && 'prompt' in detail && <><h3>full prompt</h3><Mono tall>{detail.prompt || dash}</Mono></>}
-              </section>)}
-        {tab === 'knobs' && <FileEditor key={CONFIG} path={CONFIG} note="factory.config.json — what a driver passes to the run as args.config (maxGateRounds, base, reviewer) and the claude -p hard stops (maxTurns, maxBudgetUsd, permissionMode). Created on first save." onSaved={onSaved} validate={validJson} />}
-        {tab === 'script' && (scriptPath
-          ? <FileEditor key={scriptPath} path={scriptPath} note="The graph is drawn from this text; edit it as code." onSaved={onSaved} />
-          : <section>
-              <p className="muted small">{run?.script ? COPY.noFileCopy : COPY.noFile}</p>
-              {run?.script && <Mono tall>{run.script}</Mono>}
-            </section>)}
-        {tab === 'result' && (
+        {tab === 'def' && (
+          <>
+            <nav className="subtabs" role="tablist" aria-label="definition">
+              {SUBS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={sub === id} className="subtab" data-on={sub === id || undefined} onClick={() => setSub(id)}>{name}</button>)}
+            </nav>
+            {sub === 'prompt' && (promptFile
+              ? <FileEditor key={promptFile} path={promptFile} note={skill ? `This node invokes the \`${skill}\` skill; this is its SKILL.md.` : `This node runs as the \`${node.agentType}\` subagent; this is its definition.`} onSaved={onSaved} />
+              : node.prompt
+                ? <section>
+                    <p className="muted small">{COPY.literal}</p>
+                    <Mono tall>{node.prompt}</Mono>
+                  </section>
+                : <section>
+                    {/* A journal-only node: one prompt, not two. The manifest's 80-char preview stands in until the transcript's full text arrives (A18), and `show all` opens it past twelve lines. */}
+                    <h3>prompt</h3>
+                    <Mono>{promptText || dash}</Mono>
+                    {!ran && <p className="muted small">{COPY.notRun}</p>}
+                    {canLoad && !detail && <p>{loadButton('Load the full prompt')}</p>}
+                    {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
+                  </section>)}
+            {sub === 'script' && (scriptPath
+              ? <>
+                  <FileEditor key={scriptPath} path={scriptPath} note="The graph is drawn from this text; edit it as code." onSaved={onSaved} />
+                  {run?.script && <FrozenScript frozen={run.script} livePath={scriptPath} frozenPath={run.paths?.scriptCopy} />}
+                </>
+              : <section>
+                  <p className="muted small">{run?.script ? COPY.noFileCopy : COPY.noFile}</p>
+                  {run?.script && <Mono tall>{run.script}</Mono>}
+                </section>)}
+          </>
+        )}
+        {tab === 'run' && (
           <section>
             {!ran
               ? <p className="muted small">{COPY.notRun}</p>
               : <>
+                  <dl className="facts">{rows.map(([k, v, title]) => <div key={k}><dt>{k}</dt><dd title={title}>{v}</dd></div>)}</dl>
+                  {a?.error && <><h3>error</h3><Mono className="err">{a.error}</Mono></>}
                   <h3>attempts</h3>
                   <div className="table-wrap">
                     <table className="attempts">
@@ -141,41 +163,45 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
                       </tbody>
                     </table>
                   </div>
+                  {findings.length > 0 && (
+                    <>
+                      <h3>reviewer findings ({findings.length})</h3>
+                      <ul className="why-findings">
+                        {findings.map((f, i) => (
+                          <li key={i}>
+                            <span className="why-finding-title">{f.title ?? dash}</span>
+                            {f.why ? <> — {f.why}</> : null}
+                            {f.file ? <span className="muted"> · <code>{f.file}{f.line ? `:${f.line}` : ''}</code></span> : null}
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
                   {run?.fixture
                     ? <p className="muted small">{COPY.fixture}</p>
                     : <>
-                        <h3>result preview</h3>
-                        {a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{COPY.noResult}</p>}
-                        {canLoad && !detail && <p>{loadButton('Load full result')}</p>}
+                        <h3>result</h3>
+                        {detail && 'prompt' in detail
+                          ? <Mono tall>{detail.result || dash}</Mono>
+                          : a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{COPY.noResult}</p>}
+                        <h3>transcript</h3>
+                        {/* The file itself, named: the panel shows a reading of it, and the whole thing is one `cat` away. */}
+                        {transcriptPath && <PathRow path={transcriptPath} />}
+                        <p className="load-row">
+                          {loadButton('Load transcript')}
+                          {loading && !detail && <span className="muted small">Loading…</span>}
+                          {live && <span className="muted small">{COPY.live}</span>}
+                        </p>
                         {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
-                        {detail && 'prompt' in detail && <><h3>result</h3><Mono tall>{detail.result || dash}</Mono></>}
+                        <h4 className="sub-h">prompt</h4>
+                        <Mono>{promptText || dash}</Mono>
+                        {detail && 'prompt' in detail && (
+                          <>
+                            <h4 className="sub-h">events ({detail.events.length})</h4>
+                            <ol className="events">{detail.events.map((e, i) => <li key={i}><span className="muted clock" title={e.ts}>{fmtTime(e.ts)}</span> <b>{e.kind}{e.name ? ` ${e.name}` : ''}</b> <span className="mono">{e.summary}</span></li>)}</ol>
+                          </>
+                        )}
                       </>}
-                </>}
-          </section>
-        )}
-        {tab === 'transcript' && (
-          <section>
-            {empty
-              ? <p className="muted small">{empty}</p>
-              : <>
-                  {/* The file itself, named: the panel shows a reading of it, and the whole thing is one `cat` away. */}
-                  {transcriptPath && <PathRow path={transcriptPath} />}
-                  <h3>prompt preview</h3>
-                  <Mono>{a?.promptPreview ?? dash}</Mono>
-                  <p className="load-row">
-                    {loadButton('Load transcript')}
-                    {loading && !detail && <span className="muted small">Loading…</span>}
-                    {live && <span className="muted small">{COPY.live}</span>}
-                  </p>
-                  {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
-                  {detail && 'prompt' in detail && (
-                    <>
-                      <h3>full prompt</h3>
-                      <Mono tall>{detail.prompt || dash}</Mono>
-                      <h3>events ({detail.events.length})</h3>
-                      <ol className="events">{detail.events.map((e, i) => <li key={i}><span className="muted clock" title={e.ts}>{fmtTime(e.ts)}</span> <b>{e.kind}{e.name ? ` ${e.name}` : ''}</b> <span className="mono">{e.summary}</span></li>)}</ol>
-                    </>
-                  )}
                 </>}
           </section>
         )}
@@ -187,31 +213,34 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
 // --- one file, read-only (the context row's Open) -----------------------------------
 
 /**
- * What the canvas's context row can put in the panel. `file` is one
- * allowlisted repo file (`GET /api/file`: the spec, RUNS.md, a driver result);
- * `diff` is the script the engine froze for this run against the live repo file
- * — the correctness note in §5, since the Script tab edits the live file and
- * the run did not necessarily use it.
+ * What the canvas header can put in the panel. `file` is one allowlisted repo
+ * file, read-only (`GET /api/file`: the spec, RUNS.md, a driver result);
+ * `edit` is one writable file — the Settings button's `factory.config.json`,
+ * the knobs of the line, which used to be a tab on every node; `diff` is the
+ * script the engine froze for this run against the live repo file — the
+ * correctness note in §5, since the Script tab edits the live file and the run
+ * did not necessarily use it.
  */
 export type PanelView =
   | { kind: 'file'; path: string; title: string; note?: string; line?: number }
+  | { kind: 'edit'; path: string; title: string; note: string }
   | { kind: 'diff'; title: string; note?: string; frozenPath?: string; frozen: string; livePath?: string }
 
 const VIEW_COPY = {
   same: 'The frozen copy is identical to the live file — the script on disk is what this run ran.',
   noLive: 'No workflow file on disk to compare with; this is the frozen copy the engine ran.',
-  readOnly: 'Read-only here. This page writes only the definition files (Prompt / Knobs / Script).',
+  readOnly: 'Read-only here. This page writes only the definition files (a node\'s Definition tab) and factory.config.json.',
 } as const
 
 /**
  * The same aside as the node panel — same width, same grip — showing one file
- * instead of one node. Read-only throughout: `POST /api/file` never accepts
- * these paths (src/allow.ts), and the page says so rather than offering a Save
- * that would 403.
+ * instead of one node. Read-only unless the view says `edit`: `POST /api/file`
+ * accepts only the writable list (src/allow.ts), and the page says so rather
+ * than offering a Save that would 403.
  */
-export function FilePanel({ view, onClose }: { view: PanelView; onClose: () => void }) {
+export function FilePanel({ view, onClose, onSaved }: { view: PanelView; onClose: () => void; onSaved?: () => void }) {
   const { width, grip } = usePanelWidth()
-  const target = view.kind === 'file' ? view.path : view.livePath
+  const target = view.kind === 'file' ? view.path : view.kind === 'diff' ? view.livePath : undefined
   const [file, setFile] = useState<FileRead | { error: string } | null>(null)
   useEffect(() => {
     let live = true
@@ -227,7 +256,7 @@ export function FilePanel({ view, onClose }: { view: PanelView; onClose: () => v
     return () => { live = false }
   }, [target])
   const content = file && 'content' in file ? file.content : undefined
-  const shown = view.kind === 'file' ? target : view.frozenPath
+  const shown = view.kind === 'file' ? target : view.kind === 'diff' ? view.frozenPath : undefined
   return (
     <aside className="panel" aria-label={view.title} style={{ width }}>
       <div className="panel-grip" role="separator" aria-orientation="vertical" aria-label="resize the panel" aria-valuenow={width} aria-valuemin={WIDTH.min} aria-valuemax={WIDTH.max} tabIndex={0} title="drag to resize" {...grip} />
@@ -236,28 +265,67 @@ export function FilePanel({ view, onClose }: { view: PanelView; onClose: () => v
           <h2 title={view.title}>{view.title}</h2>
           <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
         </header>
-        {view.note && <p className="panel-sub muted small">{view.note}</p>}
-        {shown && <PathRow path={shown} />}
-        <p className="muted small">{VIEW_COPY.readOnly}</p>
-        {file && 'error' in file && <p className="err small">{file.error}</p>}
-        {view.kind === 'file' && (
-          !file ? <p className="muted small">Loading {target}…</p>
-            : content != null && (
-              <div className="cm-wrap">
-                <CodeEditor key={target} path={target!} value={content} readOnly scrollToLine={view.line} label={view.title} />
-              </div>
-            )
-        )}
-        {view.kind === 'diff' && (
-          !view.livePath ? <><p className="muted small">{VIEW_COPY.noLive}</p><Mono tall>{view.frozen}</Mono></>
-            : !file ? <p className="muted small">Loading {view.livePath}…</p>
-              : content == null ? <Mono tall>{view.frozen}</Mono>
-                : content === view.frozen
-                  ? <><p className="muted small">{VIEW_COPY.same}</p><div className="cm-wrap"><CodeEditor key={view.livePath} path={view.livePath} value={content} readOnly label={view.title} /></div></>
-                  : <DiffEditor original={view.frozen} modified={content} path={view.livePath} heads={['frozen copy (this run)', 'live repo file']} />
-        )}
+        {view.kind === 'edit'
+          ? <FileEditor key={view.path} path={view.path} note={view.note} onSaved={onSaved ?? (() => {})} validate={view.path.endsWith('.json') ? validJson : undefined} />
+          : (
+            <>
+              {view.note && <p className="panel-sub muted small">{view.note}</p>}
+              {shown && <PathRow path={shown} />}
+              <p className="muted small">{VIEW_COPY.readOnly}</p>
+              {file && 'error' in file && <p className="err small">{file.error}</p>}
+              {view.kind === 'file' && (
+                !file ? <p className="muted small">Loading {target}…</p>
+                  : content != null && (
+                    <div className="cm-wrap">
+                      <CodeEditor key={target} path={target!} value={content} readOnly scrollToLine={view.line} label={view.title} />
+                    </div>
+                  )
+              )}
+              {view.kind === 'diff' && (
+                !view.livePath ? <><p className="muted small">{VIEW_COPY.noLive}</p><Mono tall>{view.frozen}</Mono></>
+                  : !file ? <p className="muted small">Loading {view.livePath}…</p>
+                    : content == null ? <Mono tall>{view.frozen}</Mono>
+                      : content === view.frozen
+                        ? <><p className="muted small">{VIEW_COPY.same}</p><div className="cm-wrap"><CodeEditor key={view.livePath} path={view.livePath} value={content} readOnly label={view.title} /></div></>
+                        : <DiffEditor original={view.frozen} modified={content} path={view.livePath} heads={['frozen copy (this run)', 'live repo file']} />
+              )}
+            </>
+          )}
       </div>
     </aside>
+  )
+}
+
+/**
+ * Under the Script editor: the copy the engine froze for *this* run, and what
+ * it would change if you saved the file above. Folded — most of the time the
+ * two are the same file — and it fetches the live text only when opened.
+ */
+function FrozenScript({ frozen, livePath, frozenPath }: { frozen: string; livePath: string; frozenPath?: string }) {
+  const [open, setOpen] = useState(false)
+  const [live, setLive] = useState<string | null | { error: string }>(null)
+  useEffect(() => {
+    if (!open || live !== null) return
+    let on = true
+    void (async () => {
+      try {
+        const res = await fetch(`/api/file?path=${encodeURIComponent(livePath)}`)
+        const body = await res.json().catch(() => ({}))
+        if (on) setLive(res.ok && typeof body.content === 'string' ? body.content : { error: `${res.status}: ${body.error ?? 'failed'}` })
+      } catch (e) { if (on) setLive({ error: String(e) }) }
+    })()
+    return () => { on = false }
+  }, [open, live, livePath])
+  return (
+    <details className="frozen fold" open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary>Frozen copy for this run vs the live file</summary>
+      <p className="muted small">{COPY.frozen}</p>
+      {frozenPath && <PathText path={frozenPath} className="path" />}
+      {live === null ? <p className="muted small">Loading {livePath}…</p>
+        : typeof live !== 'string' ? <p className="err small">{live.error}</p>
+          : live === frozen ? <p className="muted small">{VIEW_COPY.same}</p>
+            : <DiffEditor original={frozen} modified={live} path={livePath} heads={['frozen copy (this run)', 'live repo file']} />}
+    </details>
   )
 }
 

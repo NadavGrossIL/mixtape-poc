@@ -2,7 +2,8 @@ import { useMemo, type ReactNode } from 'react'
 import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
 import { classify, firstSentence, graphFor, isStalled, overlayRun, stateAt } from '../graph'
 import { CAUSE_TAG, dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
-import { CopyButton, PathText } from './Copy'
+import { CopyButton } from './Copy'
+import { useRemembered } from './remember'
 
 // The "all workflows" screen: one card per workflow that says what it does,
 // how its last run ended (one line that opens that run), where each phase got
@@ -21,6 +22,9 @@ const COPY = {
   skillsSub: 'The files the workflows are made of. Each line says who calls it.',
   definitionDirs: '.claude/workflows/, .claude/skills/, .archon/workflows/',
 } as const
+
+/** The skills table is reference material — folded away by default (§5), remembered once a reader opens it. */
+const SKILLS_KEY = 'console.skills'
 
 /**
  * The one command that runs each workflow, keyed by name: the driver where
@@ -93,11 +97,13 @@ function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledge
   const command = runCommand(card.name, specPath(specOf(run, ledger)), meta)
   const outcome = outcomeOf(run)
   const tag = projectTag(run?.projectSlug)
+  // `native` is true of every workflow here — a constant is not a chip (§5). It rides in the name's tooltip; `archon` still earns one.
+  const title = [card.file?.path, `${engine} engine`].filter(Boolean).join(' · ')
   return (
     <div className="card">
       <div className="card-head">
-        <button type="button" className="card-name" onClick={() => onOpen()} title={card.file?.path}>{card.name}</button>
-        <span className="badge" data-engine={engine}>{engine}</span>
+        <button type="button" className="card-name" onClick={() => onOpen()} title={title}>{card.name}</button>
+        {engine !== 'native' && <span className="badge" data-engine={engine}>{engine}</span>}
         {(card.file?.fixture || run?.fixture) && <span className="badge">fixture</span>}
       </div>
       <p className="card-desc">{description || dash}</p>
@@ -118,14 +124,23 @@ function Card({ card, ledger, now, onOpen }: { card: WorkflowCard; ledger: Ledge
   )
 }
 
-/** Line 1 is the whole run, and it is the link: clicking it opens that run on the canvas (the card's other two paths open the workflow's newest). */
+/**
+ * Line 1 is the whole run, in the card's largest type after its name, and it is
+ * the link: clicking it opens that run on the canvas (the card's other two paths
+ * open the workflow's newest). Directly under it, why it stopped. The branch and
+ * the worktree are the line's tooltip only — spelled out they wrapped over three
+ * lines in a 350 px card, and the canvas's Context line is where they belong.
+ */
 function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest; ledger: Ledger; now: number; outcome: ReturnType<typeof outcomeOf>; tag?: string; onOpen: () => void }) {
   const start = startOf(run)
   const duration = fmtDuration(elapsedOf(run, now))
   const usd = usdOf(run, ledger)
+  const { branch, cwd } = run.git ?? {}
+  const where = [branch && `branch ${branch}`, cwd && `worktree ${cwd}`].filter(Boolean).join(' · ')
   return (
     <>
-      <button type="button" className="last-run last-run-open" onClick={onOpen} title={`open ${run.runId ?? 'this run'} on the canvas`}>
+      <button type="button" className="last-run last-run-open" onClick={onOpen}
+        title={`open ${run.runId ?? 'this run'} on the canvas${where ? `\n${where}` : ''}`}>
         <span className="outcome-word" data-tone={toneOf(run, outcome)} title={outcome.title}>{outcome.word}</span>
         {' · '}<span className="spec">{specOf(run, ledger)}</span>
         {' · '}<span title={whenAbs(start)}>{whenRel(start, now)}</span>
@@ -133,28 +148,9 @@ function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest;
         {' · '}<span title={usd.title}>{usd.text}</span>
         {tag && <> <span className="badge" title={run.projectSlug}>{tag}</span></>}
       </button>
-      {lineTwo(run, outcome, now) && <p className="last-run-2 muted">{lineTwo(run, outcome, now)}</p>}
       <WhyLine run={run} />
-      <GitLine run={run} />
+      {lineTwo(run, outcome, now) && <p className="last-run-2 muted">{lineTwo(run, outcome, now)}</p>}
     </>
-  )
-}
-
-/**
- * Where the run happened, one line: `branch · worktree`, each with a Copy —
- * the two strings a manager types next after reading a card. Everything else
- * about the context (spec, manifest, journal, transcripts, the ledger row, the
- * driver's files) is on the canvas, one click away through the LAST RUN line.
- */
-function GitLine({ run }: { run: RunManifest }) {
-  const { branch, cwd } = run.git ?? {}
-  if (!branch && !cwd) return null
-  return (
-    <p className="card-git muted small">
-      {branch && <><PathText path={branch} className="mono" /><CopyButton text={branch} label="copy" title="copy the branch" /></>}
-      {branch && cwd && <span aria-hidden="true"> · </span>}
-      {cwd && <><PathText path={cwd} className="mono" /><CopyButton text={cwd} label="copy" title="copy the worktree path" /></>}
-    </p>
   )
 }
 
@@ -234,7 +230,7 @@ function PhaseStrip({ graph, run, now, outcome }: { graph: ReturnType<typeof ove
  * One action row: what it would do, the exact line to paste, Copy. Used by the
  * card (stacked, with the note under it) and by the canvas header (`compact`,
  * a row under the run sentence, with the warnings as `children`). No flags —
- * the driver reads `factory.config.json`, and the Knobs tab is where they live.
+ * the driver reads `factory.config.json`, which the canvas header's Settings button opens.
  */
 export function RunCommand({ label, command, note, compact, children }: {
   label: string; command: string; note?: string; compact?: boolean; children?: ReactNode
@@ -255,13 +251,19 @@ export function RunCommand({ label, command, note, compact, children }: {
 
 // --- skills and agents ---------------------------------------------------------
 
+/**
+ * The files the workflows are made of — a table nothing on it is clickable, and
+ * the eye landed on it before it landed on the runs. Folded away by default
+ * (§5); the summary counts what is inside, and an open one is remembered.
+ */
 function SkillsTable({ rows, files, cards }: { rows: WorkflowFile[]; files: WorkflowFile[]; cards: WorkflowCard[] }) {
   // Static graphs (no run overlaid) so a template node reads `review:*`, the way the script names it.
   const graphs = useMemo(() => cards.filter((c) => c.file || c.lastRun?.script).map((c) => ({ name: c.name, graph: graphFor(c.file, c.lastRun) })), [cards])
   const sorted = rows.slice().sort((a, b) => (a.kind === 'agent' ? 1 : 0) - (b.kind === 'agent' ? 1 : 0) || a.name.localeCompare(b.name))
+  const [open, setOpen] = useRemembered(SKILLS_KEY, false)
   return (
-    <section className="skills">
-      <h2>Skills and agents</h2>
+    <details className="skills fold" open={open} onToggle={(e) => setOpen((e.currentTarget as HTMLDetailsElement).open)}>
+      <summary>Skills and agents ({sorted.length})</summary>
       <p className="muted">{COPY.skillsSub}</p>
       <div className="table-wrap">
         <table className="skills-table">
@@ -285,7 +287,7 @@ function SkillsTable({ rows, files, cards }: { rows: WorkflowFile[]; files: Work
           </tbody>
         </table>
       </div>
-    </section>
+    </details>
   )
 }
 

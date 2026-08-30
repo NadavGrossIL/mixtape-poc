@@ -393,10 +393,13 @@ on the implement and fix agents only, `ready-for-eval` when the contract's
 `.claude/workflows/` is never tier. `factory.config.json` carries
 `implementModel: "sonnet"` for dry run 2.
 
-*2026-08-30:* `RUNS.md` has three rows — row 1 autonomous (PR #1), rows 2
-and 3 the two escalated attempts of dry run 2 (section 6) — so the "three
-rows" half of the done-when is met by escalations; the eval-case half is
-still open (the case exists on the attempt-3 branch, unmerged). Four
+*2026-08-30:* `RUNS.md` has four rows — row 1 autonomous (PR #1), rows 2
+and 3 the two escalated attempts of dry run 2, row 4 its autonomous fourth
+attempt (section 6) — so the "three rows" half of the done-when is met, and
+met twice over by real autonomous runs rather than by escalations. The
+eval-case half is still open: `statbait-album-openers` exists on
+`factory/0002-album-position-gate-blind-spots`, and the case counts only
+once that branch merges. Four
 driver corrections, each measured on the day: (1) the trust check was a
 false negative — on 2.1.251 a worktree of a trusted repo shows no dialog
 and gets no `~/.claude.json` entry; a headless `claude -p` in it ran an
@@ -484,18 +487,46 @@ tweak is made from its node panel instead of the editor.
    Attempt 3 (`wf_66ec6c31-e3f`, $2.74): implement 6m36s, 101k tokens,
    gate passed first run, contract extracted, then the reviewer and the
    fix round hit the account session limit; branch validated by hand
-   again (gate, 125/125), diff kept as `…-attempt3.diff`. What the three
-   attempts already say: Sonnet implements this 8-slice spec in ~6.7 min
-   for ≈$2.5 against Fable's 2.5 min / $3.69 on the one-slice spec 0001 —
-   cheaper per run, not per minute, and the like-for-like row is still
-   owed; Sonnet wrote all eight tests and the code together and reported
-   "green on the first run" — no red-then-green per slice as the spec
-   asked, a point for the pre-merge `/code-review`. Headless spend for
-   the day: $0.26 + $3.26 + $0.35 + $2.74 = $6.61; `/review-spec` ran
-   in-session. Next: one more run when the session window allows (~10
-   min, ~180k subagent tokens), or salvage attempt 3 by reviewing its
-   diff by hand; then the PR, `/code-review`, and the eval leg — all
-   Nadav's.
+   again (gate, 125/125), diff kept as `…-attempt3.diff`.
+
+   **Verified 2026-08-30 — attempt 4 is the autonomous row.** Relaunched
+   from a clean `main` into a fresh session window; the two fixes that
+   mattered were the one-hour background ceiling (`e0a0d42`) and the
+   window itself. Run `wf_2d570cca-1ac`, 11.2 min, 197k tokens, 4 agents,
+   exit 0: implement 1 / gate 1 / review 1, every phase first-try, gate
+   passed on its first run, and the reviewer returned
+   `{verdict: pass, findings: []}` — the first real verdict this spec has
+   ever had, since attempts 1 and 3 were both cut inside Review. Outcome
+   `autonomous (ready-for-eval)`, the `touches_prompt: true` path the spec
+   was chosen to exercise. Validated by hand before the PR: `npm run gate`
+   passed in 3 s, 125/125 tests, +8 tests in `server/test/curator.test.ts`
+   (61 → 69) carrying the spec's eight slices, its 7-row fixture table cell
+   for cell, and both must-stay-green guards; no ask-tier, never-tier or
+   `package.json` path. Branch `factory/0002-album-position-gate-blind-spots`
+   at `23e87a4`; ledger rows and the PR body on `main` (`a700392`,
+   `588c59a`).
+
+   One permission denial, and it is the allowlist working: an agent tried a
+   compound `git status && echo … && node -e …` line, which the
+   exact-string allowlist refuses, and it recovered without help.
+
+   What the four attempts say about the engines: Sonnet implements this
+   8-slice spec in ~6.7 min for ≈$2.5 against Fable's 2.5 min / $3.69 on
+   the one-slice spec 0001 — cheaper per run, not per minute. **The
+   like-for-like row (item 3) is still owed, and attempt 4 is not it:**
+   its $2.93 splits as $1.91 sonnet plus $1.02 opus-5[1m] at the top level,
+   because `claude -p` inherits the CLI's default model and a `/model` in an
+   interactive session that morning moved orchestration off fable-5, where
+   attempts 1–3 ran. That is a knob nobody had counted — the driver pins
+   the implementer's model through `factory.config.json` but the
+   orchestrator's model rides on whatever the human last chose. Sonnet
+   again wrote all eight tests and the code together — three runs, three
+   times, no red-then-green per slice as the spec asks, a standing point
+   for the pre-merge `/code-review`. Headless spend: $6.61 on 2026-08-29
+   plus $2.93 on 2026-08-30 = $9.54 across the four attempts;
+   `/review-spec` ran in-session. Next, all Nadav's: the draft PR,
+   `/code-review`, the merge, and the one eval run read against
+   `evals/thresholds.json`.
 3. **The same feature on the other engine**, once each, so `RUNS.md` has a
    like-for-like row: lines of orchestration, cost, minutes, and where each
    one made you intervene.

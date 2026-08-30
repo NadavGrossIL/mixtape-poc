@@ -524,9 +524,37 @@ tweak is made from its node panel instead of the editor.
    times, no red-then-green per slice as the spec asks, a standing point
    for the pre-merge `/code-review`. Headless spend: $6.61 on 2026-08-29
    plus $2.93 on 2026-08-30 = $9.54 across the four attempts;
-   `/review-spec` ran in-session. Next, all Nadav's: the draft PR,
-   `/code-review`, the merge, and the one eval run read against
-   `evals/thresholds.json`.
+   `/review-spec` ran in-session.
+
+   **Verified 2026-08-30 — reviewed and merged, and the second opinion
+   earned its place.** Draft PR #3, then a two-axis `/code-review`
+   (Standards and Spec, parallel read-only agents). Standards: 8 findings,
+   all judgement calls, one of them rejected — it flagged `EDITION_RE`'s
+   capturing groups, which the spec pins verbatim, so the spec won. Spec: 3
+   real defects, each reproduced before the fix and re-checked after. The
+   first is the one that matters: the noun-form album-name signal tested
+   only the name's last normalized token and never that the name was
+   present, so "Her 2025 closer" fired on `Salon Music 2025` and "half
+   spoken or sung opener" on `Disque d'or` — whose normalized form ends in
+   the English word "or". Both notes pass on `main` and flagged on the
+   branch: a NEW false positive, defeating the very Goal the spec was
+   written to serve. The other two: a punctuation-only token ate a window
+   slot, and the determiner exception fell off the end of its window.
+   Fixed in `61141f5` (tests 125 → 128, one regression test per defect),
+   merged as PR #3 (`0b73c18`), gate green on `main`.
+
+   **The M3 lesson, measured:** the factory reviewer returned `pass, 0
+   findings` on a diff carrying a behavioural regression. That is not a
+   defect in the reviewer — its rubric judges the contract by *reading* the
+   diff, and code that is written correctly but behaves wrongly reads fine.
+   It is the standing argument for the pre-merge `/code-review`, and for
+   reproducing a finding before believing it: of the Spec axis's own three
+   findings, one arrived with an invalid demonstration (its example flagged
+   through the album-name-anywhere signal, which is correct behaviour), and
+   the real bug only bites when the link word lands on the window's last
+   token. Still owed, and Nadav's: the one eval run read against
+   `evals/thresholds.json` — merging ahead of it turned that pre-merge
+   check into a debt on `main`.
 3. **The same feature on the other engine**, once each, so `RUNS.md` has a
    like-for-like row: lines of orchestration, cost, minutes, and where each
    one made you intervene.

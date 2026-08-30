@@ -526,6 +526,69 @@ const ROWS: Record<string, any> = {
     track_number: 5,
     album: { name: "At Fillmore East (Deluxe Edition)", release_date: "1971-07-06", album_type: "album", total_tracks: 14 },
   },
+  // 0002 blind-spot fixtures, from server/.search-cache.json as read
+  // 2026-08-29 (spec table, Acceptance check 1). `monochrome2` shape: name,
+  // uri, artists, track_number, album{name, release_date, album_type,
+  // total_tracks}; no duration_ms.
+  janebordeaux: {
+    name: "איך אפשר",
+    uri: "spotify:track:janebordeaux",
+    artists: [{ name: "A" }],
+    track_number: 2,
+    album: { name: "ג'יין בורדו", release_date: "2014-12-17", album_type: "album", total_tracks: 11 },
+  },
+  montand1955: {
+    name: "La vie en rose",
+    uri: "spotify:track:montand1955",
+    artists: [{ name: "A" }],
+    track_number: 3,
+    album: {
+      name: "C'est si bon + 49 succès de Yves Montand (Chanson française)",
+      release_date: "1955",
+      album_type: "album",
+      total_tracks: 50,
+    },
+  },
+  salon: {
+    name: "Apple",
+    uri: "spotify:track:salon",
+    artists: [{ name: "A" }],
+    track_number: 11,
+    album: { name: "Salon Music 2025", release_date: "2025-05-09", album_type: "compilation", total_tracks: 45 },
+  },
+  starisborn: {
+    name: "Shallow",
+    uri: "spotify:track:starisborn",
+    artists: [{ name: "A" }],
+    track_number: 12,
+    album: { name: "A Star Is Born Soundtrack", release_date: "2018-10-05", album_type: "album", total_tracks: 34 },
+  },
+  reignexp: {
+    name: "Raining Blood",
+    uri: "spotify:track:reignexp",
+    artists: [{ name: "A" }],
+    track_number: 10,
+    album: { name: "Reign In Blood (Expanded)", release_date: "1986-10-07", album_type: "album", total_tracks: 12 },
+  },
+  telex: {
+    name: "Killer Cars",
+    uri: "spotify:track:telex",
+    artists: [{ name: "A" }],
+    track_number: 5,
+    album: { name: "High & Dry / Planet Telex", release_date: "1995-02-27", album_type: "single", total_tracks: 6 },
+  },
+  lz4deluxe: {
+    name: "Stairway to Heaven - Remaster",
+    uri: "spotify:track:lz4deluxe",
+    artists: [{ name: "A" }],
+    track_number: 4,
+    album: {
+      name: "Led Zeppelin IV (Deluxe Edition)",
+      release_date: "1971-11-08",
+      album_type: "album",
+      total_tracks: 16,
+    },
+  },
 };
 
 const lookup = (ref: string) => ROWS[ref] ?? null;
@@ -775,6 +838,159 @@ test("grounding PASSES album-position claims that are true, arc-talk, or unverif
   );
 });
 
+// ── 0002 album-position blind spots: widened album words, tape-object
+// guard, determiner idiom, edition-word closer skip, noun-form name scope.
+// Slices 1-8 per specs/0002-album-position-gate-blind-spots.md Acceptance
+// check 1, one at a time.
+
+test("grounding FLAGS 'opens their self-titled record' — record, LP, EP, debut and self-titled are album words (Jane Bordeaux, 2 of 11)", () => {
+  const r = noteGroundingReason(
+    gInput([
+      gTrack(
+        "janebordeaux",
+        "Opens their self-titled 2014 record with the kind of jangly hook that should've traveled way beyond Israel"
+      ),
+    ]),
+    lookup
+  );
+  assert.match(String(r), /track 2 of 11/);
+});
+
+test("grounding PASSES an album word outside the keyword's window ('closer … before the record runs out', Montand, 3 of 50)", () => {
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([
+        gTrack(
+          "montand1955",
+          "1955 closer that turns the last grey light pink before the record runs out"
+        ),
+      ]),
+      lookup
+    ),
+    null
+  );
+});
+
+test("grounding PASSES 'opens the tape' even when the row's album is named elsewhere in the note (Apple, 11 of 45)", () => {
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([
+        gTrack("salon", "The dance craze of the year, off her Salon Music 2025 era, opens the tape hands-up"),
+      ]),
+      lookup
+    ),
+    null
+  );
+});
+
+test("grounding PASSES 'closes on an Oscar-winning duet' — a link word followed by a determiner is an idiom, not an album link (12 of 34)", () => {
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([
+        gTrack("starisborn", "The decade closes on an Oscar-winning duet built to empty out a room in silence"),
+      ]),
+      lookup
+    ),
+    null
+  );
+  // the existing wrong-album form (no determiner) must still flag
+  assert.match(
+    String(
+      noteGroundingReason(
+        gInput([gTrack("pylon", "Closing cut off Memories — under two and a half minutes")]),
+        lookup
+      )
+    ),
+    /track 2 of 12/
+  );
+});
+
+test("grounding PASSES a closer claim on a row whose album name carries an edition word ('Reign In Blood closer', Expanded, 10 of 12)", () => {
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([
+        gTrack("reignexp", "1986's Reign In Blood closer, thrash picking so relentless it barely pauses for air"),
+      ]),
+      lookup
+    ),
+    null
+  );
+});
+
+test("grounding PASSES a bare 'opener'/'closer' whose album name is more than 3 tokens before it — that is the tape's arc (Killer Cars, 5 of 6)", () => {
+  assert.strictEqual(
+    noteGroundingReason(
+      gInput([
+        gTrack("telex", "Tucked on the High & Dry / Planet Telex single in 1995, a nervy little road-panic opener"),
+      ]),
+      lookup
+    ),
+    null
+  );
+  // the existing "1992's Disque D'or opener" flag must stay green — the
+  // album name's last token ("or") is within the 3 tokens before the noun
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("disquedor", "1992's Disque D'or opener")]), lookup)),
+    /track 7 of 14/
+  );
+});
+
+test("grounding PASSES 'off Led Zeppelin IV, the slow-build closer' — the fourth measured false positive (Deluxe Edition, 4 of 16)", () => {
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("lz4deluxe", "Eight minutes off Led Zeppelin IV, the slow-build closer")]), lookup),
+    null
+  );
+});
+
+// ── review fixes: a name coincidence, a keyword-adjacent comma, and a
+// determiner one token past the window — none of these were caught by the
+// slices above, each verified with its own reproduction.
+
+test("grounding PASSES a bare last-word coincidence, not the album name itself, before a noun-form keyword (Salon Music 2025, Disque d'or)", () => {
+  // "2025" alone is the album name's last token, but "her 2025 closer" never
+  // says "Salon Music 2025" — the name itself must be present, not just its
+  // last word landing in the window by chance.
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("salon", "Her 2025 closer, hands-up and grinning")]), lookup),
+    null
+  );
+  // normalize("Disque d'or") ends in the bare English word "or" — a
+  // coincidence, not the album name.
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("disquedor", "half spoken or sung opener")]), lookup),
+    null
+  );
+  // the real name, ending right where the noun starts, must still flag
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("disquedor", "1992's Disque D'or opener")]), lookup)),
+    /track 7 of 14/
+  );
+});
+
+test("grounding FLAGS 'Opens, side one of the record' — a comma glued to the keyword doesn't eat a window slot (Jane Bordeaux, 2 of 11)", () => {
+  assert.match(
+    String(
+      noteGroundingReason(
+        gInput([gTrack("janebordeaux", "Opens, side one of the record with a jangly hook")]),
+        lookup
+      )
+    ),
+    /track 2 of 11/
+  );
+});
+
+test("grounding PASSES a link's cancelling determiner sitting one token past the 3-token window (Pylon, 'off their Reckoning')", () => {
+  assert.strictEqual(
+    noteGroundingReason(gInput([gTrack("pylon", "Closing cut here now off their Reckoning")]), lookup),
+    null
+  );
+  // the identical link with no determiner must still flag
+  assert.match(
+    String(noteGroundingReason(gInput([gTrack("pylon", "Closing cut off Reckoning in a hush")]), lookup)),
+    /track 2 of 12/
+  );
+});
+
 test("grounding FLAGS an exact clock inside the old ±30s window (9:19 vs shown 9:08)", () => {
   // the model sees the row's length, so a clock claim must copy it: ±5s
   const r = noteGroundingReason(
@@ -788,6 +1004,14 @@ test("grounding FLAGS an exact clock inside the old ±30s window (9:19 vs shown 
 // ── makeGroundingGate: the composed per-run gate generateCard wires in ──
 
 import { makeGroundingGate, SYSTEM } from "../curator.ts";
+
+test("layer-1 wording: the album-position line is pinned", () => {
+  assert.ok(
+    SYSTEM.includes(
+      "opens or closes an album, record, LP or EP only when its shown position says so"
+    )
+  );
+});
 
 // a complete, otherwise-clean card whose track 1 carries the note under test
 const BAD_NOTE =

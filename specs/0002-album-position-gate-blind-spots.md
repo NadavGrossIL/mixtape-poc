@@ -1,7 +1,7 @@
 ---
 id: 0002
 title: Album-position gate blind spots
-status: ready            # draft → ready (human approves) → done | escalated
+status: implemented      # draft → ready (human approves) → done | escalated
 touches_prompt: true     # server/curator.ts (SYSTEM + gate) and evals/prompts.json change → one eval run, human-read
 flag: none               # the grounding gate has no runtime switch (6815090 shipped without one); a revert is the switch
 ---
@@ -500,3 +500,45 @@ Fragile claims:
   2026-08-24, the intended Jane Bordeaux catch, plus
   `nonenglish-french-chanson #7` 2026-08-23, the unwanted Montand hit). The
   spec now states two hits, naming both.
+
+## Run record
+
+- date: 2026-08-30
+- attempts: 1
+- gate: passed
+- files:
+  server/test/curator.test.ts
+  server/curator.ts
+  evals/prompts.json
+  specs/0002-album-position-gate-blind-spots.md
+- notes: none — every predicted slice outcome (tape-object guard beating the
+  album word/name/link, the determiner idiom, the edition-word closer skip,
+  the noun-form 3-token name scope) matched the real `normalize`/`stripSuffixes`
+  behavior on the first pass; no fixture or rule needed a second try.
+
+### Post-review fixes (2026-08-30)
+
+The eight slices were green, and the factory reviewer passed the diff with
+zero findings, but a two-axis `/code-review` found three defects the slices
+did not cover — each reproduced before the fix and re-checked after:
+
+1. The noun-form album-name signal tested only the name's *last normalized
+   token*, never that the name was present, so a coincidence fired it:
+   "Her 2025 closer" against `Salon Music 2025`, and "half spoken or sung
+   opener" against `Disque d'or`, whose normalized form ends in the English
+   word "or". Both pass on `main` and flagged here — a new false positive,
+   against this spec's own Goal. The window rule reads "counts as *present*
+   when its last token falls inside the window": presence is the signal, the
+   last token only says where it is measured. Now the note's normalized text
+   up to a window token must end with the whole album name.
+2. A punctuation-only token ate a window slot, so "Opens, side one of the
+   record" missed the album word that the same note without the comma
+   catches. The note is now tokenized once, over the whole string, so a
+   comma glued to the keyword stays part of its own token.
+3. The determiner exception never ran when the link word was the last token
+   of its 3-token window — the lookahead fell off the slice, so "off their
+   Reckoning" counted as a link. The lookahead now reaches one token past
+   the window; the link word itself must still be within it.
+
+Tests: 125 → 128, one regression test per defect. `EDITION_RE` is left
+byte-for-byte as this spec pins it, against a style note to the contrary.

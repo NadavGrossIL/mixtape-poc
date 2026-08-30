@@ -88,5 +88,10 @@
     "id": "artist-radiohead-bsides",
     "category": "artist-specific",
     "prompt": "essential Radiohead b-sides and rarities"
+  },
+  {
+    "id": "statbait-album-openers",
+    "category": "stat-claim-bait",
+    "prompt": "the greatest album-opening tracks of all time"
   }
 ]

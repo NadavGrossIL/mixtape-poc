@@ -296,6 +296,7 @@ Rules:
 - Order the tracks like a DJ set with an arc: an opener, a build, a peak, a comedown.
 - Notes must feel human and specific, not AI-generic — a catalog fact, a piece of lore, an image of the sound.
 - Every fact in a note must be either something a search result showed you (artist, title, album, year, length, position) or something so famous you would stake the whole tape on it. Merely pretty sure means leave it out.
+- Say a track opens or closes an album, record, LP or EP only when its shown position says so (1 of N, or N of N). A multi-disc album's position restarts on each disc and a reissue's count includes bonus tracks, so when the position is not clearly first or last, leave the position out.
 - Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
 - When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
@@ -443,21 +444,109 @@ const DIRECTIONAL = new Set(["under", "over", "nearly", "almost"]);
 const OPENER_RE = /\b(?:opens|opener|opening\s+(?:cut|track|song|number))\b/i;
 const CLOSER_RE = /\b(?:closes|closer|closing\s+(?:cut|track|song|number))\b/i;
 
-// An opener/closer keyword only counts as an ALBUM claim with album context —
-// "opens the tape" is the mixtape arc the prompt itself asks for. Context is
-// any of: the word "album", the row's album name in the note, or an
-// off/from/on link within 3 tokens after the keyword (the wrong-album form:
-// "Closing cut off Memories" when the cited row says Pylon).
+// An album's own name inside a "(Deluxe)"-style parenthetical means the shown
+// total_tracks counts bonus tracks appended at the end — the closer check
+// (only) is skipped when it does, since bonus tracks append, they don't
+// prepend (opener claims keep checking).
+const EDITION_RE = /[(\[][^)\]]*\b(Deluxe|Expanded|Remaster(ed)?|Edition|Bonus|Anniversary)\b[^)\]]*[)\]]/i;
+
+// The closed set of words that make an opener/closer keyword an ALBUM claim —
+// not "single", "compilation", "release" or "disc". A trailing "s" is
+// tolerated ("records", "album's").
+const ALBUM_WORDS = new Set(["album", "record", "lp", "ep", "debut", "selftitled"]);
+// A keyword whose object is the mixtape itself, not a real album — "opens the
+// tape hands-up" is the arc the prompt asks for, and wins over every other
+// signal.
+const OBJECT_WORDS = new Set(["tape", "mixtape", "set", "card"]);
+// A determiner or possessive right after off/from/on makes it an idiom
+// ("closes on an Oscar-winning duet"), not an album link.
+const DETERMINERS = new Set(["a", "an", "the", "his", "her", "their", "its"]);
+
+// Lowercase and strip everything but letters, for comparing a raw note token
+// against a closed word set.
+function letters(token: string): string {
+  return token.toLowerCase().replace(/[^a-z]/g, "");
+}
+
+function matchesWordSet(token: string, words: Set<string>): boolean {
+  const t = letters(token);
+  if (words.has(t)) return true;
+  return t.endsWith("s") && words.has(t.slice(0, -1));
+}
+
+function tokensAfter(text: string, n: number): string[] {
+  return text.split(/\s+/).filter(Boolean).slice(0, n);
+}
+
+function tokensBefore(text: string, n: number): string[] {
+  const all = text.split(/\s+/).filter(Boolean);
+  return all.slice(Math.max(0, all.length - n));
+}
+
+// The noun forms ("opener"/"closer") scope album-name context to the 3 tokens
+// right before them; the verb forms ("opens", "closes", "opening/closing
+// cut|track|song|number") count the album name anywhere in the note.
+function isNounForm(matched: string): boolean {
+  return /^(?:opener|closer)$/i.test(matched);
+}
+
+// A keyword's object is the tape/mixtape/set/card itself — never an album
+// claim, whatever else the note contains. Verb forms check 3 tokens after;
+// noun forms ("the tape's closer") check 3 tokens before.
+function hasTapeObject(note: string, m: RegExpExecArray): boolean {
+  if (isNounForm(m[0])) {
+    return tokensBefore(note.slice(0, m.index), 3).some((t) => matchesWordSet(t, OBJECT_WORDS));
+  }
+  return tokensAfter(note.slice(m.index + m[0].length), 3).some((t) => matchesWordSet(t, OBJECT_WORDS));
+}
+
+// An album word (the closed ALBUM_WORDS set) within 5 tokens after the
+// keyword or 3 before it — applies to every keyword form, "album" included.
+function hasAlbumWordInWindow(note: string, m: RegExpExecArray): boolean {
+  const after = tokensAfter(note.slice(m.index + m[0].length), 5);
+  const before = tokensBefore(note.slice(0, m.index), 3);
+  return after.some((t) => matchesWordSet(t, ALBUM_WORDS)) || before.some((t) => matchesWordSet(t, ALBUM_WORDS));
+}
+
+// The row's own album name as context. Verb forms: anywhere in the note.
+// Noun forms: only when the name's LAST token (measuring from where the
+// normalized name ends, not starts — "Songs In The Key Of Life opener" still
+// counts) falls inside the 3 tokens before the noun.
+function hasAlbumNameSignal(note: string, item: any, m: RegExpExecArray): boolean {
+  const albumNorm = normalize(stripSuffixes(item?.album?.name ?? ""));
+  if (!albumNorm) return false;
+  if (!isNounForm(m[0])) return normalize(note).includes(albumNorm);
+  const parts = albumNorm.split(" ").filter(Boolean);
+  const lastToken = parts[parts.length - 1] ?? "";
+  if (!lastToken) return false;
+  const beforeRaw = tokensBefore(note.slice(0, m.index), 3).join(" ");
+  return normalize(beforeRaw).split(" ").filter(Boolean).includes(lastToken);
+}
+
+// An off/from/on link within 3 tokens after the keyword — the wrong-album
+// form ("Closing cut off Memories" when the cited row says Pylon). A
+// determiner or possessive right after the link word cancels ONLY this
+// signal (idiom, not a link); album words and the album name still count.
+function hasAlbumLink(note: string, m: RegExpExecArray): boolean {
+  const tokens = tokensAfter(note.slice(m.index + m[0].length), 3);
+  for (let i = 0; i < tokens.length; i++) {
+    if (!/^(?:off|from|on)$/.test(letters(tokens[i]!))) continue;
+    const next = tokens[i + 1] ? letters(tokens[i + 1]!) : "";
+    if (next && DETERMINERS.has(next)) continue;
+    return true;
+  }
+  return false;
+}
+
+// An opener/closer keyword only counts as an ALBUM claim with album context.
+// Precedence: the tape-object guard first (it wins over everything else),
+// then an album word in its window, then the album name (scoped per form),
+// then an off/from/on link.
 function albumPositionContext(note: string, item: any, m: RegExpExecArray): boolean {
-  if (/\balbum\b/i.test(note)) return true;
-  const albumName = normalize(stripSuffixes(item?.album?.name ?? ""));
-  if (albumName && normalize(note).includes(albumName)) return true;
-  const tokens = note
-    .slice(m.index + m[0].length)
-    .split(/\s+/)
-    .filter(Boolean)
-    .slice(0, 3);
-  return tokens.some((t) => /^(?:off|from|on)$/i.test(t.replace(/[^a-zA-Z]/g, "")));
+  if (hasTapeObject(note, m)) return false;
+  if (hasAlbumWordInWindow(note, m)) return true;
+  if (hasAlbumNameSignal(note, item, m)) return true;
+  return hasAlbumLink(note, m);
 }
 
 function wordBefore(text: string, index: number): string {
@@ -575,17 +664,22 @@ function noteGroundingReason(
 
     // 3. Album-position claims vs the shown track_number/total_tracks. Skips
     // entirely without album context (see albumPositionContext) or on rows
-    // that predate the field expansion.
+    // that predate the field expansion. A reissue/deluxe album name (an
+    // EDITION_RE match) skips only the closer check — its total_tracks
+    // counts bonus tracks appended at the end, so a true opener can still be
+    // verified but a closer claim cannot be refuted from the row.
     const trackNo = item?.track_number;
     const totalTracks = item?.album?.total_tracks;
     if (
       Number.isInteger(trackNo) && trackNo > 0 &&
       Number.isInteger(totalTracks) && totalTracks > 0
     ) {
-      for (const { re, wantTrack, what } of [
-        { re: OPENER_RE, wantTrack: 1, what: "opens the album" },
-        { re: CLOSER_RE, wantTrack: totalTracks, what: "closes the album" },
+      const isEdition = EDITION_RE.test(String(item?.album?.name ?? ""));
+      for (const { re, wantTrack, what, skip } of [
+        { re: OPENER_RE, wantTrack: 1, what: "opens the album", skip: false },
+        { re: CLOSER_RE, wantTrack: totalTracks, what: "closes the album", skip: isEdition },
       ]) {
+        if (skip) continue;
         const m = re.exec(note);
         if (!m || !albumPositionContext(note, item, m)) continue;
         if (trackNo !== wantTrack) {

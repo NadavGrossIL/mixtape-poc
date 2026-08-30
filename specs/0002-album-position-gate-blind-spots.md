@@ -1,7 +1,7 @@
 ---
 id: 0002
 title: Album-position gate blind spots
-status: ready            # draft → ready (human approves) → done | escalated
+status: implemented      # draft → ready (human approves) → done | escalated
 touches_prompt: true     # server/curator.ts (SYSTEM + gate) and evals/prompts.json change → one eval run, human-read
 flag: none               # the grounding gate has no runtime switch (6815090 shipped without one); a revert is the switch
 ---
@@ -500,3 +500,18 @@ Fragile claims:
   2026-08-24, the intended Jane Bordeaux catch, plus
   `nonenglish-french-chanson #7` 2026-08-23, the unwanted Montand hit). The
   spec now states two hits, naming both.
+
+## Run record
+
+- date: 2026-08-30
+- attempts: 1
+- gate: passed
+- files:
+  server/test/curator.test.ts
+  server/curator.ts
+  evals/prompts.json
+  specs/0002-album-position-gate-blind-spots.md
+- notes: none — every predicted slice outcome (tape-object guard beating the
+  album word/name/link, the determiner idiom, the edition-word closer skip,
+  the noun-form 3-token name scope) matched the real `normalize`/`stripSuffixes`
+  behavior on the first pass; no fixture or rule needed a second try.

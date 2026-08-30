@@ -396,10 +396,12 @@ on the implement and fix agents only, `ready-for-eval` when the contract's
 *2026-08-30:* `RUNS.md` has four rows — row 1 autonomous (PR #1), rows 2
 and 3 the two escalated attempts of dry run 2, row 4 its autonomous fourth
 attempt (section 6) — so the "three rows" half of the done-when is met, and
-met twice over by real autonomous runs rather than by escalations. The
-eval-case half is still open: `statbait-album-openers` exists on
-`factory/0002-album-position-gate-blind-spots`, and the case counts only
-once that branch merges. Four
+met twice over by real autonomous runs rather than by escalations. **The
+eval-case half closed the same day**: `statbait-album-openers` reached
+`evals/prompts.json` on `main` when PR #3 merged (`0b73c18`), and it exists
+because a factory-built feature needed it — so M5's done-when is met in
+full. What the case still owes is its first *run*, which is the human's
+(section 6). Four
 driver corrections, each measured on the day: (1) the trust check was a
 false negative — on 2.1.251 a worktree of a trusted repo shows no dialog
 and gets no `~/.claude.json` entry; a headless `claude -p` in it ran an

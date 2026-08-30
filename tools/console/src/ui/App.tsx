@@ -4,7 +4,7 @@ import { graphFor, isStalled, overlayRun, runBounds } from '../graph'
 import { Workflows, cardsFrom, runForms, type ConsoleMeta } from './Workflows'
 import { Canvas } from './Canvas'
 import { RunList } from './RunList'
-import { Replay, type ReplayState } from './Replay'
+import { Timeline } from './Timeline'
 import { NodePanel } from './NodePanel'
 import { dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, nowAt, outcomeOf, projectTag, specOf, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
@@ -22,7 +22,6 @@ export function App() {
   const [error, setError] = useState<string>()
   const [workflow, setWorkflow] = useState<string>()
   const [runId, setRunId] = useState<string>()
-  const [replay, setReplay] = useState<ReplayState>({ playing: false, speed: 20 })
   const [selected, setSelected] = useState<string>()
   const [railOpen, setRailOpen] = useState(true) // false = the rail is a strip of dots while the panel is open
   const [conn, setConn] = useState<Conn>('connecting')
@@ -60,12 +59,9 @@ export function App() {
   const stalled = isStalled(run)
   const bounds = useMemo(() => (run ? runBounds(run) : { start: 0, end: 0 }), [run])
   const total = bounds.end - bounds.start
-  // A live run follows "now": the scrubber is ignored (and hidden) until it finishes.
-  // At or past the end of the replay the manifest's final word is shown, not the
-  // clock's — an agent whose end lies after the run's own `durationMs` would
-  // otherwise read RUNNING forever (A6).
-  const t = live || replay.pos == null || replay.pos >= total ? undefined : bounds.start + replay.pos
-  const graph = useMemo(() => overlayRun(graphFor(card?.file, run), run, t), [card, run, t])
+  // No clock of our own: every node shows the manifest's final word for it (a live
+  // run's manifest is simply what has been written so far).
+  const graph = useMemo(() => overlayRun(graphFor(card?.file, run), run), [card, run])
   const selectedNode = graph.nodes.find((n) => n.id === selected)
 
   // The clock ticks every second while something is live (the selected run on the
@@ -77,15 +73,14 @@ export function App() {
     return () => clearInterval(id)
   }, [ticking])
 
-  const open = (name: string) => { setWorkflow(name); setRunId(undefined); setReplay({ playing: false, speed: 20 }); setSelected(undefined); setRailOpen(true) }
+  const open = (name: string) => { setWorkflow(name); setRunId(undefined); setSelected(undefined); setRailOpen(true) }
   const pickRun = (id: string) => {
     const r = runs.find((x) => x.runId === id)
     if (r && (r.workflowName ?? 'unnamed') !== workflow) setWorkflow(r.workflowName ?? 'unnamed')
-    setRunId(id); setReplay((s) => ({ ...s, playing: false, pos: undefined })); setSelected(undefined); setRailOpen(true)
+    setRunId(id); setSelected(undefined); setRailOpen(true)
   }
   // Opening a node folds the rail to a strip so the canvas keeps its width (A10); `Runs` on the strip unfolds it.
   const select = useCallback((id?: string) => { setSelected(id); if (id) setRailOpen(false); else setRailOpen(true) }, [])
-  const onReplay = useCallback((s: ReplayState) => setReplay(s), [])
 
   // Esc closes the panel (IA-SPEC §9). Not from inside a file editor — its unsaved
   // text would go with the panel, and inside CodeMirror Esc is the search panel's
@@ -132,8 +127,8 @@ export function App() {
       </main>
     )
   }
-  // Elapsed: a scrubbed replay shows the clock; else a live run counts from its start and a stale one stops at what the journal last wrote (A5).
-  const elapsed = t != null ? t - bounds.start : elapsedOf(run, now)
+  // Elapsed: a live run counts from its start, a stale one stops at what the journal last wrote (A5).
+  const elapsed = elapsedOf(run, now)
   const outcome = outcomeOf(run)
   const usd = usdOf(run, ledger)
   const progress = live || stalled ? lastProgress(run, now) : undefined
@@ -172,7 +167,7 @@ export function App() {
             onClose={() => select(undefined)} onSaved={() => { void loadFiles().catch(() => {}) }} />
         )}
       </div>
-      <Replay total={total} start={bounds.start} state={replay} run={run} phases={graph.phases} now={now} onChange={onReplay} />
+      <Timeline total={total} start={bounds.start} run={run} phases={graph.phases} now={now} onSelect={select} />
     </main>
   )
 }

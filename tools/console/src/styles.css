@@ -277,11 +277,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .attempts tr[data-state="done"] td:nth-child(2) { color: var(--accent); }
 .attempts tr[data-state="stalled"] td:nth-child(2), .attempts tr[data-state="running"] td:nth-child(2) { color: var(--warn); }
 
-/* replay bar: play, speeds, the scrubber with phase ticks above and agent bars under it, the clock, Final */
-.replay { display: flex; align-items: center; gap: 14px; padding: 8px 24px 10px; border-top: 1px solid var(--line); background: var(--bg); }
-.speeds { display: flex; gap: 4px; }
-.scrub-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
-.scrub { width: 100%; margin: 0; accent-color: var(--accent); }
+/* timeline strip: phase labels and ticks over one bar per agent, start to end */
+.timeline { display: flex; align-items: center; gap: 14px; padding: 8px 24px 10px; border-top: 1px solid var(--line); background: var(--bg); min-height: 44px; }
+.timeline.empty { min-height: 40px; }
+.timeline .following { overflow-wrap: anywhere; }
+.track-wrap { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .phase-labels { position: relative; height: 14px; margin: 0 8px; }
 .phase-label { position: absolute; top: 0; font-size: 10px; line-height: 14px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding-left: 4px; border-left: 1px solid var(--line-2); white-space: nowrap; }
 .track { position: relative; margin: 0 8px; min-height: 14px; }
@@ -293,9 +293,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .agent-bar[data-state="error"] { background: var(--err); }
 .agent-bar[data-state="stalled"], .agent-bar[data-state="waiting"] { background: var(--warn); }
 .agent-bar:hover { filter: brightness(1.25); }
-.replay .clock { min-width: 140px; text-align: right; color: var(--muted); font-size: 13px; }
-.replay.following { min-height: 58px; }
-.replay.following span { overflow-wrap: anywhere; }
+.agent-bar:disabled { cursor: default; }
 
 /* node panel tabs and the file editor (C4): sentence case, wrap to a second line rather than clip (A9) */
 .tabs { display: flex; flex-wrap: wrap; gap: 2px; margin: 18px 0 10px; border-bottom: 1px solid var(--line); }
@@ -319,4 +317,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cm-diff-body .cm-merge-revert { background: var(--bg-2); border-inline: 1px solid var(--line); }
 
 /* keyboard: one focus ring everywhere (IA-SPEC §9); nothing here removes an outline without a replacement */
-.run:focus-visible, .tab:focus-visible, .btn:focus-visible, .filter:focus-visible, .group-head:focus-visible, .rail-toggle:focus-visible, .strip-dot:focus-visible, .agent-bar:focus-visible, .mono-toggle:focus-visible, .scrub:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.run:focus-visible, .tab:focus-visible, .btn:focus-visible, .filter:focus-visible, .group-head:focus-visible, .rail-toggle:focus-visible, .strip-dot:focus-visible, .agent-bar:focus-visible, .mono-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

@@ -10,7 +10,6 @@ const CONFIG = 'factory.config.json'
 
 const COPY = {
   notRun: 'This step has not run in the selected run.',
-  notYet: 'Not yet at this point of the replay.',
   noResult: 'No result was recorded for this attempt.',
   fixture: 'Fixture run: results and transcripts are not shipped with the repo.',
   live: 'Live — reloads as the transcript grows.',
@@ -35,7 +34,7 @@ const WIDTH = { min: 360, max: 720, default: 440 }
 export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date.now(), onClose, onSaved }: {
   node: GraphNode; info?: NodeRunInfo; run?: RunManifest; tick?: number; files: WorkflowFile[]; scriptPath?: string; now?: number; onClose: () => void; onSaved: () => void
 }) {
-  const a = info?.agent // the attempt visible at the replay position — the facts follow it
+  const a = info?.agent // the node's last attempt in this run — the facts follow it
   const [tab, setTab] = useState<Tab>('prompt')
   const [detail, setDetail] = useState<AgentDetail | { error: string } | null>(null)
   const [loading, setLoading] = useState(false)
@@ -62,8 +61,8 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
   const attempts = useMemo(() => (info ? attemptRows(info.agents, node, run) : []), [info, node, run])
   const last = attempts[attempts.length - 1]
   const live = isLive(run) && !isStalled(run)
-  const ran = (info?.agents.length ?? 0) > 0 // did the step run at all in this run — not just by the scrubbed clock
-  const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : !a ? COPY.notYet : undefined
+  const ran = (info?.agents.length ?? 0) > 0 // did the step run at all in this run
+  const empty = !ran ? COPY.notRun : run?.fixture ? COPY.fixture : undefined
   const loadButton = (label: string) => canLoad && !detail && <button type="button" className="btn btn-small" onClick={load} disabled={loading}>{loading ? 'Loading…' : label}</button>
 
   const rows: [string, string, string?][] = [
@@ -139,7 +138,7 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
                     ? <p className="muted small">{COPY.fixture}</p>
                     : <>
                         <h3>result preview</h3>
-                        {a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{a ? COPY.noResult : COPY.notYet}</p>}
+                        {a?.resultPreview ? <Mono>{a.resultPreview}</Mono> : <p className="muted small">{COPY.noResult}</p>}
                         {canLoad && !detail && <p>{loadButton('Load full result')}</p>}
                         {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
                         {detail && 'prompt' in detail && <><h3>result</h3><Mono tall>{detail.result || dash}</Mono></>}

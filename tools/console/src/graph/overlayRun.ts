@@ -29,8 +29,8 @@ export function labelOf(a: WorkflowAgentEntry): string {
  * The state of one agent at wall-clock `t` (undefined = the manifest's final
  * word). `stalled` is the run's verdict (isStalled): past the last thing the
  * agent wrote (or with no clock at all), an unfinished agent of a stale run
- * is `stalled`, not running — nobody will ever settle it. Scrubbing back into
- * its active window still shows it running; that happened.
+ * is `stalled`, not running — nobody will ever settle it. Read at a `t` inside
+ * its active window it still shows running; that happened.
  */
 export function stateAt(a: WorkflowAgentEntry, t?: number, stalled?: boolean): NodeState {
   const s = clockState(a, t)
@@ -83,7 +83,9 @@ export function isStalled(m: RunManifest | undefined): boolean {
  * node (`review:*`) is replaced by every agent whose label starts with its
  * prefix, inheriting its edges; agents nobody names are added under their
  * phase, wired by shared label segments or, failing that, fanned in from the
- * previous non-empty phase. `t` scrubs the replay clock. The script's meta
+ * previous non-empty phase. `t` (optional, unused by the screens today) reads
+ * the run as it stood at that wall-clock ms; without it every node shows the
+ * manifest's final word for it. The script's meta
  * (description, whenToUse, phase details, outcomes) rides along; a run's own
  * `phases[].detail` wins over the script's.
  */

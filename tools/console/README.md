@@ -1,7 +1,7 @@
 # Mixtape factory console
 
-A local page that draws the feature factory's workflows as a graph, replays
-their runs, and edits the files the line is made of. It reads two things:
+A local page that draws the feature factory's workflows as a graph, shows how
+their runs went, and edits the files the line is made of. It reads two things:
 
 - workflow definitions in this repo — `.claude/workflows/*.js`,
   `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml`
@@ -82,8 +82,8 @@ pattern, else the skill's or agent's description, else the prompt's first senten
 `src/ui/` is the Workflows screen (a card per workflow: description, last run in one
 line, phase strip, run-it block; a skills-and-agents table), the Canvas (lanes with
 subtitles, nodes with a purpose line, the outcome column, a legend), the run rail
-(grouped by workflow, filterable), the replay bar (phase ticks, one bar per agent) and
-the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
+(grouped by workflow, filterable), the timeline strip (phase ticks, one bar per agent)
+and the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
 and is drag-resizable. The panel's width is the only browser-side state (`localStorage`
 `console.panelWidth`, a per-viewer convenience); runs and definitions are never stored
 there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
@@ -91,8 +91,12 @@ there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 result → ledger → prompt), `usdOf` ("no cost yet" while live, "not in RUNS.md" after),
 `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's unfinished
 agents are drawn `stalled`. The page keeps
-one `EventSource` open and refetches on each event; a live run follows "now" and the
-scrubber is offered once it finishes. Esc closes the panel; Enter opens a focused node.
+one `EventSource` open and refetches on each event, so a live run's nodes and timeline
+bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:
+every node shows the manifest's last word for it, and the strip is one bar per agent
+from its start to its end (a live one runs to *now*), coloured by how it settled.
+Hovering a bar names the agent, its clock and its tokens; clicking one opens that
+node's panel. Esc closes the panel; Enter opens a focused node.
 All CSS lives in `src/styles.css`.
 
 Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the

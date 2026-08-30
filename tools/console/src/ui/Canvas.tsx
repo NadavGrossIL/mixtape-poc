@@ -13,9 +13,9 @@ const FIT = { padding: 0.12, maxZoom: 1, minZoom: 0.15 }
 /**
  * The run as a picture: lanes per phase, one node per step, routed edges
  * (graph/layout.ts decides every coordinate), the outcome column, a legend.
- * Node objects keep their identity across replay ticks — only `data` moves —
+ * Node objects keep their identity as a live run moves — only `data` changes —
  * and every node carries explicit dimensions and handle geometry, so React
- * Flow never has to re-measure and never hides a node while scrubbing.
+ * Flow never has to re-measure and never hides a node mid-run.
  */
 export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: RunGraph; files: WorkflowFile[]; run?: RunManifest; selectedId?: string; onSelect: (id?: string) => void }) {
   const cache = useRef(new Map<string, { sig: string; node: Node }>())
@@ -54,8 +54,8 @@ export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: Run
 
 /**
  * Fits the whole drawing (lanes, the loop band under them, the outcome
- * column) when the canvas resizes or the set of nodes changes — never on a
- * replay tick. Watches the container itself (ResizeObserver + window
+ * column) when the canvas resizes or the set of nodes changes — never when a
+ * node merely changes state. Watches the container itself (ResizeObserver + window
  * resize) rather than the flow's store, so the fit does not depend on React
  * Flow's own measuring cycle; the drawing's extent comes from layout(), not
  * from node bounds, so the loop band under the lanes is never cut off.
@@ -79,7 +79,7 @@ function Fitter({ extent, nodesKey, container }: { extent: { w: number; h: numbe
     const { w: width, h: height } = size
     if (!width || !height || !ready) return
     const key = `${width}x${height}:${extent.w}x${extent.h}:${nodesKey}`
-    if (key === last.current) return // a replay tick or a re-render: the reader's pan and zoom stay
+    if (key === last.current) return // a state change or a re-render: the reader's pan and zoom stay
     const id = setTimeout(() => {
       last.current = key
       const zoom = Math.max(FIT.minZoom, Math.min(FIT.maxZoom, (width * (1 - 2 * FIT.padding)) / Math.max(extent.w, 1), (height * (1 - 2 * FIT.padding)) / Math.max(extent.h, 1)))

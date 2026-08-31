@@ -1,0 +1,66 @@
+[
+  {
+    "id": "app-fastest-rap",
+    "category": "app-example",
+    "prompt": "fastest rap verses ever recorded — Rap God energy",
+    "trials": [
+      {
+        "ok": true,
+        "commits": [
+          {
+            "attempt": 1,
+            "gap": "grounding: track 1's note says it opens the album (\"opens\"), but the search result you cited shows it as track 10 of 21 — rewrite the note using only facts your search results showed"
+          },
+          {
+            "attempt": 2,
+            "gap": null
+          }
+        ],
+        "commitAttempts": 2,
+        "firstGap": "grounding: track 1's note says it opens the album (\"opens\"), but the search result you cited shows it as track 10 of 21 — rewrite the note using only facts your search results showed",
+        "cleanFirstCommit": false,
+        "trackCount": 8,
+        "refCount": 8,
+        "ms": 51333
+      },
+      {
+        "ok": true,
+        "commits": [
+          {
+            "attempt": 1,
+            "gap": "grounding: track 7's note calls it a \"title track\", but the search result you cited shows the album as \"The Marshall Mathers LP2 (Deluxe)\", not \"Rap God\" — rewrite the note using only facts your search results showed"
+          },
+          {
+            "attempt": 2,
+            "gap": null
+          }
+        ],
+        "commitAttempts": 2,
+        "firstGap": "grounding: track 7's note calls it a \"title track\", but the search result you cited shows the album as \"The Marshall Mathers LP2 (Deluxe)\", not \"Rap God\" — rewrite the note using only facts your search results showed",
+        "cleanFirstCommit": false,
+        "trackCount": 8,
+        "refCount": 8,
+        "ms": 62775
+      },
+      {
+        "ok": true,
+        "commits": [
+          {
+            "attempt": 1,
+            "gap": "grounding: track 7's note calls it a \"title track\", but the search result you cited shows its release is a single, not an album — rewrite the note using only facts your search results showed"
+          },
+          {
+            "attempt": 2,
+            "gap": null
+          }
+        ],
+        "commitAttempts": 2,
+        "firstGap": "grounding: track 7's note calls it a \"title track\", but the search result you cited shows its release is a single, not an album — rewrite the note using only facts your search results showed",
+        "cleanFirstCommit": false,
+        "trackCount": 8,
+        "refCount": 8,
+        "ms": 41773
+      }
+    ]
+  }
+]

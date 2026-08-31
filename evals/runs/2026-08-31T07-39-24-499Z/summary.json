@@ -1,0 +1,112 @@
+{
+  "runDir": "/Users/nadavgross/Projects/mixtape-poc/evals/runs/2026-08-31T07-39-24-499Z",
+  "generatedAt": "2026-08-31T08:36:58.715Z",
+  "cards": {
+    "prompts": 19,
+    "generated": 19,
+    "generateErrors": 0,
+    "judged": 19,
+    "judgeErrors": 0,
+    "judgeErrorIds": []
+  },
+  "notes": {
+    "total": 152,
+    "resolved": 150,
+    "unresolved": 2,
+    "unknownResolution": 0
+  },
+  "outcomes": {
+    "overall": {
+      "specific-true": 128,
+      "specific-unverifiable": 5,
+      "specific-subjective": 7,
+      "generic": 4,
+      "specific-invented": 8
+    },
+    "resolved": {
+      "specific-true": 126,
+      "specific-unverifiable": 5,
+      "specific-subjective": 7,
+      "generic": 4,
+      "specific-invented": 8
+    },
+    "unresolved": {
+      "specific-true": 2
+    },
+    "unknown-resolution": {}
+  },
+  "rates": {
+    "overall": {
+      "specific-true": 0.8421,
+      "specific-unverifiable": 0.0329,
+      "specific-subjective": 0.0461,
+      "generic": 0.0263,
+      "specific-invented": 0.0526
+    },
+    "resolved": {
+      "specific-true": 0.84,
+      "specific-unverifiable": 0.0333,
+      "specific-subjective": 0.0467,
+      "generic": 0.0267,
+      "specific-invented": 0.0533
+    },
+    "unresolved": {
+      "specific-true": 1
+    },
+    "unknown-resolution": {}
+  },
+  "headline": {
+    "checkableNotes": 141,
+    "inventedRate": 0.0567,
+    "verifiedTrueRate": 0.9078,
+    "unverifiableRate": 0.0355,
+    "genericRate": 0.0263,
+    "resolutionRate": 0.9868
+  },
+  "downgrades": {
+    "total": 0,
+    "byReason": {}
+  },
+  "checks": [
+    {
+      "path": "headline.inventedRate",
+      "actual": 0.0567,
+      "rule": {
+        "max": 0.35,
+        "note": "measured 0.240"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.verifiedTrueRate",
+      "actual": 0.9078,
+      "rule": {
+        "min": 0.6,
+        "note": "measured 0.733"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.genericRate",
+      "actual": 0.0263,
+      "rule": {
+        "max": 0.15,
+        "note": "measured 0.045"
+      },
+      "ok": true,
+      "reason": null
+    },
+    {
+      "path": "headline.resolutionRate",
+      "actual": 0.9868,
+      "rule": {
+        "min": 0.9,
+        "note": "measured 1.000"
+      },
+      "ok": true,
+      "reason": null
+    }
+  ]
+}

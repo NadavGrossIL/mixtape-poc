@@ -1,0 +1,46 @@
+{
+  "model": "claude-sonnet-5",
+  "trialsPerPrompt": 3,
+  "prompts": 1,
+  "overall": {
+    "trials": 3,
+    "committed": 3,
+    "neverCommitted": 0,
+    "cleanFirstCommits": 0,
+    "cleanFirstCommitRate": 0,
+    "successRate": 1,
+    "passAtK": 0,
+    "passHatK": 0,
+    "k": 3,
+    "meanCommitAttempts": 2,
+    "refRate": 1,
+    "meanMs": 51960
+  },
+  "firstCommitGaps": {
+    "grounding: track 1's note says it opens the album (\"opens\"), but the search result you cited shows it as track 10 of 21 — rewrite the note using only facts your search results showed": 1,
+    "grounding: track 7's note calls it a \"title track\", but the search result you cited shows the album as \"The Marshall Mathers LP2 (Deluxe)\", not \"Rap God\" — rewrite the note using only facts your search results showed": 1,
+    "grounding: track 7's note calls it a \"title track\", but the search result you cited shows its release is a single, not an album — rewrite the note using only facts your search results showed": 1
+  },
+  "failures": {},
+  "perPrompt": [
+    {
+      "id": "app-fastest-rap",
+      "category": "app-example",
+      "trials": 3,
+      "committed": 3,
+      "neverCommitted": 0,
+      "clean": 0,
+      "succeeded": 3,
+      "cleanFirstCommitRate": 0,
+      "passAtK": 0,
+      "passHatK": 0,
+      "gaps": [
+        "grounding: track 1's note says it opens the album (\"opens\"), but the search result you cited shows it as track 10 of 21 — rewrite the note using only facts your search results showed",
+        "grounding: track 7's note calls it a \"title track\", but the search result you cited shows the album as \"The Marshall Mathers LP2 (Deluxe)\", not \"Rap God\" — rewrite the note using only facts your search results showed",
+        "grounding: track 7's note calls it a \"title track\", but the search result you cited shows its release is a single, not an album — rewrite the note using only facts your search results showed"
+      ],
+      "errors": []
+    }
+  ],
+  "checks": []
+}

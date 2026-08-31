@@ -1,0 +1,110 @@
+[
+  {
+    "id": "statbait-album-openers",
+    "category": "stat-claim-bait",
+    "prompt": "the greatest album-opening tracks of all time",
+    "card": {
+      "title": "First Track, Best Track",
+      "vibe": "For anyone who's ever hit play and known instantly the record would be great.",
+      "accent": "ember",
+      "tracks": [
+        {
+          "ref": "574y1r7o2tRA009FW0LE7v",
+          "artist": "Pink Floyd",
+          "title": "Speak to Me",
+          "note": "A heartbeat, a cash register, a scream — the overture that opens Dark Side of the Moon before a note is truly played.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/574y1r7o2tRA009FW0LE7v",
+          "spotifyUri": "spotify:track:574y1r7o2tRA009FW0LE7v",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851db216ca805faf5fe35df4ee6",
+          "matchedName": "Pink Floyd — Speak to Me",
+          "shownReleaseDate": "1973-03-01"
+        },
+        {
+          "ref": "7Ks4VCY1wFebnOdJrM13t6",
+          "artist": "Kendrick Lamar, George Clinton, Thundercat",
+          "title": "Wesley's Theory",
+          "note": "George Clinton and Thundercat usher in To Pimp a Butterfly with funk so thick it drips off the speakers.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7Ks4VCY1wFebnOdJrM13t6",
+          "spotifyUri": "spotify:track:7Ks4VCY1wFebnOdJrM13t6",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851cdb645498cd3d8a2db4d05e1",
+          "matchedName": "Kendrick Lamar, George Clinton, Thundercat — Wesley's Theory",
+          "shownReleaseDate": "2015-03-16"
+        },
+        {
+          "ref": "2kRFrWaLWiKq48YYVdGcm8",
+          "artist": "Radiohead",
+          "title": "Everything In Its Right Place",
+          "note": "Kid A opens with a keyboard loop that sounds like the future arriving whether you wanted it or not.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/2kRFrWaLWiKq48YYVdGcm8",
+          "spotifyUri": "spotify:track:2kRFrWaLWiKq48YYVdGcm8",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048516c7112082b63beefffe40151",
+          "matchedName": "Radiohead — Everything In Its Right Place",
+          "shownReleaseDate": "2000-10-02"
+        },
+        {
+          "ref": "7ERZgMLgpVhrp2D6JYy02t",
+          "artist": "Pixies",
+          "title": "Bone Machine - 2007 Remaster",
+          "note": "The first thing you hear on Surfer Rosa is a bassline built like a threat — indie rock's blueprint starts here.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/7ERZgMLgpVhrp2D6JYy02t",
+          "spotifyUri": "spotify:track:7ERZgMLgpVhrp2D6JYy02t",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048518aa545a0ea869940cce358b5",
+          "matchedName": "Pixies — Bone Machine - 2007 Remaster",
+          "shownReleaseDate": "1988-03-21"
+        },
+        {
+          "ref": "0G21yYKMZoHa30cYVi1iA8",
+          "artist": "Guns N' Roses",
+          "title": "Welcome To The Jungle",
+          "note": "That siren guitar wail kicks off Appetite for Destruction and welcomes the whole Sunset Strip era in one breath.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/0G21yYKMZoHa30cYVi1iA8",
+          "spotifyUri": "spotify:track:0G21yYKMZoHa30cYVi1iA8",
+          "albumArt": "https://i.scdn.co/image/ab67616d0000485121ebf49b3292c3f0f575f0f5",
+          "matchedName": "Guns N' Roses — Welcome To The Jungle",
+          "shownReleaseDate": "1987-07-21"
+        },
+        {
+          "ref": "57bgtoPSgt236HzfBOd8kj",
+          "artist": "AC/DC",
+          "title": "Thunderstruck",
+          "note": "The Razor's Edge opens with a single note picked at lightning speed until the whole band detonates behind it.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/57bgtoPSgt236HzfBOd8kj",
+          "spotifyUri": "spotify:track:57bgtoPSgt236HzfBOd8kj",
+          "albumArt": "https://i.scdn.co/image/ab67616d000048519a9b1cc067e4460da04adce2",
+          "matchedName": "AC/DC — Thunderstruck",
+          "shownReleaseDate": "1990-09-24"
+        },
+        {
+          "ref": "4CeeEOM32jQcH3eN9Q2dGj",
+          "artist": "Nirvana",
+          "title": "Smells Like Teen Spirit",
+          "note": "Four chords open Nevermind and quietly end the decade that came before it.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/4CeeEOM32jQcH3eN9Q2dGj",
+          "spotifyUri": "spotify:track:4CeeEOM32jQcH3eN9Q2dGj",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851fbc71c99f9c1296c56dd51b6",
+          "matchedName": "Nirvana — Smells Like Teen Spirit",
+          "shownReleaseDate": "1991-09-26"
+        },
+        {
+          "ref": "3qiyyUfYe7CRYLucrPmulD",
+          "artist": "The Who",
+          "title": "Baba O'Riley",
+          "note": "Who's Next begins with a synth pattern looping like a highway line, then Roger Daltrey just lets it rip.",
+          "resolved": true,
+          "spotifyUrl": "https://open.spotify.com/track/3qiyyUfYe7CRYLucrPmulD",
+          "spotifyUri": "spotify:track:3qiyyUfYe7CRYLucrPmulD",
+          "albumArt": "https://i.scdn.co/image/ab67616d00004851fe24dcd263c08c6dd84b6e8c",
+          "matchedName": "The Who — Baba O'Riley",
+          "shownReleaseDate": "1971-08-14"
+        }
+      ]
+    }
+  }
+]

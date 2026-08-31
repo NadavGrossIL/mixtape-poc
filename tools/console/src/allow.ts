@@ -20,9 +20,14 @@ export const WRITABLE: RegExp[] = [
   /^factory\.config\.json$/,
 ]
 
-/** GET only — the context of a run: its spec, the ledger, the driver's saved JSON / diff / PR body. */
+/**
+ * GET only — the context of a run: its spec, the ledger, the driver's saved
+ * JSON / diff / PR body. Specs are `specs/**` (a spec may sit in a subdirectory)
+ * but always `.md`: a segment is the same tight character class as everywhere
+ * else here, so `..` never gets through — `normalizePath` has already refused it.
+ */
 export const READ_ONLY: RegExp[] = [
-  /^specs\/[\w.-]+\.md$/,
+  /^specs\/(?:[\w.-]+\/)*[\w.-]+\.md$/,
   /^docs\/factory\/RUNS\.md$/,
   /^docs\/factory\/runs\/[\w.-]+\.(json|diff|md)$/,
 ]
@@ -48,6 +53,3 @@ export function allowed(rel: unknown, mode: 'read' | 'write'): string | undefine
   if (WRITABLE.some((re) => re.test(norm))) return norm
   return mode === 'read' && READ_ONLY.some((re) => re.test(norm)) ? norm : undefined
 }
-
-/** Is this path one the console may write? (`allowed(p, 'write')`, as a predicate.) */
-export const isWritable = (rel: unknown): boolean => allowed(rel, 'write') !== undefined

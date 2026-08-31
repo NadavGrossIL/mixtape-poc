@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState, type KeyboardEve
 import type { AgentDetail, FileRead, GraphNode, NodeRunInfo, NodeState, RunManifest, WorkflowAgentEntry, WorkflowFile } from '../types'
 import { agentsOf, findingsOf, isStalled, purposeOf, stateAt } from '../graph'
 import { fmtDuration, fmtTime, fmtTokens, isLive, shortModel, whenAbs, whenRel, dash } from './format'
+import { Findings } from './Cause'
 import { CodeEditor, DiffEditor } from './CodeEditor'
 import { PathRow, PathText } from './Copy'
 import { readNumber, saveNumber } from './remember'
@@ -171,15 +172,7 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
                   {findings.length > 0 && (
                     <>
                       <h3>reviewer findings ({findings.length})</h3>
-                      <ul className="why-findings">
-                        {findings.map((f, i) => (
-                          <li key={i}>
-                            <span className="why-finding-title">{f.title ?? dash}</span>
-                            {f.why ? <> — {f.why}</> : null}
-                            {f.file ? <span className="muted"> · <code>{f.file}{f.line ? `:${f.line}` : ''}</code></span> : null}
-                          </li>
-                        ))}
-                      </ul>
+                      <Findings findings={findings} />
                     </>
                   )}
                   {run?.fixture
@@ -198,8 +191,14 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
                           {live && <span className="muted small">{COPY.live}</span>}
                         </p>
                         {detail && 'error' in detail && <p className="err small">{detail.error}</p>}
-                        <h4 className="sub-h">prompt</h4>
-                        <Mono>{promptText || dash}</Mono>
+                        {/* The prompt is rendered once, under Definition ▸ Prompt (§5 merged
+                            the preview and the full text into that one editor). Repeating it
+                            here made the same text scroll past twice in one panel; this is the
+                            way back to it. */}
+                        <p className="muted small">
+                          Prompt: as in Definition{' · '}
+                          <button type="button" className="link" onClick={() => { setTab('def'); setSub('prompt') }}>open Definition ▸ Prompt</button>
+                        </p>
                         {detail && 'prompt' in detail && (
                           <>
                             <h4 className="sub-h">events ({detail.events.length})</h4>
@@ -356,7 +355,7 @@ function attemptRows(agents: WorkflowAgentEntry[], node: GraphNode, run?: RunMan
   const gateStep = ((run?.result as { gate?: { step?: unknown } } | null | undefined)?.gate?.step)
   const resultStep = typeof gateStep === 'string' && gateStep.trim() ? gateStep.trim() : undefined
   return agents.map((x, i) => {
-    const state = stateAt(x, undefined, stalled)
+    const state = stateAt(x, stalled)
     const p = parseResult(x.resultPreview)
     let outcome: string
     if (p?.ok != null) outcome = p.ok ? 'passed' : 'failed'

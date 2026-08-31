@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { READ_ONLY, WRITABLE, allowed, isWritable, normalizePath } from './allow'
+import { READ_ONLY, WRITABLE, allowed, normalizePath } from './allow'
 
 // The point of these: the read side grew in slice 4 and the write side must not
 // have. Everything the panel can save, and everything the context row can open,
@@ -21,6 +21,8 @@ test('the write list is the five definition files and nothing else', () => {
 test('the read-only additions are readable and NOT writable', () => {
   for (const p of [
     'specs/0002-album-position-gate-blind-spots.md',
+    'specs/sub/0003-x.md', // specs/** — a spec may sit in a subdirectory
+    'specs/a/b/c/0004-deep.md',
     'docs/factory/RUNS.md',
     'docs/factory/runs/2026-08-29-0002-attempt3.json',
     'docs/factory/runs/2026-08-29-0002-attempt3.diff',
@@ -28,7 +30,6 @@ test('the read-only additions are readable and NOT writable', () => {
   ]) {
     assert.equal(allowed(p, 'read'), p, `read ${p}`)
     assert.equal(allowed(p, 'write'), undefined, `write ${p}`)
-    assert.equal(isWritable(p), false, `isWritable ${p}`)
   }
 })
 
@@ -43,7 +44,8 @@ test('nothing else is on either list', () => {
     'CLAUDE.md',
     'docs/factory/plan.md',
     'specs/_template.md/../../server/.env',
-    'specs/nested/0001.md',
+    'specs/sub/notes.txt', // specs/** is nested, but still `.md` only
+    'specs/sub/',
     'docs/factory/runs/2026-08-29-0002-attempt3.txt',
     '.github/workflows/ci.yml',
   ]) {
@@ -53,7 +55,8 @@ test('nothing else is on either list', () => {
 })
 
 test('traversals, absolutes and empty segments are not paths', () => {
-  for (const p of ['../server/.env', 'specs/../../etc/passwd', '/etc/passwd', 'specs//0001.md', 'specs/./0001.md', '..', '', null, undefined, 42]) {
+  // `specs/**` is one segment class deep at a time, so a traversal has to die in normalizePath: these are the two shapes it would arrive in.
+  for (const p of ['../server/.env', 'specs/../server/.env', 'specs/a/../../x.md', 'specs/../../etc/passwd', '/etc/passwd', 'specs//0001.md', 'specs/./0001.md', '..', '', null, undefined, 42]) {
     assert.equal(normalizePath(p), undefined, String(p))
     assert.equal(allowed(p, 'read'), undefined, String(p))
   }

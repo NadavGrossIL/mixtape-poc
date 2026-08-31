@@ -81,7 +81,7 @@ const ASK_TIER = /ask-tier/i
 /** The word a script returns when it hands the run to a human; the last of its `outcomes` when a run ever carries the script's meta. */
 const ESCALATION = 'needs-human'
 
-export function resultOf(run?: RunManifest): RunResult | undefined {
+function resultOf(run?: RunManifest): RunResult | undefined {
   const r = run?.result
   return r && typeof r === 'object' ? (r as RunResult) : undefined
 }
@@ -101,15 +101,11 @@ export function firedOn(line: string, v: CauseVerdict): boolean {
   return l.includes(e) || (l.length >= 12 && e.includes(l))
 }
 
-/**
- * Why the run stopped. `opts.stale` overrides the 15-minute verdict (the rail
- * computes it once); without it `isStalled` decides, exactly as the canvas does.
- */
-export function classify(run?: RunManifest, opts?: { stale?: boolean }): CauseVerdict {
+/** Why the run stopped. The 15-minute verdict is `isStalled(run)`, read here so every caller gets the same one. */
+export function classify(run?: RunManifest): CauseVerdict {
   if (!run) return { cause: 'unknown', kind: 'no-run', headline: 'No run to read', action: CAUSE_COPY.unknown }
   const result = resultOf(run)
-  const stale = opts?.stale ?? isStalled(run)
-  const v = verdict(run, result, stale)
+  const v = verdict(run, result, isStalled(run))
   if (v.cause === 'ok' || v.cause === 'running') return v
   // Future-proof: when the script itself says `cause`, that word wins; the kind,
   // headline and action still come from the signals on disk.

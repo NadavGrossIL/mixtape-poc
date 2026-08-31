@@ -8,7 +8,7 @@ import { Timeline } from './Timeline'
 import { NodePanel, FilePanel, type PanelView } from './NodePanel'
 import { CopyButton, PathText, copyText } from './Copy'
 import { useRemembered } from './remember'
-import { CauseTag } from './Cause'
+import { CauseTag, Findings } from './Cause'
 import { baseName, dash, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, ledgerLine, nowAt, outcomeOf, prefillRow, projectTag, repoRel, rowValuesOf, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
@@ -193,7 +193,7 @@ export function App() {
             <div><dt>agents</dt><dd>{run?.agentCount ?? dash}</dd></div>
             {/* A figure, or `—` when the ledger has no row for this run: writing that row is an
                 action, and it belongs in the Context line's RUNS.md slot, not in a stat cell. */}
-            <div><dt>USD</dt><dd title={usd.noRow ? 'no row in docs/factory/RUNS.md' : usd.title}>{!run || usd.noRow ? dash : usd.text}</dd></div>
+            <div><dt>USD</dt><dd title={usd.title}>{!run || usd.noRow ? dash : usd.text}</dd></div>
             {progress && <div><dt>last progress</dt><dd title={whenAbs(lastProgressAt(run))}>{progress.replace(/^last progress /, '')}</dd></div>}
           </dl>
           {/* The knobs are of the line, not of a step: one entry point here, instead of the same file on every node's Knobs tab (§5). */}
@@ -334,17 +334,7 @@ function WhyStopped({ run, verdict: v, rerun }: { run: RunManifest; verdict: Ret
       </p>
       <p className="why-action">{v.action}</p>
       {v.evidence && <code className="why-evidence" title={v.evidence}>{v.evidence}</code>}
-      {findings.length > 0 && (
-        <ul className="why-findings">
-          {findings.map((f, i) => (
-            <li key={i}>
-              <span className="why-finding-title">{f.title ?? dash}</span>
-              {f.why ? <> — {f.why}</> : null}
-              {f.file ? <span className="muted"> · <code>{f.file}{f.line ? `:${f.line}` : ''}</code></span> : null}
-            </li>
-          ))}
-        </ul>
-      )}
+      <Findings findings={findings} />
       <div className="why-foot">
         {rerun}
         {logs.length > 0 && (
@@ -459,8 +449,6 @@ function Item({ label, value, title, children }: { label: string; value?: string
     </div>
   )
 }
-
-
 
 /**
  * The engine's own status word, shown only when the outcome pill does not

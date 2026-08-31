@@ -1,7 +1,7 @@
 import { useMemo, type ReactNode } from 'react'
 import type { Ledger, NodeState, RunManifest, WorkflowFile, WorkflowMeta } from '../types'
 import { classify, firstSentence, graphFor, hasCause, isStalled, overlayRun, stateAt } from '../graph'
-import { dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { NO_ROW, dash, elapsedOf, fmtDuration, isLive, nowAt, outcomeOf, projectTag, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel, whereOfGit } from './format'
 import { CauseTag } from './Cause'
 import { CopyButton } from './Copy'
 import { useRemembered } from './remember'
@@ -137,8 +137,7 @@ function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest;
   const start = startOf(run)
   const duration = fmtDuration(elapsedOf(run, now))
   const usd = usdOf(run, ledger)
-  const { branch, cwd } = run.git ?? {}
-  const where = [branch && `branch ${branch}`, cwd && `worktree ${cwd}`].filter(Boolean).join(' · ')
+  const where = whereOfGit(run.git)
   return (
     <>
       <button type="button" className="last-run last-run-open" onClick={onOpen}
@@ -147,7 +146,12 @@ function LastRun({ run, ledger, now, outcome, tag, onOpen }: { run: RunManifest;
         {' · '}<span className="spec">{specOf(run, ledger)}</span>
         {' · '}<span title={whenAbs(start)}>{whenRel(start, now)}</span>
         {' · '}<span className="clock">{duration}</span>
-        {' · '}<span title={usd.title}>{usd.text}</span>
+        {/* No row in the ledger is an action, not a figure: it reads as a link and the click
+            it needs is the one the whole line already performs — open the run, where the
+            Context line's `add row` lives. (A span, not a button: this is inside one.) */}
+        {' · '}{usd.noRow
+          ? <span className="no-row" title={NO_ROW.title}>{NO_ROW.card}</span>
+          : <span title={usd.title}>{usd.text}</span>}
         {tag && <> <span className="badge" title={run.projectSlug}>{tag}</span></>}
       </button>
       <WhyLine run={run} />
@@ -200,7 +204,7 @@ function PhaseStrip({ graph, run, now, outcome }: { graph: ReturnType<typeof ove
       if (!info) continue
       if (RANK[info.state] > RANK[worst]) worst = info.state
       for (const a of info.agents) {
-        const s = stateAt(a, undefined, stalled)
+        const s = stateAt(a, stalled)
         const ms = s === 'running' && a.startedAt != null ? Math.max(now - a.startedAt, a.durationMs ?? 0) : a.durationMs
         lines.push(`${phase} · ${a.label ?? n.label} · ${s} · ${fmtDuration(ms)}`)
       }

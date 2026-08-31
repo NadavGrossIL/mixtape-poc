@@ -107,10 +107,10 @@ test('rule 3 — swept: stale, no terminal manifest', () => {
   assert.equal(v.kind, 'swept')
   assert.equal(v.at, 'implement')
   assert.match(v.action, /without a manifest/)
-  // the same run with the rail's verdict passed in
-  assert.equal(classify({ ...m, status: 'running' }, { stale: true }).kind, 'swept')
+  // `running` with `live: false` is the same verdict — isStalled, read inside classify
+  assert.equal(classify({ ...m, status: 'running', live: false }).kind, 'swept')
   // …and not stale: it is simply still going
-  assert.equal(classify({ ...m, status: 'running', live: true }, { stale: false }).cause, 'running')
+  assert.equal(classify({ ...m, status: 'running', live: true }).cause, 'running')
 })
 
 test('rule 4 — gate step 0, an ask-tier file differs from origin/main', () => {

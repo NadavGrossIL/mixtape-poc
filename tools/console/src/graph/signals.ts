@@ -44,7 +44,7 @@ export function sessionLimit(run?: RunManifest): { text: string; raw: string; re
 }
 
 /** When the window resets, out of whatever text carried it, and the one line to show for it. */
-export function parseSessionLimit(text: string): { text: string; resets?: string } {
+function parseSessionLimit(text: string): { text: string; resets?: string } {
   const resets = RESETS_RE.exec(text)?.[1]?.trim()
   return { resets, text: resets ? `session limit — resets ${resets}; re-run after` : 'session limit — re-run once the window resets' }
 }

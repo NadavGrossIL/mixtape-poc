@@ -1,4 +1,4 @@
-import type { Ledger, LedgerEntry, RunManifest, WorkflowAgentEntry } from '../types'
+import type { Ledger, LedgerEntry, RunGit, RunManifest, WorkflowAgentEntry } from '../types'
 import { agentsOf, isStalled, labelOf, stateAt } from '../graph/overlayRun'
 import { isLive } from '../graph/signals'
 
@@ -176,10 +176,6 @@ export function specPath(spec?: string): string | undefined {
   return row ? `specs/${row[1]}-${row[2]}.md` : undefined
 }
 
-// --- the account window ------------------------------------------------------
-// Both live in graph/signals.ts now (`graph/` must not import `ui/`, and the
-// classifier reads them); re-exported here so every `./format` import stands.
-
 /** Elapsed: a live run counts from its start (never less than what it already reported); a stale or finished one is what the manifest says. */
 export function elapsedOf(run: RunManifest | undefined, now: number = Date.now()): number | undefined {
   const start = startOf(run)
@@ -196,9 +192,21 @@ export function toneOf(run: RunManifest | undefined, outcome: ReturnType<typeof 
 }
 
 /**
+ * "This run has no RUNS.md row", worn three ways from one wording: the card's
+ * link-like `no RUNS.md row` (the LAST RUN line opens the run, and the canvas is
+ * where `add row` lives), the rail's short `no row`, and the header's `—`. All
+ * three share the title, which says what to do about it.
+ */
+export const NO_ROW = {
+  card: 'no RUNS.md row',
+  rail: 'no row',
+  title: 'no row in docs/factory/RUNS.md — open the run to add one',
+} as const
+
+/**
  * Cost, which only the ledger knows: `$3.92` from the RUNS.md row; a run in
  * progress has no row yet; a finished run without one is missing from the
- * ledger; a fixture never had one.
+ * ledger (`noRow`, worded by NO_ROW); a fixture never had one.
  */
 export function usdOf(run?: RunManifest, ledger?: Ledger): { text: string; title: string; noRow?: boolean } {
   if (run?.fixture) return { text: dash, title: 'fixture run — no ledger row' }
@@ -207,7 +215,7 @@ export function usdOf(run?: RunManifest, ledger?: Ledger): { text: string; title
   if (cost != null && Number.isFinite(cost)) return { text: fmtUsd(cost), title: 'from docs/factory/RUNS.md' }
   if (isLive(run)) return { text: 'no cost yet', title: 'written to RUNS.md when the driver finishes' }
   if (row) return { text: 'no cost in the row', title: `docs/factory/RUNS.md${row.line ? `:${row.line}` : ''} has a row for this run, with no cost cell` }
-  return { text: 'not in RUNS.md', title: 'docs/factory/RUNS.md has no row for this run id', noRow: true }
+  return { text: NO_ROW.rail, title: NO_ROW.title, noRow: true }
 }
 
 /** Where a run went wrong: the first agent (by index) whose settled state is `error` → `stopped at <label>`. Nothing when none did. */
@@ -217,12 +225,15 @@ export function stoppedAt(run?: RunManifest): string | undefined {
   return hit ? `stopped at ${labelOf(hit)}` : undefined
 }
 
+/** `branch <b> · worktree <cwd>` — where a run happened, worded once for the card's tooltip and the ledger row's notes. Empty when the transcript said neither. */
+export function whereOfGit(git?: RunGit): string {
+  return [git?.branch && `branch ${git.branch}`, git?.cwd && `worktree ${git.cwd}`].filter(Boolean).join(' · ')
+}
+
 /** `<phase> › <label>`, or the label alone when the agent has no phase. */
 export function whereOf(a: WorkflowAgentEntry): string {
   return a.phaseTitle ? `${a.phaseTitle} › ${labelOf(a)}` : labelOf(a)
 }
-
-/* The tag on "why it stopped" moved to ui/Cause.tsx, with the component that renders it. */
 
 /** Why the engine stopped, worded once for the header, the card and the rail's tooltips (IA-SPEC §1.3, §2, §6). */
 export const RUN_COPY = {
@@ -347,7 +358,7 @@ export function rowValuesOf(run: RunManifest | undefined, ledger?: Ledger): RowV
     review: typeof r.review?.verdict === 'string' ? `${r.review.verdict}${findings != null ? `, ${findings} finding${findings === 1 ? '' : 's'}` : ''}` : undefined,
     outcome: outcome.word,
     run: `\`${run.runId ?? ''}\` · ${run.agentCount ?? '?'} agent${run.agentCount === 1 ? '' : 's'} · ${tokens === dash ? '?' : tokens} tok · ${fmtDuration(run.durationMs)}`,
-    notes: [run.git?.branch && `branch ${run.git.branch}`, run.git?.cwd && `worktree ${run.git.cwd}`, stopReason(run)].filter(Boolean).join(' · ') || undefined,
+    notes: [whereOfGit(run.git), stopReason(run)].filter(Boolean).join(' · ') || undefined,
   }
 }
 

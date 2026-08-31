@@ -137,7 +137,7 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   const line2: Row['line2'] = live
     ? [{ text: `started ${fmtClock(start)}`, title: whenAbs(start) }, { text: fmtDuration(elapsedOf(run, now)) }, { text: usd.text, title: usd.title }]
     : [{ text: whenRel(start, now), title: whenAbs(start) }, { text: fmtDuration(run.durationMs) }, { text: usd.text, title: usd.title }]
-  const cause = classify(run, { stale: stalled })
+  const cause = classify(run)
   return {
     run, id: run.runId ?? `run-${i}`, workflow: run.workflowName ?? 'unnamed', word, wordTitle: stalled ? TIP.stale : killed ? TIP.killed : oc.title, tone, dot,
     spec: specShort(specOf(run, ledger)), badges, line2, start,

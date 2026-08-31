@@ -88,7 +88,9 @@ spec (`format.ts:136-155`) and `Workflows.tsx:25` hardcodes `specs/NNNN-slug.md`
 **Screens:** both (canvas header row; home card as a compact line). **Effort:** M.
 **Engine change:** none for most; one plugin addition.
 Answers **Q3**. For the selected run:
-- spec → open in the panel (extend the `/api/file` allowlist to `specs/**`, read-only)
+- spec → open in the panel (extend the `/api/file` GET allowlist, read-only, to exactly
+  `specs/**/*.md`, `docs/factory/RUNS.md` and `docs/factory/runs/*.{json,diff,md}` — the
+  write list does not grow)
 - run id → click-to-copy
 - transcript per node → the absolute path shown and the transcript one click away
   (today 4 clicks: run → node → Transcript → Load)

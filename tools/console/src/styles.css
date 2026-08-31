@@ -76,6 +76,9 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* the last-run line is the link to that run on the canvas: a button that keeps the line's look, the spec underlining on hover */
 .last-run-open { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; font-family: inherit; color: var(--text); }
 .last-run-open:hover .spec { color: var(--accent); text-decoration: underline; }
+/* "no RUNS.md row" is the one cell of the line that is an action — it reads as a link, and the line's own click performs it */
+.no-row { font-size: 13px; color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; }
+.last-run-open:hover .no-row { text-decoration: underline; }
 .last-run-2 { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .outcome-word { font-weight: 600; }
 [data-tone="ok"] { color: var(--accent); } [data-tone="err"] { color: var(--err); } [data-tone="warn"] { color: var(--warn); }

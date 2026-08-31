@@ -37,9 +37,10 @@ GET except the one POST below):
   read as `key: value` lines, no YAML library. A file without a header gets `{}`.
 - `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet).
   Two allowlists, in `src/allow.ts` (pure, unit-tested in `src/allow.test.ts`): GET reads the
-  five writable definition files **plus**, read-only, `specs/*.md`, `docs/factory/RUNS.md` and
-  `docs/factory/runs/*.{json,diff,md}` — the context of a run. POST only ever asks for the
-  writable list, so the read-only additions are 403 on a write.
+  five writable definition files **plus**, read-only, `specs/**/*.md` (a spec may sit in a
+  subdirectory; every segment is the same tight character class, so a `..` never gets that
+  far), `docs/factory/RUNS.md` and `docs/factory/runs/*.{json,diff,md}` — the context of a
+  run. POST only ever asks for the writable list, so the read-only additions are 403 on a write.
 - `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
 - `POST /api/file` — the only write, see "Tweak" below
 - `/api/runs` — manifests newest first, without `script`/`args` (`?full=1` includes them);
@@ -109,15 +110,19 @@ skills table (`console.skills`) — all through `ui/remember.ts`, which swallows
 `localStorage` and keeps the default. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 (`result.status` in the workflow's words, else the engine status), `specOf` (args →
 result → ledger → prompt), `specPath` (that reading as a path a driver takes, the
-ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live, "not in
-RUNS.md" after), `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. The two
+ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live; after, `NO_ROW`
+— one wording worn three ways, the card's `no RUNS.md row`, the rail's `no row` and the
+header's `—`, all with the same title, "open the run to add one"), `whereOfGit` (`branch …
+· worktree …`, the card's tooltip and the ledger row's notes),
+`stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. The two
 signals the classifier needs are a layer below, in `src/graph/signals.ts` (`graph/`
 imports nothing from `ui/`): `isLive` and `sessionLimit` — the failing agent's `You've
 hit your session limit · resets 4:40pm (Asia/Jerusalem)`, or the script's own
 `[review:1] failed: …` log line when the agents carry no error, matched by
 `SESSION_LIMIT_RE` and split into the reset time; `ui/format.ts` re-exports both.
 `ui/Cause.tsx` owns the `CAUSE_TAG` copy and the one `<CauseTag>` the canvas block and
-the home card both render. A stale run's
+the home card both render, plus `<Findings>` — the reviewer's findings as the canvas
+block and the node panel both list them. A stale run's
 unfinished agents are drawn `stalled`. The page keeps
 one `EventSource` open and refetches on each event, so a live run's nodes and timeline
 bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:
@@ -199,7 +204,10 @@ and the Context line's RUNS.md slot carries the one action — **add row** — w
 RUNS.md at its last row and copies a row for this run, built from the table's own header
 (`prefillRow`) — date, spec, engine, attempts, gate, review, outcome, run and notes filled from
 the manifest, cost left empty because only the driver's JSON knows it. The page never writes
-RUNS.md. The node panel's *This run* tab carries the transcript's absolute path with a Copy and
+RUNS.md. On the home card the same absence is the line's last cell, `no RUNS.md row`, which
+reads as a link and is opened by the click the whole LAST RUN line already performs — the
+canvas, where **add row** lives. The node panel's *This run* tab carries the transcript's
+absolute path with a Copy and
 loads it when you open the tab (it was four clicks: run, node, tab, button). The home card's
 LAST RUN line carries the branch and the worktree in its tooltip and leaves the rest to the
 canvas — spelled out they wrapped over three lines in a 350 px card.
@@ -223,7 +231,9 @@ full text once it loads, the manifest's preview until then, cut off at twelve li
 and **Script** (the workflow file, edited as code: the graph is drawn from that text), with
 the run's frozen copy of that script folded underneath. *This run* is what the run knows
 about the step: its facts, its error, its attempts, the reviewer's findings where they belong
-to it, its result and its transcript. A node that never ran in this run opens on Definition
+to it (`ui/Cause.tsx`'s `<Findings>`, the same list the canvas header's block renders), its
+result and its transcript. The prompt is not repeated here — it is rendered once, in
+Definition ▸ Prompt, and *This run* carries one line back to it. A node that never ran in this run opens on Definition
 and says "Did not run in this run." in one line, instead of a grid of dashes. The knobs are
 not a tab: `factory.config.json` is the same file on every node, so it is one **Settings**
 button in the canvas header, opening in the panel's slot, editable through the same

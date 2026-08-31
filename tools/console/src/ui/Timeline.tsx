@@ -102,7 +102,7 @@ function markersOf(run: RunManifest | undefined, phases: string[], start: number
     const e = Math.max(s, endOf(a))
     let row = rowEnds.findIndex((end) => end <= s)
     if (row < 0) { row = rowEnds.length; rowEnds.push(e) } else rowEnds[row] = e
-    const state = stateAt(a, undefined, stalled)
+    const state = stateAt(a, stalled)
     const label = labelOf(a)
     const left = pct(s)
     const width = Math.max(0.4, pct(e) - left)

@@ -11,6 +11,7 @@
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "typecheck": "tsc --noEmit",
+    "test": "node --import ./test/register-ts.mjs --test \"src/**/*.test.ts\"",
     "fixtures": "node fixtures/redact.mjs"
   },
   "dependencies": {

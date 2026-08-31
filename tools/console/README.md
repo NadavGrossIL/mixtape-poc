@@ -1,7 +1,7 @@
 # Mixtape factory console
 
-A local page that draws the feature factory's workflows as a graph, replays
-their runs, and edits the files the line is made of. It reads two things:
+A local page that draws the feature factory's workflows as a graph, shows how
+their runs went, and edits the files the line is made of. It reads two things:
 
 - workflow definitions in this repo — `.claude/workflows/*.js`,
   `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml`
@@ -20,6 +20,8 @@ cd tools/console
 npm install
 npm run dev        # http://127.0.0.1:5174
 npm run build      # typecheck (tsc --noEmit) + vite build, nothing is deployed
+npm test           # node --test on src/**/*.test.ts (Node ≥ 22.18 strips the types;
+                   # test/register-ts.mjs resolves the app's extensionless imports)
 npm run fixtures   # regenerate the redacted fixture from the real run on this machine
 ```
 
@@ -33,16 +35,31 @@ GET except the one POST below):
   last `→` (else every `status: '…'` a `return {` can produce, `needs-human` last); a skill's or
   agent's frontmatter — `description`, `argumentHint`, `model`, `tools`, `disableModelInvocation` —
   read as `key: value` lines, no YAML library. A file without a header gets `{}`.
-- `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet)
+- `/api/file?path=…` — `{ path, content, sha }` for one allowlisted file (404 when it does not exist yet).
+  Two allowlists, in `src/allow.ts` (pure, unit-tested in `src/allow.test.ts`): GET reads the
+  five writable definition files **plus**, read-only, `specs/**/*.md` (a spec may sit in a
+  subdirectory; every segment is the same tight character class, so a `..` never gets that
+  far), `docs/factory/RUNS.md` and `docs/factory/runs/*.{json,diff,md}` — the context of a
+  run. POST only ever asks for the writable list, so the read-only additions are 403 on a write.
 - `/api/config` — the parsed `factory.config.json`, or `{}` when there is none
 - `POST /api/file` — the only write, see "Tweak" below
 - `/api/runs` — manifests newest first, without `script`/`args` (`?full=1` includes them);
-  each carries `projectSlug`, the projects dir it was read from
+  each carries `projectSlug`, the projects dir it was read from, plus
+  `paths: { manifest?, journal?, scriptCopy?, sessionDir?, agents: { [agentId]: { transcript, meta? } } }`
+  — absolute paths to everything the run left on disk, the dirs the loader walked anyway —
+  and `git: { branch?, cwd? }`, read from the FIRST line of one agent transcript (`cwd` and
+  `gitBranch` are on every line; cached by that file's size+mtime, one line per run).
+  `scriptCopy` is the script the engine **froze** for this run (`manifest.scriptPath`, else the
+  copy in `workflows/scripts/`), which is not necessarily today's repo file.
 - `/api/runs/:runId/agents/:agentId` — `{ prompt, result, events }` from the transcript (404 for fixtures)
-- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes } }` from the RUNS.md table
-  (columns found by header name; the `run` cell names the id in backticks; a row without one
-  is skipped, a missing file is `{}`). `docs/factory/runs/<date>-NNNN.json` (the raw `claude -p`
-  results, no run id) fill a missing `cost` when a row matches on date + spec number.
+- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes, line, driverFiles } }` from the RUNS.md
+  table (columns found by header name; the `run` cell names the id in backticks; a row without one
+  is skipped, a missing file is `{}`). `line` is the row's 1-based line in RUNS.md, so the page can
+  open the file at it. `driverFiles: { json?, diff?, pr? }` are the driver's saved results under
+  `docs/factory/runs/`, absolute, oldest attempt first: `<date>-NNNN[-attemptN].{json,diff,pr.md}`
+  matched to a row by date + spec number and, when the row's notes name an attempt ("attempt 3 · …"),
+  by that attempt — several rows can share a date and a spec, and the attempt-suffixed names used to
+  match nothing at all. A row with no `cost` cell takes it from the last matched JSON's `total_cost_usd`.
 - `/api/meta` — `{ slug, projectsBase, projectDirs, exists }`: the projects dirs being read
   (`CONSOLE_PROJECTS_DIR` overrides `~/.claude/projects`; `exists` is the repo's own dir)
 - `/api/events` — Server-Sent Events; `data:` lines are `{ kind: 'runs' }` (a manifest or
@@ -80,26 +97,148 @@ run under the fix shelf on their own y with the `≤n` bound as a pill) and plac
 OUTCOME column. `purpose.ts` gives each node its one-line purpose (a table per label
 pattern, else the skill's or agent's description, else the prompt's first sentence).
 `src/ui/` is the Workflows screen (a card per workflow: description, last run in one
-line, phase strip, run-it block; a skills-and-agents table), the Canvas (lanes with
-subtitles, nodes with a purpose line, the outcome column, a legend), the run rail
-(grouped by workflow, filterable), the replay bar (phase ticks, one bar per agent) and
-the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
-and is drag-resizable. The panel's width is the only browser-side state (`localStorage`
-`console.panelWidth`, a per-viewer convenience); runs and definitions are never stored
-there. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
+line, the command that runs it again, phase strip; a skills-and-agents table), the Canvas (lanes with
+subtitles, nodes with a purpose line, the outcome column, a legend behind the `?` in the
+zoom cluster), the run rail
+(grouped by workflow, filterable), the timeline strip (phase ticks, one bar per agent)
+and the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
+and is drag-resizable; its title row and the two tabs stay stuck to the top of its scroll.
+Browser-side state is four per-viewer conveniences, never runs or
+definitions: the panel's width (`console.panelWidth`), the legend
+(`console.legend`), the context line's `more` (`console.context`) and the home screen's
+skills table (`console.skills`) — all through `ui/remember.ts`, which swallows a blocked
+`localStorage` and keeps the default. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 (`result.status` in the workflow's words, else the engine status), `specOf` (args →
-result → ledger → prompt), `usdOf` ("no cost yet" while live, "not in RUNS.md" after),
-`stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. A stale run's unfinished
-agents are drawn `stalled`. The page keeps
-one `EventSource` open and refetches on each event; a live run follows "now" and the
-scrubber is offered once it finishes. Esc closes the panel; Enter opens a focused node.
+result → ledger → prompt), `specPath` (that reading as a path a driver takes, the
+ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live; after, `NO_ROW`
+— one wording worn three ways, the card's `no RUNS.md row`, the rail's `no row` and the
+header's `—`, all with the same title, "open the run to add one"), `whereOfGit` (`branch …
+· worktree …`, the card's tooltip and the ledger row's notes),
+`stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. The two
+signals the classifier needs are a layer below, in `src/graph/signals.ts` (`graph/`
+imports nothing from `ui/`): `isLive` and `sessionLimit` — the failing agent's `You've
+hit your session limit · resets 4:40pm (Asia/Jerusalem)`, or the script's own
+`[review:1] failed: …` log line when the agents carry no error, matched by
+`SESSION_LIMIT_RE` and split into the reset time; `ui/format.ts` re-exports both.
+`ui/Cause.tsx` owns the `CAUSE_TAG` copy and the one `<CauseTag>` the canvas block and
+the home card both render, plus `<Findings>` — the reviewer's findings as the canvas
+block and the node panel both list them. A stale run's
+unfinished agents are drawn `stalled`. The page keeps
+one `EventSource` open and refetches on each event, so a live run's nodes and timeline
+bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:
+every node shows the manifest's last word for it, and the strip is one bar per agent
+from its start to its end (a live one runs to *now*), coloured by how it settled.
+Hovering a bar names the agent, its clock and its tokens; clicking one opens that
+node's panel. Esc closes the panel; Enter opens a focused node. Inside a CodeMirror
+editor the first Esc belongs to the editor — it closes the search panel, or leaves the
+editor (Tab indents, so Esc is the way out; Esc-then-Tab moves focus on too) — and only
+a second Esc, pressed with focus outside it, closes the panel. The editor bar says so.
 All CSS lives in `src/styles.css`.
 
-Tweak (C4). The node panel has three editable tabs — *Prompt* (the `SKILL.md` of the
-skill a node invokes, or `.claude/agents/<agentType>.md` for a named subagent such as
-the reviewer; a literal prompt is read-only), *Knobs* (`factory.config.json`) and
-*Script* (the workflow file, edited as code: the graph is drawn from that text). All
-three are CodeMirror 6 (`src/ui/CodeEditor.tsx`): highlighting by extension, search on
+Running it again. Both screens carry one command, bound to the run in front of you:
+the card under LAST RUN (`Re-run`, or `Run` when the workflow has none yet), and a
+compact row under the canvas header's run sentence. It is the driver with that run's
+own spec — `scripts/factory-run.sh specs/0002-album-position-gate-blind-spots.md` —
+except where a workflow has no driver (`review-spec`, whose line is the in-session
+`/review-spec <spec>`); `specs/NNNN-slug.md` appears only when there is no run to read
+a spec from. No `--max-turns` / `--max-budget-usd` on screen: the driver reads them
+from `factory.config.json`, which the canvas header's **Settings** button opens.
+Copy copies exactly the line; where it goes and what happens then ("paste in a terminal
+— the driver writes the RUNS.md row") is the button's tooltip, since the screen title
+already says the console never starts a run.
+Beside it on the canvas, when they apply: the driver wipes `../mixtape-poc.wt`
+(it cuts the worktree again from `origin/main`, so uncommitted work there goes) and it
+costs about ten minutes of the five-hour account window; the account window itself — an
+agent whose `error` says "You've hit your session limit" — puts its reset time in the
+block above. The LAST RUN line is itself a button: it
+opens that run on the canvas, while the card's name and "Open canvas →" open the
+workflow at its newest.
+
+Why it stopped. A run that ended badly is classified once, in `src/graph/cause.ts`
+(`classify(run)` — pure, one manifest in, one verdict out, tested against the real
+runs on disk), into the only distinction that changes what the reader does next:
+**infra**, which a human handles and which says nothing about the spec, or **spec**,
+where the diff and the ticket disagree. The rules, in order, first match wins:
+an agent error or a `logs[]` line saying "You've hit your session limit" → *infra ·
+account window* (with the reset time); `status: killed` or an `Error: Workflow
+aborted` → *infra · budget/turn stop*; stale with no terminal manifest → *infra ·
+swept or session ended*; `result.gate.step` `ask-tier check` → *infra · dirty
+ask-tier file*; a `reason` of "no result" over an agent that wrote an error →
+*infra · the step died*; `result.review.verdict: 'fail'` with findings that are
+about the diff → *spec · the reviewer failed it*; "implementer escalated" → *spec*;
+the gate still failing → *spec/code*; anything else → *unknown · open the
+transcript*. The order is what makes it honest: `wf_66ec6c31-e3f` has a failed
+review verdict **and** a session limit, and it is infra — the reviewer's finding is
+its own "reviewer returned nothing" placeholder, which `findingsOf` drops. The
+canvas shows the tag, the headline, the one action, the raw string that fired the
+rule, the reviewer's real findings when there are any, and — on the block's last
+line — the Re-run command that acts on the action, with the script's `logs[]` beside
+it behind a disclosure (160 px, scrolling), the firing line lit. When the block
+renders, the run sentence above it drops its `— <reason>` fragment: the block says it
+better and the two side by side read as a contradiction ("no result" against "account
+session limit"). The sentence ends instead in `result.attempts`, when the script
+returned them — `attempts implement ×2 · gate ×1 · review ×1`.
+A run that ended well has no block, and
+its Re-run row stands on its own under the sentence. The home card shows tag +
+headline only, directly under the LAST RUN line; the rail says the headline on hover. `result.cause`, if a script ever
+returns one, wins over the table's class. Next to the outcome pill, `engine:
+<status>` appears only when the engine's own word is neither `completed` nor
+what the pill already says.
+
+Where the context lives. Under the canvas header, a **Context** *line* names the three
+artefacts a manager reaches for — no clicking a node first: the spec (Open, read-only in the
+panel), the branch (Copy) and the RUNS.md row at its line number (Open) — and ends in
+`more ▾`. Opening it unfolds the rest in a box of its own — 180 px, scrolling inside, so
+unfolding it never takes the canvas off the screen: the worktree it ran in (from `git`, which is `cwd` /
+`gitBranch` off the first transcript line), the run id, the manifest, the journal, the frozen
+script, the spec's path and the driver's saved JSON / diff / PR body, then the ledger row in
+its own words, in full. Each unfolded line is a label, the value in monospace
+(a long path is truncated from the *left* — the tail identifies the file — with the whole thing
+in the tooltip), then Copy and, where the page can serve the file, Open. Paths under `~/.claude`
+are copy-only: they are outside the repo and `/api/file` will not serve them, which is fine —
+a terminal is where they are going. The frozen script's **Diff** puts the copy the engine ran
+beside the live repo file (the Definition tab's Script editor edits the live one), and says so
+when they are identical; the same comparison sits folded under that editor.
+When there is no row, the header's USD cell is `—` ("no row in docs/factory/RUNS.md")
+and the Context line's RUNS.md slot carries the one action — **add row** — which opens
+RUNS.md at its last row and copies a row for this run, built from the table's own header
+(`prefillRow`) — date, spec, engine, attempts, gate, review, outcome, run and notes filled from
+the manifest, cost left empty because only the driver's JSON knows it. The page never writes
+RUNS.md. On the home card the same absence is the line's last cell, `no RUNS.md row`, which
+reads as a link and is opened by the click the whole LAST RUN line already performs — the
+canvas, where **add row** lives. The node panel's *This run* tab carries the transcript's
+absolute path with a Copy and
+loads it when you open the tab (it was four clicks: run, node, tab, button). The home card's
+LAST RUN line carries the branch and the worktree in its tooltip and leaves the rest to the
+canvas — spelled out they wrapped over three lines in a 350 px card.
+
+Where the eye lands (§5). The run is the focal point and the reference material is folded:
+the canvas header is ~140 px for a clean run and ~225 px for one that stopped (measured at
+1552 px wide), the legend hides behind `?`, the home screen's skills-and-agents table hides
+behind a disclosure, the `native` chip is gone from both screens (it is a constant; the value
+is in the workflow name's tooltip), and the footer is one `LIVE` dot whose tooltip carries the
+dirs it reads. On a card, the outcome word and the spec are the largest text on it, level
+with the workflow name. The paragraph that used to sit under each card's command ("The
+console never starts a run — paste this in a terminal…") is gone: the screen's subtitle
+already says it, and the rest is the Copy button's tooltip.
+
+Tweak (C4). The node panel has two tabs. *Definition* is what the step is made of, and it
+is the editable one: **Prompt** (the `SKILL.md` of the skill a node invokes, or
+`.claude/agents/<agentType>.md` for a named subagent such as the reviewer; a literal prompt
+from the script is read-only, and a journal-only node shows one prompt — the transcript's
+full text once it loads, the manifest's preview until then, cut off at twelve lines with
+`show all` under it — no scroll box of its own, so the wheel scrolls the panel)
+and **Script** (the workflow file, edited as code: the graph is drawn from that text), with
+the run's frozen copy of that script folded underneath. *This run* is what the run knows
+about the step: its facts, its error, its attempts, the reviewer's findings where they belong
+to it (`ui/Cause.tsx`'s `<Findings>`, the same list the canvas header's block renders), its
+result and its transcript. The prompt is not repeated here — it is rendered once, in
+Definition ▸ Prompt, and *This run* carries one line back to it. A node that never ran in this run opens on Definition
+and says "Did not run in this run." in one line, instead of a grid of dashes. The knobs are
+not a tab: `factory.config.json` is the same file on every node, so it is one **Settings**
+button in the canvas header, opening in the panel's slot, editable through the same
+`POST /api/file` allowlist (which did not grow). Every editor is CodeMirror 6
+(`src/ui/CodeEditor.tsx`): highlighting by extension, search on
 ⌘F, ⌘S for Save…, one theme built from the CSS tokens so dark and light both work.
 Save shows the file side by side with what it would become — `@codemirror/merge`'s
 merge view, both sides read-only, unchanged stretches collapsed — then writes through
@@ -109,7 +248,9 @@ merge view, both sides read-only, unchanged stretches collapsed — then writes 
   `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml|yml`,
   `factory.config.json` after normalisation — no `..`, no absolute paths, no
   symlinks, and the parent's real path must stay inside the repo. Anything else is
-  `403 { error: 'path not allowlisted' }`.
+  `403 { error: 'path not allowlisted' }`, including everything GET may read read-only
+  (`specs/`, RUNS.md, `docs/factory/runs/`): the write list is a separate array in
+  `src/allow.ts`, and `src/allow.test.ts` asserts it did not grow.
 - `base` is the sha256 of the content the client last read (from `/api/workflows`
   or `/api/file`; `""` for a file that does not exist yet). If the file on disk no
   longer hashes to it the reply is `409 { error: 'file changed on disk', current }`

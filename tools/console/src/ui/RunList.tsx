@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
 import type { Ledger, RunManifest, WorkflowFile } from '../types'
-import { isStalled } from '../graph'
+import { classify, hasCause, isStalled } from '../graph'
 import type { ConsoleMeta } from './Workflows'
-import { runForms } from './Workflows'
+import { runCommand } from './Workflows'
 import { RUN_COPY, dash, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
 
 // The run rail (IA-SPEC §6): runs grouped by workflow — the reader arrives from
@@ -26,6 +26,8 @@ interface Row {
   badges: { text: string; title?: string; live?: boolean }[]
   line2: { text: string; title?: string }[]
   start?: number
+  /** `classify().headline` for a run that stopped — the rail's rows stay as they are and say it on hover. */
+  why?: string
 }
 
 export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, collapsed, onSelect, onExpand }: {
@@ -83,7 +85,7 @@ export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, 
             <ul className="runs">
               {g.rows.map((x) => (
                 <li key={x.id}>
-                  <button type="button" className="run" data-selected={x.run.runId === selectedId || undefined} title={x.run.runId ?? dash} onClick={() => x.run.runId && onSelect(x.run.runId)}>
+                  <button type="button" className="run" data-selected={x.run.runId === selectedId || undefined} title={x.why ? `${x.why}\n${x.run.runId ?? dash}` : x.run.runId ?? dash} onClick={() => x.run.runId && onSelect(x.run.runId)}>
                     <span className="dot" data-status={x.dot.status} title={x.dot.title} role="img" aria-label={x.dot.status} />
                     <span className="run-main">
                       <span className="run-1">
@@ -135,24 +137,25 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   const line2: Row['line2'] = live
     ? [{ text: `started ${fmtClock(start)}`, title: whenAbs(start) }, { text: fmtDuration(elapsedOf(run, now)) }, { text: usd.text, title: usd.title }]
     : [{ text: whenRel(start, now), title: whenAbs(start) }, { text: fmtDuration(run.durationMs) }, { text: usd.text, title: usd.title }]
+  const cause = classify(run)
   return {
     run, id: run.runId ?? `run-${i}`, workflow: run.workflowName ?? 'unnamed', word, wordTitle: stalled ? TIP.stale : killed ? TIP.killed : oc.title, tone, dot,
     spec: specShort(specOf(run, ledger)), badges, line2, start,
+    why: hasCause(cause.cause) ? cause.headline : undefined,
   }
 }
 
-/** Nothing on disk: where the page looked, and how to start a run (the first workflow's two forms). */
+/** Nothing on disk: where the page looked, and the one command that starts a run (no spec to bind to yet — the placeholder). */
 function Empty({ files, meta }: { files: WorkflowFile[]; meta: ConsoleMeta }) {
   const dirs = meta.projectDirs?.length ? meta.projectDirs : ['~/.claude/projects/<slug>*']
   const first = files.filter((f) => f.kind === 'script' || f.kind === 'yaml').sort((a, b) => a.name.localeCompare(b.name))[0]
-  const forms = runForms(first?.name ?? 'implement-from-spec', first?.meta)
+  const command = runCommand(first?.name ?? 'implement-from-spec', undefined, first?.meta)
   return (
     <div className="rail-empty">
       <p>No runs on disk for this repo.</p>
       {dirs.map((d) => <p key={d} className="muted small dir">{d}</p>)}
       <p>Start one: </p>
-      <code>{forms.session}</code>
-      {forms.headless && <code>{forms.headless}</code>}
+      <code>{command}</code>
     </div>
   )
 }

@@ -1,24 +1,31 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent, type RefObject } from 'react'
-import { ReactFlow, Background, BackgroundVariant, BaseEdge, Controls, EdgeLabelRenderer, MarkerType, Position, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node } from '@xyflow/react'
+import { ReactFlow, Background, BackgroundVariant, BaseEdge, ControlButton, Controls, EdgeLabelRenderer, MarkerType, Position, useNodesInitialized, useReactFlow, type Edge, type EdgeProps, type Node } from '@xyflow/react'
 import type { NodeState, RunGraph, RunManifest, WorkflowFile } from '../types'
 import { layout, purposeOf, isStalled } from '../graph'
 import { roundedPath, type Pt } from '../graph/layout'
 import { AgentNode, LaneNode, OutcomeNode, nodeHandles, type AgentRFNode, type LaneRFNode, type OutcomeRFNode } from './AgentNode'
 import { isLive, nowAt, outcomeOf } from './format'
+import { useRemembered } from './remember'
 
 const nodeTypes = { agent: AgentNode, lane: LaneNode, outcome: OutcomeNode }
 const edgeTypes = { route: RouteEdge }
 const FIT = { padding: 0.12, maxZoom: 1, minZoom: 0.15 }
+const LEGEND_KEY = 'console.legend'
 
 /**
  * The run as a picture: lanes per phase, one node per step, routed edges
  * (graph/layout.ts decides every coordinate), the outcome column, a legend.
- * Node objects keep their identity across replay ticks — only `data` moves —
+ * Node objects keep their identity as a live run moves — only `data` changes —
  * and every node carries explicit dimensions and handle geometry, so React
- * Flow never has to re-measure and never hides a node while scrubbing.
+ * Flow never has to re-measure and never hides a node mid-run.
+ *
+ * The legend is off by default (§5): nine swatches that never change are
+ * reference material, and every badge already says `done` / `error` / `stalled`
+ * in words. `?` in the zoom cluster brings it back, and remembers.
  */
 export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: RunGraph; files: WorkflowFile[]; run?: RunManifest; selectedId?: string; onSelect: (id?: string) => void }) {
   const cache = useRef(new Map<string, { sig: string; node: Node }>())
+  const [legend, setLegend] = useRemembered(LEGEND_KEY, false)
   const container = useRef<HTMLDivElement>(null)
   const { nodes, edges, extent, nodesKey } = useMemo(() => build(graph, files, run, selectedId, cache.current), [graph, files, run, selectedId])
   const onKeyDown = (ev: KeyboardEvent<HTMLDivElement>) => {
@@ -44,21 +51,31 @@ export function Canvas({ graph, files, run, selectedId, onSelect }: { graph: Run
         colorMode="system"
       >
         <Background variant={BackgroundVariant.Dots} gap={24} size={1} />
-        <Controls showInteractive={false} position="top-right" />
+        <Controls showInteractive={false} position="top-right">
+          <ControlButton onClick={() => setLegend(!legend)} title={legend ? 'hide the legend' : 'what the strokes and shapes mean'}
+            aria-label="legend" aria-pressed={legend} data-on={legend || undefined}>
+            <span className="ctl-q" aria-hidden>?</span>
+          </ControlButton>
+        </Controls>
         <Fitter extent={extent} nodesKey={nodesKey} container={container} />
       </ReactFlow>
-      <Legend />
+      {legend && <Legend />}
     </div>
   )
 }
 
 /**
  * Fits the whole drawing (lanes, the loop band under them, the outcome
- * column) when the canvas resizes or the set of nodes changes — never on a
- * replay tick. Watches the container itself (ResizeObserver + window
+ * column) when the canvas resizes or the set of nodes changes — never when a
+ * node merely changes state. Watches the container itself (ResizeObserver + window
  * resize) rather than the flow's store, so the fit does not depend on React
  * Flow's own measuring cycle; the drawing's extent comes from layout(), not
  * from node bounds, so the loop band under the lanes is never cut off.
+ *
+ * Everything that changes the canvas's height changes it through this observer:
+ * the header's `more`, the logs disclosure, the panel opening beside it, the
+ * legend. The 100 ms debounce is what keeps a drag of the panel grip from
+ * re-fitting on every frame.
  */
 function Fitter({ extent, nodesKey, container }: { extent: { w: number; h: number }; nodesKey: string; container: RefObject<HTMLDivElement> }) {
   const { setViewport } = useReactFlow()
@@ -79,12 +96,12 @@ function Fitter({ extent, nodesKey, container }: { extent: { w: number; h: numbe
     const { w: width, h: height } = size
     if (!width || !height || !ready) return
     const key = `${width}x${height}:${extent.w}x${extent.h}:${nodesKey}`
-    if (key === last.current) return // a replay tick or a re-render: the reader's pan and zoom stay
+    if (key === last.current) return // a state change or a re-render: the reader's pan and zoom stay
     const id = setTimeout(() => {
       last.current = key
       const zoom = Math.max(FIT.minZoom, Math.min(FIT.maxZoom, (width * (1 - 2 * FIT.padding)) / Math.max(extent.w, 1), (height * (1 - 2 * FIT.padding)) / Math.max(extent.h, 1)))
       void setViewport({ x: (width - extent.w * zoom) / 2, y: (height - extent.h * zoom) / 2, zoom })
-    }, 80)
+    }, 100)
     return () => clearTimeout(id)
   }, [size, extent.w, extent.h, nodesKey, setViewport, ready])
   return null
@@ -184,7 +201,7 @@ function RouteEdge({ data, markerEnd }: EdgeProps<RouteRFEdge>) {
   )
 }
 
-/** What the strokes and shapes mean (IA-SPEC §4.5). Static, bottom-left, over the canvas. */
+/** What the strokes and shapes mean (IA-SPEC §4.5). Bottom-left, over the canvas, behind the `?` in the controls. */
 function Legend() {
   return (
     <div className="legend" role="note" aria-label="legend">

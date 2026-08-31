@@ -1,4 +1,5 @@
-// CodeMirror 6 for the panel's three editable tabs (C4). Hand-wired rather
+// CodeMirror 6 for every editor the page has (C4) — the node panel's Definition
+// tab and the header's Settings. Hand-wired rather
 // than through a React wrapper package: the view is created once per file and
 // lives outside React's render, so the theme, the keymap and the lifecycle are
 // ours. Every colour is a `var(--…)` from styles.css, so one theme object
@@ -100,8 +101,8 @@ const common = (path: string): Extension[] => [
  * the rebuilt editor starts with a fresh undo history. `onSave` is Mod-s, the
  * same door as the Save… button: it opens the diff, it does not write.
  */
-export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
-  value: string; onChange?: (v: string) => void; path: string; readOnly?: boolean; onSave?: () => void; label?: string
+export function CodeEditor({ value, onChange, path, readOnly, onSave, label, scrollToLine }: {
+  value: string; onChange?: (v: string) => void; path: string; readOnly?: boolean; onSave?: () => void; label?: string; scrollToLine?: number
 }) {
   const host = useRef<HTMLDivElement>(null)
   const view = useRef<EditorView | null>(null)
@@ -122,7 +123,13 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
           search({ top: true }),
           keymap.of([
             { key: 'Mod-s', preventDefault: true, run: () => { cb.current.onSave?.(); return true } },
+            // Tab indents (`indentWithTab`), so Esc is the way out: last in the array, so
+            // CodeMirror's own Esc — simplify the selection, close the search panel — goes
+            // first and only an Esc with nothing else to do blurs the editor. Focus then
+            // sits outside `.cm-editor`, which is what lets a *second* Esc reach the page
+            // and close the panel. (Esc then Tab, CodeMirror's tab-focus mode, still works.)
             indentWithTab, ...defaultKeymap, ...historyKeymap, ...searchKeymap,
+            { key: 'Escape', run: (v) => { v.contentDOM.blur(); return true } },
           ]),
           EditorState.readOnly.of(!!readOnly),
           EditorView.editable.of(!readOnly),
@@ -132,10 +139,12 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
       }),
     })
     view.current = v
-    // Esc belongs to the editor — it closes the search panel. The page's Esc (close
-    // the node panel) must not fire too, or dismissing the search bar would take the
-    // panel and the unsaved text with it. The target is already detached from the DOM
-    // by then, so App's `closest('.cm-editor')` guard cannot see it: stop it here.
+    // The first Esc belongs to the editor — it closes the search panel, or leaves the
+    // editor (the keymap above). The page's Esc (close the node panel) must not fire
+    // too, or dismissing the search bar would take the panel and the unsaved text with
+    // it. The target is already detached from the DOM by then, so App's
+    // `closest('.cm-editor')` guard cannot see it: stop it here. A second Esc is
+    // pressed with focus outside the editor, so it never reaches this listener.
     const stopEsc = (e: KeyboardEvent) => { if (e.key === 'Escape') e.stopPropagation() }
     parent.addEventListener('keydown', stopEsc)
     return () => { parent.removeEventListener('keydown', stopEsc); v.destroy(); view.current = null }
@@ -148,6 +157,16 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
     if (cur !== value) v.dispatch({ changes: { from: 0, to: cur.length, insert: value } })
   }, [value])
 
+  // Open at a line — the ledger row of the run on screen. The cursor goes there
+  // (so the active-line highlight marks it) and the view scrolls it to the
+  // middle. A line past the end of the document is simply the last one.
+  useEffect(() => {
+    const v = view.current
+    if (!v || !scrollToLine) return
+    const line = v.state.doc.line(Math.min(Math.max(1, scrollToLine), v.state.doc.lines))
+    v.dispatch({ selection: { anchor: line.from }, effects: EditorView.scrollIntoView(line.from, { y: 'center' }) })
+  }, [scrollToLine, value])
+
   return <div className="cm-host" ref={host} />
 }
 
@@ -156,8 +175,10 @@ export function CodeEditor({ value, onChange, path, readOnly, onSave, label }: {
  * loaded it, right is what Write file would put on disk. Both read-only (no
  * revert arrows: the only write path is the button below), unchanged stretches
  * collapsed so a one-line change in a 300-line script reads as one line.
+ * `heads` renames the two sides: slice 4 reuses this view to put the frozen
+ * script the engine ran next to the live repo file.
  */
-export function DiffEditor({ original, modified, path }: { original: string; modified: string; path: string }) {
+export function DiffEditor({ original, modified, path, heads = ['on disk', 'after write'] }: { original: string; modified: string; path: string; heads?: [string, string] }) {
   const host = useRef<HTMLDivElement>(null)
   useEffect(() => {
     const parent = host.current
@@ -175,7 +196,7 @@ export function DiffEditor({ original, modified, path }: { original: string; mod
   }, [original, modified, path])
   return (
     <div className="cm-diff" aria-label="diff preview">
-      <div className="cm-diff-heads" aria-hidden="true"><span>on disk</span><span>after write</span></div>
+      <div className="cm-diff-heads" aria-hidden="true"><span>{heads[0]}</span><span>{heads[1]}</span></div>
       <div className="cm-diff-body" ref={host} />
     </div>
   )

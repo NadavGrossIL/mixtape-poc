@@ -48,7 +48,10 @@ export interface RunManifest {
   totalToolCalls?: number
   defaultModel?: string
   phases?: { title?: string; detail?: string }[]
+  /** The script's own `log()` lines, in order (`[review:1] failed: …`). */
   logs?: string[]
+  /** The engine's own error when it aborted the run (`Error: Workflow aborted` + a stack, on a `--max-budget-usd` / `--max-turns` stop). */
+  error?: string
   result?: unknown
   args?: unknown
   script?: string
@@ -65,13 +68,51 @@ export interface RunManifest {
   lastProgressAt?: number
   /** The ~/.claude/projects dir the run was read from: the repo's slug, or a sibling checkout's (`…-mixtape-poc.wt` for the driver's worktree). */
   projectSlug?: string
+  /** Set by the plugin: absolute paths to everything this run left on disk (it walks them anyway). */
+  paths?: RunPaths
+  /** Set by the plugin: where the run actually happened, from the first line of any agent transcript. */
+  git?: RunGit
 }
+
+/**
+ * Every artefact of a run, absolute, so the console can name it and a human can
+ * open it in an editor. Nothing here is served by `/api/file` — these live under
+ * `~/.claude`, outside the repo; they are paths to copy, and the two things the
+ * page can show (the frozen script, a transcript) it already has in the run
+ * record and through `/api/runs/:id/agents/:agentId`.
+ */
+export interface RunPaths {
+  /** `<session>/workflows/<runId>.json` — absent while the run is going (the engine writes it at the end). */
+  manifest?: string
+  /** `<session>/subagents/workflows/<runId>/journal.jsonl`. */
+  journal?: string
+  /** The script the engine froze and ran (`manifest.scriptPath`, else the copy in `workflows/scripts/`) — NOT the live repo file the Script tab edits. */
+  scriptCopy?: string
+  /** The Claude Code session dir the run belongs to (the manifest's, else the journal's). */
+  sessionDir?: string
+  /** agentId → its transcript and the `agent-<id>.meta.json` next to it. */
+  agents: Record<string, { transcript: string; meta?: string }>
+}
+
+/** `cwd` and `gitBranch`, on every transcript line; the plugin reads the first line of one transcript per run. */
+export interface RunGit { branch?: string; cwd?: string }
 
 /** What `GET /api/events` streams (one JSON object per SSE `data:` line). */
 export type ConsoleEvent = { kind: 'runs' } | { kind: 'journal'; runId: string } | { kind: 'workflows' } | { kind: 'ledger' }
 
 /** One row of docs/factory/RUNS.md, keyed by run id (`GET /api/ledger`). `cost` is USD. */
-export interface LedgerEntry { cost?: number; date?: string; spec?: string; outcome?: string; notes?: string }
+export interface LedgerEntry {
+  cost?: number
+  date?: string
+  spec?: string
+  outcome?: string
+  notes?: string
+  /** 1-based line of this row in RUNS.md, so the page can open the file at it. */
+  line?: number
+  /** The driver's saved results for this row, absolute, oldest attempt first (`docs/factory/runs/<date>-NNNN[-attemptN].{json,diff,pr.md}`). */
+  driverFiles?: DriverFiles
+}
+export interface DriverFiles { json?: string[]; diff?: string[]; pr?: string[] }
 export type Ledger = Record<string, LedgerEntry>
 
 /**

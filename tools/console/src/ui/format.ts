@@ -1,7 +1,9 @@
-import type { Ledger, RunManifest, WorkflowAgentEntry } from '../types'
+import type { Ledger, LedgerEntry, RunGit, RunManifest, WorkflowAgentEntry } from '../types'
 import { agentsOf, isStalled, labelOf, stateAt } from '../graph/overlayRun'
+import { isLive } from '../graph/signals'
 
 export { labelOf }
+export { isLive, sessionLimit, SESSION_LIMIT_RE } from '../graph/signals'
 
 // Pure formatters for the page. Every input is optional and a partial
 // manifest never throws: a field the engine did not write shows `—`. The
@@ -160,9 +162,18 @@ export function specShort(spec?: string): string {
   return spec.replace(/^specs\//, '').replace(/\.md$/, '')
 }
 
-/** Is the run still going (as far as the plugin can tell)? */
-export function isLive(run?: RunManifest): boolean {
-  return !!run && (run.live === true || run.status === 'running')
+/**
+ * The spec as a path a driver can take (`scripts/factory-run.sh specs/…md`),
+ * from whatever `specOf` found: a path as is, the ledger's own cell shape
+ * (`0002 album-position-gate-blind-spots`) rebuilt, `—` and anything else
+ * `undefined` — the caller then has no run to bind a command to.
+ */
+export function specPath(spec?: string): string | undefined {
+  if (!spec || spec === dash) return undefined
+  const m = SPEC_PATH.exec(spec)
+  if (m) return m[0]
+  const row = /^(\d{4})[ -]([\w-]+?)(?:\.md)?$/.exec(spec.trim())
+  return row ? `specs/${row[1]}-${row[2]}.md` : undefined
 }
 
 /** Elapsed: a live run counts from its start (never less than what it already reported); a stale or finished one is what the manifest says. */
@@ -181,16 +192,30 @@ export function toneOf(run: RunManifest | undefined, outcome: ReturnType<typeof 
 }
 
 /**
+ * "This run has no RUNS.md row", worn three ways from one wording: the card's
+ * link-like `no RUNS.md row` (the LAST RUN line opens the run, and the canvas is
+ * where `add row` lives), the rail's short `no row`, and the header's `—`. All
+ * three share the title, which says what to do about it.
+ */
+export const NO_ROW = {
+  card: 'no RUNS.md row',
+  rail: 'no row',
+  title: 'no row in docs/factory/RUNS.md — open the run to add one',
+} as const
+
+/**
  * Cost, which only the ledger knows: `$3.92` from the RUNS.md row; a run in
  * progress has no row yet; a finished run without one is missing from the
- * ledger; a fixture never had one.
+ * ledger (`noRow`, worded by NO_ROW); a fixture never had one.
  */
-export function usdOf(run?: RunManifest, ledger?: Ledger): { text: string; title: string } {
+export function usdOf(run?: RunManifest, ledger?: Ledger): { text: string; title: string; noRow?: boolean } {
   if (run?.fixture) return { text: dash, title: 'fixture run — no ledger row' }
-  const cost = run?.runId ? ledger?.[run.runId]?.cost : undefined
+  const row = run?.runId ? ledger?.[run.runId] : undefined
+  const cost = row?.cost
   if (cost != null && Number.isFinite(cost)) return { text: fmtUsd(cost), title: 'from docs/factory/RUNS.md' }
   if (isLive(run)) return { text: 'no cost yet', title: 'written to RUNS.md when the driver finishes' }
-  return { text: 'not in RUNS.md', title: 'docs/factory/RUNS.md has no row for this run id' }
+  if (row) return { text: 'no cost in the row', title: `docs/factory/RUNS.md${row.line ? `:${row.line}` : ''} has a row for this run, with no cost cell` }
+  return { text: NO_ROW.rail, title: NO_ROW.title, noRow: true }
 }
 
 /** Where a run went wrong: the first agent (by index) whose settled state is `error` → `stopped at <label>`. Nothing when none did. */
@@ -198,6 +223,11 @@ export function stoppedAt(run?: RunManifest): string | undefined {
   const agents = agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
   const hit = agents.find((a) => stateAt(a) === 'error')
   return hit ? `stopped at ${labelOf(hit)}` : undefined
+}
+
+/** `branch <b> · worktree <cwd>` — where a run happened, worded once for the card's tooltip and the ledger row's notes. Empty when the transcript said neither. */
+export function whereOfGit(git?: RunGit): string {
+  return [git?.branch && `branch ${git.branch}`, git?.cwd && `worktree ${git.cwd}`].filter(Boolean).join(' · ')
 }
 
 /** `<phase> › <label>`, or the label alone when the agent has no phase. */
@@ -251,4 +281,90 @@ export function lastProgressAt(run?: RunManifest): number | undefined {
 export function lastProgress(run?: RunManifest, now: number = Date.now()): string | undefined {
   const t = lastProgressAt(run)
   return t == null ? undefined : `last progress ${whenRel(t, now)}`
+}
+
+// --- where the context lives (§4) -------------------------------------------------
+
+/**
+ * A path the plugin reported absolute, as `GET /api/file` wants it: everything
+ * from `docs/factory/` on. Only the ledger's driver files are both absolute and
+ * inside the repo — the run's own artefacts live under `~/.claude` and are
+ * copy-only — so this is the whole conversion, and a path that is not one of
+ * them comes back `undefined` rather than guessed at.
+ */
+export function repoRel(abs?: string): string | undefined {
+  if (!abs) return undefined
+  const i = abs.indexOf('docs/factory/')
+  return i >= 0 ? abs.slice(i) : undefined
+}
+
+/** `…/2026-08-29-0002-attempt3.pr.md` → `2026-08-29-0002-attempt3.pr.md`. */
+export const baseName = (p?: string): string => (p ? p.split('/').pop() || p : dash)
+
+/** The ledger's own spec cell shape: `specs/0002-album-…md` → `0002 album-…`; anything already in that shape stays. */
+export function specCell(spec?: string): string | undefined {
+  const p = specPath(spec)
+  const m = p ? /^specs\/(\d{4})-([\w-]+)\.md$/.exec(p) : undefined
+  return m ? `${m[1]} ${m[2]}` : spec && spec !== dash ? spec : undefined
+}
+
+/** `2026-08-30`, local — the ledger's date cell. */
+export function isoDate(ms?: number): string | undefined {
+  if (ms == null || !Number.isFinite(ms)) return undefined
+  const d = new Date(ms)
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`
+}
+
+/** The cells of a RUNS.md row, by what the column is called rather than where it sits. */
+export interface RowValues {
+  date?: string; spec?: string; engine?: string; attempts?: string; gate?: string
+  review?: string; outcome?: string; cost?: string; run?: string; notes?: string
+}
+const COLUMNS: [keyof RowValues, RegExp][] = [
+  ['date', /^date/i], ['spec', /^spec/i], ['engine', /^engine/i], ['attempts', /^attempts/i],
+  ['gate', /^gate/i], ['review', /^review/i], ['outcome', /^outcome/i], ['cost', /cost/i],
+  ['run', /^run$/i], ['notes', /^notes/i],
+]
+
+/**
+ * One RUNS.md row in the table's own column order — the header is read from the
+ * file, never hardcoded, so a reordered or extended table still gets a row that
+ * lines up (a column we have nothing for comes back empty for the human to
+ * fill). The page never writes RUNS.md; this goes on the clipboard.
+ */
+export function prefillRow(header: string[], v: RowValues): string {
+  const cells = header.map((h) => {
+    const hit = COLUMNS.find(([, re]) => re.test(h))
+    return (hit && v[hit[0]]) || ''
+  })
+  return `| ${cells.join(' | ')} |`
+}
+
+/** What the console can honestly say about a run that has no row yet. Cost is left empty: only the driver's `claude -p` JSON knows it. */
+export function rowValuesOf(run: RunManifest | undefined, ledger?: Ledger): RowValues {
+  if (!run) return {}
+  const r = (run.result ?? {}) as { attempts?: Record<string, unknown>; gate?: { ok?: unknown; step?: unknown }; review?: { verdict?: unknown; findings?: unknown } }
+  const a = r.attempts
+  const n = (k: string) => (a && typeof a[k] === 'number' ? String(a[k]) : '?')
+  const findings = Array.isArray(r.review?.findings) ? r.review.findings.length : undefined
+  const tokens = fmtTokens(run.totalTokens)
+  const outcome = outcomeOf(run)
+  return {
+    date: isoDate(startOf(run)),
+    spec: specCell(specOf(run, ledger)),
+    engine: run.workflowName ? `native \`/${run.workflowName}\`` : undefined,
+    attempts: a ? `${n('implement')} / ${n('gate')} / ${n('review')}` : undefined,
+    gate: typeof r.gate?.ok === 'boolean' ? (r.gate.ok ? 'passed' : `failed${r.gate.step ? ` at ${r.gate.step}` : ''}`) : undefined,
+    review: typeof r.review?.verdict === 'string' ? `${r.review.verdict}${findings != null ? `, ${findings} finding${findings === 1 ? '' : 's'}` : ''}` : undefined,
+    outcome: outcome.word,
+    run: `\`${run.runId ?? ''}\` · ${run.agentCount ?? '?'} agent${run.agentCount === 1 ? '' : 's'} · ${tokens === dash ? '?' : tokens} tok · ${fmtDuration(run.durationMs)}`,
+    notes: [whereOfGit(run.git), stopReason(run)].filter(Boolean).join(' · ') || undefined,
+  }
+}
+
+/** The `<outcome> — <notes>` of a run's RUNS.md row, when it has one. */
+export function ledgerLine(entry?: LedgerEntry): string | undefined {
+  if (!entry) return undefined
+  const parts = [entry.outcome, entry.notes].filter((s): s is string => !!s && s.trim() !== '')
+  return parts.length ? parts.join(' — ') : undefined
 }

@@ -944,6 +944,22 @@ purpose; the write path is unchanged). The rail groups runs by workflow
 with a filter; the replay bar marks phases and agents. Deferred items and
 the ranked audit are in the PR.
 
+**UX pass 2, 2026-08-30 (branch `console/ux-pass-2`)** — the five changes of
+`docs/factory/console-simplification.md`, written from two read-only audits
+against the four real runs on disk. The replay bar is gone; the per-agent
+timeline stays as a static strip. **Why it stopped** is classified from the
+manifest (`graph/cause.ts`, one rule per row of §2, a test each) as *infra*
+or *spec*, with the action, the evidence and the script's own logs. Every
+command on screen is bound to the run in front of you
+(`scripts/factory-run.sh <its own spec>`), with the warnings it earns. A
+**Context** row names every artefact — spec, branch, worktree, manifest,
+journal, frozen script, ledger row, driver JSON — repo files opening
+read-only in the panel, `~/.claude` paths copy-only. The reference material
+is demoted so the run is the focal point: the legend behind `?`, five node
+tabs down to two, the skills table folded. Note: the console's own
+`npm test` runs in `tools/console` only — it is not in `npm run gate` or CI
+(a follow-up).
+
 ### 11.7 Rules
 
 - Local only, forever. It reads `~/.claude`; the shareable artifacts are
@@ -955,9 +971,11 @@ the ranked audit are in the PR.
 - Tolerate missing keys. The manifest shape above is from one Claude Code
   version; the loader treats every field as optional and shows "—".
 - No new state. If something needs remembering, it is a file the repo
-  already has (`RUNS.md`, `factory.config.json`), not a console database
-  (the one exception: the node panel's width, a per-viewer convenience in
-  the browser's `localStorage` — never a run, never a definition).
+  already has (`RUNS.md`, `factory.config.json`), not a console database.
+  The browser keeps four per-viewer conveniences in `localStorage` — the
+  node panel's width, the canvas legend, the Context row's `more`, the
+  Skills fold — and nothing the repo would want: never a run, never a
+  definition, never a verdict. They all go through `ui/remember.ts`.
 
 ### 11.8 Sources
 

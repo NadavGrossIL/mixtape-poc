@@ -4,8 +4,9 @@ import crypto from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
-import type { ConsoleEvent, Graph, Ledger, LedgerEntry, RunManifest, WorkflowAgentEntry, WorkflowFile, WorkflowMeta } from './types'
+import type { ConsoleEvent, DriverFiles, Graph, Ledger, LedgerEntry, RunGit, RunManifest, RunPaths, WorkflowAgentEntry, WorkflowFile, WorkflowMeta } from './types'
 import { parseScript, readMeta } from './graph/parseScript' // pure TS, no browser imports: Vite bundles it into the config with esbuild
+import { allowed } from './allow' // the two allowlists, pure and unit-tested (src/allow.test.ts)
 
 // The console's only "backend": a Vite dev-server middleware that READS
 // workflow files in this repo and run records Claude Code wrote under
@@ -19,15 +20,6 @@ import { parseScript, readMeta } from './graph/parseScript' // pure TS, no brows
 // nothing else — the console tweaks the line, it cannot reach the product.
 
 const ID = /^[\w-]+$/ // run ids and agent ids; anything else is a 400
-// Repo-relative paths POST /api/file may write and GET /api/file may read. A
-// tight character class per segment: no `..`, no separators, no globbing.
-const EDITABLE = [
-  /^\.claude\/workflows\/[\w.-]+\.js$/,
-  /^\.claude\/skills\/[\w.-]+\/SKILL\.md$/,
-  /^\.claude\/agents\/[\w.-]+\.md$/,
-  /^\.archon\/workflows\/[\w.-]+\.ya?ml$/,
-  /^factory\.config\.json$/,
-]
 const MAX_BODY = 256 * 1024
 const CONFIG_FILE = 'factory.config.json'
 const SUPPORTED_MANIFEST = /^wf_[\w-]+\.json$/
@@ -167,8 +159,9 @@ function frontmatter(source: string): WorkflowMeta {
 
 // --- the one write ----------------------------------------------------------------
 //
-// POST /api/file { path, content, base }: `path` must match EDITABLE after
-// normalisation and resolve (through symlinks) inside the repo; `base` is the
+// POST /api/file { path, content, base }: `path` must be on the WRITABLE list
+// (src/allow.ts) after normalisation and resolve (through symlinks) inside the
+// repo — GET may also read the READ_ONLY list, POST never does; `base` is the
 // sha256 of the content the client last read, so two consoles — or a console
 // and an editor — cannot silently overwrite each other (409 carries the current
 // text; no lock file). The write is temp-file + rename, so a reader never sees
@@ -178,10 +171,10 @@ const sha256 = (s: string) => crypto.createHash('sha256').update(s).digest('hex'
 
 type Reply = { status: number; body: unknown }
 
-/** Repo-relative → absolute, or the 4xx explaining why not. */
-function resolveEditable(repoRoot: string, rel: string): { abs: string } | Reply {
-  const norm = rel.replace(/\\/g, '/').replace(/^\.\//, '')
-  if (!EDITABLE.some((re) => re.test(norm)) || path.posix.normalize(norm) !== norm) return { status: 403, body: { error: 'path not allowlisted' } }
+/** Repo-relative → absolute for this direction, or the 4xx explaining why not. */
+function resolveEditable(repoRoot: string, rel: string, mode: 'read' | 'write'): { abs: string } | Reply {
+  const norm = allowed(rel, mode)
+  if (!norm) return { status: 403, body: { error: 'path not allowlisted' } }
   const abs = path.join(repoRoot, norm)
   let root: string, parent: string
   try { root = fs.realpathSync(repoRoot); parent = fs.realpathSync(path.dirname(abs)) } catch { return { status: 404, body: { error: 'parent directory missing' } } }
@@ -191,7 +184,7 @@ function resolveEditable(repoRoot: string, rel: string): { abs: string } | Reply
 }
 
 function readFile(repoRoot: string, rel: string): Reply {
-  const r = resolveEditable(repoRoot, rel)
+  const r = resolveEditable(repoRoot, rel, 'read')
   if ('status' in r) return r
   if (!fs.existsSync(r.abs)) return { status: 404, body: { error: 'no such file' } }
   const content = read(r.abs)
@@ -201,7 +194,7 @@ function readFile(repoRoot: string, rel: string): Reply {
 function writeFile(repoRoot: string, body: unknown): Reply {
   const b = (body ?? {}) as Record<string, unknown>
   if (typeof b.path !== 'string' || typeof b.content !== 'string' || typeof b.base !== 'string') return { status: 400, body: { error: 'expected { path, content, base } strings' } }
-  const r = resolveEditable(repoRoot, b.path)
+  const r = resolveEditable(repoRoot, b.path, 'write') // never 'read': the context row's files are not writable from here
   if ('status' in r) return r
   const current = fs.existsSync(r.abs) ? read(r.abs) : ''
   if (sha256(current) !== b.base && !(current === '' && b.base === '')) return { status: 409, body: { error: 'file changed on disk', current } }
@@ -239,7 +232,7 @@ type Manifest = RunManifest
  * yet — and the record is flagged `live` / `source` so the UI can say so.
  */
 function listRuns(projectDirs: string[], fixturesDir: string, full: boolean) {
-  const manifests = new Map<string, { m: Manifest; mtime: number }>()
+  const manifests = new Map<string, { m: Manifest; mtime: number; file: string }>()
   const journals = new Map<string, string[]>() // runId → every session dir holding a piece of it
   const slugOf = new Map<string, string>() // runId → the project dir's name (first seen wins; a run never spans two)
   for (const projectDir of projectDirs) for (const session of safeList(projectDir)) {
@@ -254,7 +247,7 @@ function listRuns(projectDirs: string[], fixturesDir: string, full: boolean) {
       // most complete one.
       const id = String(m.runId ?? f.replace(/\.json$/, ''))
       const prev = manifests.get(id)
-      if (!prev || progressLen(m) > progressLen(prev.m)) manifests.set(id, { m, mtime: mtimeOf(file) })
+      if (!prev || progressLen(m) > progressLen(prev.m)) manifests.set(id, { m, mtime: mtimeOf(file), file })
       found(id)
     }
     for (const d of safeList(path.join(base, 'subagents', 'workflows')).filter((d) => RUN_DIR.test(d))) {
@@ -266,9 +259,13 @@ function listRuns(projectDirs: string[], fixturesDir: string, full: boolean) {
   for (const id of new Set([...manifests.keys(), ...journals.keys()])) {
     const hit = manifests.get(id)
     const projectSlug = slugOf.get(id)
-    if (hit && TERMINAL.has(String(hit.m.status))) { runs.push({ ...settle(hit.m), source: 'manifest', projectSlug }); continue }
+    // Where every artefact of this run is, and where it ran (§4, Q3): the same
+    // dirs we just walked, named instead of thrown away.
+    const paths = pathsOf(id, hit, journals.get(id) ?? [])
+    const git = gitOf(paths)
+    if (hit && TERMINAL.has(String(hit.m.status))) { runs.push({ ...settle(hit.m), source: 'manifest', projectSlug, paths, git }); continue }
     const j = journals.has(id) ? runFromJournal(id, journals.get(id)!) : undefined
-    runs.push({ ...mergeRun(id, hit, j), projectSlug })
+    runs.push({ ...mergeRun(id, hit, j), projectSlug, paths, git })
   }
   if (!runs.length) {
     runs = safeList(fixturesDir)
@@ -335,6 +332,80 @@ function startOf(m: Manifest): number {
   if (typeof m.startTime === 'number') return m.startTime
   const t = m.timestamp ? Date.parse(m.timestamp) : NaN
   return Number.isFinite(t) ? t : 0
+}
+
+// --- where the run lives on disk ---------------------------------------------------
+//
+// Q3 of the console spec: every artefact of a run a link or a copy. These are
+// absolute paths under ~/.claude — outside the repo, so `/api/file` will never
+// serve them; the page shows them and copies them. Nothing new is read here
+// except one `existsSync` per candidate: the dirs were already walked above.
+
+function pathsOf(runId: string, hit: { m: Manifest; file: string } | undefined, sessions: string[]): RunPaths {
+  const out: RunPaths = { agents: {} }
+  if (hit) { out.manifest = hit.file; out.sessionDir = path.dirname(path.dirname(hit.file)) }
+  // The frozen copy the engine ran; a resumed run's manifest names it directly.
+  const frozen = str(hit?.m.scriptPath)
+  if (frozen && fs.existsSync(frozen)) out.scriptCopy = frozen
+  for (const base of sessions) {
+    out.sessionDir ??= base
+    const dir = path.join(base, 'subagents', 'workflows', runId)
+    const journal = path.join(dir, 'journal.jsonl')
+    if (!out.journal && fs.existsSync(journal)) out.journal = journal
+    for (const f of safeList(dir)) {
+      const m = /^agent-([\w-]+)\.jsonl$/.exec(f)
+      if (!m) continue
+      const meta = path.join(dir, `agent-${m[1]}.meta.json`)
+      out.agents[m[1]] = { transcript: path.join(dir, f), ...(fs.existsSync(meta) ? { meta } : {}) }
+    }
+    if (!out.scriptCopy) {
+      const sf = safeList(path.join(base, 'workflows', 'scripts')).find((f) => f.endsWith(`-${runId}.js`))
+      if (sf) out.scriptCopy = path.join(base, 'workflows', 'scripts', sf)
+    }
+  }
+  return out
+}
+
+// `cwd` and `gitBranch` sit on every transcript line and the loader drops them
+// (`interface Line`). One line of one transcript per run answers "which
+// checkout, which branch" — the worktree the driver cut. Cached by the file's
+// size+mtime like the transcripts themselves, so a live run re-reads only when
+// that first file grows.
+const gits = new Map<string, { sig: string; git?: RunGit }>()
+const FIRST_LINE_BYTES = 256 * 1024 // the first line is the prompt; anything longer than this is not a path record
+
+function gitOf(paths: RunPaths): RunGit | undefined {
+  const file = Object.values(paths.agents).map((a) => a.transcript).sort()[0]
+  if (!file) return undefined
+  let st: fs.Stats
+  try { st = fs.statSync(file) } catch { return undefined }
+  const sig = `${st.size}:${st.mtimeMs}`
+  const hit = gits.get(file)
+  if (hit?.sig === sig) return hit.git
+  let git: RunGit | undefined
+  const line = firstLine(file)
+  if (line) {
+    try {
+      const o = JSON.parse(line) as { cwd?: unknown; gitBranch?: unknown }
+      const branch = str(o.gitBranch), cwd = str(o.cwd)
+      if (branch || cwd) git = { ...(branch ? { branch } : {}), ...(cwd ? { cwd } : {}) }
+    } catch { /* a half-written first line: nothing to say about the branch */ }
+  }
+  gits.set(file, { sig, git })
+  return git
+}
+
+/** The first line of a file without reading the rest of it (a transcript is megabytes). */
+function firstLine(file: string): string | undefined {
+  let fd: number | undefined
+  try {
+    fd = fs.openSync(file, 'r')
+    const buf = Buffer.alloc(FIRST_LINE_BYTES)
+    const n = fs.readSync(fd, buf, 0, FIRST_LINE_BYTES, 0)
+    const s = buf.subarray(0, n).toString('utf8')
+    const nl = s.indexOf('\n')
+    return nl >= 0 ? s.slice(0, nl) : undefined // no newline in 256 kB: not a line we can parse
+  } catch { return undefined } finally { if (fd != null) try { fs.closeSync(fd) } catch { /* already gone */ } }
 }
 
 // --- journal fallback ------------------------------------------------------------
@@ -605,38 +676,75 @@ const clip = (s: string, n: number) => (s.length > n ? s.slice(0, n - 1) + '…'
 // driver copies `total_cost_usd` into a RUNS.md row whose `run` cell names the
 // run id in backticks. Columns are found by header name, so a reordered table
 // still parses; a row without a run id is skipped, a missing file is {}.
-// docs/factory/runs/<date>-NNNN.json (the raw results) carry no run id and are
-// matched to a row by date + spec number, filling a cost the row lacks.
+// docs/factory/runs/<date>-NNNN[-attemptN].{json,diff,pr.md} (the raw results,
+// the kept diff, the PR body) carry no run id and are matched to a row by date
+// + spec number — and, when the row's notes name an attempt ("attempt 3 · …",
+// which the driver's rows do), by that attempt, because one date+spec can have
+// several rows and several attempts on disk. `line` is the row's line in the
+// file so the page can open RUNS.md at it.
+
+const DRIVER_FILE = /^(\d{4}-\d{2}-\d{2})-(\d{4})(?:-attempt(\d+))?\.(pr\.md|json|diff)$/
+interface DriverFile { abs: string; date: string; spec: string; attempt?: number; kind: keyof DriverFiles }
 
 function readLedger(repoRoot: string): Ledger {
   const out: Ledger = {}
   let raw: string
   try { raw = read(path.join(repoRoot, LEDGER_FILE)) } catch { return out }
-  const rows = raw.split('\n').filter((l) => l.trim().startsWith('|')).map((l) => l.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim()))
-  const header = rows.find((r) => r.some((c) => /^run$/i.test(c)))
+  const rows = raw.split('\n')
+    .map((l, i) => ({ line: i + 1, text: l.trim() }))
+    .filter((r) => r.text.startsWith('|'))
+    .map((r) => ({ line: r.line, cells: r.text.replace(/^\||\|$/g, '').split('|').map((c) => c.trim()) }))
+  const header = rows.find((r) => r.cells.some((c) => /^run$/i.test(c)))
   if (!header) return out
-  const col = (name: RegExp) => header.findIndex((c) => name.test(c))
+  const col = (name: RegExp) => header.cells.findIndex((c) => name.test(c))
   const ix = { date: col(/^date/i), spec: col(/^spec/i), outcome: col(/^outcome/i), cost: col(/cost/i), run: col(/^run$/i), notes: col(/^notes/i) }
   const cell = (r: string[], i: number) => (i >= 0 && r[i] ? r[i] : undefined)
   for (const r of rows) {
-    if (r === header || r.every((c) => /^:?-+:?$/.test(c))) continue
-    const id = /`(wf_[\w-]+)`/.exec(cell(r, ix.run) ?? '')?.[1]
+    if (r === header || r.cells.every((c) => /^:?-+:?$/.test(c))) continue
+    const id = /`(wf_[\w-]+)`/.exec(cell(r.cells, ix.run) ?? '')?.[1]
     if (!id) continue
-    const cost = parseFloat((cell(r, ix.cost) ?? '').replace(/[^\d.]/g, ''))
-    const e: LedgerEntry = { date: cell(r, ix.date), spec: cell(r, ix.spec), outcome: cell(r, ix.outcome), notes: cell(r, ix.notes) }
+    const cost = parseFloat((cell(r.cells, ix.cost) ?? '').replace(/[^\d.]/g, ''))
+    const e: LedgerEntry = { date: cell(r.cells, ix.date), spec: cell(r.cells, ix.spec), outcome: cell(r.cells, ix.outcome), notes: cell(r.cells, ix.notes), line: r.line }
     if (Number.isFinite(cost)) e.cost = cost
     out[id] = e
   }
   const rawDir = path.join(repoRoot, LEDGER_RAW_DIR)
+  const files: DriverFile[] = []
   for (const f of safeList(rawDir)) {
-    const m = /^(\d{4}-\d{2}-\d{2})-(\d{4})\.json$/.exec(f)
+    const m = DRIVER_FILE.exec(f)
     if (!m) continue
-    const row = Object.values(out).find((e) => e.cost == null && e.date === m[1] && e.spec?.startsWith(m[2]))
-    if (!row) continue
-    const j = readJson(path.join(rawDir, f)) as { total_cost_usd?: unknown } | null
-    if (isNum(j?.total_cost_usd)) row.cost = j.total_cost_usd
+    files.push({ abs: path.join(rawDir, f), date: m[1], spec: m[2], attempt: m[3] ? Number(m[3]) : undefined, kind: m[4] === 'pr.md' ? 'pr' : (m[4] as 'json' | 'diff') })
+  }
+  for (const e of Object.values(out)) {
+    const hits = driverFilesFor(e, files)
+    if (!hits) continue
+    e.driverFiles = hits
+    // The cost fallback: the newest attempt of the matched JSON is this row's run.
+    const json = hits.json?.[hits.json.length - 1]
+    if (e.cost == null && json) {
+      const j = readJson(json) as { total_cost_usd?: unknown } | null
+      if (isNum(j?.total_cost_usd)) e.cost = j.total_cost_usd
+    }
   }
   return out
+}
+
+/** The driver files of one row: same date + spec number, and the attempt its notes name when they name one (else the unsuffixed pair). Oldest attempt first. */
+function driverFilesFor(e: LedgerEntry, files: DriverFile[]): DriverFiles | undefined {
+  const spec = /^(\d{4})/.exec(e.spec ?? '')?.[1]
+  if (!e.date || !spec) return undefined
+  const same = files.filter((f) => f.date === e.date && f.spec === spec)
+  if (!same.length) return undefined
+  const want = Number(/\battempt\s*(\d+)/i.exec(e.notes ?? '')?.[1])
+  let pick = Number.isFinite(want) ? same.filter((f) => f.attempt === want) : same
+  if (!pick.length) pick = same.filter((f) => f.attempt == null) // "attempt 4" with no -attempt4 on disk: the plain names are it
+  if (!pick.length) return undefined
+  const of = (kind: keyof DriverFiles) => {
+    const list = pick.filter((f) => f.kind === kind).sort((a, b) => (a.attempt ?? 0) - (b.attempt ?? 0)).map((f) => f.abs)
+    return list.length ? list : undefined
+  }
+  const out: DriverFiles = { json: of('json'), diff: of('diff'), pr: of('pr') }
+  return out.json || out.diff || out.pr ? out : undefined
 }
 
 // --- live: fs.watch → SSE ------------------------------------------------------------

@@ -26,31 +26,13 @@ export function labelOf(a: WorkflowAgentEntry): string {
 }
 
 /**
- * The state of one agent at wall-clock `t` (undefined = the manifest's final
- * word). `stalled` is the run's verdict (isStalled): past the last thing the
- * agent wrote (or with no clock at all), an unfinished agent of a stale run
- * is `stalled`, not running — nobody will ever settle it. Scrubbing back into
- * its active window still shows it running; that happened.
+ * The settled state of one agent — the manifest's last word for it. `stalled`
+ * is the run's verdict (isStalled): an unfinished agent of a stale run is
+ * `stalled`, not running, because nobody will ever settle it.
  */
-export function stateAt(a: WorkflowAgentEntry, t?: number, stalled?: boolean): NodeState {
-  const s = clockState(a, t)
-  if (stalled && (s === 'running' || s === 'queued')) {
-    const end = agentEnd(a)
-    if (t == null || end == null || t >= end) return 'stalled'
-  }
-  return s
-}
-
-function clockState(a: WorkflowAgentEntry, t?: number): NodeState {
-  const final = finalState(a)
-  if (t == null) return final
-  const q = a.queuedAt ?? a.startedAt
-  if (q != null && t < q) return 'idle'
-  if (a.startedAt != null && t < a.startedAt) return 'queued'
-  const end = agentEnd(a)
-  if (end != null && t < end) return 'running'
-  if (end == null && (final === 'running' || final === 'queued')) return final
-  return final
+export function stateAt(a: WorkflowAgentEntry, stalled?: boolean): NodeState {
+  const s = finalState(a)
+  return stalled && (s === 'running' || s === 'queued') ? 'stalled' : s
 }
 
 function finalState(a: WorkflowAgentEntry): NodeState {
@@ -83,11 +65,13 @@ export function isStalled(m: RunManifest | undefined): boolean {
  * node (`review:*`) is replaced by every agent whose label starts with its
  * prefix, inheriting its edges; agents nobody names are added under their
  * phase, wired by shared label segments or, failing that, fanned in from the
- * previous non-empty phase. `t` scrubs the replay clock. The script's meta
+ * previous non-empty phase. Every node shows the manifest's last word for it —
+ * there is no clock here and no replay: a live run's manifest is simply what
+ * has been written so far. The script's meta
  * (description, whenToUse, phase details, outcomes) rides along; a run's own
  * `phases[].detail` wins over the script's.
  */
-export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: number): RunGraph {
+export function overlayRun(graph: Graph, manifest: RunManifest | undefined): RunGraph {
   const nodes: GraphNode[] = graph.nodes.map((n) => ({ ...n }))
   let edges: GraphEdge[] = graph.edges.map((e) => ({ ...e }))
   const phases = [...graph.phases]
@@ -167,16 +151,15 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
 
   for (const n of nodes) {
     const list = (matched.get(n.id) ?? []).slice().sort((x, y) => (x.startedAt ?? x.queuedAt ?? 0) - (y.startedAt ?? y.queuedAt ?? 0))
-    const visible = t == null ? list : list.filter((a) => (a.queuedAt ?? a.startedAt ?? 0) <= t)
-    const cur = visible[visible.length - 1]
+    const cur = list[list.length - 1]
     if (cur) {
       info[n.id] = {
-        state: stateAt(cur, t, stalled),
+        state: stateAt(cur, stalled),
         model: cur.model,
-        attempt: Math.max(...visible.map((a) => a.attempt ?? 1)),
+        attempt: Math.max(...list.map((a) => a.attempt ?? 1)),
         tokens: cur.tokens,
         toolCalls: cur.toolCalls,
-        durationMs: t == null ? cur.durationMs : elapsedAt(cur, t),
+        durationMs: cur.durationMs,
         agent: cur,
         agents: list,
       }
@@ -203,12 +186,6 @@ export function overlayRun(graph: Graph, manifest: RunManifest | undefined, t?: 
   if (Object.keys(phaseDetails).length) out.phaseDetails = phaseDetails
   if (graph.outcomes) out.outcomes = graph.outcomes
   return out
-}
-
-function elapsedAt(a: WorkflowAgentEntry, t: number): number | undefined {
-  if (a.startedAt == null) return undefined
-  const end = agentEnd(a)
-  return Math.max(0, Math.min(t, end ?? t) - a.startedAt)
 }
 
 function push<K, V>(m: Map<K, V[]>, k: K, v: V) {

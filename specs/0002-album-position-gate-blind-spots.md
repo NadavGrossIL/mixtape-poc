@@ -1,7 +1,7 @@
 ---
 id: 0002
 title: Album-position gate blind spots
-status: implemented      # draft → ready (human approves) → done | escalated
+status: done             # draft → ready (human approves) → done | escalated
 touches_prompt: true     # server/curator.ts (SYSTEM + gate) and evals/prompts.json change → one eval run, human-read
 flag: none               # the grounding gate has no runtime switch (6815090 shipped without one); a revert is the switch
 ---
@@ -542,3 +542,54 @@ did not cover — each reproduced before the fix and re-checked after:
 
 Tests: 125 → 128, one regression test per defect. `EDITION_RE` is left
 byte-for-byte as this spec pins it, against a style note to the contrary.
+
+## Eval result — 2026-08-31 (the `touches_prompt: true` run)
+
+Run `evals/runs/2026-08-31T07-39-24-499Z`. 19 prompts, 19 generated (0
+errors), 19 judged (**0 judge errors**, against 4 of 18 on 2026-08-24), 152
+notes, 150 resolved.
+
+**The pre-registered read (a) — invented notes whose reasoning is an
+album-position claim: baseline 2 of 10 → measured 0 of 8. Target met.**
+Both baseline cases are gone: the Jane Bordeaux "opens their self-titled
+2014 record" note (slice 1's own case) and Stevie Wonder's "Opens Songs In
+The Key Of Life". Across all 152 notes, 46 carry opener/closer phrasing —
+41 judged true, 3 unverifiable on unrelated grounds, 2 judged invented but
+**position-correct** (a closer claim invented on its year; another invented
+on its runtime). No note in the run was judged invented *for* a position
+error.
+
+Read (b): the pilot card `statbait-album-openers` provoked the shape as
+intended — 8 tracks, all genuinely track 1 — and every note in it replayed
+through `noteGroundingReason` returns `null`. Its one unverifiable note is
+an opener claim the judge confirmed; the doubt is over crediting an organ
+intro, not the position.
+
+Read (c) was written off above as unavailable, because `evals/generate.ts`
+calls `generateCard` without `onCommit`. That was half wrong:
+`evals/reliability.ts` prints its first-commit rejections, and the k=3
+contract check (`app-fastest-rap`, 3/3 committed, 0/3 first-commit clean,
+one retry each) caught the gate firing correctly in production — *"track
+1's note says it opens the album, but the search result you cited shows it
+as track 10 of 21"*. A true positive, bounced and rewritten.
+
+Headline rates, as pre-registered, are noise for this change and no claim
+rests on them: invented 0.0567 (was 0.099), verified-true 0.9078 (was
+0.871), generic 0.0263, resolution 0.9868 — all four thresholds met.
+`evals/grounding.ts`: of the 8 invented notes, 3 carry a year that matches
+the shown row and 5 carry no year, so none is a year-copying failure.
+
+### What the run found that this spec does not cover
+
+Three of the eight invented notes make positional claims the rule cannot
+see, because they are **ordinals** rather than opens/closes: "buried as
+track twelve of Scum" (track 12 is another song), "The Wall's sixth track"
+(it is the 19th), and "buried deep on Non-Stop Erotic Cabaret" (it is track
+2). The cited row already carries `track_number` and `total_tracks`, so an
+explicit ordinal is exactly as checkable as an opener. The keyword set is
+also narrower than the model's vocabulary — the 2026-08-31 pilot wrote
+"kicks off", "ushers in", "begins with", "the first thing you hear on" and
+a bare "open" ("Four chords open Nevermind"), none of which the regex
+matches. Both are candidates for a follow-up spec, with this run as the
+evidence.
+

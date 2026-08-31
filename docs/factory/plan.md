@@ -554,9 +554,30 @@ tweak is made from its node panel instead of the editor.
    findings, one arrived with an invalid demonstration (its example flagged
    through the album-name-anywhere signal, which is correct behaviour), and
    the real bug only bites when the link word lands on the window's last
-   token. Still owed, and Nadav's: the one eval run read against
-   `evals/thresholds.json` — merging ahead of it turned that pre-merge
-   check into a debt on `main`.
+   token.
+
+   **Verified 2026-08-31 — the eval leg is paid and dry run 2 is closed.**
+   Run `evals/runs/2026-08-31T07-39-24-499Z`: 19 prompts, 19 generated (0
+   errors), 19 judged with **0 judge errors** (against 4 of 18 on
+   2026-08-24), 152 notes. The pre-registered read (a) — invented notes
+   whose reasoning is an album-position claim — went **2 of 10 → 0 of 8**;
+   across all 152 notes, 46 carry opener/closer phrasing and not one was
+   judged invented *for* a position error (the two invented ones are
+   position-correct, invented on a year and a runtime). All four thresholds
+   met — invented 0.0567, verified-true 0.9078, generic 0.0263, resolution
+   0.9868 — but the spec pre-registered the rates as noise for a ~2pp
+   change, so no claim rests on them. Two things the run taught beyond its
+   own question: `evals/reliability.ts` prints first-commit rejections, so
+   the bounce-reason read the spec called unavailable is partly available
+   after all (k=3 on `app-fastest-rap` caught the gate correctly refusing
+   "opens the album" on a track shown as 10 of 21); and three invented
+   notes make **ordinal** position claims — "buried as track twelve of
+   Scum", "The Wall's sixth track", "buried deep on Non-Stop Erotic
+   Cabaret" — that the opens/closes rule structurally cannot see, though
+   the cited row already carries `track_number`. That, plus a keyword set
+   narrower than the model's vocabulary ("kicks off", "ushers in", "begins
+   with", a bare "open"), is spec 0003's evidence, gathered by a real run
+   rather than guessed. Spec 0002 is `status: done`.
 3. **The same feature on the other engine**, once each, so `RUNS.md` has a
    like-for-like row: lines of orchestration, cost, minutes, and where each
    one made you intervene.

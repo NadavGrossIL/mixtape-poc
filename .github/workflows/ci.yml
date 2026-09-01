@@ -10,6 +10,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history, because gate step 0 (scripts/protected-check.sh)
+          # diffs the ask tier against origin/main. The default shallow
+          # clone has no such ref, the merge-base falls back to HEAD, and
+          # the check compares the branch to itself and passes whatever the
+          # PR touches — so the guard on identity, caps and tokens silently
+          # did nothing here while working fine on a desk (issue #7).
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           # 24 LTS: runs .ts files natively (type stripping), has import.meta.main
@@ -23,7 +31,8 @@ jobs:
         run: npm --prefix server ci && npm --prefix client ci
 
       # One script, shared with `npm run gate` locally, so CI and the desk
-      # can't drift: server typecheck → client typecheck → unit tests →
-      # evals selftest → client build. Evals are not here — they cost money.
+      # can't drift: ask-tier check → server typecheck → client typecheck →
+      # unit tests → evals selftest → workflow selftest → client build.
+      # Evals are not here — they cost money.
       - name: Gate
         run: npm run gate

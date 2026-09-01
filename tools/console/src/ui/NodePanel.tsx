@@ -114,9 +114,12 @@ export function NodePanel({ node, info, run, tick, files, scriptPath, now = Date
             <button className="btn btn-small" onClick={onClose} aria-label="close">Close</button>
           </header>
           <p className="panel-sub muted small">{node.phase || dash} › {kind} · {purpose}</p>
-          <nav className="tabs" role="tablist">
-            {TABS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
-          </nav>
+          {/* Definition view (no run selected): "This run" would have nothing to be about, so the one remaining tab needs no strip. */}
+          {run && (
+            <nav className="tabs" role="tablist">
+              {TABS.map(([id, name]) => <button key={id} type="button" role="tab" aria-selected={tab === id} className="tab" data-on={tab === id || undefined} onClick={() => setTab(id)}>{name}</button>)}
+            </nav>
+          )}
         </div>
         {tab === 'def' && (
           <>

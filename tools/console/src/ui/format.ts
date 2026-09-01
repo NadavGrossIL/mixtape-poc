@@ -1,4 +1,4 @@
-import type { Ledger, LedgerEntry, RunGit, RunManifest, WorkflowAgentEntry } from '../types'
+import type { DriverExtract, Ledger, LedgerEntry, RunGit, RunManifest, WorkflowAgentEntry } from '../types'
 import { agentsOf, isStalled, labelOf, stateAt } from '../graph/overlayRun'
 import { isLive } from '../graph/signals'
 
@@ -218,6 +218,24 @@ export function usdOf(run?: RunManifest, ledger?: Ledger): { text: string; title
   return { text: NO_ROW.rail, title: NO_ROW.title, noRow: true }
 }
 
+/**
+ * One line for a driver JSON in the context row: `$2.93 · 5 turns · stopped:
+ * completed`, or `error · session limit, resets 4:40pm (Asia/Jerusalem)` — the
+ * session-limit reading replaces the raw `stopped: api_error`, and `error`
+ * leads in words because state is never colour alone. Nothing when the extract
+ * carried none of it, and the row falls back to the file name.
+ */
+export function driverSummary(x?: DriverExtract): string | undefined {
+  if (!x) return undefined
+  const parts: string[] = []
+  if (x.cost != null) parts.push(fmtUsd(x.cost))
+  if (x.numTurns != null) parts.push(`${x.numTurns} turn${x.numTurns === 1 ? '' : 's'}`)
+  if (x.sessionLimited) parts.push(x.sessionLimitResets ? `session limit, resets ${x.sessionLimitResets}` : 'session limit')
+  else if (x.stopReason) parts.push(`stopped: ${x.stopReason}`)
+  if (!parts.length) return undefined
+  return (x.isError ? 'error · ' : '') + parts.join(' · ')
+}
+
 /** Where a run went wrong: the first agent (by index) whose settled state is `error` → `stopped at <label>`. Nothing when none did. */
 export function stoppedAt(run?: RunManifest): string | undefined {
   const agents = agentsOf(run).slice().sort((a, b) => (a.index ?? 0) - (b.index ?? 0))
@@ -239,7 +257,35 @@ export function whereOf(a: WorkflowAgentEntry): string {
 export const RUN_COPY = {
   stale: 'nothing moved for 15 min; the session may have ended without a manifest',
   killed: 'stopped by --max-budget-usd / --max-turns',
+  live: 'following the journal',
 } as const
+
+/**
+ * The status dot for a run, shape- and colour-coded by `.dot[data-status]`:
+ * filled = a result, amber = needs-human, square = error, dashed = moving or
+ * cold, double = killed. One reading, so the rail and the home card cannot
+ * disagree about the same run.
+ */
+export function dotOf(run: RunManifest): { status: string; title: string } {
+  const oc = outcomeOf(run)
+  if (isStalled(run)) return { status: 'stale', title: RUN_COPY.stale }
+  if (run.status === 'killed' || run.status === 'cancelled') return { status: 'killed', title: RUN_COPY.killed }
+  if (isLive(run)) return { status: 'running', title: RUN_COPY.live }
+  if (oc.source === 'result') return { status: oc.word === 'needs-human' ? 'needs-human' : 'result', title: oc.title }
+  if (run.status === 'error' || run.status === 'failed') return { status: 'error', title: oc.title }
+  if (run.status === 'completed') return { status: 'result', title: oc.title }
+  return { status: 'unknown', title: oc.title }
+}
+
+/**
+ * The tone of an outcome word on its own — a status a workflow *can* return,
+ * with no run behind it, so `toneOf` (which reads one) has nothing to say. It
+ * keeps `toneOf`'s verdict on the same word, so `needs-human` is not amber in
+ * the list of what a workflow can return and red on the run that returned it.
+ */
+export function outcomeTone(word: string): 'ok' | 'err' {
+  return word === 'needs-human' ? 'err' : 'ok'
+}
 
 /**
  * Why the engine stopped, the first that applies: stale (with the agent it

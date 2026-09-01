@@ -52,7 +52,7 @@ GET except the one POST below):
   `scriptCopy` is the script the engine **froze** for this run (`manifest.scriptPath`, else the
   copy in `workflows/scripts/`), which is not necessarily today's repo file.
 - `/api/runs/:runId/agents/:agentId` — `{ prompt, result, events }` from the transcript (404 for fixtures)
-- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes, line, driverFiles } }` from the RUNS.md
+- `/api/ledger` — `{ [runId]: { cost, date, spec, outcome, notes, line, driverFiles, driverExtracts } }` from the RUNS.md
   table (columns found by header name; the `run` cell names the id in backticks; a row without one
   is skipped, a missing file is `{}`). `line` is the row's 1-based line in RUNS.md, so the page can
   open the file at it. `driverFiles: { json?, diff?, pr? }` are the driver's saved results under
@@ -60,6 +60,10 @@ GET except the one POST below):
   matched to a row by date + spec number and, when the row's notes name an attempt ("attempt 3 · …"),
   by that attempt — several rows can share a date and a spec, and the attempt-suffixed names used to
   match nothing at all. A row with no `cost` cell takes it from the last matched JSON's `total_cost_usd`.
+  `driverExtracts` is a parsed reading of each of those JSONs, keyed by path (`src/driverExtract.ts`,
+  pure and unit-tested): cost, turns, the stop reason (`terminal_reason` over the raw `stop_reason`),
+  whether it errored, and the session-limit text when `result` carries one — the few fields a reader
+  actually asks the raw envelope for.
 - `/api/meta` — `{ slug, projectsBase, projectDirs, exists }`: the projects dirs being read
   (`CONSOLE_PROJECTS_DIR` overrides `~/.claude/projects`; `exists` is the repo's own dir)
 - `/api/events` — Server-Sent Events; `data:` lines are `{ kind: 'runs' }` (a manifest or
@@ -96,24 +100,76 @@ with dagre; `layout.ts` also routes every edge (orthogonal step edges; the `fix:
 run under the fix shelf on their own y with the `≤n` bound as a pill) and places the
 OUTCOME column. `purpose.ts` gives each node its one-line purpose (a table per label
 pattern, else the skill's or agent's description, else the prompt's first sentence).
-`src/ui/` is the Workflows screen (a card per workflow: description, last run in one
-line, the command that runs it again, phase strip; a skills-and-agents table), the Canvas (lanes with
-subtitles, nodes with a purpose line, the outcome column, a legend behind the `?` in the
-zoom cluster), the run rail
-(grouped by workflow, filterable), the timeline strip (phase ticks, one bar per agent)
-and the node panel, which sits beside the canvas — the rail collapses to a strip of dots —
-and is drag-resizable; its title row and the two tabs stay stuck to the top of its scroll.
-Browser-side state is four per-viewer conveniences, never runs or
+`src/ui/` is three levels: the Workflows screen, the workflow's definition view, and the
+run view. The Workflows screen is a card per **workflow, not per run**, read top to
+bottom as name → what it is for → how it flows → where it can end → the way in: the
+plain-words `whenToUse`, then the phases as a chain in the canvas lanes' own uppercase
+(`IMPLEMENT → GATE → REVIEW`, the raw arrow chain in its tooltip), then `ends in
+ready-for-pr · ready-for-eval · needs-human` — toned words rather than the canvas's
+chips, because three pills do not fit a 360 px card and a chip there means the outcome a
+run *reached*, not the ones it could. The foot is the same status dot the Runs tab draws, how the last
+run ended (the click that opens that exact run), the run count and `Open →`. The
+spec, the clock, the cost, the cause tag, the phase strip and the command that runs it
+again all moved a level down to the workflow's own screen: this screen answers which
+workflows exist and what they do. Under the cards, the skills and agents — in **two
+groups, because they are two kinds of thing**: a skill is a procedure invoked by name, an
+agent is a subagent a step spawns with its own model and tools, and the heading says which,
+so no badge repeats it on every row. (Mixed in one grid they were told apart only by that
+badge, and five of them wrapped 4 + 1 with a hole in the row; split 3 + 2, each group fills
+its own.) A skill's row is named the way it is run — `/implement` — with its argument beside
+it; an agent's carries its model and the frontmatter's `tools` list, which is how a
+"read-only reviewer" is checked rather than believed and had never been on screen. Both end
+in who calls it, `used by implement-from-spec ▸ review:*`, deduped per workflow, or the
+human who runs it. Each row is a button that opens the file itself (SKILL.md or the agent's
+`.md`) in the same panel the canvas uses, editable through the same allowlist, beside the
+screen (the screen scrolls in its own column so the panel stays put). Opening a workflow (card
+name, "Open →") lands on the **definition view**: the static graph with nothing
+overlaid, and in the header's place `ui/WorkflowDef.tsx`, which wears **the same three rows
+a run wears** so moving between the two views does not move the furniture — the sentence
+(`Use when: …`, keeping its label because `whenToUse` is a condition whose subject is the
+spec), the Run command row with the driver warnings, and a line of context headed
+`Definition`: the workflow file with an **Open** that edits the very text the graph is
+drawn from, the run count, and the newest run as one clause — dot, outcome, when, how
+long, cost, `View →`. What that header deliberately does *not* carry is the flow. The
+canvas under it already draws the phases as lanes with their subtitles, the nodes with
+their purposes and the outcome column with every word the workflow can return; a numbered
+list of the same things in the header was the page twice, stacked, and it pushed the graph
+— the reason to be on this screen — 120 px down. (`graph/flowSummary.ts` composed that
+list and went with it.) Selecting a run — that
+line, a row in the Runs tab, a card's last-run clause — is what turns the run view on: overlay, run
+sentence, why-stopped block, context row, timeline, the node panel's "This run" tab
+(which the definition view's panel does not offer — with no run selected there is
+nothing for it to be about). `‹ workflow` in the header walks back; Esc closes the
+panel first, then walks run → definition, and stops there. A `runId` that no longer
+matches after a refetch degrades to the definition view rather than jumping to the
+newest run. Under the header the stage has **two tabs, `Flow` and `Runs <n>`**, which are the
+two things a workflow screen is for. *Flow* is the Canvas — lanes with subtitles, nodes with
+a purpose line, the outcome column, a legend behind the `?` in the zoom cluster, and the
+timeline strip under it (phase ticks, one bar per agent) once a run is selected. *Runs* is
+the list, grouped by workflow, filterable, this workflow's group first and open. The list
+used to be a 280 px rail beside the canvas: it cost the graph a third of its width and gave
+each run four wrapped lines, so a row now reads left to right across the screen — dot,
+outcome, spec, badges, then when / how long / what it cost, right-aligned — and the graph
+fits the full width. Picking a run returns to *Flow* with that run overlaid. (The rail's
+folded strip-of-dots went with the rail; nothing folds any more.) The node panel opens
+beside either tab and is drag-resizable; its title row and the two tabs stay stuck to the
+top of its scroll. Because the stage is the whole width now, the canvas fit is allowed
+above 100 % (`FIT.maxZoom` 1.75, padding .06) — held at 1 it sat small in the middle of a
+wide screen with the space around it.
+Browser-side state is three per-viewer conveniences, never runs or
 definitions: the panel's width (`console.panelWidth`), the legend
-(`console.legend`), the context line's `more` (`console.context`) and the home screen's
-skills table (`console.skills`) — all through `ui/remember.ts`, which swallows a blocked
-`localStorage` and keeps the default. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
+(`console.legend`) and the context line's `more` (`console.context`) — all through
+`ui/remember.ts`, which swallows a blocked `localStorage` and keeps the default. `ui/format.ts` holds the shared readings of a run: `outcomeOf`
 (`result.status` in the workflow's words, else the engine status), `specOf` (args →
 result → ledger → prompt), `specPath` (that reading as a path a driver takes, the
 ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live; after, `NO_ROW`
-— one wording worn three ways, the card's `no RUNS.md row`, the rail's `no row` and the
+— one wording worn three ways, the definition view's `no RUNS.md row`, the Runs tab's `no row` and the
 header's `—`, all with the same title, "open the run to add one"), `whereOfGit` (`branch …
 · worktree …`, the card's tooltip and the ledger row's notes),
+`dotOf` (the status dot the Runs tab and the home card both draw, so the two cannot disagree
+about one run), `outcomeTone` (a status word with no run behind it, keeping `toneOf`'s
+verdict on the same word so `needs-human` is not amber in the list of what a workflow can
+return and red on the run that returned it),
 `stoppedAt`, `stopReason`, `nowAt`, `toneOf`, `elapsedOf`. The two
 signals the classifier needs are a layer below, in `src/graph/signals.ts` (`graph/`
 imports nothing from `ui/`): `isLive` and `sessionLimit` — the failing agent's `You've
@@ -135,9 +191,11 @@ editor (Tab indents, so Esc is the way out; Esc-then-Tab moves focus on too) —
 a second Esc, pressed with focus outside it, closes the panel. The editor bar says so.
 All CSS lives in `src/styles.css`.
 
-Running it again. Both screens carry one command, bound to the run in front of you:
-the card under LAST RUN (`Re-run`, or `Run` when the workflow has none yet), and a
-compact row under the canvas header's run sentence. It is the driver with that run's
+Running it again. The two lower levels carry one command, bound to the run in front of
+you — the definition view's row (`Re-run`, or `Run` when the workflow has none yet) and a
+compact row under the canvas header's run sentence. The home card does not: a command
+built from the last run's spec is a fact about that run, and the card is about the
+workflow. It is the driver with that run's
 own spec — `scripts/factory-run.sh specs/0002-album-position-gate-blind-spots.md` —
 except where a workflow has no driver (`review-spec`, whose line is the in-session
 `/review-spec <spec>`); `specs/NNNN-slug.md` appears only when there is no run to read
@@ -150,9 +208,9 @@ Beside it on the canvas, when they apply: the driver wipes `../mixtape-poc.wt`
 (it cuts the worktree again from `origin/main`, so uncommitted work there goes) and it
 costs about ten minutes of the five-hour account window; the account window itself — an
 agent whose `error` says "You've hit your session limit" — puts its reset time in the
-block above. The LAST RUN line is itself a button: it
-opens that run on the canvas, while the card's name and "Open canvas →" open the
-workflow at its newest.
+block above. The card's last-run clause is itself a button: it
+opens that run on the canvas, while the card's name and "Open →" open the
+workflow's definition view — the run overlay waits to be asked for.
 
 Why it stopped. A run that ended badly is classified once, in `src/graph/cause.ts`
 (`classify(run)` — pure, one manifest in, one verdict out, tested against the real
@@ -170,17 +228,24 @@ the gate still failing → *spec/code*; anything else → *unknown · open the
 transcript*. The order is what makes it honest: `wf_66ec6c31-e3f` has a failed
 review verdict **and** a session limit, and it is infra — the reviewer's finding is
 its own "reviewer returned nothing" placeholder, which `findingsOf` drops. The
-canvas shows the tag, the headline, the one action, the raw string that fired the
-rule, the reviewer's real findings when there are any, and — on the block's last
-line — the Re-run command that acts on the action, with the script's `logs[]` beside
-it behind a disclosure (160 px, scrolling), the firing line lit. When the block
-renders, the run sentence above it drops its `— <reason>` fragment: the block says it
-better and the two side by side read as a contradiction ("no result" against "account
-session limit"). The sentence ends instead in `result.attempts`, when the script
-returned them — `attempts implement ×2 · gate ×1 · review ×1`.
+canvas shows it **in the order a reader acts in**: the tag and the headline, the one
+action, the reviewer's real findings when there are any, then the Re-run command that
+performs the action — and only then the proof, on one quiet last line, the raw string
+that fired the rule beside the script's `logs[]` behind a disclosure (160 px, scrolling,
+the firing line lit). The command used to sit under the evidence, two blocks below the
+sentence telling you to press it. When the block renders, the run sentence above it
+drops its `— <reason>` fragment: the block says it better and the two side by side read
+as a contradiction ("no result" against "account session limit"). The sentence ends
+instead in `result.attempts`, when the script returned them — `attempts implement ×2 ·
+gate ×1 · review ×1`. The sentence never carries the outcome **word**: the pill in the
+row above it does, and with a block below it that word was on screen three times. What
+is left is provenance — which run, on what, when — set 12 px and muted so the pill and
+the block read first; the `reason`, the one thing in it the pill does not know, keeps
+the text colour and the weight.
 A run that ended well has no block, and
-its Re-run row stands on its own under the sentence. The home card shows tag +
-headline only, directly under the LAST RUN line; the rail says the headline on hover. `result.cause`, if a script ever
+its Re-run row stands on its own under the sentence. The home card carries no tag at all
+any more — why a run stopped is a fact about that run, and it is a click away on the
+canvas; a Runs row says the headline on hover. `result.cause`, if a script ever
 returns one, wins over the table's class. Next to the outcome pill, `engine:
 <status>` appears only when the engine's own word is neither `completed` nor
 what the pill already says.
@@ -189,10 +254,16 @@ Where the context lives. Under the canvas header, a **Context** *line* names the
 artefacts a manager reaches for — no clicking a node first: the spec (Open, read-only in the
 panel), the branch (Copy) and the RUNS.md row at its line number (Open) — and ends in
 `more ▾`. Opening it unfolds the rest in a box of its own — 180 px, scrolling inside, so
-unfolding it never takes the canvas off the screen: the worktree it ran in (from `git`, which is `cwd` /
-`gitBranch` off the first transcript line), the run id, the manifest, the journal, the frozen
-script, the spec's path and the driver's saved JSON / diff / PR body, then the ledger row in
-its own words, in full. Each unfolded line is a label, the value in monospace
+unfolding it never takes the canvas off the screen, in two clusters. **artefacts** is what the run
+produced, labelled by what it answers: the frozen script (Diff against the live file), the
+**driver result** — whose value is not a path but the extract's own words, `$2.93 · 5 turns ·
+stopped: completed` (or the session-limit line when that is how it ended), the path in the
+tooltip, the raw JSON behind Open — the **diff it produced** and the **PR body**. **paths**
+is where its files live, copy-only: the worktree it ran in (from `git`, which is `cwd` /
+`gitBranch` off the first transcript line), the run id, the manifest, the journal, the
+spec's path. Under both, the ledger row in its own words — two lines, the whole note in
+the tooltip and one **Open** away in RUNS.md itself, because in full it ran four lines of
+prose that the 180 px box cut mid-word anyway. Each unfolded line is a label, the value in monospace
 (a long path is truncated from the *left* — the tail identifies the file — with the whole thing
 in the tooltip), then Copy and, where the page can serve the file, Open. Paths under `~/.claude`
 are copy-only: they are outside the repo and `/api/file` will not serve them, which is fine —
@@ -204,23 +275,28 @@ and the Context line's RUNS.md slot carries the one action — **add row** — w
 RUNS.md at its last row and copies a row for this run, built from the table's own header
 (`prefillRow`) — date, spec, engine, attempts, gate, review, outcome, run and notes filled from
 the manifest, cost left empty because only the driver's JSON knows it. The page never writes
-RUNS.md. On the home card the same absence is the line's last cell, `no RUNS.md row`, which
-reads as a link and is opened by the click the whole LAST RUN line already performs — the
-canvas, where **add row** lives. The node panel's *This run* tab carries the transcript's
+RUNS.md. On the definition view's last-run line the same absence is the line's last cell,
+`no RUNS.md row`, which reads as a link and is opened by the click that line already
+performs — the canvas, where **add row** lives. The home card says nothing about cost at
+all: it is a fact about a run. The node panel's *This run* tab carries the transcript's
 absolute path with a Copy and
 loads it when you open the tab (it was four clicks: run, node, tab, button). The home card's
-LAST RUN line carries the branch and the worktree in its tooltip and leaves the rest to the
-canvas — spelled out they wrapped over three lines in a 350 px card.
+last-run clause carries the spec and the absolute time in its tooltip and leaves every
+other artefact to the canvas.
 
 Where the eye lands (§5). The run is the focal point and the reference material is folded:
 the canvas header is ~140 px for a clean run and ~225 px for one that stopped (measured at
-1552 px wide), the legend hides behind `?`, the home screen's skills-and-agents table hides
-behind a disclosure, the `native` chip is gone from both screens (it is a constant; the value
-is in the workflow name's tooltip), and the footer is one `LIVE` dot whose tooltip carries the
-dirs it reads. On a card, the outcome word and the spec are the largest text on it, level
-with the workflow name. The paragraph that used to sit under each card's command ("The
-console never starts a run — paste this in a terminal…") is gone: the screen's subtitle
-already says it, and the rest is the Copy button's tooltip.
+1552 px wide), the definition view's header is three rows of the same shape, the legend hides behind `?`, the `native` chip is gone from both screens (it is a
+constant; the value is in the workflow name's tooltip), and the footer is one `LIVE` dot
+whose tooltip carries the dirs it reads. What is *not* folded any more is the skills and
+agents: they are what the line is made of, and a reader looking for "what do I have" was
+opening a disclosure to find out. They are two labelled groups of rows on the home screen
+now, each row opening its file, and each group headed by one line saying what that kind of
+thing *is* — the question "which skills and agents do I have" is answered without a click. On a card, what the workflow is *for* is the largest text after its name: the
+run block that used to own that size is one muted clause in the foot, and a card that
+was ~360 px is ~190 px, so the whole grid is scannable without scrolling. The paragraph
+that used to sit under each card's command ("The console never starts a run — paste this
+in a terminal…") is gone with the command itself: the screen's subtitle already says it.
 
 Tweak (C4). The node panel has two tabs. *Definition* is what the step is made of, and it
 is the editable one: **Prompt** (the `SKILL.md` of the skill a node invokes, or

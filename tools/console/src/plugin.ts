@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { ConsoleEvent, DriverFiles, Graph, Ledger, LedgerEntry, RunGit, RunManifest, RunPaths, WorkflowAgentEntry, WorkflowFile, WorkflowMeta } from './types'
 import { parseScript, readMeta } from './graph/parseScript' // pure TS, no browser imports: Vite bundles it into the config with esbuild
 import { allowed } from './allow' // the two allowlists, pure and unit-tested (src/allow.test.ts)
+import { extractDriver } from './driverExtract' // pure, unit-tested (src/driverExtract.test.ts)
 
 // The console's only "backend": a Vite dev-server middleware that READS
 // workflow files in this repo and run records Claude Code wrote under
@@ -719,11 +720,15 @@ function readLedger(repoRoot: string): Ledger {
     const hits = driverFilesFor(e, files)
     if (!hits) continue
     e.driverFiles = hits
+    for (const p of hits.json ?? []) {
+      const x = extractDriver(readJson(p))
+      if (x) (e.driverExtracts ??= {})[p] = x
+    }
     // The cost fallback: the newest attempt of the matched JSON is this row's run.
     const json = hits.json?.[hits.json.length - 1]
     if (e.cost == null && json) {
-      const j = readJson(json) as { total_cost_usd?: unknown } | null
-      if (isNum(j?.total_cost_usd)) e.cost = j.total_cost_usd
+      const c = e.driverExtracts?.[json]?.cost
+      if (c != null) e.cost = c
     }
   }
   return out

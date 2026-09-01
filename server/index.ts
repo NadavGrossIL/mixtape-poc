@@ -346,13 +346,24 @@ function callerUser(req: Request): string | null {
 // Max-Age tracks the signed window rather than being picked separately: the
 // cookie now carries an issued-at that the server stops honouring after
 // SESSION_MAX_AGE_MS (session.ts), and a browser holding a cookie past that
-// point reads to the user as a random logout. One number, one place.
-function setSessionCookie(req: Request, res: Response, userId: string) {
-  res.setHeader(
-    "Set-Cookie",
+// point reads to the user as a random logout. One number, one place — and
+// that place is sessionCookieValue, the only spelling of this cookie in the
+// file. It is split from the setter below because /callback has to emit the
+// session cookie and the mixtape_oauth clearing cookie in ONE
+// res.setHeader("Set-Cookie", [...]) array — a second setHeader (which is
+// all setSessionCookie can do) replaces the array instead of appending, so
+// calling the setter there would silently drop the clearing cookie. So
+// /callback builds the array itself and uses this value as element zero;
+// every other caller wants the one-cookie convenience.
+function sessionCookieValue(req: Request, userId: string): string {
+  return (
     `${SESSION_COOKIE}=${signUser(userId, SESSION_KEY)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_MS / 1000}` +
-      (req.secure ? "; Secure" : "")
+    (req.secure ? "; Secure" : "")
   );
+}
+
+function setSessionCookie(req: Request, res: Response, userId: string) {
+  res.setHeader("Set-Cookie", sessionCookieValue(req, userId));
 }
 
 // Who is asking — a connected Spotify account, or a guest. Guests get a
@@ -642,8 +653,7 @@ app.get("/callback", async (req, res) => {
     usage.record(userId, displayName, "login");
     // replaces a guest identity, if the browser had one
     res.setHeader("Set-Cookie", [
-      `${SESSION_COOKIE}=${signUser(userId, SESSION_KEY)}; Path=/; HttpOnly; SameSite=Lax; Max-Age=${SESSION_MAX_AGE_MS / 1000}` +
-        (req.secure ? "; Secure" : ""),
+      sessionCookieValue(req, userId),
       `${OAUTH_COOKIE}=; Path=/; HttpOnly; Max-Age=0`,
     ]);
     console.log(`[auth] ${displayName || userId} connected their Spotify`);

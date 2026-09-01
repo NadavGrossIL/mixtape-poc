@@ -1,6 +1,6 @@
 # Handoff — fix the security audit findings (2026-09-01)
 
-Paste everything below the line into a fresh session in `/Users/nadavgross/Projects/mixtape-poc`.
+Paste everything below the line into a fresh session in `<repo root>`.
 
 ---
 
@@ -226,7 +226,7 @@ Then confirm with `git check-ignore -v` on each, and re-confirm
 `server/.env.example` is still tracked.
 
 **18 · MEDIUM — a private repo's name survives its own redaction guard.**
-`tools/console/fixtures/redact.mjs:14` declares `const REPO = 'job-scan'` with the
+`tools/console/fixtures/redact.mjs:14` declares `const REPO = '<private-repo>'` with the
 comment "must not appear in the fixture", writes it into the output as
 `` `${REPO} review (redacted fixture)` ``, and the leak check at line 66
 whitelists exactly that line by excluding anything containing
@@ -237,7 +237,7 @@ guard can catch itself. Line 12 of the same file also hardcodes the owner's home
 path and a real session UUID — replace with a neutral placeholder.
 
 **19 · LOW — the owner's username is in eleven tracked files.**
-`/Users/nadavgross` appears in five `evals/runs/*/summary.json` `runDir` fields
+`/Users/<user>` appears in five `evals/runs/*/summary.json` `runDir` fields
 (**never tier — leave those, list them for the human**), plus
 `scripts/eval-baseline.sh:18`, `tools/console/fixtures/redact.mjs:12`,
 `docs/factory/handoff-dry-run-2-2026-08-30.md:72`, and three console source and

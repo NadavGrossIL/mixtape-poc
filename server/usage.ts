@@ -36,6 +36,9 @@ function save(records: Record<string, UsageRecord>) {
   // "no history", never crash the server
   const tmp = `${USAGE_PATH}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(records, null, 2), { mode: 0o600 });
+  // Not redundant with the mode above: that applies on create only, so a
+  // .tmp left by a crash under a wider umask is reused at its old mode.
+  fs.chmodSync(tmp, 0o600);
   fs.renameSync(tmp, USAGE_PATH);
 }
 

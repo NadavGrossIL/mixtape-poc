@@ -756,8 +756,10 @@ for (const sig of ["SIGINT", "SIGTERM"] as const) {
   });
 }
 
-// True when this query can be answered without spending quota. The curator
-// checks this so cache hits don't count against its per-run search budget.
+// True when this query can be answered without spending quota. Both spenders
+// check it first — the curator's agent loop (curator.ts, `free`) and resolveTrack
+// below — so a cache hit never claims from the one request-scoped allowance they
+// now share (searchBudget.ts).
 function isSearchCached(q: string): boolean {
   return isFresh(loadSearchCache().get(cacheKey(q)));
 }
@@ -1351,7 +1353,7 @@ export {
   MAX_CATALOG_FIELD_CHARS,
   classify429,
   rememberItems,
-  rememberQuery, // primes the query cache; the search path and the tests
+  rememberQuery, // files results under a query; searchTracks real ones, tests fake ones
   evictOldest,
   CACHE_MAX_ENTRIES,
   RECORD_MAX_ENTRIES,

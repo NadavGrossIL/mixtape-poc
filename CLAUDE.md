@@ -82,8 +82,10 @@ are not in CI — they cost money (`docs/playbooks/change-the-curator-prompt.md`
   `permissionMode` and budget, which no in-run check would ever see.
   **Those three are enforced by `scripts/protected-check.sh` only** — the
   matching `Edit(...)` rules in `.claude/settings.json` are not there yet
-  (never tier; the diff is in the 2026-09-01 security handoff, for a human).
-  So the gate catches them, but the Edit tool will not prompt on them.
+  (never tier). So the gate catches them, but the Edit tool will not prompt
+  on them. The diff a human needs, with the two other never-tier patches and
+  the eval run still owed, is
+  `docs/factory/security-never-tier-patches-2026-09-01.md`.
   Ask rules stop the Edit
   tool only — a Bash redirect walks past them — so `npm run gate` step 0
   fails when any of them differs from `origin/main`; a human passes it

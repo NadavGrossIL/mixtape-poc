@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import type { RunManifest } from '../types'
-import { baseName, isoDate, ledgerLine, prefillRow, repoRel, rowValuesOf, specCell } from './format'
+import { baseName, driverSummary, isoDate, ledgerLine, prefillRow, repoRel, rowValuesOf, specCell } from './format'
 
 // The context row's own readings (§4). The header below is docs/factory/RUNS.md's,
 // verbatim — the point of prefillRow is that the row follows the file's column
@@ -62,6 +62,20 @@ test('repoRel converts a driver path and refuses anything else', () => {
   assert.equal(repoRel('/Users/x/Projects/mixtape-poc/docs/factory/runs/2026-08-30-0002.json'), 'docs/factory/runs/2026-08-30-0002.json')
   assert.equal(repoRel('/Users/x/.claude/projects/-slug/session/workflows/wf_1.json'), undefined)
   assert.equal(repoRel(undefined), undefined)
+})
+
+test('driverSummary words the extract, session limit over the raw stop', () => {
+  assert.equal(
+    driverSummary({ cost: 2.9338674999999994, numTurns: 5, stopReason: 'completed', isError: false }),
+    '$2.93 · 5 turns · stopped: completed',
+  )
+  assert.equal(
+    driverSummary({ cost: 2.7352977999999997, numTurns: 1, stopReason: 'api_error', isError: true, apiErrorStatus: 429, sessionLimited: true, sessionLimitResets: '4:40pm (Asia/Jerusalem)' }),
+    'error · $2.74 · 1 turn · session limit, resets 4:40pm (Asia/Jerusalem)',
+  )
+  assert.equal(driverSummary({ isError: true, sessionLimited: true }), 'error · session limit')
+  assert.equal(driverSummary({ resultHead: 'words only' }), undefined)
+  assert.equal(driverSummary(undefined), undefined)
 })
 
 test('baseName, specCell, isoDate, ledgerLine', () => {

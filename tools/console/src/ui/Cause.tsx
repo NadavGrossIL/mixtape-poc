@@ -1,11 +1,11 @@
 import type { CauseVerdict, Finding } from '../graph'
 import { dash } from './format'
 
-// The tag on "why it stopped", in one place. The canvas header's block and the
-// home card's line render exactly the same pill from the same verdict, so the
-// two screens cannot drift in wording, colour or tooltip; `hasCause` (graph/
-// cause.ts) is the predicate that decides whether either of them renders at
-// all. Copy: docs/factory/console-simplification.md §2.
+// The tag on "why it stopped", in one place. The canvas header's block is its
+// one caller now — the home card's cause line is gone, because why a run
+// stopped is a fact about that run and the canvas is a click away — and
+// `hasCause` (graph/cause.ts) is the predicate that decides whether the block
+// renders at all. Copy: docs/factory/console-simplification.md §2.
 
 export const CAUSE_TAG: Record<string, { text: string; title: string }> = {
   infra: { text: 'INFRA — you handle it', title: 'the machine, the account window or the budget stopped it; nothing about the spec is known yet' },

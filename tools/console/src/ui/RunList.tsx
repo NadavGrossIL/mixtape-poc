@@ -3,15 +3,19 @@ import type { Ledger, RunManifest, WorkflowFile } from '../types'
 import { classify, hasCause, isStalled } from '../graph'
 import type { ConsoleMeta } from './Workflows'
 import { runCommand } from './Workflows'
-import { RUN_COPY, dash, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
+import { RUN_COPY, dash, dotOf, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
 
-// The run rail (IA-SPEC §6): runs grouped by workflow — the reader arrives from
-// a card, so "the other runs of this workflow" is the question — newest first
-// inside a group, one text filter. Each row is two lines: the outcome word and
-// the spec, then when / how long / what it cost. While the node panel is open
-// the rail folds to a strip of the same dots (A10) so the canvas keeps its width.
+// The Runs tab (IA-SPEC §6): the runs of the workflow on screen, newest first,
+// one text filter — the screen is scoped to one workflow and you change
+// workflows from the home screen, so `runs` arrives already filtered and the
+// grouping resolves to that single group (it stays general: a caller that hands
+// this list more than one workflow still gets headed groups, the named one
+// first and open). A row reads left to right across the screen: the outcome
+// word and the spec, then when / how long / what it cost, right-aligned. It was
+// a 280 px rail beside the canvas, where those same two lines wrapped into four
+// and the graph paid a third of its width for them.
 
-const TIP = { ...RUN_COPY, live: 'following the journal' } as const
+const TIP = RUN_COPY
 const PLACEHOLDER = 'filter by spec, outcome or run id'
 
 interface Row {
@@ -26,13 +30,13 @@ interface Row {
   badges: { text: string; title?: string; live?: boolean }[]
   line2: { text: string; title?: string }[]
   start?: number
-  /** `classify().headline` for a run that stopped — the rail's rows stay as they are and say it on hover. */
+  /** `classify().headline` for a run that stopped — the rows stay as they are and say it on hover. */
   why?: string
 }
 
-export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, collapsed, onSelect, onExpand }: {
+export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, onSelect }: {
   runs: RunManifest[]; ledger: Ledger; files: WorkflowFile[]; meta: ConsoleMeta; now: number; selectedId?: string; workflow?: string
-  collapsed?: boolean; onSelect: (id: string) => void; onExpand: () => void
+  onSelect: (id: string) => void
 }) {
   const [filter, setFilter] = useState('')
   const [open, setOpen] = useState<Record<string, boolean>>({})
@@ -51,27 +55,10 @@ export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, 
   }, [shown, workflow])
   const isOpen = (name: string) => (q ? true : open[name] ?? name === workflow)
 
-  if (collapsed) {
-    return (
-      <aside className="rail rail-strip" aria-label="runs">
-        <button type="button" className="rail-toggle" onClick={onExpand} title="show the run list">Runs</button>
-        <ul className="strip-dots">
-          {groups.flatMap((g) => g.rows).map((x) => (
-            <li key={x.id}>
-              <button type="button" className="strip-dot" data-selected={x.run.runId === selectedId || undefined} title={`${x.workflow} · ${line1Text(x)}\n${x.line2.map((s) => s.text).join(' · ')}\n${x.run.runId ?? dash}`} onClick={() => x.run.runId && onSelect(x.run.runId)}>
-                <span className="dot" data-status={x.dot.status} aria-hidden />
-              </button>
-            </li>
-          ))}
-        </ul>
-      </aside>
-    )
-  }
   return (
-    <aside className="rail" aria-label="runs">
-      <h2>Runs</h2>
+    <section className="runs-screen" aria-label="runs">
       {runs.length === 0
-        ? <Empty files={files} meta={meta} />
+        ? <Empty files={files} meta={meta} workflow={workflow} />
         : <input className="filter" type="search" value={filter} placeholder={PLACEHOLDER} aria-label={PLACEHOLDER} onChange={(e) => setFilter(e.target.value)} />}
       {runs.length > 0 && shown.length === 0 && <p className="muted small">No run matches “{filter.trim()}”.</p>}
       {groups.map((g) => (
@@ -104,13 +91,10 @@ export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, 
           )}
         </section>
       ))}
-    </aside>
+    </section>
   )
 }
 
-function line1Text(x: Row): string {
-  return [x.word, x.spec, ...x.badges.map((b) => b.text)].join(' · ')
-}
 
 /** One row's texts, computed once per run: the outcome word, the dot and its tooltip, the two lines. */
 function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
@@ -121,13 +105,7 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   const start = startOf(run)
   const usd = usdOf(run, ledger)
   const word = stalled ? 'stale' : killed ? 'killed' : oc.word
-  const dot = stalled ? { status: 'stale', title: TIP.stale }
-    : killed ? { status: 'killed', title: TIP.killed }
-    : live ? { status: 'running', title: TIP.live }
-    : oc.source === 'result' ? { status: oc.word === 'needs-human' ? 'needs-human' : 'result', title: oc.title }
-    : run.status === 'error' || run.status === 'failed' ? { status: 'error', title: oc.title }
-    : run.status === 'completed' ? { status: 'result', title: oc.title }
-    : { status: 'unknown', title: oc.title }
+  const dot = dotOf(run)
   const tone: Row['tone'] = oc.source === 'result' ? (oc.word === 'needs-human' ? 'err' : 'ok') : killed || oc.word === 'error' ? 'err' : live || stalled ? 'warn' : 'muted'
   const badges: Row['badges'] = []
   const tag = projectTag(run.projectSlug)
@@ -145,14 +123,20 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   }
 }
 
-/** Nothing on disk: where the page looked, and the one command that starts a run (no spec to bind to yet — the placeholder). */
-function Empty({ files, meta }: { files: WorkflowFile[]; meta: ConsoleMeta }) {
+/**
+ * Nothing to list: where the page looked, and the one command that starts a run
+ * (no spec to bind to yet — the placeholder). The list is scoped to one
+ * workflow, so the sentence names it and the command is that workflow's own; a
+ * caller with no workflow in hand gets the repo-wide wording it had.
+ */
+function Empty({ files, meta, workflow }: { files: WorkflowFile[]; meta: ConsoleMeta; workflow?: string }) {
   const dirs = meta.projectDirs?.length ? meta.projectDirs : ['~/.claude/projects/<slug>*']
-  const first = files.filter((f) => f.kind === 'script' || f.kind === 'yaml').sort((a, b) => a.name.localeCompare(b.name))[0]
-  const command = runCommand(first?.name ?? 'implement-from-spec', undefined, first?.meta)
+  const runnable = files.filter((f) => f.kind === 'script' || f.kind === 'yaml')
+  const first = (workflow && runnable.find((f) => f.name === workflow)) || runnable.slice().sort((a, b) => a.name.localeCompare(b.name))[0]
+  const command = runCommand(first?.name ?? workflow ?? 'implement-from-spec', undefined, first?.meta)
   return (
     <div className="rail-empty">
-      <p>No runs on disk for this repo.</p>
+      <p>{workflow ? `No runs of ${workflow} on disk.` : 'No runs on disk for this repo.'}</p>
       {dirs.map((d) => <p key={d} className="muted small dir">{d}</p>)}
       <p>Start one: </p>
       <code>{command}</code>

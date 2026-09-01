@@ -9,7 +9,11 @@ import { useRemembered } from './remember'
 
 const nodeTypes = { agent: AgentNode, lane: LaneNode, outcome: OutcomeNode }
 const edgeTypes = { route: RouteEdge }
-const FIT = { padding: 0.12, maxZoom: 1, minZoom: 0.15 }
+// `maxZoom: 1` held the graph at 100 % however much room it had, so on a wide screen it sat
+// small in the middle with the space around it. The stage is the whole width now (the runs
+// moved to their own tab), and the fit is allowed to grow into it — 1.75 is where the node
+// text stops gaining and the lanes start to feel loose.
+const FIT = { padding: 0.06, maxZoom: 1.75, minZoom: 0.15 }
 const LEGEND_KEY = 'console.legend'
 
 /**

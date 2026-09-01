@@ -12,7 +12,8 @@ import * as spotify from "./spotify.ts";
 import * as curator from "./curator.ts";
 import * as logbook from "./logbook.ts";
 import * as usage from "./usage.ts";
-import * as metrics from "./metrics.ts";
+import { makeMetrics } from "./metrics.ts";
+import { healthBody } from "./health.ts";
 import { signUser, verifyUser, newAnonId, isAnon } from "./session.ts";
 import { makeCaps, today } from "./caps.ts";
 import { makePressCaps } from "./pressCaps.ts";
@@ -31,6 +32,14 @@ const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
 // machine — the one bit that decides how the owner gate fails (below) and
 // what the startup warnings are about.
 const DEPLOYED = HOST !== "127.0.0.1";
+
+// The funnel counters. DATA_DIR is the host's volume when there is one, else
+// beside the code — see metrics.ts for what that costs. Built here rather
+// than imported as a singleton so a test can point one at a temp dir; the
+// price is that the process owning the counters also owns their last flush,
+// so the clean-exit write is registered here and nowhere else.
+const metrics = makeMetrics({ dir: process.env.DATA_DIR || import.meta.dirname });
+process.on("exit", metrics.flush);
 
 const app = express();
 // req.secure must reflect the platform's TLS terminator, not the internal hop
@@ -123,8 +132,11 @@ if (APP_SECRET) {
   app.use((req, res, next) => {
     // /callback is exempt: Spotify lands there mid-OAuth, and the state
     // check (issued only to a gated /auth/login) already gates it.
-    if (req.path === "/callback" || req.path === "/healthz" || hasGateCookie(req))
-      return next();
+    // /healthz is exempt in both spellings: a monitor configured with a
+    // trailing slash is the same monitor, and an exact-match exemption would
+    // hand it the password form and a green 401-free check forever.
+    const healthPing = req.path === "/healthz" || req.path === "/healthz/";
+    if (req.path === "/callback" || healthPing || hasGateCookie(req)) return next();
     // The invite link carries the key (`/?key=…`): one tap sets the cookie
     // and lands on the app, so a visitor never meets the password form.
     // Redirect to strip the key from the address bar and history.
@@ -211,11 +223,30 @@ function requireSpotifyUser(req: Request, res: Response): string | null {
 // people; a beacon from a browser that actually ran the app is the honest
 // number. No body and nothing per-person is recorded — just the tick, and
 // whether this browser had been here before.
-app.post("/api/view", (req, res) => {
-  const returning = callerUser(req) !== null;
+// The owner reloading their own page is not an audience. At the counts this
+// app will see once a link goes out, a dozen self-reloads are the difference
+// between "people came" and "I came" — so the one number that matters gets to
+// stay honest. Resolving the owner is a cached /me after the first call, and
+// any failure to resolve it counts the view: over-counting the owner is a
+// rounding error, silently dropping real visitors is a broken funnel.
+async function isOwnerVisit(user: string | null): Promise<boolean> {
+  if (!user || isAnon(user)) return false;
+  try {
+    const ownerId = await spotify.getOwnerId();
+    return ownerId !== null && user === ownerId;
+  } catch {
+    return false;
+  }
+}
+
+app.post("/api/view", async (req, res) => {
+  const user = callerUser(req);
+  const returning = user !== null;
   callerIdentity(req, res); // mint the guest cookie at first paint, not at first generate
-  metrics.count("views");
-  if (!returning) metrics.count("newVisitors");
+  if (!(await isOwnerVisit(user))) {
+    metrics.count("views");
+    if (!returning) metrics.count("newVisitors");
+  }
   res.status(204).end();
 });
 
@@ -231,23 +262,25 @@ app.post("/api/view", (req, res) => {
 // daily quota is NOT in here; it is a wait-until-tomorrow condition that
 // clears itself, and paging someone at 3am for it would train them to ignore
 // the page that matters. It shows up in the log panel instead.
+// Which checks fail it and which are only reported lives in health.ts, with
+// its test; this route is just the four readings and the status code.
 app.get("/healthz", (req, res) => {
-  const checks = {
-    spotifyCredentials: spotify.credentialsConfigured(),
-    anthropicKey: curator.anthropicConfigured(),
-    // The owner token powers catalog search AND the owner gate, so on a
-    // deployed host its absence is an outage, not a local-dev convenience.
-    ownerToken: !DEPLOYED || spotify.isLoggedIn(),
-    // Unset just means mixtapes press into the owner's own account — degraded,
-    // not down, so it is reported without failing the check.
-    hostAccount: spotify.isLoggedIn(spotify.hostUser()),
-  };
-  const ok = checks.spotifyCredentials && checks.anthropicKey && checks.ownerToken;
-  res.status(ok ? 200 : 503).json({
-    ok,
-    uptime: Math.round(process.uptime()),
-    checks,
-  });
+  const body = healthBody(
+    {
+      spotifyCredentials: spotify.credentialsConfigured(),
+      anthropicKey: curator.anthropicConfigured(),
+      // The owner token powers catalog search AND the owner gate, so on a
+      // deployed host its absence is an outage, not a local-dev convenience.
+      ownerToken: !DEPLOYED || spotify.isLoggedIn(),
+      // Ask about the HOST account itself, the way the startup warning does.
+      // `hostUser()` falls back to the owner when the host token is unset, so
+      // `isLoggedIn(hostUser())` would answer "yes" on exactly the deploy
+      // this check exists to notice.
+      hostAccount: spotify.isLoggedIn("host"),
+    },
+    process.uptime()
+  );
+  res.status(body.ok ? 200 : 503).json(body);
 });
 
 // ── owner-only routes ────────────────────────────────────────
@@ -332,6 +365,9 @@ function evictStaleStates() {
 
 app.get("/auth/login", (req, res) => {
   if (!spotify.credentialsConfigured()) {
+    // A misconfigured server, hit by a real person clicking Connect — the
+    // funnel has to show that as breakage, not as nobody trying.
+    metrics.count("errors");
     return res
       .status(500)
       .send(
@@ -383,6 +419,10 @@ app.get("/callback", async (req, res) => {
     console.log(`[auth] ${displayName || userId} connected their Spotify`);
     res.redirect(CLIENT_URL);
   } catch (err: any) {
+    // The state checks above 400 on a forged or stale link; reaching here
+    // means Spotify accepted the round trip and the exchange still failed —
+    // ours, and the visitor is stuck on a plain-text page.
+    metrics.count("errors");
     console.error("[auth] token exchange failed:", err.message);
     res.status(500).send("Token exchange with Spotify failed. Check the server logs.");
   }
@@ -444,8 +484,6 @@ app.get("/api/logs/stream", async (req, res) => {
   });
 });
 
-// Who has been using the app — per-account login/generation/save counts.
-// OWNER only, same reasoning as the logs.
 // The funnel: views → prompts → cards → presses, by day. Aggregate, but
 // owner-only anyway — it is nobody else's business how the app is doing.
 app.get("/api/metrics", async (req, res) => {
@@ -453,6 +491,8 @@ app.get("/api/metrics", async (req, res) => {
   res.json(metrics.recent(30));
 });
 
+// Who has been using the app — per-account login/generation/save counts.
+// OWNER only, same reasoning as the logs.
 app.get("/api/usage", async (req, res) => {
   if (!(await requireOwner(req, res))) return;
   res.json({ users: usage.list() });
@@ -473,6 +513,9 @@ app.get("/api/playlists", async (req, res) => {
       // token predates the playlist-read scopes — one re-login fixes it
       return res.status(403).json({ error: "insufficient_scope" });
     }
+    // The 401/403 above are a token the caller can fix by logging in again;
+    // this one is the app breaking on them, so it belongs in the funnel.
+    metrics.count("errors");
     res
       .status(500)
       .json({ error: "Listing playlists failed — check the server logs." });
@@ -500,6 +543,11 @@ app.post("/api/generate/stream", async (req, res) => {
     return res.status(400).json({ error: "Missing prompt" });
   }
   if (!curator.anthropicConfigured()) {
+    // Counted, unlike the 400s above: a missing or rotated key 500s on every
+    // visitor, and an unconfigured server reading `0 errors` is the exact
+    // blind spot the funnel exists to close. The 400s are the user's typo,
+    // not the app's outage, so they stay uncounted.
+    metrics.count("errors");
     return res
       .status(500)
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
@@ -607,6 +655,7 @@ app.post("/api/adjust/stream", async (req, res) => {
     return res.status(400).json({ error: "Missing card or adjustment" });
   }
   if (!curator.anthropicConfigured()) {
+    metrics.count("errors"); // same reasoning as /api/generate/stream
     return res
       .status(500)
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });

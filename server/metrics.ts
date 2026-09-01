@@ -7,21 +7,32 @@
 // ids, no prompts, no per-person rows — so it stays cheap to keep and dull
 // to leak.
 //
-// One row per day, last 60 days. It lives in DATA_DIR when the host gives
-// us a volume, else beside the code — which on Railway's ephemeral disk
-// means the numbers reset with every redeploy, same as the tokens. That is
-// the whole persistence story: point DATA_DIR at a volume if the history
-// matters, otherwise read these as "since the last deploy".
+// One row per day, last 60 days. A factory, not a singleton: the directory
+// and the clock come in as arguments, so the module needs no server, no env
+// and no wall clock to test (add-a-server-route.md §1 — caps.ts is the
+// model). index.ts is the one place that decides where the file lives and
+// when to flush on exit.
+//
+// Where the caller points `dir` is the whole persistence story: DATA_DIR
+// when the host gives us a volume, else beside the code — which on
+// Railway's ephemeral disk means the numbers reset with every redeploy,
+// same as the tokens. Point DATA_DIR at a volume if the history matters,
+// otherwise read these as "since the last deploy".
 
 import fs from "node:fs";
 import path from "node:path";
-
-const DATA_DIR = process.env.DATA_DIR || import.meta.dirname;
-const METRICS_PATH = path.join(DATA_DIR, ".metrics.json");
+// The day stamp comes from caps.ts so there is exactly ONE definition of "a
+// day" in the app. A second copy here would drift from the cap reset and the
+// graph would disagree with the caps about where the day broke.
+import { today as capsToday } from "./caps.ts";
 
 // Days kept. Two months is longer than anyone will look back on a POC and
 // still a file measured in kilobytes.
 const RETAIN_DAYS = 60;
+
+// Writes are coalesced: a burst of page views is one write, and losing the
+// last second of counters to a hard kill costs nothing worth a fsync.
+const FLUSH_MS = 1000;
 
 // The funnel, in order, plus the two things that explain a drop in it.
 type Metric =
@@ -51,28 +62,94 @@ function emptyDay(): Day {
   return Object.fromEntries(METRICS.map((m) => [m, 0])) as Day;
 }
 
-// UTC, matching caps.ts's `today()` — one definition of "a day" across the
-// app, or the cap resets and the graph would disagree about where the day
-// broke.
-function today(): string {
-  return new Date().toISOString().slice(0, 10);
+interface MetricsOptions {
+  // directory the .metrics.json lives in
+  dir: string;
+  // day stamp; defaults to the app-wide one, injectable so a test can roll
+  // the day over without waiting for midnight
+  today?: () => string;
 }
 
-// Read-modify-write per event would be fine at generation rates but not at
-// page-view rates, so the counters live in memory and the file is a
-// snapshot of them. Loaded once, lazily, so importing this module in a test
-// touches no disk until something is counted.
-let state: Record<string, Day> | null = null;
+// Every instance owns its own file, counters and warn-once flag — two
+// instances in one process (a test suite, say) can't scribble on each
+// other's state.
+function makeMetrics({ dir, today = capsToday }: MetricsOptions) {
+  const metricsPath = path.join(dir, ".metrics.json");
 
-function load(): Record<string, Day> {
-  if (state) return state;
-  try {
-    const parsed = JSON.parse(fs.readFileSync(METRICS_PATH, "utf8"));
-    state = parsed && typeof parsed === "object" ? sanitize(parsed) : {};
-  } catch {
-    state = {};
+  // Read-modify-write per event would be fine at generation rates but not at
+  // page-view rates, so the counters live in memory and the file is a
+  // snapshot of them. Loaded once, lazily, so constructing an instance
+  // touches no disk until something is counted or read.
+  let state: Record<string, Day> | null = null;
+  let pending: NodeJS.Timeout | null = null;
+  let warnedWriteFailure = false;
+
+  function load(): Record<string, Day> {
+    if (state) return state;
+    try {
+      const parsed = JSON.parse(fs.readFileSync(metricsPath, "utf8"));
+      state = parsed && typeof parsed === "object" ? sanitize(parsed) : {};
+    } catch {
+      state = {};
+    }
+    return state!;
   }
-  return state!;
+
+  function flush(): void {
+    if (pending) {
+      clearTimeout(pending);
+      pending = null;
+    }
+    if (!state) return;
+    // temp-then-rename, like the token store and the usage ledger — a crash
+    // mid-write must leave the old file, never a truncated one.
+    try {
+      const tmp = `${metricsPath}.tmp`;
+      fs.writeFileSync(tmp, JSON.stringify(state, null, 2), { mode: 0o600 });
+      fs.renameSync(tmp, metricsPath);
+    } catch (err: any) {
+      // A read-only or missing directory must not take the app down over
+      // analytics. Say it once per instance and keep counting in memory.
+      if (!warnedWriteFailure) {
+        warnedWriteFailure = true;
+        console.warn(`[metrics] can't write ${metricsPath}: ${err.message} — counting in memory only`);
+      }
+    }
+  }
+
+  function schedule(): void {
+    if (pending) return;
+    pending = setTimeout(flush, FLUSH_MS);
+    // never hold the process open for a counter file
+    pending.unref?.();
+  }
+
+  function count(metric: Metric, n = 1): void {
+    const days = load();
+    const day = today();
+    if (!days[day]) {
+      days[day] = emptyDay();
+      evictOldDays(days);
+    }
+    days[day]![metric] += n;
+    schedule();
+  }
+
+  // Newest day first. `limit` days back, totals over exactly that window so
+  // the two numbers on screen can never disagree. `today` rides along
+  // because it is the server's own day stamp: no caller has to recompute a
+  // UTC date to know which row is today.
+  function recent(limit = 30): { today: string; days: ({ day: string } & Day)[]; totals: Day } {
+    const rows = Object.entries(load())
+      .sort((a, b) => b[0].localeCompare(a[0]))
+      .slice(0, limit)
+      .map(([day, row]) => ({ day, ...row }));
+    const totals = emptyDay();
+    for (const row of rows) for (const m of METRICS) totals[m] += row[m];
+    return { today: today(), days: rows, totals };
+  }
+
+  return { count, recent, flush };
 }
 
 // A hand-edited or half-written file must read as "no history", never as
@@ -91,42 +168,6 @@ function sanitize(raw: Record<string, unknown>): Record<string, Day> {
   return out;
 }
 
-// Writes are coalesced: a burst of page views is one write, and losing the
-// last second of counters to a hard kill costs nothing worth a fsync.
-let pending: NodeJS.Timeout | null = null;
-const FLUSH_MS = 1000;
-
-function flush(): void {
-  if (pending) {
-    clearTimeout(pending);
-    pending = null;
-  }
-  if (!state) return;
-  // temp-then-rename, like the token store and the usage ledger — a crash
-  // mid-write must leave the old file, never a truncated one.
-  try {
-    const tmp = `${METRICS_PATH}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(state, null, 2), { mode: 0o600 });
-    fs.renameSync(tmp, METRICS_PATH);
-  } catch (err: any) {
-    // A read-only or missing DATA_DIR must not take the app down over
-    // analytics. Say it once per boot and keep counting in memory.
-    if (!warnedWriteFailure) {
-      warnedWriteFailure = true;
-      console.warn(`[metrics] can't write ${METRICS_PATH}: ${err.message} — counting in memory only`);
-    }
-  }
-}
-
-let warnedWriteFailure = false;
-
-function schedule(): void {
-  if (pending) return;
-  pending = setTimeout(flush, FLUSH_MS);
-  // never hold the process open for a counter file
-  pending.unref?.();
-}
-
 // Trim in place when the day rolls over, so the file can't grow forever on
 // a long-lived instance.
 function evictOldDays(days: Record<string, Day>): void {
@@ -136,41 +177,5 @@ function evictOldDays(days: Record<string, Day>): void {
   }
 }
 
-function count(metric: Metric, n = 1): void {
-  const days = load();
-  const day = today();
-  if (!days[day]) {
-    days[day] = emptyDay();
-    evictOldDays(days);
-  }
-  days[day]![metric] += n;
-  schedule();
-}
-
-// Newest day first. `limit` days back, totals over exactly that window so
-// the two numbers on screen can never disagree.
-function recent(limit = 30): { days: ({ day: string } & Day)[]; totals: Day } {
-  const rows = Object.entries(load())
-    .sort((a, b) => b[0].localeCompare(a[0]))
-    .slice(0, limit)
-    .map(([day, row]) => ({ day, ...row }));
-  const totals = emptyDay();
-  for (const row of rows) for (const m of METRICS) totals[m] += row[m];
-  return { days: rows, totals };
-}
-
-// Tests only: forget the in-memory state so the next call re-reads the file.
-function _reset(): void {
-  state = null;
-  if (pending) {
-    clearTimeout(pending);
-    pending = null;
-  }
-}
-
-// Clean exits (Ctrl-C in dev, a graceful stop) shouldn't drop the last
-// second. A SIGKILL still can; that is the trade the debounce buys.
-process.on("exit", flush);
-
+export { makeMetrics, METRICS };
 export type { Metric, Day };
-export { count, recent, flush, METRICS_PATH, METRICS, _reset };

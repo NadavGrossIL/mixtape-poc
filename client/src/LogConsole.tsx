@@ -30,8 +30,7 @@ interface UsageRow {
 }
 
 // server/metrics.ts — aggregate counters, one row per day.
-interface MetricsDay {
-  day: string;
+interface DayCounts {
   views: number;
   newVisitors: number;
   prompts: number;
@@ -42,6 +41,19 @@ interface MetricsDay {
   capped: number;
 }
 
+interface MetricsDay extends DayCounts {
+  day: string;
+}
+
+// `today` is the server's own day stamp, not ours: the client must never
+// decide what "today" is, or a browser sitting on the wrong side of UTC
+// midnight labels yesterday's row as today.
+interface Metrics {
+  today: string;
+  days: MetricsDay[];
+  totals: DayCounts;
+}
+
 const ago = (t: number) => {
   const m = Math.round((Date.now() - t) / 60_000);
   if (m < 1) return "now";
@@ -50,28 +62,16 @@ const ago = (t: number) => {
   return `${Math.round(m / (60 * 24))}d ago`;
 };
 
-const todayUtc = () => new Date().toISOString().slice(0, 10);
-
 // One line, in funnel order, so a drop between two numbers is the story.
-// A day the server has no row for is a real zero, not missing data.
-const funnel = (d: Omit<MetricsDay, "day"> | null) => {
-  const n = d || {
-    views: 0,
-    newVisitors: 0,
-    prompts: 0,
-    generated: 0,
-    adjusts: 0,
-    pressed: 0,
-    errors: 0,
-    capped: 0,
-  };
-  return (
-    `${n.views} views (${n.newVisitors} new) · ${n.prompts} prompts · ` +
-    `${n.generated} made · ${n.adjusts} refines · ${n.pressed} pressed · ` +
-    `${n.errors} errors` +
-    (n.capped > 0 ? ` · ${n.capped} capped` : "")
-  );
-};
+// A day the server has no row for is a real zero, not missing data — hence
+// the per-field fallback rather than a zeroed literal that would spell the
+// metric names out a second time.
+const funnel = (d: DayCounts | null | undefined) =>
+  `${d?.views ?? 0} views (${d?.newVisitors ?? 0} new) · ` +
+  `${d?.prompts ?? 0} prompts · ${d?.generated ?? 0} made · ` +
+  `${d?.adjusts ?? 0} refines · ${d?.pressed ?? 0} pressed · ` +
+  `${d?.errors ?? 0} errors` +
+  ((d?.capped ?? 0) > 0 ? ` · ${d!.capped} capped` : "");
 
 // Matches the server ring's capacity — no reason to hold more than the
 // server can ever replay on reconnect.
@@ -97,10 +97,7 @@ export default function LogConsole() {
   // else gets a 401 and the strip simply doesn't render.
   const [users, setUsers] = useState<UsageRow[] | null>(null);
   // The funnel, same owner-only deal.
-  const [metrics, setMetrics] = useState<{
-    days: MetricsDay[];
-    totals: Omit<MetricsDay, "day">;
-  } | null>(null);
+  const [metrics, setMetrics] = useState<Metrics | null>(null);
 
   const lastSeqRef = useRef(0);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -149,7 +146,7 @@ export default function LogConsole() {
       .catch(() => setUsers(null));
     fetch("/api/metrics")
       .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setMetrics(d && Array.isArray(d.days) ? d : null))
+      .then((d: Metrics | null) => setMetrics(d && Array.isArray(d.days) ? d : null))
       .catch(() => setMetrics(null));
   }, [open]);
 
@@ -234,7 +231,8 @@ export default function LogConsole() {
       {metrics && metrics.days.length > 0 && (
         <div className="logs-funnel" aria-label="Usage funnel">
           <span className="logs-funnel-line">
-            <b>today</b> {funnel(metrics.days[0]!.day === todayUtc() ? metrics.days[0]! : null)}
+            <b>today</b>{" "}
+            {funnel(metrics.days.find((d) => d.day === metrics.today))}
           </span>
           <span className="logs-funnel-line">
             <b>30d</b> {funnel(metrics.totals)}

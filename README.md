@@ -66,8 +66,11 @@ pressed, errors, and anything a daily cap refused — for today and the last
 per day and nothing per person (the per-person ledger is `server/usage.ts`,
 owner-only for that reason). Page views are counted from a one-line beacon
 the client posts on load, not from the HTML request, so crawlers and
-link-preview fetchers don't read as people. Set `DATA_DIR` to a volume or
-the counts reset with every redeploy, like the tokens.
+link-preview fetchers don't read as people. The counts are a file
+(`.metrics.json`), and a file is exactly what a host's ephemeral disk drops
+on every redeploy — the refresh tokens come back only because they are env
+vars, not because anything on disk survived. Point `DATA_DIR` at a volume to
+keep the history.
 
 The tiny control in the bottom-right corner (dev only) cycles the candidate
 wordmarks: MADE YOU A MIXTAPE / DEEP/CUTS / PROMP/TAPE.
@@ -108,11 +111,21 @@ server re-auths itself on every cold start from then on.
 ```
 
 **200 when `ok`, 503 when not**, so a free uptime monitor needs no keyword
-rules — the default "is it 200?" check is the whole configuration. What makes
-it 503 is only what a human has to fix: a missing credential, or a missing
-owner token on a deployed host. `hostAccount` is reported but never fails the
-check — unset only means mixtapes press into the owner's own account, which is
-degraded, not down.
+rules — the default "is it 200?" check is the whole configuration. A 503 is
+never "a request failed"; it means the deployment is misconfigured in a way
+only a human can clear, and it will keep saying so until one does. Three
+checks decide it: `spotifyCredentials` and `anthropicKey` (the client id /
+secret / API key the app cannot run without), and `ownerToken`, which on a
+deployed host means `SPOTIFY_REFRESH_TOKEN` resolved to a real token —
+without it catalog search is dead and the owner-only routes are shut to
+everyone, per *Sharing* below. Run locally, `ownerToken` is always true: a
+loopback server with no token is a fresh clone, not an outage.
+
+`hostAccount` is reported and never fails the check. It tests the host token
+on its own — `SPOTIFY_HOST_REFRESH_TOKEN`, not the owner fallback that serves
+in its place — so false is an honest "no dedicated Mixtape account here",
+meaning mixtapes press into the owner's own account. That is degraded, not
+down, and worth seeing in the payload without waking anyone.
 
 Spotify's daily quota is deliberately **not** in here. It is a
 wait-until-tomorrow condition that clears itself, and paging someone at 3am for
@@ -192,12 +205,25 @@ and a guest keeps working regardless. Catalog search and the host's playlist
 writes run on the env-bootstrapped tokens; only the picker and the 0-tap
 follow use the caller's.
 
-Visibility is asymmetric on purpose: `/api/logs*` and `/api/usage` (who
+Visibility is asymmetric on purpose: `/api/logs*`, `/api/usage` (who
 generated / pressed, and when — persisted in `server/.usage.json`, guests
-included) answer ONLY to the owner — the caller whose Spotify id matches the
-owner token's `/me`. Everyone else gets a 401 there; the log console renders
-its "who's used it" strip only for the owner, and its API is enforced
-server-side, not hidden client-side.
+included) and `/api/metrics` (the funnel) answer ONLY to the owner — the
+caller whose Spotify id matches the owner token's `/me`. Everyone else gets
+a 401 there; the log console renders its "who's used it" strip and its funnel
+strip only for the owner, and all three APIs are enforced server-side, not
+hidden client-side.
+
+That gate fails **closed** when it matters. Deciding who the owner is needs
+an owner token, and a server that has none used to answer those three routes
+for *everyone* — reasonable for a fresh local clone, which has no users to
+leak. But the same condition on a deployed host — an instance that never got
+`SPOTIFY_REFRESH_TOKEN`, a rotated secret, a typo in the env var — would have
+published every visitor's prompts to anyone holding the URL. So the open path
+now requires a loopback bind: locally it is the bind that protects you;
+deployed, a missing or empty owner token 401s logs, usage and metrics for
+everybody, the owner included, and the server says so in a warning at boot.
+Being locked out of your own logs is the safe half of that trade, and
+`/healthz` goes red for the same reason (*Monitoring*, above).
 
 ## Tests
 

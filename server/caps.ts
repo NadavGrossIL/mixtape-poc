@@ -70,3 +70,6 @@ function today(): string {
 }
 
 export { makeCaps, today };
+// pressCaps.ts derives its limits from these, so it needs the same shape.
+// Exported rather than re-declared there: one form, one place to change it.
+export type { CapLimits };

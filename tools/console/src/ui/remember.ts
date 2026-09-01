@@ -1,11 +1,11 @@
 import { useCallback, useState } from 'react'
 
 // Per-viewer conveniences, remembered in the browser: the disclosures slice 5
-// folds away (the skills table, the legend, the context grid) and the node
-// panel's width. A reader who opens one of them means it, so the choice
-// outlives the page. This is the whole of the console's browser state and the
-// only place that touches `localStorage` — never a run, never a definition,
-// which are read from disk every time (plan §11.7).
+// folds away (the legend, the context grid) and the node panel's width. A
+// reader who opens one of them means it, so the choice outlives the page.
+// This is the whole of the console's browser state and the only place that
+// touches `localStorage` — never a run, never a definition, which are read
+// from disk every time (plan §11.7).
 
 /** `localStorage` in a private window (or with storage blocked) throws on read as well as write; the default stands and the choice lives for this page only. */
 function read(key: string, fallback: boolean): boolean {

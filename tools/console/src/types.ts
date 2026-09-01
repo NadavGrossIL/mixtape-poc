@@ -111,8 +111,30 @@ export interface LedgerEntry {
   line?: number
   /** The driver's saved results for this row, absolute, oldest attempt first (`docs/factory/runs/<date>-NNNN[-attemptN].{json,diff,pr.md}`). */
   driverFiles?: DriverFiles
+  /** Parsed per driver JSON, keyed by its absolute path — what the envelope says about cost and why it stopped, so the page never opens the raw file for those. */
+  driverExtracts?: Record<string, DriverExtract>
 }
 export interface DriverFiles { json?: string[]; diff?: string[]; pr?: string[] }
+
+/** The `claude -p` result envelope, boiled down. Every field optional: the envelope belongs to one CLI version and a foreign file must degrade, not crash. */
+export interface DriverExtract {
+  /** `total_cost_usd`. */
+  cost?: number
+  /** `num_turns`. */
+  numTurns?: number
+  /** `terminal_reason`, else `stop_reason` — "completed" over the raw "end_turn". */
+  stopReason?: string
+  /** `is_error`. */
+  isError?: boolean
+  /** `api_error_status` (429 = the account window). */
+  apiErrorStatus?: number
+  /** The `result` string's first ~200 chars, whitespace collapsed. */
+  resultHead?: string
+  /** The result was the session-limit sentence (`SESSION_LIMIT_RE`). */
+  sessionLimited?: boolean
+  /** `4:40pm (Asia/Jerusalem)` — the reset tail, when the sentence carries one. */
+  sessionLimitResets?: string
+}
 export type Ledger = Record<string, LedgerEntry>
 
 /**

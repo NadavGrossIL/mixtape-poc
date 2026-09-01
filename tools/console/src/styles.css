@@ -61,45 +61,36 @@ button { font: inherit; color: inherit; cursor: pointer; }
 @keyframes blink { to { opacity: .2; } }
 @media (prefers-reduced-motion: reduce) { .conn::before { animation: none; } }
 
-/* workflows screen: cards that wrap, never clip — long specs, commands and reasons break anywhere */
+/* workflows screen: cards that wrap, never clip — long specs, commands and reasons break anywhere.
+   The screen scrolls inside its own column so a skills-and-agents row can open the panel beside it. */
+.home-shell { height: 100%; overflow: hidden; }
+.home-stage { flex: 1; min-height: 0; }
+.home-stage .workflows { flex: 1; min-width: 0; overflow-y: auto; }
+.push-right { margin-left: auto; }
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap: 20px; padding: 24px 48px 32px; }
 .card { min-width: 0; background: var(--bg-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; display: flex; flex-direction: column; gap: 10px; }
-.card h3 { margin: 6px 0 0; }
 .card-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .card-name { flex: 1; min-width: 0; text-align: left; background: none; border: 0; padding: 0; font-weight: 600; font-size: 16px; color: var(--text); overflow-wrap: anywhere; }
 .card-name:hover { color: var(--accent); }
-/* the flow sentence and "use when" are what the workflow always does; the run is what happened — the run wins the size (§5) */
-.card-desc, .card-when { margin: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
+/* what the workflow is for, in the words a reader parses — the largest thing on the
+   card after its name, now that the run is one clause in the foot */
+.card-desc, .card-when { margin: 0; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+/* the flow: the steps in the canvas lanes' own type, so the card and the graph it opens
+   say it the same way. The raw arrow chain rides in the row's tooltip — as a mono string
+   it broke mid-word ("needs-\nhuman") and read as decoration rather than a flow. */
+.card-flow { margin: 2px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 2px 4px; }
+.card-step-wrap { display: inline-flex; align-items: center; gap: 4px; }
+.card-step { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--text); }
+.card-arrow { color: var(--muted); font-size: 11px; }
+/* what it can end in — the chain's tail, as toned words on one line */
+.card-ends { margin: 0; font: 11px/1.6 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
 .last-run { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
 .last-run .spec { font-family: var(--mono); font-size: 16px; }
 .last-run .badge { margin-left: 6px; }
-/* the last-run line is the link to that run on the canvas: a button that keeps the line's look, the spec underlining on hover */
-.last-run-open { display: block; width: 100%; text-align: left; background: none; border: 0; padding: 0; font-family: inherit; color: var(--text); }
-.last-run-open:hover .spec { color: var(--accent); text-decoration: underline; }
 /* "no RUNS.md row" is the one cell of the line that is an action — it reads as a link, and the line's own click performs it */
 .no-row { font-size: 13px; color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; }
-.last-run-open:hover .no-row { text-decoration: underline; }
-.last-run-2 { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
 .outcome-word { font-weight: 600; }
 [data-tone="ok"] { color: var(--accent); } [data-tone="err"] { color: var(--err); } [data-tone="warn"] { color: var(--warn); }
-/* the phase strip: one bar per phase, the canvas node palette — dashed idle, dotted queued, solid done, pulsing running, thick error, amber dashed stalled */
-.strip { display: flex; align-items: flex-start; gap: 8px; margin-top: 2px; }
-.strip-seg { flex: 1 1 0; min-width: min-content; display: flex; flex-direction: column; gap: 5px; }
-.strip-bar { display: block; height: 4px; border-radius: 2px; background: var(--line-2); }
-.strip-seg[data-state="idle"] .strip-bar { background: repeating-linear-gradient(90deg, var(--line-2) 0 8px, transparent 8px 13px); }
-.strip-seg[data-state="queued"] .strip-bar { background: repeating-linear-gradient(90deg, var(--line-2) 0 3px, transparent 3px 7px); }
-.strip-seg[data-state="done"] .strip-bar { background: var(--accent); }
-.strip-seg[data-state="running"] .strip-bar { background: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 40%, transparent); animation: blink 1.4s ease-in-out infinite alternate; }
-.strip-seg[data-state="error"] .strip-bar { background: var(--err); height: 6px; margin-top: -1px; }
-.strip-seg[data-state="stalled"] .strip-bar { background: repeating-linear-gradient(90deg, var(--warn) 0 8px, transparent 8px 13px); }
-.strip-seg[data-state="waiting"] .strip-bar { background: var(--warn); }
-.strip-name { font-size: 11px; line-height: 1.2; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); overflow-wrap: normal; }
-.strip-seg[data-state="error"] .strip-name { color: var(--err); font-weight: 700; }
-.strip-seg[data-state="running"] .strip-name, .strip-seg[data-state="done"] .strip-name { color: var(--accent); }
-.strip-seg[data-state="stalled"] .strip-name { color: var(--warn); }
-.strip-chip { flex-shrink: 1; max-width: 45%; font: 12px/1.2 var(--mono); color: var(--muted); border: 1px solid var(--line-2); border-radius: 999px; padding: 4px 10px; overflow-wrap: anywhere; }
-.strip-chip[data-tone="ok"] { border-color: var(--accent); } .strip-chip[data-tone="err"] { border-color: var(--err); } .strip-chip[data-tone="warn"] { border-color: var(--warn); }
-@media (prefers-reduced-motion: reduce) { .strip-bar { animation: none; } }
 /* run it: one command, bound to the run on screen, with a Copy; the code is selectable text, never a button */
 .run-cmd { display: flex; flex-direction: column; gap: 6px; }
 .run-line { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 8px; align-items: start; font-size: 12px; }
@@ -114,25 +105,43 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .run-line code, .state code { display: block; min-width: 0; font: 12px/1.5 var(--mono); color: var(--text); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
 .copy[data-copied] { color: var(--accent); border-color: var(--accent); }
 .run-note { margin: 0; font-size: 12px; overflow-wrap: anywhere; }
-.card-foot { display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 6px 12px; font-size: 12px; padding-top: 10px; border-top: 1px solid var(--line); }
+/* the foot is the only run fact on this screen: how the last one ended, how many, and the way in */
+.card-foot { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; font-size: 12px; margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line); }
+.card-last { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); }
+.card-last .dot { margin-top: 0; }
+.card-last:hover .outcome-word { text-decoration: underline; }
+.card-count { margin-left: auto; }
+/* the way in, last and rightmost: the name and this open the same screen */
+.card-open { font-weight: 600; }
+.card-count + .card-open { margin-left: 0; }
+.card-foot > .card-open:first-child, .card-foot > .muted + .card-open { margin-left: auto; }
 .link { background: none; border: 0; padding: 0; color: var(--accent); font-size: 13px; }
 .link:hover { text-decoration: underline; }
-.card-name:focus-visible, .copy:focus-visible, .link:focus-visible, .last-run-open:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-/* a disclosure for reference material: the skills table, the frozen script. Closed by default, the state remembered */
+.card-name:focus-visible, .copy:focus-visible, .link:focus-visible  { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
+/* a disclosure for reference material: the frozen script. Closed by default, the state remembered */
 .fold > summary { cursor: pointer; font-size: 13px; color: var(--muted); }
 .fold > summary:hover { color: var(--text); }
 .fold > summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 4px; }
-/* skills and agents: a table that scrolls inside its own box if it must, wraps before that */
-.skills { padding: 8px 48px 24px; }
-.skills > summary { text-transform: uppercase; letter-spacing: .08em; font-size: 12px; font-weight: 600; }
-.skills p { margin: 4px 0 12px; font-size: 13px; }
 .table-wrap { overflow-x: auto; max-width: 100%; }
-.skills-table { width: 100%; border-collapse: collapse; font-size: 13px; }
-.skills-table th { text-align: left; font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); padding: 6px 14px 6px 0; border-bottom: 1px solid var(--line); }
-.skills-table td { padding: 8px 14px 8px 0; border-bottom: 1px solid var(--line); vertical-align: top; overflow-wrap: anywhere; }
-.skills-table code { font: 12px/1.5 var(--mono); }
-.row-name { display: inline-flex; flex-wrap: wrap; align-items: center; gap: 6px; }
-.badge[data-kind="agent"] { color: var(--accent); border-color: var(--accent-dim); }
+/* skills and agents: two groups, because they are two kinds of thing — the heading carries
+   the kind, so no badge repeats it on every row. Each group's grid fills its own rows. */
+.defs { padding: 8px 48px 24px; display: flex; flex-direction: column; gap: 22px; }
+.defs h2 { margin: 0 0 2px; }
+.def-group > p { margin: 0 0 10px; }
+.def-rows { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 10px; }
+.def-row { display: flex; flex-direction: column; gap: 5px; text-align: left; background: var(--bg-2); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; font-size: 13px; color: var(--text); min-width: 0; overflow-wrap: anywhere; }
+.def-row:hover { border-color: var(--accent); }
+.def-row:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+/* the name row: what it is called, then what it takes and what it runs on, pushed right */
+.def-top { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+.def-name { font: 13px/1.4 var(--mono); font-weight: 600; color: var(--text); }
+.def-arg { font: 11px/1.4 var(--mono); }
+/* the model and human-only badges ride together on the right, so a row with both keeps one edge */
+.def-tags { margin-left: auto; display: inline-flex; align-items: center; gap: 6px; }
+.def-desc { color: var(--text); }
+/* what it may touch and who calls it: the two provenance lines, under the description */
+.def-tools, .def-by { font: 11px/1.5 var(--mono); }
+.def-by { margin-top: auto; padding-top: 2px; }
 /* states: nothing on disk, plugin down, fixture data */
 .state { padding: 12px 48px 24px; display: flex; flex-direction: column; gap: 6px; max-width: 760px; font-size: 13px; }
 .state p { margin: 0; overflow-wrap: anywhere; }
@@ -142,7 +151,8 @@ button { font: inherit; color: inherit; cursor: pointer; }
 
 /* run header, kept under ~170 px so the canvas is the page (§5): name, badges, stats and Settings;
    the run in one sentence; then either the Re-run row or the "why it stopped" block that carries it;
-   then one line of context. What the workflow always does lives on the home card, not here. */
+   then one line of context. With no run selected the same slot holds the definition view (.wfdef):
+   the flow in the workflow's own words, capped to the same budget. */
 .run-head { display: flex; flex-direction: column; gap: 5px; padding: 10px 24px 8px; border-bottom: 1px solid var(--line); }
 .run-head-1 { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
 .stats { display: flex; gap: 22px; margin: 0 0 0 auto; flex-wrap: wrap; }
@@ -152,9 +162,11 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .pill[data-status="killed"], .pill[data-status="cancelled"] { color: var(--err); border-color: var(--err); }
 .pill[data-outcome="needs-human"] { color: var(--warn); border-color: var(--warn); }
 .pill[data-outcome="ready-for-pr"], .pill[data-outcome="ready-for-eval"], .pill[data-outcome="reviewed"] { color: var(--accent); border-color: var(--accent); }
-.run-sentence { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+/* provenance, read second: which run, on what, when. The verdict is the pill above and,
+   when a run stopped, the block below — at 13 px all three competed. */
+.run-sentence { margin: 0; font-size: 12px; color: var(--muted); overflow-wrap: anywhere; }
 .run-sentence .run-id, .run-sentence .spec { font: 12px/1.5 var(--mono); }
-.run-sentence .reason { color: var(--text); }
+.run-sentence .reason { color: var(--text); font-weight: 600; }
 /* how many rounds each step took (`result.attempts`), at the end of the sentence and out of its way */
 .run-sentence .attempts-frag { font-size: 12px; }
 /* why it stopped: infra (a human handles the machine) or spec (the ticket is wrong), the one action,
@@ -167,29 +179,35 @@ button { font: inherit; color: inherit; cursor: pointer; }
 [data-cause="infra"] > .why-tag, .why[data-cause="infra"] .why-tag { color: var(--warn); border-color: var(--warn); }
 [data-cause="spec"] > .why-tag, .why[data-cause="spec"] .why-tag { color: var(--err); border-color: var(--err); }
 .why-head { font-weight: 600; overflow-wrap: anywhere; }
-.why-action { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+.why-action { margin: 0; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
 /* the string the rule fired on, whole: it is one sentence out of an agent's error and it
    only renders for a run that stopped — clipping it lost the half that said when the window resets */
-.why-evidence { font: 11px/1.45 var(--mono); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 3px 7px; white-space: pre-wrap; word-break: break-word; }
+.why-evidence { font: 11px/1.45 var(--mono); color: var(--muted); background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 7px; white-space: pre-wrap; word-break: break-word; }
 .why-findings { margin: 0; padding-left: 18px; font-size: 12px; display: flex; flex-direction: column; gap: 3px; overflow-wrap: anywhere; }
 .why-finding-title { font-weight: 600; }
 /* the block's last line: the command that acts on the action, and the logs beside it rather than under them */
-.why-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; }
-.why-foot .run-cmd { margin: 0; }
-.why-foot .btn-small { padding: 2px 8px; font-size: 11px; }
+/* the command that performs the action, directly under it */
+.why-do { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 14px; margin-top: 2px; }
+.why-do .run-cmd { margin: 0; }
+.why-do .btn-small { padding: 2px 8px; font-size: 11px; }
+/* the proof, last and quiet: the string the rule fired on, and the log behind a disclosure */
+.why-proof { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 2px 0 0; }
 .why-logs > summary { font-size: 12px; color: var(--muted); cursor: pointer; }
 .why-logs[open] { flex: 1 0 100%; }
+.why-proof .why-logs { flex: 0 0 auto; }
 .why-logs > summary:hover { color: var(--text); }
 /* open, the log is a box of its own and never grows the header past the canvas: 160 px, scrolling */
 .why-logs ol.mono { margin: 6px 0 0; padding: 10px 12px 10px 30px; display: flex; flex-direction: column; gap: 3px; max-height: 160px; overflow: auto; }
 .why-logs li::marker { color: var(--muted); }
 .why-logs li[data-fired] { color: var(--warn); font-weight: 600; } /* the line the rule fired on */
 /* the home card's one-line version: the tag and the headline, no action — the canvas has the rest */
-.why-card { margin: 2px 0 0; font-size: 12px; }
 
 /* where the context lives: one line per artefact of the run — label, the value in
    monospace (a long path truncates from the left, whole thing in the tooltip), Copy / Open */
-.ctx { margin: 0; max-width: 1100px; }
+/* No width cap: capped at 1100 px it stopped short of every other header row and of the
+   canvas under it, which read as a broken edge. The grid inside sets its own column count,
+   so the full width buys columns — and a shorter box — rather than longer lines. */
+.ctx { margin: 0; }
 .ctx-head { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 /* one line: the three artefacts a manager reaches for, then `more` for the other nine */
 .ctx-1 { display: flex; flex-wrap: wrap; align-items: center; gap: 3px 14px; margin: 0; font-size: 12px; min-width: 0; }
@@ -197,20 +215,41 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ctx-one .ctx-val { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ctx-more { font-size: 12px; }
 .ctx-1 .btn-small { padding: 1px 7px; font-size: 11px; }
-/* `more`: the other nine artefacts and the ledger's note — capped at 180 px and scrolling inside,
-   so unfolding them never takes the canvas off the screen (it used to take a third of it) */
-.ctx-open { max-height: 180px; overflow: auto; }
-.ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 3px 22px; margin-top: 6px; padding: 6px 10px 0; border-top: 1px solid var(--line); }
+/* `more`: the rest of the artefacts and the ledger's note — capped at 180 px and scrolling inside,
+   so unfolding them never takes the canvas off the screen (it used to take a third of it).
+   Two clusters: `artefacts` (openable, labelled by what they answer) and `paths` (copy-only). */
+.ctx-open { max-height: 180px; overflow: auto; margin-top: 6px; border-top: 1px solid var(--line); }
+.ctx-h { margin: 6px 0 0; padding: 0 10px; font-size: 10px; font-weight: 600; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
+.ctx-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(430px, 1fr)); gap: 3px 22px; padding: 2px 10px 0; }
+/* the driver result's extract, said in words: plain text, not a path — the path rides in the tooltip */
+.ctx-sum { font: 12px/1.6 var(--font); font-variant-numeric: tabular-nums; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .ctx-row { display: grid; grid-template-columns: 88px minmax(0, 1fr) auto; align-items: center; gap: 8px; font-size: 12px; min-width: 0; }
 .ctx-label { color: var(--muted); }
 .ctx-val { font: 11px/1.6 var(--mono); }
 .ctx-acts { display: flex; align-items: center; gap: 4px; }
 .ctx-acts .btn-small { padding: 1px 7px; font-size: 11px; }
 /* the ledger row's own words, in full: it is a human's note about this run, and the half that got clamped was the half that said why */
-.ctx-note { margin: 6px 0 0; padding: 0 10px; font-size: 12px; overflow-wrap: anywhere; }
+/* the ledger's note is the one prose block here, so it keeps a readable measure of its own —
+   the grid above wants the full width for columns, a paragraph does not */
+.ctx-note { margin: 6px 0 0; padding: 0 10px; font-size: 12px; overflow-wrap: anywhere; max-width: 110ch;
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .ctx-foot { margin: 4px 0 0; padding: 0 10px; }
 .run-none p { margin: 0 0 6px; }
 .run-none .run-cmd { max-width: 720px; }
+
+/* the definition view: the same three rows a run wears — a sentence, the command, a line of
+   context — so moving between the two views does not move the furniture. No width cap and no
+   scroll box: it is header rows like any other, and the flow itself is the canvas below. */
+.wfdef-when { margin: 0; font-size: 13px; overflow-wrap: anywhere; }
+/* the fallback when a workflow states no `whenToUse`: its arrow chain, in the chain's own type */
+.mono-inline { font: 12px/1.5 var(--mono); color: var(--muted); }
+.wfdef-ctx { margin-top: 2px; }
+.wfdef-ctx .ctx-val { max-width: 46ch; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+/* the newest run, as one clause of that line and the way into the run view */
+.wfdef-last { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--text); margin-left: 2px; }
+.wfdef-last .dot { margin-top: 0; width: 8px; height: 8px; }
+.wfdef-view { color: var(--accent); font-weight: 600; }
+.wfdef-last:hover .wfdef-view { text-decoration: underline; }
 
 /* stage */
 .stage { flex: 1; display: flex; min-height: 0; min-width: 0; }
@@ -296,10 +335,15 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .react-flow__edge.animated .react-flow__edge-path { stroke-dasharray: 6 4; }
 @media (prefers-reduced-motion: reduce) { .react-flow__edge.animated .react-flow__edge-path { animation: none; } }
 
-/* run rail: groups by workflow, two-line rows that wrap, one filter; folds to a strip of dots while the panel is open */
-.rail { width: 280px; flex: none; border-left: 1px solid var(--line); padding: 16px 12px; overflow-y: auto; overflow-x: hidden; background: var(--bg); display: flex; flex-direction: column; gap: 8px; }
-.rail h2 { padding: 0 8px; }
-.filter { width: 100%; font: 12px/1.4 var(--font); color: var(--text); background: var(--bg-3); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 10px; margin: 0 0 4px; }
+/* Flow | Runs, under the header rows: the two things a workflow screen is for */
+.stage-tabs { display: flex; gap: 4px; margin-top: 6px; }
+.stage-tabs .tab { padding: 5px 14px; font-size: 12px; }
+
+/* the Runs tab: the whole stage, groups by workflow, one filter. As a 280 px rail beside the
+   canvas every run wrapped over four lines and the graph lost a third of its width; with the
+   screen to itself a run is one row, read left to right. */
+.runs-screen { flex: 1; min-width: 0; overflow-y: auto; padding: 16px 24px 24px; display: flex; flex-direction: column; gap: 8px; }
+.filter { width: 100%; max-width: 420px; font: 12px/1.4 var(--font); color: var(--text); background: var(--bg-3); border: 1px solid var(--line-2); border-radius: 8px; padding: 6px 10px; margin: 0 0 4px; }
 .filter::placeholder { color: var(--muted); }
 .run-group { display: flex; flex-direction: column; gap: 4px; }
 .group-head { display: block; width: 100%; text-align: left; background: none; border: 0; border-radius: 8px; padding: 6px 8px; font-size: 12px; line-height: 1.4; color: var(--muted); overflow-wrap: anywhere; }
@@ -307,30 +351,23 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .group-head .caret { display: inline-block; width: 12px; }
 .group-head .group-name { font-weight: 600; color: var(--text); }
 .runs { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
-.run { width: 100%; display: flex; gap: 10px; align-items: flex-start; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 8px 10px; }
+.run { width: 100%; display: flex; gap: 12px; align-items: baseline; text-align: left; background: none; border: 1px solid transparent; border-radius: 10px; padding: 8px 12px; }
 .run:hover { background: var(--bg-2); } .run[data-selected] { border-color: var(--accent); background: var(--bg-2); }
-.run-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; overflow-wrap: anywhere; }
+/* one row, not two stacked lines: what it was on the left, its numbers right-aligned */
+.run-main { flex: 1; display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 2px 20px; min-width: 0; overflow-wrap: anywhere; }
 .run-1 { font-size: 13px; line-height: 1.35; } .run-1 .spec { font-family: var(--mono); font-size: 12px; } .run-1 .badge { margin-left: 6px; vertical-align: 1px; }
-.run-2 { font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; }
+.run-2 { font-size: 12px; line-height: 1.35; font-variant-numeric: tabular-nums; white-space: nowrap; }
 /* dots: never colour alone — filled = a result, square = error, dashed ring = still moving (amber) or gone cold (grey), double ring = killed */
-.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; border: 2px solid var(--line-2); flex-shrink: 0; box-sizing: border-box; }
+.dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 0; border: 2px solid var(--line-2); flex-shrink: 0; box-sizing: border-box; }
 .dot[data-status="completed"], .dot[data-status="result"] { background: var(--accent); border-color: var(--accent); }
 .dot[data-status="needs-human"] { background: var(--warn); border-color: var(--warn); }
 .dot[data-status="error"], .dot[data-status="failed"] { background: var(--err); border-color: var(--err); border-radius: 2px; }
 .dot[data-status="running"] { border-color: var(--warn); border-style: dashed; }
 .dot[data-status="stale"] { border-style: dashed; }
-.dot[data-status="killed"], .dot[data-status="cancelled"] { width: 12px; height: 12px; margin-top: 4px; border: 3px double var(--err); background: linear-gradient(var(--err), var(--err)) center / 6px 2px no-repeat; }
-.rail-empty { display: flex; flex-direction: column; gap: 6px; padding: 0 8px; font-size: 13px; }
+.dot[data-status="killed"], .dot[data-status="cancelled"] { width: 12px; height: 12px; margin-top: 0; border: 3px double var(--err); background: linear-gradient(var(--err), var(--err)) center / 6px 2px no-repeat; }
+.runs-screen .rail-empty { display: flex; flex-direction: column; gap: 6px; padding: 0 8px; font-size: 13px; }
 .rail-empty p { margin: 0; overflow-wrap: anywhere; } .rail-empty .dir { font-family: var(--mono); font-size: 11px; }
 .rail-empty code { display: block; font: 12px/1.5 var(--mono); background: var(--bg-2); border: 1px solid var(--line); border-radius: 6px; padding: 4px 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
-/* the folded rail: 44 px, the word Runs turned on its side, one dot per run */
-.rail-strip { width: 44px; padding: 12px 0; align-items: center; gap: 12px; }
-.rail-toggle { writing-mode: vertical-rl; transform: rotate(180deg); background: none; border: 1px solid var(--line-2); border-radius: 8px; padding: 8px 4px; font-size: 11px; text-transform: uppercase; letter-spacing: .08em; color: var(--muted); }
-.rail-toggle:hover { color: var(--accent); border-color: var(--accent); }
-.strip-dots { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 2px; }
-.strip-dot { display: flex; align-items: center; justify-content: center; width: 28px; height: 24px; background: none; border: 1px solid transparent; border-radius: 8px; padding: 0; }
-.strip-dot .dot { margin-top: 0; }
-.strip-dot:hover { background: var(--bg-2); } .strip-dot[data-selected] { border-color: var(--accent); background: var(--bg-2); }
 
 /* node panel: a flex sibling of the canvas (A10), 440 px by default, dragged from its left edge; no slide (A21) */
 .panel { flex: none; display: flex; min-width: 0; min-height: 0; background: var(--bg-2); border-left: 1px solid var(--line); }
@@ -422,4 +459,4 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .cm-diff-body .cm-merge-revert { background: var(--bg-2); border-inline: 1px solid var(--line); }
 
 /* keyboard: one focus ring everywhere (IA-SPEC §9); nothing here removes an outline without a replacement */
-.run:focus-visible, .tab:focus-visible, .btn:focus-visible, .filter:focus-visible, .group-head:focus-visible, .rail-toggle:focus-visible, .strip-dot:focus-visible, .agent-bar:focus-visible, .mono-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.run:focus-visible, .tab:focus-visible, .btn:focus-visible, .filter:focus-visible, .group-head:focus-visible, .agent-bar:focus-visible, .mono-toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }

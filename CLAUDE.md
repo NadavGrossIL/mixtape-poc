@@ -10,8 +10,12 @@ file is a map. The reasoning lives next to the code as comments; read those.
 - `server/` — Express on 8888, plain `.ts` run by Node 24 (no build step).
   `index.ts` all routes + gate/identity/caps wiring · `curator.ts` the
   Claude agent, prompts and tool schemas · `spotify.ts` OAuth, search cache,
-  quota breaker, playlist writes · `caps.ts` `session.ts` `usage.ts`
-  `logbook.ts` pure helpers · `test/` unit tests (`node:test`).
+  quota breaker, playlist writes · `caps.ts` `pressCaps.ts` `session.ts`
+  `usage.ts` `metrics.ts` `health.ts` `logbook.ts` pure helpers · `test/`
+  unit tests (`node:test`). `pressCaps.ts` caps `/api/playlist`, the one paid
+  route reachable without the curator; `metrics.ts` is the per-day funnel
+  (`makeMetrics({ dir, today })`, `DATA_DIR` or beside the code — an
+  ephemeral disk resets it); `health.ts` decides what `/healthz` fails on.
 - `client/` — Vite + React 18, one screen: `src/App.tsx`, tokens in
   `src/styles.css`. Dev proxy in `vite.config.ts`; served from Express when built.
 - `evals/` — truthfulness (`generate` → `judge` → `aggregate`, plus

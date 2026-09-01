@@ -14,13 +14,7 @@
 // that can't happen if they're a strict superset by construction.
 
 import { makeCaps } from "./caps.ts";
-
-interface CapLimits {
-  perAccount: number;
-  perGuest: number;
-  perIp: number;
-  allGuests: number;
-}
+import type { CapLimits } from "./caps.ts";
 
 // Slack over the generation cap, for the presses that don't map 1:1 onto a
 // generation: re-pressing a card after an adjustment, and a retried save.
@@ -54,4 +48,3 @@ function makePressCaps(generate: CapLimits) {
 }
 
 export { makePressCaps, pressLimits, PRESS_HEADROOM, PRESS_REFUSAL };
-export type { CapLimits };

@@ -1,11 +1,13 @@
 // /healthz is what pages a human at 3am, so two properties have to hold: it
 // fails for exactly the misconfigurations a human can fix, and it never fails
 // for a missing host account (degraded, not down). The uptime it reports must
-// always be a non-negative integer, whatever the clock hands it.
+// always be a non-negative integer, whatever the clock hands it. And the body
+// an anonymous caller gets must carry the verdict and nothing else — the
+// endpoint is unauthenticated by design.
 
 import test from "node:test";
 import assert from "node:assert";
-import { healthBody, type HealthChecks } from "../health.ts";
+import { healthBody, publicHealthBody, type HealthChecks } from "../health.ts";
 
 const ALL_GOOD: HealthChecks = {
   spotifyCredentials: true,
@@ -65,4 +67,50 @@ test("uptime is always an integer", () => {
 
 test("the body carries exactly ok, uptime and checks", () => {
   assert.deepEqual(Object.keys(healthBody(ALL_GOOD, 1)).sort(), ["checks", "ok", "uptime"]);
+});
+
+// ── what a stranger sees ─────────────────────────────────────
+
+test("the public body is the verdict and nothing else", () => {
+  const full = healthBody(ALL_GOOD, 12345);
+  assert.deepEqual(publicHealthBody(full), { ok: true });
+  assert.deepEqual(Object.keys(publicHealthBody(full)), ["ok"]);
+});
+
+test("the public body never leaks checks or uptime, whatever the state", () => {
+  // Adversarial: the interesting cases for a stranger are exactly the broken
+  // ones — which credential is missing, and how recently we restarted (the
+  // daily caps are in memory, so a fresh uptime means a fresh guest budget).
+  const states: HealthChecks[] = [
+    ALL_GOOD,
+    { ...ALL_GOOD, spotifyCredentials: false },
+    { ...ALL_GOOD, anthropicKey: false },
+    { ...ALL_GOOD, ownerToken: false },
+    { ...ALL_GOOD, hostAccount: false },
+    { spotifyCredentials: false, anthropicKey: false, ownerToken: false, hostAccount: false },
+  ];
+  for (const checks of states) {
+    for (const uptime of [0, 3, 86_400]) {
+      const body = publicHealthBody(healthBody(checks, uptime));
+      const seen = JSON.stringify(body);
+      assert.deepEqual(Object.keys(body), ["ok"], `leaked a field: ${seen}`);
+      assert.ok(!seen.includes("uptime"), `leaked uptime: ${seen}`);
+      assert.ok(!seen.includes("check"), `leaked checks: ${seen}`);
+      assert.ok(!/host|anthropic|spotify|token/i.test(seen), `leaked config: ${seen}`);
+    }
+  }
+});
+
+test("the public body keeps the monitor's signal — the ok bit is unchanged", () => {
+  for (const checks of [ALL_GOOD, { ...ALL_GOOD, ownerToken: false }]) {
+    const full = healthBody(checks, 1);
+    assert.equal(publicHealthBody(full).ok, full.ok);
+  }
+});
+
+test("reducing the body does not mutate the full one the owner gets", () => {
+  const full = healthBody(ALL_GOOD, 42);
+  publicHealthBody(full);
+  assert.deepEqual(Object.keys(full).sort(), ["checks", "ok", "uptime"]);
+  assert.equal(full.uptime, 42);
 });

@@ -3,7 +3,7 @@
 
 import test from "node:test";
 import assert from "node:assert";
-import { signUser, verifyUser } from "../session.ts";
+import { signUser, verifyUser, SESSION_MAX_AGE_MS } from "../session.ts";
 import { parseTokenStore } from "../spotify.ts";
 
 const KEY = "test-signing-key";
@@ -33,6 +33,68 @@ test("garbage shapes are rejected, not thrown on", () => {
   for (const junk of ["", "no-dot", "a.b.c", null, undefined, 42, "."]) {
     assert.strictEqual(verifyUser(junk as any, KEY), null);
   }
+});
+
+// ── expiry ───────────────────────────────────────────────────
+//
+// The cookie used to sign the user id alone against a one-year Max-Age, so a
+// leaked value was a permanent credential and the only revocation was rotating
+// the key for everybody. The signed iat is what makes it age out; these guard
+// that it cannot be forged, slid forward, or dropped.
+
+const T0 = 1_700_000_000_000; // fixed clock — no timers faked, `now` is a param
+
+test("sign → verify roundtrips against an explicit clock", () => {
+  const cookie = signUser("alice", KEY, T0);
+  assert.strictEqual(verifyUser(cookie, KEY, { now: T0 }), "alice");
+  // and a day later it is still the same session
+  assert.strictEqual(verifyUser(cookie, KEY, { now: T0 + 86_400_000 }), "alice");
+});
+
+test("a cookie older than the window is rejected", () => {
+  const cookie = signUser("alice", KEY, T0);
+  assert.strictEqual(verifyUser(cookie, KEY, { now: T0 + SESSION_MAX_AGE_MS + 1 }), null);
+  // and the window is overridable per call, which is how a shorter-lived
+  // cookie would be checked without re-signing anything
+  assert.strictEqual(verifyUser(cookie, KEY, { now: T0 + 1001, maxAgeMs: 1000 }), null);
+});
+
+test("exactly at the boundary is still valid; one millisecond past is not", () => {
+  const cookie = signUser("alice", KEY, T0);
+  assert.strictEqual(verifyUser(cookie, KEY, { now: T0 + SESSION_MAX_AGE_MS }), "alice");
+  assert.strictEqual(verifyUser(cookie, KEY, { now: T0 + SESSION_MAX_AGE_MS + 1 }), null);
+});
+
+test("a future-dated cookie is rejected past the clock-skew allowance", () => {
+  // a minute of drift between signer and verifier is a clock, not an attack
+  assert.strictEqual(verifyUser(signUser("alice", KEY, T0 + 60_000), KEY, { now: T0 }), "alice");
+  // an hour ahead is a forged timestamp buying itself extra life
+  assert.strictEqual(verifyUser(signUser("alice", KEY, T0 + 3_600_000), KEY, { now: T0 }), null);
+});
+
+test("the mac covers the iat: editing the timestamp invalidates the cookie", () => {
+  // the attack this closes — keep a stolen cookie alive by sliding its clock
+  const [payload, , mac] = signUser("alice", KEY, T0).split(".") as [string, string, string];
+  const slid = `${payload}.${T0 + SESSION_MAX_AGE_MS}.${mac}`;
+  assert.strictEqual(verifyUser(slid, KEY, { now: T0 + SESSION_MAX_AGE_MS }), null);
+  // an unparseable or negative iat fails closed too, never throws
+  for (const iat of ["", "abc", "-1", "NaN", "1e999"]) {
+    assert.strictEqual(verifyUser(`${payload}.${iat}.${mac}`, KEY, { now: T0 }), null);
+  }
+  // ...including when the mac over it is genuinely valid, which is the only way
+  // to reach the parse itself
+  for (const bogus of [NaN, -5, Infinity]) {
+    assert.strictEqual(verifyUser(signUser("alice", KEY, bogus), KEY, { now: T0 }), null);
+  }
+});
+
+test("the legacy 2-part cookie is rejected, on purpose", () => {
+  // Deliberate: a value with no issue time can never be aged out, so honouring
+  // it would leave every pre-existing cookie immortal. Costs one re-login per
+  // browser at deploy.
+  const payload = Buffer.from("alice").toString("base64url");
+  const legacyMac = signUser("alice", KEY, T0).split(".")[2]!;
+  assert.strictEqual(verifyUser(`${payload}.${legacyMac}`, KEY), null);
 });
 
 // ── parseTokenStore ──────────────────────────────────────────

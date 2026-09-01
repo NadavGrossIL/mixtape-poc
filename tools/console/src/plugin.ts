@@ -7,6 +7,7 @@ import path from 'node:path'
 import type { ConsoleEvent, DriverFiles, Graph, Ledger, LedgerEntry, RunGit, RunManifest, RunPaths, WorkflowAgentEntry, WorkflowFile, WorkflowMeta } from './types'
 import { parseScript, readMeta } from './graph/parseScript' // pure TS, no browser imports: Vite bundles it into the config with esbuild
 import { allowed } from './allow' // the two allowlists, pure and unit-tested (src/allow.test.ts)
+import { checkWriteRequest } from './writeGuard' // who may POST at all — Origin + content-type, pure and unit-tested (src/writeGuard.test.ts)
 import { extractDriver } from './driverExtract' // pure, unit-tested (src/driverExtract.test.ts)
 
 // The console's only "backend": a Vite dev-server middleware that READS
@@ -17,8 +18,12 @@ import { extractDriver } from './driverExtract' // pure, unit-tested (src/driver
 // starts a run. That is also why this directory is never deployed anywhere.
 // C3 adds one long-lived GET (/api/events, SSE) so the page hears about
 // changes instead of polling. C4 adds the one write, POST /api/file, fenced
-// by EDITABLE below: the workflow definitions and factory.config.json, and
-// nothing else — the console tweaks the line, it cannot reach the product.
+// twice: WRITABLE in ./allow says *which files* (the workflow definitions and
+// factory.config.json, nothing else — the console tweaks the line, it cannot
+// reach the product), and checkWriteRequest in ./writeGuard says *who may ask*
+// (the console's own Origin, and a JSON content-type so the request cannot be
+// a CORS-simple one). Everything else here is a GET, and reads are protected by
+// the loopback bind alone — see the warning in README.md.
 
 const ID = /^[\w-]+$/ // run ids and agent ids; anything else is a 400
 const MAX_BODY = 256 * 1024
@@ -60,6 +65,10 @@ export function consolePlugin(opts: ConsoleOptions): Plugin {
         const url = new URL(req.url ?? '/', 'http://127.0.0.1')
         if (!url.pathname.startsWith('/api/')) return next()
         if (req.method === 'POST' && url.pathname === '/api/file') {
+          // Before a byte of the body is read: is this the console's own page
+          // asking, in JSON? Anything else never reaches the allowlist.
+          const may = checkWriteRequest(req.headers)
+          if (!may.ok) return json(res, may.status, { error: may.error })
           readBody(req).then((body) => { const r = writeFile(opts.repoRoot, body); json(res, r.status, r.body) }, (err: Error) => json(res, err.message === 'too large' ? 413 : 400, { error: err.message }))
           return
         }
@@ -160,7 +169,11 @@ function frontmatter(source: string): WorkflowMeta {
 
 // --- the one write ----------------------------------------------------------------
 //
-// POST /api/file { path, content, base }: `path` must be on the WRITABLE list
+// POST /api/file { path, content, base }: the request must first pass
+// checkWriteRequest (src/writeGuard.ts) — an `Origin` of the console's own dev
+// server and `content-type: application/json`, which together keep a page the
+// owner has open elsewhere from writing the factory's own prompts. Then `path`
+// must be on the WRITABLE list
 // (src/allow.ts) after normalisation and resolve (through symlinks) inside the
 // repo — GET may also read the READ_ONLY list, POST never does; `base` is the
 // sha256 of the content the client last read, so two consoles — or a console

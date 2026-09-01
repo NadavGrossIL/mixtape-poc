@@ -15,6 +15,32 @@ their runs went, and edits the files the line is made of. It reads two things:
 
 When neither exists yet, it shows the fixtures in `fixtures/` (flagged "fixture").
 
+## ⚠ The loopback bind is the security control. Do not widen it.
+
+**Do not run this with `--host`, `0.0.0.0`, a tunnel (ngrok, Cloudflare, VS Code
+port forwarding) or anything else that makes it reachable from another machine.
+It has no authentication of any kind.**
+
+If you are here because you wanted the console on your phone or on another
+laptop: what you would be publishing is not a graph of workflows. It is
+`~/.claude` on this machine. `/api/runs?full=1` returns every workflow run's
+manifest with its scripts and arguments, `/api/runs/:runId/agents/:agentId`
+returns an agent's `{ prompt, result, events }` **verbatim** — whatever any
+session on this machine sent to Claude and got back — and `/api/meta` returns
+absolute paths that contain your username. None of it is behind a login, a
+token, or a check of any kind.
+
+Today a hostile *web page* cannot read any of that, because the API sends no
+`Access-Control-Allow-Origin` header, so the browser throws the response away.
+That is the second control, and it is as load-bearing as the first: **do not add
+a CORS header to these endpoints either.** The write endpoint's own check
+(`src/writeGuard.ts`) depends on the same absence.
+
+`vite.config.ts` pins `server: { host: '127.0.0.1', port: 5174, strictPort:
+true }` for exactly this reason, and the comment there says so. If you need the
+data somewhere else, copy the files — the paths are in `/api/meta` and in every
+run's `paths` — rather than opening the port.
+
 ```sh
 cd tools/console
 npm install
@@ -22,7 +48,11 @@ npm run dev        # http://127.0.0.1:5174
 npm run build      # typecheck (tsc --noEmit) + vite build, nothing is deployed
 npm test           # node --test on src/**/*.test.ts (Node ≥ 22.18 strips the types;
                    # test/register-ts.mjs resolves the app's extensionless imports)
-npm run fixtures   # regenerate the redacted fixture from the real run on this machine
+npm run fixtures -- <source.json> [name-to-scrub ...]   # regenerate the redacted fixture
+                   # Both args are required: the source manifest under ~/.claude, and any
+                   # private name to strip. Neither has a default — the old defaults baked
+                   # a home path, a live session UUID and a private repo's name into this
+                   # tracked tree, which is what the script exists to prevent.
 ```
 
 Endpoints (served by the Vite dev-server plugin in `src/plugin.ts`; everything is
@@ -321,8 +351,30 @@ button in the canvas header, opening in the panel's slot, editable through the s
 Save shows the file side by side with what it would become — `@codemirror/merge`'s
 merge view, both sides read-only, unchanged stretches collapsed — then writes through
 
-- `POST /api/file` with `{ path, content, base }` (JSON, ≤ 256 kB). `path` is
-  repo-relative and must match one of `.claude/workflows/*.js`,
+- `POST /api/file` with `{ path, content, base }` (JSON, ≤ 256 kB). Two things
+  are checked before the body is even read (`src/writeGuard.ts`, pure and
+  unit-tested in `src/writeGuard.test.ts`):
+  - **`Origin` must be present and be `http://127.0.0.1:5174` or
+    `http://localhost:5174`** — the two names this dev server can be reached
+    under (`vite.config.ts` pins host and port), so the only page that can carry
+    one is the console's own. Anything else is `403 { error: 'origin not
+    allowed' }`. A *missing* `Origin` is refused too: a browser sets the header
+    on every POST, same-origin included, so a request without one is never the
+    cross-origin write this guards against — and the console page, the endpoint's
+    only client, always sends it.
+  - **`content-type` must be `application/json`** (parameters fine —
+    `application/json; charset=utf-8` passes). Anything else is `415`. This is
+    the load-bearing half: a string body sent as `text/plain` is a CORS-*simple*
+    request, so it needs no preflight and the write lands before the attacker
+    page ever fails to read the response. Requiring JSON forces a preflight,
+    which no cross-origin page can pass — the API sends no
+    `Access-Control-Allow-Origin` header at all.
+
+  The `base` sha below is **not** a substitute for either: it only blocks an
+  overwrite whose current content the caller cannot guess, and all seven writable
+  targets are tracked, so publishing this repo makes those hashes public.
+
+  `path` is repo-relative and must match one of `.claude/workflows/*.js`,
   `.claude/skills/*/SKILL.md`, `.claude/agents/*.md`, `.archon/workflows/*.yaml|yml`,
   `factory.config.json` after normalisation — no `..`, no absolute paths, no
   symlinks, and the parent's real path must stay inside the repo. Anything else is
@@ -358,6 +410,8 @@ gate / review node (drawn as a U underneath, labelled with the enclosing `for` b
 gate again. Dagre ranks only the chain; the fix nodes form a row under `implement`.
 
 Rules: local only. It reads `~/.claude`, so it is never deployed and is not part of
-the product build. It never starts a run — starting is `claude -p` with the hard-stop
+the product build — and never reachable off this machine either: the reads have no
+auth, and `127.0.0.1` is what stands in for one (see the warning at the top).
+It never starts a run — starting is `claude -p` with the hard-stop
 flags, or Archon; this page watches and edits, and the write endpoint executes nothing.
 Every manifest field is optional and shows "—" when missing.

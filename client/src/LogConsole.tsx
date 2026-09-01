@@ -7,7 +7,9 @@
 //
 // It is deliberately always-connected: the point is that when something
 // breaks you already have the run's history, rather than having to
-// reproduce it with the panel open.
+// reproduce it with the panel open. The one exception is a stream the owner
+// gate refuses — for anyone but the owner there is no history to wait for,
+// so we stop reconnecting rather than retry a 401 forever.
 
 import { useEffect, useMemo, useRef, useState } from "react";
 
@@ -90,6 +92,9 @@ export default function LogConsole() {
   const [open, setOpen] = useState(false);
   const [entries, setEntries] = useState<LogEntry[]>([]);
   const [live, setLive] = useState(false);
+  // The stream's gate said no — a non-owner on /?debug. Terminal, not a blip:
+  // it stops the reconnect loop and swaps "reconnecting…" for the real reason.
+  const [denied, setDenied] = useState(false);
   const [problemsOnly, setProblemsOnly] = useState(false);
   // Cleared entries stay cleared: the badge counts problems newer than this.
   const [readSeq, setReadSeq] = useState(0);
@@ -108,6 +113,7 @@ export default function LogConsole() {
   useEffect(() => {
     let source: EventSource | null = null;
     let retry: ReturnType<typeof setTimeout> | undefined;
+    let probe: AbortController | null = null;
     let closed = false;
 
     const connect = () => {
@@ -115,7 +121,16 @@ export default function LogConsole() {
       source = new EventSource(`/api/logs/stream?since=${lastSeqRef.current}`);
       source.addEventListener("open", () => setLive(true));
       source.addEventListener("log", (e) => {
-        const entry = JSON.parse((e as MessageEvent).data) as LogEntry;
+        // A frame can arrive truncated — a proxy cutting a write in half is
+        // enough. An uncaught throw in here loses the line *and* every state
+        // update after it in this listener, so the panel silently stops
+        // moving. Drop the bad frame and keep the stream instead.
+        let entry: LogEntry;
+        try {
+          entry = JSON.parse((e as MessageEvent).data) as LogEntry;
+        } catch {
+          return;
+        }
         lastSeqRef.current = Math.max(lastSeqRef.current, entry.seq);
         setEntries((prev) => [...prev, entry].slice(-CAPACITY));
       });
@@ -124,7 +139,27 @@ export default function LogConsole() {
         // which would replay the whole ring. Reconnect by hand instead.
         setLive(false);
         source?.close();
-        if (!closed) retry = setTimeout(connect, RETRY_MS);
+        if (closed) return;
+        // …but not forever. EventSource hides the HTTP status on its error
+        // event, so a non-owner's 401 looks exactly like a server restart and
+        // we would hammer the gate every RETRY_MS for as long as the tab is
+        // open. /api/logs is behind the same owner gate, is cheap and answers
+        // in JSON, so ask it which one this is: 401/403 means stop for good
+        // and say so, anything else (including a failed fetch, i.e. the
+        // server really is down) is the transient case the hand-rolled
+        // retry above exists for.
+        const ctrl = new AbortController();
+        probe = ctrl;
+        const again = () => {
+          if (!closed && !ctrl.signal.aborted) retry = setTimeout(connect, RETRY_MS);
+        };
+        fetch(`/api/logs?since=${lastSeqRef.current}`, { signal: ctrl.signal })
+          .then((r) => {
+            if (closed || ctrl.signal.aborted) return;
+            if (r.status === 401 || r.status === 403) setDenied(true);
+            else again();
+          })
+          .catch(again);
       });
     };
     connect();
@@ -132,6 +167,7 @@ export default function LogConsole() {
     return () => {
       closed = true;
       clearTimeout(retry);
+      probe?.abort();
       source?.close();
     };
   }, []);
@@ -202,7 +238,11 @@ export default function LogConsole() {
             aria-hidden="true"
           />
           server log
-          {!live && <span className="logs-down"> reconnecting…</span>}
+          {!live && (
+            <span className="logs-down">
+              {denied ? " owner only" : " reconnecting…"}
+            </span>
+          )}
         </span>
         <div className="logs-actions">
           <button

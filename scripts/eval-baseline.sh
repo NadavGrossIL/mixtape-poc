@@ -15,7 +15,18 @@
 # Scheduled by ~/Library/LaunchAgents/com.nadav.mixtape-eval-baseline.plist.
 # Run it by hand any time: bash scripts/eval-baseline.sh
 
-REPO="/Users/nadavgross/Projects/mixtape-poc"
+# launchd runs this from an arbitrary cwd, so the repo root cannot come from
+# `pwd` — but it can come from where this script itself lives. `git -C` keeps
+# the lookup anchored to the script's own directory instead of the caller's.
+REPO="$(git -C "$(dirname "$0")/.." rev-parse --show-toplevel 2>/dev/null)"
+# Bail loudly rather than let an empty REPO turn every path below into a root
+# path — this runs unattended, so a silent wrong directory is the bad outcome.
+if [ -z "$REPO" ]; then
+  echo "eval-baseline: cannot find the repo root from $(dirname "$0") — is this a git checkout?" >&2
+  exit 1
+fi
+# Absolute, because launchd's PATH is not a login shell's and `node` alone is
+# not on it. Machine-specific by necessity; change it if Homebrew moves.
 NODE="/opt/homebrew/bin/node"
 LOG_DIR="$REPO/evals/baseline-logs"
 STAMP="$(date +%Y-%m-%d_%H%M)"

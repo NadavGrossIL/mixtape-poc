@@ -6,7 +6,8 @@ import { classify, findingsOf, firedOn } from './cause'
 // One case per row of the rule table (docs/factory/console-simplification.md §2),
 // plus the two real runs on this machine that the table was written from —
 // their fields copied verbatim (jq'd out of
-// ~/.claude/projects/-Users-nadavgross-Projects-mixtape-poc*/…/workflows/*.json
+// ~/.claude/projects/<repo-slug>*/…/workflows/*.json — the slug is the repo's
+// absolute path with the separators turned into dashes, so it names whoever ran it
 // on 2026-08-30), because the interesting bug is an ordering bug and only a real
 // manifest has both signals at once.
 //

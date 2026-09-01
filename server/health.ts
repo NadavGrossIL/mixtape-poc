@@ -40,5 +40,17 @@ function healthBody(checks: HealthChecks, uptimeSeconds: number): HealthBody {
   return { ok, uptime, checks };
 }
 
+// What a stranger is allowed to see. The status code (200/503) is the whole
+// monitor signal, so nothing a pinger relies on is lost — but the body is not
+// nothing to an attacker: `checks` enumerates which of our credentials are
+// configured, and `uptime` is worse than it looks. The daily caps are held in
+// memory (caps.ts) and reset on restart, so a low uptime is a public
+// announcement that today's guest budget just went fresh — watch for a
+// redeploy, spend it again. Owner-only, both of them; everyone else gets the
+// one bit they came for.
+function publicHealthBody(body: HealthBody): { ok: boolean } {
+  return { ok: body.ok };
+}
+
 export type { HealthChecks, HealthBody };
-export { healthBody };
+export { healthBody, publicHealthBody };

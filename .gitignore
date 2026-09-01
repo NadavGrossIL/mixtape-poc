@@ -1,10 +1,21 @@
 node_modules/
-.env
-server/.tokens.json
 dist/
 .DS_Store
 npm-debug.log*
-server/.search-cache.json
 evals/baseline-logs/
-server/.usage.json
-server/.metrics.json
+
+# Globs, not exact names, and deliberately so: spotify.ts, usage.ts and
+# metrics.ts all write temp-then-rename (`writeFileSync(f + '.tmp')` then
+# `renameSync`). A crash between the two leaves a `.tmp` sidecar holding the
+# same plaintext — up to five real Spotify refresh tokens — and an exact-name
+# ignore would let `git add -A` stage it without a word. Do not "tidy" these
+# back to the bare filenames.
+server/.tokens.json*
+server/.usage.json*
+server/.metrics.json*
+server/.search-cache.json*
+
+# Same reasoning for env files: `.env`, `.env.local`, `.env.production` and any
+# editor/tool sidecar. The example file is the one thing that must stay tracked.
+.env*
+!server/.env.example

@@ -50,8 +50,23 @@ export function toAppUri(webUrl: string): string | null {
   return null;
 }
 
+// The web fallback is the one place an unvetted string reaches the browser as
+// a navigation. `toAppUri` pins the hostname before it builds a URI, so it
+// already returns null for `javascript:`/`data:` — but null is exactly what
+// sends us here, so its soundness protects the app path and nothing else.
+// Without this check, a card whose track URL is `javascript:…` (reachable by
+// round-tripping your own crafted card through /api/adjust/stream, which
+// echoes the card back) would execute on click. Anything that isn't plain
+// http(s) does nothing at all: a broken tab is worse feedback than none.
 function openWeb(webUrl: string) {
-  window.open(webUrl, "_blank", "noopener,noreferrer");
+  let url: URL;
+  try {
+    url = new URL(webUrl, window.location.href);
+  } catch {
+    return;
+  }
+  if (url.protocol !== "http:" && url.protocol !== "https:") return;
+  window.open(url.href, "_blank", "noopener,noreferrer");
 }
 
 // Call from a click handler that has already preventDefault()ed.

@@ -12,7 +12,30 @@
 set -euo pipefail
 cd "$(dirname "$0")/.."
 
-ASK_TIER='^server/(session|caps|env|spotify)\.ts$'
+# What is in the tier, and why:
+#
+#   server/{session,caps,env,spotify}.ts — identity, caps, tokens. A wrong
+#     line here spends money or leaks a credential.
+#   scripts/**  — `npm run gate` is the ONE command the factory's Bash
+#     allowlist admits, and it runs scripts/gate.sh, which is otherwise free
+#     tier. An agent with acceptEdits could append a line to gate.sh and get
+#     an arbitrary shell out of the one allowed command — including `cat
+#     server/.env`. The same edit disables this check, since gate.sh is what
+#     calls it. So the whole directory is ask tier: it is the escape hatch.
+#   package.json (any of them) — the same hole one level up. gate.sh runs
+#     `npm run typecheck` in server/ and client/, and `npm run gate` itself
+#     is a root script; whoever writes an npm script the gate invokes writes
+#     a shell command the allowlist then runs. Dependency bumps trip this
+#     too. That is the price of closing the escape.
+#   factory.config.json — sets the NEXT run's permissionMode and budget. An
+#     agent that can edit it can widen its own permissions for the run after
+#     this one, which no in-run check would ever see.
+#
+# This is only half the fix: the permission rules in .claude/settings.json
+# (never tier, human-edited) still list the narrow set. This check is the
+# deterministic half, and it is the half that actually catches a Bash
+# redirect.
+ASK_TIER='^(server/(session|caps|env|spotify)\.ts|scripts/.*|factory\.config\.json|([^/]+/)*package\.json)$'
 
 if [ "${FACTORY_ASK_OK:-}" = "1" ]; then
   echo "== ask-tier check skipped by a human (FACTORY_ASK_OK=1)"
@@ -25,7 +48,10 @@ changed=$( { git diff --name-only "$base"; git ls-files --others --exclude-stand
 
 if [ -n "$changed" ]; then
   printf '== ask-tier files changed since %s — a human must approve:\n' "$(git rev-parse --short "$base")"
-  printf '   %s\n' $changed
+  # One line per file, but quoted: bare $changed word-splits and globs, so a
+  # filename with a space or a `*` in it would print wrong (or expand against
+  # the working tree). The loop keeps the per-line output the split gave us.
+  printf '%s\n' "$changed" | while IFS= read -r f; do printf '   %s\n' "$f"; done
   printf '   (FACTORY_ASK_OK=1 npm run gate, once you have read the diff)\n'
   exit 1
 fi

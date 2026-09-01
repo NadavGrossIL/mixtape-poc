@@ -12,6 +12,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import type { SearchBudget } from "./searchBudget.ts";
 
 // quotaExceeded marks the dev-mode DAILY quota (see the 429 handling below),
 // which callers must treat as a hard stop rather than a transient error.
@@ -121,6 +122,12 @@ function saveTokens(user: string, tokens: StoredTokens) {
   store.users[user] = tokens;
   const tmp = `${TOKENS_PATH}.tmp`;
   fs.writeFileSync(tmp, JSON.stringify(store, null, 2), { mode: 0o600 });
+  // The mode option only applies when the file is CREATED. A .tokens.json.tmp
+  // left behind by a crash — written under a wider umask, or by an older
+  // build — is reopened and reused, keeping whatever mode it already had, and
+  // this file holds plaintext refresh tokens. The chmod is not redundant with
+  // the line above; it is the half that covers the leftover.
+  fs.chmodSync(tmp, 0o600);
   fs.renameSync(tmp, TOKENS_PATH);
 }
 
@@ -578,6 +585,27 @@ const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 // a week of hallucinated tracks; at an hour, it heals itself.
 const NEGATIVE_TTL_MS = 60 * 60 * 1000;
 const CACHE_MAX_ENTRIES = 2000;
+// byTitle and byRef are fed by byQuery, and every query seeds up to 10 records,
+// so a full query cache legitimately produces ~10x as many keys here — hence
+// 20000 rather than 2000. They used to have no bound at all and grew for the
+// life of the process. Sizing them tightly would be the wrong fix: byTitle is
+// what lets resolution reuse the records verification already fetched (see the
+// two-layers note above), so an entry evicted early is a search re-paid out of
+// a daily quota measured in the low hundreds.
+const RECORD_MAX_ENTRIES = CACHE_MAX_ENTRIES * 10;
+
+// Cheapest possible eviction for a map with no timestamps: JS Maps iterate in
+// insertion order, so the first keys are the least recently added. One pass, a
+// tenth dropped at a time, so this runs rarely rather than on every insert.
+// (byQuery evicts by its own `at` field instead — it has one, these don't.)
+function evictOldest<V>(map: Map<string, V>, max: number): void {
+  if (map.size < max) return;
+  let drop = Math.ceil(max / 10);
+  for (const key of map.keys()) {
+    if (drop-- <= 0) break;
+    map.delete(key);
+  }
+}
 
 interface CacheEntry {
   items: any[];
@@ -645,11 +673,16 @@ function titleKey(title: unknown): string {
 function rememberItems(items: any[]) {
   for (const item of items) {
     const ref = refOf(item);
-    if (ref) byRef.set(ref, item);
+    if (ref) {
+      evictOldest(byRef, RECORD_MAX_ENTRIES);
+      byRef.set(ref, item);
+    }
     const key = titleKey(item?.name);
     if (!key) continue;
     const bucket = byTitle.get(key);
     if (!bucket) {
+      // only a NEW key grows the map; appending to a bucket does not
+      evictOldest(byTitle, RECORD_MAX_ENTRIES);
       byTitle.set(key, [item]);
     } else if (!bucket.some((i) => i.uri === item.uri)) {
       bucket.push(item);
@@ -680,7 +713,12 @@ function flushSearchCache() {
   if (!byQuery) return;
   try {
     const tmp = `${CACHE_PATH}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify({ entries: Object.fromEntries(byQuery) }));
+    // No secrets in here, unlike .tokens.json — but it sits in the same
+    // directory and is written the same way, so it gets the same owner-only
+    // mode rather than whatever the umask happens to be.
+    fs.writeFileSync(tmp, JSON.stringify({ entries: Object.fromEntries(byQuery) }), {
+      mode: 0o600,
+    });
     fs.renameSync(tmp, CACHE_PATH);
   } catch (err: any) {
     // A read-only or full disk must degrade to an in-memory cache, not a crash.
@@ -737,6 +775,16 @@ async function searchTracks(q: string): Promise<any[]> {
   const data = await spotifyFetch(`/search?${params}`, {}, {}, catalogUser());
   const items = (data?.tracks?.items || []).map(trimItem);
 
+  rememberQuery(q, items);
+  scheduleCacheWrite();
+  return items;
+}
+
+// File one search's results under its query, into both layers. Split out of
+// searchTracks so a test can prime the query cache without a real request —
+// resolution's "a cached query is free" rule is otherwise untestable offline.
+function rememberQuery(q: string, items: any[]) {
+  const cache = loadSearchCache();
   if (cache.size >= CACHE_MAX_ENTRIES) {
     // oldest-first eviction — one pass, no LRU bookkeeping needed at this size
     const oldest = [...cache.entries()]
@@ -744,10 +792,8 @@ async function searchTracks(q: string): Promise<any[]> {
       .slice(0, Math.ceil(CACHE_MAX_ENTRIES / 10));
     for (const [k] of oldest) cache.delete(k);
   }
-  cache.set(key, { items, at: Date.now() });
+  cache.set(cacheKey(q), { items, at: Date.now() });
   rememberItems(items);
-  scheduleCacheWrite();
-  return items;
 }
 
 // Track records already seen under this title, from any earlier search.
@@ -849,8 +895,11 @@ interface ResolvedFields {
 
 // Resolve one curated track against Spotify search (multi-strategy).
 // Dev-mode search cap is limit=10 — use all of it.
+// budget (optional): the request's shared search allowance — see the seam in
+// step 3 and the reasoning in searchBudget.ts.
 async function resolveTrack<T extends { artist: string; title: string; ref?: string }>(
-  track: T
+  track: T,
+  budget?: SearchBudget
 ): Promise<T & ResolvedFields> {
   const label = `"${track.artist} — ${track.title}"`;
   let best: Candidate | null = null; // best candidate meeting the artist floor
@@ -876,6 +925,23 @@ async function resolveTrack<T extends { artist: string; title: string; ref?: str
   // 3. Otherwise pay for a real search.
   if (!best || best.score < MATCH_THRESHOLD) {
     for (const { strategy, q } of buildQueries(track)) {
+      // The request's search allowance is shared with the curator's agent loop,
+      // and resolution runs after it — so this is the half that yields when the
+      // allowance runs out. Two rules, both load-bearing:
+      //   - a query the cache can answer costs no quota, so it never spends;
+      //     the agent loop applies the same rule (curator.ts, `free`).
+      //   - out of budget means stop issuing searches, not throw: the track
+      //     comes back resolved:false, which the card already renders and the
+      //     product already reads as "we could not find it", rather than
+      //     failing the whole mixtape.
+      // No budget passed = unbounded, exactly as before, which is what the
+      // evals harness and any other four-argument caller get.
+      if (!isSearchCached(q) && budget && !budget.spend()) {
+        console.log(
+          `[resolve] search budget exhausted — leaving ${label} unresolved (at ${strategy})`
+        );
+        break;
+      }
       let items: any[] = [];
       try {
         items = await searchTracks(q);
@@ -933,6 +999,29 @@ async function resolveTrack<T extends { artist: string; title: string; ref?: str
 // One cached record → one model-visible row. Pure, exported for tests.
 // Adding a key to this tool_result JSON touches no tool schema, so the
 // compiled-grammar cache is unaffected.
+//
+// artist / title / album are third-party strings: uploaders write them, not us,
+// and this function is the choke point where they become model-visible text
+// inside a tool_result. A row carrying a paragraph of "ignore your previous
+// instructions" is an injection vector with no upper bound on length, so the
+// three free-text fields are clipped here. 200 characters each cannot
+// plausibly cut a real release — the longest legitimate titles and featured-
+// artist lists run well under that — while a clipped field is far too short to
+// carry an instruction. `ref`, `year`, `length` and `position` are server-
+// derived or format-constrained and are left exactly as they are.
+const MAX_CATALOG_FIELD_CHARS = 200;
+
+// Non-strings pass through untouched: the "omit, never null" rule below depends
+// on absent fields staying absent, and an empty string is not the same as no
+// key. The ellipsis is visible on purpose — without it the model reads a
+// truncated title as the complete one and writes it into a note.
+function clipField(value: any): any {
+  if (typeof value !== "string" || value.length <= MAX_CATALOG_FIELD_CHARS) {
+    return value;
+  }
+  return value.slice(0, MAX_CATALOG_FIELD_CHARS - 1) + "…";
+}
+
 function catalogRow(item: any): {
   ref: string;
   artist: string;
@@ -946,9 +1035,9 @@ function catalogRow(item: any): {
   const totalTracks = item.album?.total_tracks;
   return {
     ref: refOf(item),
-    artist: (item.artists || []).map((a: any) => a.name).join(", "),
-    title: item.name,
-    album: item.album?.name || "",
+    artist: clipField((item.artists || []).map((a: any) => a.name).join(", ")),
+    title: clipField(item.name),
+    album: clipField(item.album?.name || ""),
     year: String(item.album?.release_date || "").slice(0, 4),
     // Omit — never null — on cache rows that predate the field expansion: a
     // literal "length": null is a value the model could parrot into a note.
@@ -972,11 +1061,14 @@ async function searchCatalog(query: string): Promise<ReturnType<typeof catalogRo
 // onProgress(event, payload) fires per track: "resolving", then "resolved".
 // signal (optional): an aborted signal stops the pool between tracks — the
 // caller checks it and discards the partial results.
+// budget (optional): the request's remaining search allowance, shared with the
+// curator loop that ran before this. Omitted = unbounded, the old behaviour.
 async function resolveTracks<T extends { artist: string; title: string }>(
   tracks: T[],
   concurrency = 3,
   onProgress?: (event: string, payload: any) => void,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  budget?: SearchBudget
 ): Promise<(T & ResolvedFields)[]> {
   const results: (T & ResolvedFields)[] = new Array(tracks.length);
   let next = 0;
@@ -992,7 +1084,7 @@ async function resolveTracks<T extends { artist: string; title: string }>(
         });
       }
       try {
-        results[i] = await resolveTrack(tracks[i]!);
+        results[i] = await resolveTrack(tracks[i]!, budget);
       } catch (err) {
         failed = true;
         throw err;
@@ -1255,8 +1347,14 @@ export {
   formatDuration,
   formatClock,
   catalogRow,
+  clipField,
+  MAX_CATALOG_FIELD_CHARS,
   classify429,
   rememberItems,
+  rememberQuery, // primes the query cache; the search path and the tests
+  evictOldest,
+  CACHE_MAX_ENTRIES,
+  RECORD_MAX_ENTRIES,
   recallByTitle,
   recallByRef,
   verifyRef,

@@ -329,7 +329,7 @@ section 10 has the comparison and the order.
   shows the approval card. The two flags are the talk's hard stop, as
   flags; `total_cost_usd` in the JSON output fills the ledger's cost
   column. Later, a launchd timer over every spec with `status: ready` —
-  job-scan already runs this way.
+  another private repo of mine already runs this way.
 
 **Done when** one spec goes from `ready` to a PR branch with no human
 between approval and review.
@@ -907,7 +907,7 @@ would have to crop.
   fixtures in `graph/fixtures/`. *Done when* the plan's §4 diagram is
   recognisable on screen and a designer wouldn't wince.
 - **C2 · Runs and replay.** The plugin's read endpoints; the run picker;
-  overlay real `wf_*.json` (use the July job-scan review run as the first
+  overlay real `wf_*.json` (use the July code-review run from another private repo as the first
   fixture — 26 agents, errors included); the scrubber. *Done when* a
   finished run replays with correct timing and the failed agents go red at
   the right moment.
@@ -1003,7 +1003,7 @@ tabs down to two, the skills table folded. Note: the console's own
 Anthropic docs: `code.claude.com/docs/en/workflows` (the `/workflows` TUI,
 run persistence under the session dir, resume semantics), `…/hooks`
 (`SubagentStart`/`SubagentStop`, `agent_id`/`agent_type`). On-disk: run
-`wf_d62c68a5-d0a` (2026-07-31, job-scan review). Tools: coleam00/Archon README
+`wf_d62c68a5-d0a` (2026-07-31, a code-review run from another private repo). Tools: coleam00/Archon README
 (dashboard, builder, `interactive: true`), kestra-io/kestra, n8n Execute
 Command docs, windmill flow editor, temporalio/ui, inngest dev server,
 trigger.dev self-hosting, mastra-ai/mastra, restatedev, dbos-inc + tmarkovski/

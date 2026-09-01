@@ -69,7 +69,7 @@ Do, in order, committing and pushing to main after each verified stage:
       — and write the row by hand as "escalated at Review (session limit);
       reviewed by hand, verdict …". Not an autonomous row.
 3. If the run escalates again, stop and report the reason with the manifest
-   (`~/.claude/projects/-Users-nadavgross-Projects-mixtape-poc-wt/<session>/workflows/wf_*.json`)
+   (`~/.claude/projects/<mixtape-poc-wt project dir>/<session>/workflows/wf_*.json`)
    and journal evidence (`…/subagents/workflows/wf_*/journal.jsonl` and the
    `agent-*.jsonl` next to it — `workflowProgress[].error` names a session
    limit when that is the cause).

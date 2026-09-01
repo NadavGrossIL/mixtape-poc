@@ -179,7 +179,7 @@ and point at the deployed host — update them if the domain changes.
 2. Spotify dashboard → the app → **User Management** → add it (name + the
    exact email). That's one of the 5 slots.
 3. Run the app locally, connect with that account, then
-   `node scripts/list-tokens.ts` and put its `refresh_token` in
+   `node scripts/list-tokens.ts --reveal` and put its `refresh_token` in
    `SPOTIFY_HOST_REFRESH_TOKEN` on the host. Until then the owner's account
    hosts the mixtapes (the server warns at boot).
 

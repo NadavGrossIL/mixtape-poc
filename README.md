@@ -95,6 +95,36 @@ Log in once (from any device — the callback is same-origin in production),
 copy the owner `refresh_token` from `.tokens.json` into the env var, and the
 server re-auths itself on every cold start from then on.
 
+## Monitoring
+
+`GET /healthz` is the outside world's view of the deployment — unauthenticated
+(a pinger carries no cookie) and exempt from the `APP_SECRET` gate, because
+"the monitor can't reach it" and "it's down" have to be different answers.
+
+```json
+{ "ok": true, "uptime": 5231,
+  "checks": { "spotifyCredentials": true, "anthropicKey": true,
+              "ownerToken": true, "hostAccount": true } }
+```
+
+**200 when `ok`, 503 when not**, so a free uptime monitor needs no keyword
+rules — the default "is it 200?" check is the whole configuration. What makes
+it 503 is only what a human has to fix: a missing credential, or a missing
+owner token on a deployed host. `hostAccount` is reported but never fails the
+check — unset only means mixtapes press into the owner's own account, which is
+degraded, not down.
+
+Spotify's daily quota is deliberately **not** in here. It is a
+wait-until-tomorrow condition that clears itself, and paging someone at 3am for
+it teaches them to ignore the page that matters. It shows up in the log panel.
+
+Point any free uptime monitor at `https://<app-host>/healthz` on a 5-minute
+check (UptimeRobot and BetterStack both do this on their free tier) and let it
+mail or push you when it goes red. That is the only monitoring this app needs:
+the in-app log panel and the funnel strip cover everything else, and they are
+both unreachable exactly when the server is down — which is what the pinger is
+for.
+
 ## Sharing
 
 Anyone with the invite link can make a mixtape — no Spotify login. Every

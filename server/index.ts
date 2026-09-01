@@ -27,6 +27,10 @@ logbook.patchConsole();
 const PORT = Number(process.env.PORT) || 8888;
 const HOST = process.env.HOST || "127.0.0.1";
 const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+// Bound to anything but loopback means the process is reachable from off the
+// machine — the one bit that decides how the owner gate fails (below) and
+// what the startup warnings are about.
+const DEPLOYED = HOST !== "127.0.0.1";
 
 const app = express();
 // req.secure must reflect the platform's TLS terminator, not the internal hop
@@ -119,7 +123,8 @@ if (APP_SECRET) {
   app.use((req, res, next) => {
     // /callback is exempt: Spotify lands there mid-OAuth, and the state
     // check (issued only to a gated /auth/login) already gates it.
-    if (req.path === "/callback" || hasGateCookie(req)) return next();
+    if (req.path === "/callback" || req.path === "/healthz" || hasGateCookie(req))
+      return next();
     // The invite link carries the key (`/?key=…`): one tap sets the cookie
     // and lands on the app, so a visitor never meets the password form.
     // Redirect to strip the key from the address bar and history.
@@ -214,6 +219,37 @@ app.post("/api/view", (req, res) => {
   res.status(204).end();
 });
 
+// ── health ───────────────────────────────────────────────────
+
+// For an external uptime monitor. Unauthenticated on purpose (a pinger has no
+// cookie) and deliberately boring: booleans about the deployment's own
+// configuration, never a prompt, an id or a name.
+//
+// 200/503 is the whole signal, so a free pinger's default "is it 200?" check
+// is enough — no keyword rules to configure. What makes it 503 is only what a
+// human has to fix: a missing credential or a missing owner token. Spotify's
+// daily quota is NOT in here; it is a wait-until-tomorrow condition that
+// clears itself, and paging someone at 3am for it would train them to ignore
+// the page that matters. It shows up in the log panel instead.
+app.get("/healthz", (req, res) => {
+  const checks = {
+    spotifyCredentials: spotify.credentialsConfigured(),
+    anthropicKey: curator.anthropicConfigured(),
+    // The owner token powers catalog search AND the owner gate, so on a
+    // deployed host its absence is an outage, not a local-dev convenience.
+    ownerToken: !DEPLOYED || spotify.isLoggedIn(),
+    // Unset just means mixtapes press into the owner's own account — degraded,
+    // not down, so it is reported without failing the check.
+    hostAccount: spotify.isLoggedIn(spotify.hostUser()),
+  };
+  const ok = checks.spotifyCredentials && checks.anthropicKey && checks.ownerToken;
+  res.status(ok ? 200 : 503).json({
+    ok,
+    uptime: Math.round(process.uptime()),
+    checks,
+  });
+});
+
 // ── owner-only routes ────────────────────────────────────────
 
 // The gate lets every friend in; logs and usage must not — they show other
@@ -222,7 +258,18 @@ app.post("/api/view", (req, res) => {
 // token configured (fresh local clone) has no users to leak, so it keeps
 // the old gate-only behavior there.
 async function requireOwner(req: Request, res: Response): Promise<boolean> {
-  if (!spotify.isLoggedIn()) return true; // no owner identity configured
+  // A fresh local clone has no owner token and no users to leak, so the gate
+  // stays open there — it is the loopback bind that protects it. Deployed,
+  // the same condition must fail CLOSED: a missing or empty
+  // SPOTIFY_REFRESH_TOKEN (a fresh instance, a rotated secret, a typo'd env
+  // var) would otherwise silently publish everyone's prompts to anyone with
+  // the URL. Locking the owner out of their own logs is the safe half of
+  // that trade.
+  if (!spotify.isLoggedIn()) {
+    if (!DEPLOYED) return true;
+    res.status(401).json({ error: "Owner only." });
+    return false;
+  }
   const ownerId = await spotify.getOwnerId();
   if (ownerId && callerUser(req) === ownerId) return true;
   res.status(401).json({ error: "Owner only." });
@@ -733,7 +780,15 @@ if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
   app.get("*", (req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
 }
 
-if (HOST !== "127.0.0.1" && !APP_SECRET) {
+if (DEPLOYED && !spotify.isLoggedIn()) {
+  console.warn(
+    "[config] SPOTIFY_REFRESH_TOKEN is unset on a deployed host — the " +
+      "owner-only routes (/api/logs, /api/usage, /api/metrics) are closed to " +
+      "EVERYONE, including you, until it is set. See README → Deploy."
+  );
+}
+
+if (DEPLOYED && !APP_SECRET) {
   // Public mode. The door is open on purpose; what bounds the Anthropic
   // spend and the shared Spotify quota is the daily caps, not a key.
   console.log(

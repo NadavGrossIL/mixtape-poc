@@ -14,6 +14,7 @@ import * as logbook from "./logbook.ts";
 import * as usage from "./usage.ts";
 import { signUser, verifyUser, newAnonId, isAnon } from "./session.ts";
 import { makeCaps, today } from "./caps.ts";
+import { makePressCaps } from "./pressCaps.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
 // startup config warnings below are readable from the browser.
@@ -217,12 +218,23 @@ async function requireOwner(req: Request, res: Response): Promise<boolean> {
 // The reasoning and the counting live in caps.ts (pure, tested); this is
 // just the env wiring. Guests are cheap to mint, so the guest caps are what
 // bound the bill; the account cap is per allowlisted friend.
-const caps = makeCaps({
+// The all-guests default is sized to Spotify's daily SEARCH quota, not to the
+// Anthropic bill: a run costs 8-20 searches against a few hundred a day, so a
+// higher ceiling here doesn't serve more people, it just trips the breaker
+// (spotify.ts) and takes the app down for everyone until it clears.
+const generationLimits = {
   perAccount: Number(process.env.DAILY_GENERATIONS_PER_USER) || 25,
   perGuest: Number(process.env.GUEST_DAILY_CAP) || 5,
   perIp: Number(process.env.GUEST_IP_DAILY_CAP) || 10,
-  allGuests: Number(process.env.GUEST_TOTAL_DAILY_CAP) || 40,
-});
+  allGuests: Number(process.env.GUEST_TOTAL_DAILY_CAP) || 12,
+};
+
+const caps = makeCaps(generationLimits);
+
+// Pressing keeps a second, independent ledger derived from the same numbers.
+// /api/playlist is reachable without ever calling the curator, so the caps
+// above never see it; pressCaps.ts has the reasoning.
+const pressCaps = makePressCaps(generationLimits);
 
 function capExceeded(user: string, req: Request): string | null {
   return caps.refusal(user, String(req.ip), today());
@@ -230,6 +242,14 @@ function capExceeded(user: string, req: Request): string | null {
 
 function countGeneration(user: string, req: Request) {
   caps.count(user, String(req.ip), today());
+}
+
+function pressExceeded(user: string, req: Request): string | null {
+  return pressCaps.refusal(user, String(req.ip), today());
+}
+
+function countPress(user: string, req: Request) {
+  pressCaps.count(user, String(req.ip), today());
 }
 
 // ── auth ─────────────────────────────────────────────────────
@@ -599,6 +619,12 @@ app.post("/api/playlist", async (req, res) => {
     return res.status(400).json({ error: "Missing title or uris" });
   }
   const user = callerIdentity(req, res);
+  // Checked before anything is created. This route reads its title and uris
+  // from the body, so it is the one paid path that never passed the curator —
+  // uncapped it is an open write to the host's public profile.
+  const refusal = pressExceeded(user, req);
+  if (refusal) return res.status(429).json({ error: refusal });
+  countPress(user, req);
   const host = spotify.hostUser();
   const name = spotify.sanitizePlaylistName(title);
   const wantsStream = String(req.headers.accept || "").includes("text/event-stream");

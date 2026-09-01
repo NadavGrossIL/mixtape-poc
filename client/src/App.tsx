@@ -23,6 +23,7 @@ import {
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
+import { shareOrCopy } from "./share";
 import LogConsole from "./LogConsole";
 
 // The card/track shapes the server streams back. Unresolved tracks keep only
@@ -583,7 +584,7 @@ export default function LinerNotes() {
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [playlistId, setPlaylistId] = useState<string | null>(null);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
-  const [copied, setCopied] = useState<"link" | "tracks" | null>(null);
+  const [copied, setCopied] = useState<"link" | "tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
@@ -1108,13 +1109,26 @@ export default function LinerNotes() {
       .map((t) => `${t.artist} — ${t.title}`)
       .join("\n");
 
+  // Native share sheet where there is one; otherwise the same clipboard path
+  // "copy link" uses. The decision (and the "dismissed is not a copy" rule)
+  // lives in share.ts so it is unit-tested; this is only the DOM edge.
   const shareMixtape = async () => {
     if (!playlistUrl || !card) return;
-    try {
-      await navigator.share({ title: card.title, url: playlistUrl });
-    } catch {
-      // dismissed the sheet — nothing to report
+    const outcome = await shareOrCopy(
+      { title: card.title, url: playlistUrl },
+      {
+        share: navigator.share ? navigator.share.bind(navigator) : undefined,
+        copy: (t) => navigator.clipboard.writeText(t),
+      },
+    );
+    if (outcome === "copied") {
+      setCopied("share");
+      setAnnounce("Link copied.");
+      setTimeout(() => setCopied((c) => (c === "share" ? null : c)), 1800);
+    } else if (outcome === "failed") {
+      setAnnounce("Couldn't copy — select it by hand.");
     }
+    // "shared" / "dismissed": the sheet was the feedback — nothing to report
   };
 
   // arm a pasted playlist link as the seed; the server names it while seeding
@@ -1776,11 +1790,14 @@ export default function LinerNotes() {
                   >
                     {copied === "link" ? "copied ✓" : "copy link"}
                   </button>
-                  {typeof navigator !== "undefined" && "share" in navigator && (
-                    <button type="button" className="btn-ghost" onClick={shareMixtape}>
-                      share
-                    </button>
-                  )}
+                  <button
+                    type="button"
+                    className="btn-ghost"
+                    aria-label="Share this mixtape"
+                    onClick={shareMixtape}
+                  >
+                    {copied === "share" ? "copied ✓" : "share"}
+                  </button>
                 </div>
                 {playlistId && (
                   <iframe

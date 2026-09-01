@@ -49,14 +49,21 @@ are not in CI — they cost money (`docs/playbooks/change-the-curator-prompt.md`
 ## Protection tiers (enforced by `.claude/settings.json` permission rules)
 
 - **never** — `evals/thresholds.json`, `evals/runs/**`,
-  `evals/baseline-logs/**`, `.github/**`, `CLAUDE.md`, `.claude/**`,
+  `evals/baseline-logs/**`, `.github/**`, `.claude/**`,
   `server/.env*`. Edited by a human, outside the agent. Deny rules; they
   also catch `cat`/`sed`/`>`/`>>` in Bash (verified 2026-08-28).
 - **ask** — `server/session.ts`, `server/caps.ts`, `server/env.ts`,
-  `server/spotify.ts` (identity, caps, tokens). Ask rules stop the Edit
+  `server/spotify.ts` (identity, caps, tokens), and `CLAUDE.md` — this
+  file, which every session reads first, so a wrong line here misleads
+  every session after it; an agent proposes the edit and a human approves
+  it in the moment (moved off **never** 2026-09-01, so a capability that
+  ships also lands in the map above instead of waiting to be noticed).
+  Ask rules stop the Edit
   tool only — a Bash redirect walks past them — so `npm run gate` step 0
   fails when any of them differs from `origin/main`; a human passes it
-  with `FACTORY_ASK_OK=1`. Factory runs: `--permission-mode acceptEdits`
+  with `FACTORY_ASK_OK=1`. **That step 0 does not run in CI** — the
+  shallow checkout has no `origin/main` to diff against, so it silently
+  passes there and only protects you locally (issue #7). Factory runs: `--permission-mode acceptEdits`
   plus the enumerated Bash allowlist in `.claude/settings.json`.
 - **free** — everything else.
 

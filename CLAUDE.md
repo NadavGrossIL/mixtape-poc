@@ -61,9 +61,10 @@ are not in CI — they cost money (`docs/playbooks/change-the-curator-prompt.md`
   Ask rules stop the Edit
   tool only — a Bash redirect walks past them — so `npm run gate` step 0
   fails when any of them differs from `origin/main`; a human passes it
-  with `FACTORY_ASK_OK=1`. **That step 0 does not run in CI** — the
-  shallow checkout has no `origin/main` to diff against, so it silently
-  passes there and only protects you locally (issue #7). Factory runs: `--permission-mode acceptEdits`
+  with `FACTORY_ASK_OK=1`. It runs in CI too, but only because
+  `.github/workflows/ci.yml` sets `fetch-depth: 0` — the default shallow
+  checkout has no `origin/main` to diff against and the check silently
+  passes whatever the PR touches (it did, until #11). Factory runs: `--permission-mode acceptEdits`
   plus the enumerated Bash allowlist in `.claude/settings.json`.
 - **free** — everything else.
 

@@ -29,12 +29,48 @@ interface UsageRow {
   saves: number;
 }
 
+// server/metrics.ts — aggregate counters, one row per day.
+interface MetricsDay {
+  day: string;
+  views: number;
+  newVisitors: number;
+  prompts: number;
+  generated: number;
+  adjusts: number;
+  pressed: number;
+  errors: number;
+  capped: number;
+}
+
 const ago = (t: number) => {
   const m = Math.round((Date.now() - t) / 60_000);
   if (m < 1) return "now";
   if (m < 60) return `${m}m ago`;
   if (m < 60 * 24) return `${Math.round(m / 60)}h ago`;
   return `${Math.round(m / (60 * 24))}d ago`;
+};
+
+const todayUtc = () => new Date().toISOString().slice(0, 10);
+
+// One line, in funnel order, so a drop between two numbers is the story.
+// A day the server has no row for is a real zero, not missing data.
+const funnel = (d: Omit<MetricsDay, "day"> | null) => {
+  const n = d || {
+    views: 0,
+    newVisitors: 0,
+    prompts: 0,
+    generated: 0,
+    adjusts: 0,
+    pressed: 0,
+    errors: 0,
+    capped: 0,
+  };
+  return (
+    `${n.views} views (${n.newVisitors} new) · ${n.prompts} prompts · ` +
+    `${n.generated} made · ${n.adjusts} refines · ${n.pressed} pressed · ` +
+    `${n.errors} errors` +
+    (n.capped > 0 ? ` · ${n.capped} capped` : "")
+  );
 };
 
 // Matches the server ring's capacity — no reason to hold more than the
@@ -60,6 +96,11 @@ export default function LogConsole() {
   // Who has been using the app. The server only answers the owner — anyone
   // else gets a 401 and the strip simply doesn't render.
   const [users, setUsers] = useState<UsageRow[] | null>(null);
+  // The funnel, same owner-only deal.
+  const [metrics, setMetrics] = useState<{
+    days: MetricsDay[];
+    totals: Omit<MetricsDay, "day">;
+  } | null>(null);
 
   const lastSeqRef = useRef(0);
   const listRef = useRef<HTMLDivElement | null>(null);
@@ -106,6 +147,10 @@ export default function LogConsole() {
         setUsers(d && Array.isArray(d.users) ? d.users : null)
       )
       .catch(() => setUsers(null));
+    fetch("/api/metrics")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setMetrics(d && Array.isArray(d.days) ? d : null))
+      .catch(() => setMetrics(null));
   }, [open]);
 
   const shown = useMemo(
@@ -185,6 +230,17 @@ export default function LogConsole() {
           </button>
         </div>
       </header>
+
+      {metrics && metrics.days.length > 0 && (
+        <div className="logs-funnel" aria-label="Usage funnel">
+          <span className="logs-funnel-line">
+            <b>today</b> {funnel(metrics.days[0]!.day === todayUtc() ? metrics.days[0]! : null)}
+          </span>
+          <span className="logs-funnel-line">
+            <b>30d</b> {funnel(metrics.totals)}
+          </span>
+        </div>
+      )}
 
       {users && users.length > 0 && (
         <div className="logs-usage" aria-label="Who has been using the app">

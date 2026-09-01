@@ -12,6 +12,7 @@ import * as spotify from "./spotify.ts";
 import * as curator from "./curator.ts";
 import * as logbook from "./logbook.ts";
 import * as usage from "./usage.ts";
+import * as metrics from "./metrics.ts";
 import { signUser, verifyUser, newAnonId, isAnon } from "./session.ts";
 import { makeCaps, today } from "./caps.ts";
 import { makePressCaps } from "./pressCaps.ts";
@@ -198,6 +199,21 @@ function requireSpotifyUser(req: Request, res: Response): string | null {
   return null;
 }
 
+// ── page views ───────────────────────────────────────────────
+
+// The client pings this once per load. Counting in the SPA catch-all
+// instead would count crawlers, link-preview fetchers and prefetches as
+// people; a beacon from a browser that actually ran the app is the honest
+// number. No body and nothing per-person is recorded — just the tick, and
+// whether this browser had been here before.
+app.post("/api/view", (req, res) => {
+  const returning = callerUser(req) !== null;
+  callerIdentity(req, res); // mint the guest cookie at first paint, not at first generate
+  metrics.count("views");
+  if (!returning) metrics.count("newVisitors");
+  res.status(204).end();
+});
+
 // ── owner-only routes ────────────────────────────────────────
 
 // The gate lets every friend in; logs and usage must not — they show other
@@ -383,6 +399,13 @@ app.get("/api/logs/stream", async (req, res) => {
 
 // Who has been using the app — per-account login/generation/save counts.
 // OWNER only, same reasoning as the logs.
+// The funnel: views → prompts → cards → presses, by day. Aggregate, but
+// owner-only anyway — it is nobody else's business how the app is doing.
+app.get("/api/metrics", async (req, res) => {
+  if (!(await requireOwner(req, res))) return;
+  res.json(metrics.recent(30));
+});
+
 app.get("/api/usage", async (req, res) => {
   if (!(await requireOwner(req, res))) return;
   res.json({ users: usage.list() });
@@ -436,9 +459,13 @@ app.post("/api/generate/stream", async (req, res) => {
   }
   const user = callerIdentity(req, res);
   const refusal = capExceeded(user, req);
-  if (refusal) return res.status(429).json({ error: refusal });
+  if (refusal) {
+    metrics.count("capped");
+    return res.status(429).json({ error: refusal });
+  }
   countGeneration(user, req);
   usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "generation");
+  metrics.count("prompts");
   sseInit(res);
   // Client abort (STOP) must stop the paid upstream work too. `close` also
   // fires after a normal end — writableEnded distinguishes the two.
@@ -458,6 +485,7 @@ app.post("/api/generate/stream", async (req, res) => {
       sseSend(res, "seeding", { name: seedName });
       const { tracks, total } = await spotify.getSeedTracks(seedId, reader);
       if (tracks.length === 0) {
+        metrics.count("errors");
         sseSend(res, "error", {
           message: "Couldn't read that playlist — it may be empty.",
         });
@@ -495,12 +523,14 @@ app.post("/api/generate/stream", async (req, res) => {
     console.log(
       `[generate/stream] done: "${card.title}" — ${verified}/${card.tracks.length} verified on Spotify`
     );
+    metrics.count("generated");
     sseSend(res, "done", { card, verified });
   } catch (err: any) {
     if (abort.signal.aborted) {
       console.log("[generate/stream] client disconnected — stopped");
       return res.end();
     }
+    metrics.count("errors");
     console.error("[generate/stream] failed:", err.message);
     // The only client is the gated owner, and the logbook they'd be sent to
     // is one tap away in the same page — so the real reason goes on screen
@@ -536,9 +566,13 @@ app.post("/api/adjust/stream", async (req, res) => {
   }
   const user = callerIdentity(req, res);
   const refusal = capExceeded(user, req);
-  if (refusal) return res.status(429).json({ error: refusal });
+  if (refusal) {
+    metrics.count("capped");
+    return res.status(429).json({ error: refusal });
+  }
   countGeneration(user, req);
   usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "adjust");
+  metrics.count("adjusts");
   sseInit(res);
   // Same disconnect handling as /api/generate/stream.
   const abort = new AbortController();
@@ -596,6 +630,7 @@ app.post("/api/adjust/stream", async (req, res) => {
       console.log("[adjust/stream] client disconnected — stopped");
       return res.end();
     }
+    metrics.count("errors");
     console.error("[adjust/stream] failed:", err.message);
     sseSend(res, "error", {
       message: err.quotaExceeded
@@ -623,7 +658,10 @@ app.post("/api/playlist", async (req, res) => {
   // from the body, so it is the one paid path that never passed the curator —
   // uncapped it is an open write to the host's public profile.
   const refusal = pressExceeded(user, req);
-  if (refusal) return res.status(429).json({ error: refusal });
+  if (refusal) {
+    metrics.count("capped");
+    return res.status(429).json({ error: refusal });
+  }
   countPress(user, req);
   const host = spotify.hostUser();
   const name = spotify.sanitizePlaylistName(title);
@@ -657,6 +695,7 @@ app.post("/api/playlist", async (req, res) => {
       saved = true; // it's their own library
     }
     usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "save");
+    metrics.count("pressed");
     console.log(
       `[playlist] (${whoLabel(user)}) pressed ${JSON.stringify(name)} → ${id}` +
         (saved ? " (in their library)" : "")
@@ -667,6 +706,7 @@ app.post("/api/playlist", async (req, res) => {
     }
     res.json({ playlistUrl: url, playlistId: id, saved });
   } catch (err: any) {
+    metrics.count("errors");
     console.error("[playlist] failed:", err.message);
     // detail stays in the server log — clients get a generic line
     const message = err.quotaExceeded

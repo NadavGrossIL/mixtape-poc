@@ -59,6 +59,16 @@ line, so the host's own log view is unaffected. This exists because deployed,
 "check the server logs" meant opening a hosting dashboard — which is not a
 thing you do from a phone halfway through a run.
 
+The same panel's top strip is the **funnel** — page views (and how many were
+first-time browsers), prompts pressed, cards made, refines, playlists
+pressed, errors, and anything a daily cap refused — for today and the last
+30 days. It is aggregate only: `server/metrics.ts` keeps one row of counts
+per day and nothing per person (the per-person ledger is `server/usage.ts`,
+owner-only for that reason). Page views are counted from a one-line beacon
+the client posts on load, not from the HTML request, so crawlers and
+link-preview fetchers don't read as people. Set `DATA_DIR` to a volume or
+the counts reset with every redeploy, like the tokens.
+
 The tiny control in the bottom-right corner (dev only) cycles the candidate
 wordmarks: MADE YOU A MIXTAPE / DEEP/CUTS / PROMP/TAPE.
 
@@ -77,8 +87,9 @@ dev-only). Required env vars on the host:
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `ANTHROPIC_API_KEY` | as in local dev |
 | `SPOTIFY_REFRESH_TOKEN` | the OWNER's token — paste from `server/.tokens.json` after one login; survives the host's ephemeral disk and powers catalog search |
 | `SPOTIFY_HOST_REFRESH_TOKEN` | the **Mixtape host account's** token — every mixtape is pressed into this account, public. Unset = the owner's account hosts them (fine for testing, not for sharing widely). See *Sharing* below |
+| `DATA_DIR` | optional — a writable directory for the counters (`.metrics.json`). Unset, they sit on the host's ephemeral disk and reset on every redeploy; point it at a Railway volume to keep the history |
 | `DAILY_GENERATIONS_PER_USER` | optional, default 25 — per-account generate/adjust cap (Anthropic spend and Spotify's daily quota are shared by everyone) |
-| `GUEST_DAILY_CAP` / `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 5 / 10 / 40 — caps for visitors who never connect Spotify: per guest cookie, per IP, and all guests together (the last one bounds the bill) |
+| `GUEST_DAILY_CAP` / `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 5 / 10 / 12 — caps for visitors who never connect Spotify: per guest cookie, per IP, and all guests together (the last one bounds the bill). Pressing a playlist is capped separately, at these numbers plus headroom (`server/pressCaps.ts`) |
 
 Log in once (from any device — the callback is same-origin in production),
 copy the owner `refresh_token` from `.tokens.json` into the env var, and the

@@ -242,7 +242,16 @@ async function isOwnerVisit(user: string | null): Promise<boolean> {
 app.post("/api/view", async (req, res) => {
   const user = callerUser(req);
   const returning = user !== null;
-  callerIdentity(req, res); // mint the guest cookie at first paint, not at first generate
+  // Mint a guest cookie at first paint, but NEVER overwrite an identity that
+  // is already signed. callerIdentity() would: it demotes a Spotify id whose
+  // token is missing from the store to a fresh guest, and the store is on the
+  // container disk, so every redeploy wipes it. Since this beacon fires on
+  // every page load, using it here logged the owner out of their own logs and
+  // funnel on the first load after any deploy — while requireOwner would have
+  // accepted the stale cookie, because it checks the id against the
+  // env-bootstrapped owner token, which does survive. Demotion still happens
+  // where it was meant to: the paid routes, which need a real caps identity.
+  if (!returning) setSessionCookie(req, res, newAnonId());
   if (!(await isOwnerVisit(user))) {
     metrics.count("views");
     if (!returning) metrics.count("newVisitors");

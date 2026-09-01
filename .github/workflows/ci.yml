@@ -5,6 +5,11 @@ on:
     branches: [main]
   pull_request:
 
+# The gate only reads the tree. Nothing here needs write access, and the
+# repository default is wider than that.
+permissions:
+  contents: read
+
 jobs:
   ci:
     runs-on: ubuntu-latest

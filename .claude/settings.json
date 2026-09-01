@@ -16,7 +16,10 @@
         "Edit(server/caps.ts)",
         "Edit(server/env.ts)",
         "Edit(server/spotify.ts)",
-        "Edit(CLAUDE.md)"
+        "Edit(CLAUDE.md)",
+        "Edit(scripts/**)",
+        "Edit(package.json)",
+        "Edit(factory.config.json)"
       ],
       "deny": [
         "Edit(evals/thresholds.json)",

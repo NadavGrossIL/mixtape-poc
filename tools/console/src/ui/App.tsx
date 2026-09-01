@@ -10,7 +10,7 @@ import { NodePanel, FilePanel, type PanelView } from './NodePanel'
 import { CopyButton, PathText, copyText } from './Copy'
 import { useRemembered } from './remember'
 import { CauseTag, Findings } from './Cause'
-import { baseName, dash, driverSummary, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, ledgerLine, nowAt, outcomeOf, prefillRow, projectTag, repoRel, rowValuesOf, specOf, specPath, startOf, stopReason, toneOf, usdOf, whenAbs, whenRel } from './format'
+import { baseName, dash, driverSummary, elapsedOf, fmtClock, fmtDuration, fmtTokens, isLive, lastProgress, lastProgressAt, ledgerLine, nowAt, outcomeOf, prefillRow, projectTag, repoRel, rowValuesOf, specOf, specPath, startOf, stopReason, usdOf, whenAbs, whenRel } from './format'
 
 type Conn = 'connecting' | 'connected' | 'reconnecting'
 const LEDGER_PATH = 'docs/factory/RUNS.md'
@@ -241,9 +241,12 @@ export function App() {
         </nav>
       </header>
       <div className="stage">
+        {/* The Runs tab gets `wfRuns`, not `runs`: its badge counts this workflow's runs, and
+            forty rows under a badge saying 3 is the two of them disagreeing. You change
+            workflows from the home screen, so one group — this one — is the whole tab. */}
         {tab === 'flow'
           ? <Canvas graph={graph} files={files} run={run} selectedId={selected} onSelect={select} />
-          : <RunList runs={runs} ledger={ledger} files={files} meta={meta} now={now} selectedId={runId} workflow={workflow} onSelect={pickRun} />}
+          : <RunList runs={wfRuns} ledger={ledger} files={files} meta={meta} now={now} selectedId={runId} workflow={workflow} onSelect={pickRun} />}
         {selectedNode
           ? <NodePanel node={selectedNode} info={graph.info[selectedNode.id]} run={run} tick={tick} files={files} now={now}
               scriptPath={livePath}
@@ -296,7 +299,10 @@ function RunSentence({ run, ledger, now, outcome, command }: { run: RunManifest;
         {/* Not the outcome word: the pill above it already carries that, and when a block
             explains the stop it says it a third time. This line is provenance — which run,
             on what, when — and it is sized to be read second. */}
-        {!explained && <>{' · '}<span className="reason" data-tone={toneOf(run, outcome)} title={outcome.title}>{reasonOf(run)}</span></>}
+        {/* No `data-tone` here: `.run-sentence .reason` outranks `[data-tone]` on specificity,
+            so the tone never painted anyway — and the reason keeping the text colour and the
+            weight is what §1.3 asks for. The pill above carries the verdict's colour. */}
+        {!explained && <>{' · '}<span className="reason" title={outcome.title}>{reasonOf(run)}</span></>}
         {' · '}<span className="spec">{spec}</span>{' · '}
         <span title={whenAbs(start)}>{whenRel(start, now)}</span>
         {tries}
@@ -363,8 +369,11 @@ function WhyStopped({ run, verdict: v, rerun }: { run: RunManifest; verdict: Ret
       <p className="why-action">{v.action}</p>
       <Findings findings={findings} />
       <div className="why-do">{rerun}</div>
+      {/* A div, not a p: the logs disclosure is a `<details>`, which the HTML parser is not
+          allowed to nest in a paragraph — React logs a validateDOMNesting warning on every
+          render of a stopped run, and the browser would close the `p` before it. */}
       {(v.evidence || logs.length > 0) && (
-        <p className="why-proof">
+        <div className="why-proof">
           {v.evidence && <code className="why-evidence" title={v.evidence}>{v.evidence}</code>}
           {logs.length > 0 && (
             <details className="why-logs">
@@ -374,7 +383,7 @@ function WhyStopped({ run, verdict: v, rerun }: { run: RunManifest; verdict: Ret
               </ol>
             </details>
           )}
-        </p>
+        </div>
       )}
     </section>
   )

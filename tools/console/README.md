@@ -134,8 +134,7 @@ long, cost, `View →`. What that header deliberately does *not* carry is the fl
 canvas under it already draws the phases as lanes with their subtitles, the nodes with
 their purposes and the outcome column with every word the workflow can return; a numbered
 list of the same things in the header was the page twice, stacked, and it pushed the graph
-— the reason to be on this screen — 120 px down. (`graph/flowSummary.ts` composed that
-list and went with it.) Selecting a run — that
+— the reason to be on this screen — 120 px down. Selecting a run — that
 line, a row in the Runs tab, a card's last-run clause — is what turns the run view on: overlay, run
 sentence, why-stopped block, context row, timeline, the node panel's "This run" tab
 (which the definition view's panel does not offer — with no run selected there is
@@ -146,7 +145,10 @@ newest run. Under the header the stage has **two tabs, `Flow` and `Runs <n>`**, 
 two things a workflow screen is for. *Flow* is the Canvas — lanes with subtitles, nodes with
 a purpose line, the outcome column, a legend behind the `?` in the zoom cluster, and the
 timeline strip under it (phase ticks, one bar per agent) once a run is selected. *Runs* is
-the list, grouped by workflow, filterable, this workflow's group first and open. The list
+**this workflow's runs and only those** — the same set the tab's own `<n>` counts, newest
+first, filterable, under one group head, open. (The screen is scoped to one workflow and
+you change workflows from the home screen; `RunList` still groups, so a caller that hands
+it more than one gets headed groups with the named one first.) The list
 used to be a 280 px rail beside the canvas: it cost the graph a third of its width and gave
 each run four wrapped lines, so a row now reads left to right across the screen — dot,
 outcome, spec, badges, then when / how long / what it cost, right-aligned — and the graph
@@ -165,7 +167,7 @@ result → ledger → prompt), `specPath` (that reading as a path a driver takes
 ledger's `0002 album-…` cell rebuilt), `usdOf` ("no cost yet" while live; after, `NO_ROW`
 — one wording worn three ways, the definition view's `no RUNS.md row`, the Runs tab's `no row` and the
 header's `—`, all with the same title, "open the run to add one"), `whereOfGit` (`branch …
-· worktree …`, the card's tooltip and the ledger row's notes),
+· worktree …`, the `notes` cell of the RUNS.md row `rowValuesOf` prefills),
 `dotOf` (the status dot the Runs tab and the home card both draw, so the two cannot disagree
 about one run), `outcomeTone` (a status word with no run behind it, keeping `toneOf`'s
 verdict on the same word so `needs-human` is not amber in the list of what a workflow can
@@ -176,9 +178,9 @@ imports nothing from `ui/`): `isLive` and `sessionLimit` — the failing agent's
 hit your session limit · resets 4:40pm (Asia/Jerusalem)`, or the script's own
 `[review:1] failed: …` log line when the agents carry no error, matched by
 `SESSION_LIMIT_RE` and split into the reset time; `ui/format.ts` re-exports both.
-`ui/Cause.tsx` owns the `CAUSE_TAG` copy and the one `<CauseTag>` the canvas block and
-the home card both render, plus `<Findings>` — the reviewer's findings as the canvas
-block and the node panel both list them. A stale run's
+`ui/Cause.tsx` owns the `CAUSE_TAG` copy and the `<CauseTag>` the canvas block renders —
+its one caller, now that the home card carries no tag — plus `<Findings>`, the reviewer's
+findings as the canvas block and the node panel both list them. A stale run's
 unfinished agents are drawn `stalled`. The page keeps
 one `EventSource` open and refetches on each event, so a live run's nodes and timeline
 bars follow it as it goes. The timeline is static — no play, no speed, no scrubber:

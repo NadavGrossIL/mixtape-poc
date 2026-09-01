@@ -28,7 +28,7 @@ const COPY = {
   frozen: 'The copy the engine froze for this run. The editor above is the live repo file, which a later run would use.',
 } as const
 
-// The panel's width, one of the four per-viewer conveniences the browser keeps (remember.ts).
+// The panel's width, one of the three per-viewer conveniences the browser keeps (remember.ts).
 const WIDTH_KEY = 'console.panelWidth'
 const WIDTH = { min: 360, max: 720, default: 440 }
 

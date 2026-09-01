@@ -74,7 +74,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card-name:hover { color: var(--accent); }
 /* what the workflow is for, in the words a reader parses — the largest thing on the
    card after its name, now that the run is one clause in the foot */
-.card-desc, .card-when { margin: 0; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
+.card-desc { margin: 0; font-size: 13px; color: var(--text); overflow-wrap: anywhere; }
 /* the flow: the steps in the canvas lanes' own type, so the card and the graph it opens
    say it the same way. The raw arrow chain rides in the row's tooltip — as a mono string
    it broke mid-word ("needs-\nhuman") and read as decoration rather than a flow. */
@@ -84,10 +84,7 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .card-arrow { color: var(--muted); font-size: 11px; }
 /* what it can end in — the chain's tail, as toned words on one line */
 .card-ends { margin: 0; font: 11px/1.6 var(--mono); color: var(--muted); overflow-wrap: anywhere; }
-.last-run { margin: 0; font-size: 16px; line-height: 1.35; overflow-wrap: anywhere; }
-.last-run .spec { font-family: var(--mono); font-size: 16px; }
-.last-run .badge { margin-left: 6px; }
-/* "no RUNS.md row" is the one cell of the line that is an action — it reads as a link, and the line's own click performs it */
+/* "no RUNS.md row" is the one cell of the definition view's last-run line that is an action — it reads as a link, and the line's own click performs it */
 .no-row { font-size: 13px; color: var(--accent); text-decoration: underline dotted; text-underline-offset: 3px; }
 .outcome-word { font-weight: 600; }
 [data-tone="ok"] { color: var(--accent); } [data-tone="err"] { color: var(--err); } [data-tone="warn"] { color: var(--warn); }
@@ -193,14 +190,17 @@ button { font: inherit; color: inherit; cursor: pointer; }
 /* the proof, last and quiet: the string the rule fired on, and the log behind a disclosure */
 .why-proof { display: flex; flex-wrap: wrap; align-items: baseline; gap: 4px 14px; margin: 2px 0 0; }
 .why-logs > summary { font-size: 12px; color: var(--muted); cursor: pointer; }
-.why-logs[open] { flex: 1 0 100%; }
+/* Shut, the disclosure sits beside the evidence; open, it takes a row of its own — and that
+   has to be said at the same specificity and after, or the shut case wins on source order.
+   `min-width: 0` because a flex item's automatic minimum is its content: one long log line
+   would otherwise push the box past the header instead of wrapping inside it. */
 .why-proof .why-logs { flex: 0 0 auto; }
+.why-proof .why-logs[open] { flex: 1 0 100%; min-width: 0; }
 .why-logs > summary:hover { color: var(--text); }
 /* open, the log is a box of its own and never grows the header past the canvas: 160 px, scrolling */
 .why-logs ol.mono { margin: 6px 0 0; padding: 10px 12px 10px 30px; display: flex; flex-direction: column; gap: 3px; max-height: 160px; overflow: auto; }
 .why-logs li::marker { color: var(--muted); }
 .why-logs li[data-fired] { color: var(--warn); font-weight: 600; } /* the line the rule fired on */
-/* the home card's one-line version: the tag and the headline, no action — the canvas has the rest */
 
 /* where the context lives: one line per artefact of the run — label, the value in
    monospace (a long path truncates from the left, whole thing in the tooltip), Copy / Open */
@@ -234,8 +234,6 @@ button { font: inherit; color: inherit; cursor: pointer; }
 .ctx-note { margin: 6px 0 0; padding: 0 10px; font-size: 12px; overflow-wrap: anywhere; max-width: 110ch;
   display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; }
 .ctx-foot { margin: 4px 0 0; padding: 0 10px; }
-.run-none p { margin: 0 0 6px; }
-.run-none .run-cmd { max-width: 720px; }
 
 /* the definition view: the same three rows a run wears — a sentence, the command, a line of
    context — so moving between the two views does not move the furniture. No width cap and no

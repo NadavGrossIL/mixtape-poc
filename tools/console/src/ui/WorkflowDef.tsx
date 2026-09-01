@@ -79,7 +79,13 @@ function LastRunLine({ run, ledger, now, onView }: { run: RunManifest; ledger: L
       <span className="muted">· last</span>
       <span className="dot" data-status={dot.status} aria-hidden />
       <span className="outcome-word" data-tone={toneOf(run, outcome)}>{outcome.word}</span>
-      <span className="muted">{whenRel(start, now)} · {fmtDuration(elapsedOf(run, now))} · {usd.noRow ? NO_ROW.rail : usd.text}</span>
+      <span className="muted">{whenRel(start, now)} · {fmtDuration(elapsedOf(run, now))} ·</span>
+      {/* The cost cell, or — with no ledger row — the one cell of this line that is an action:
+          `no RUNS.md row` reads as a link, and the click this line already performs opens the
+          run on the canvas, where `add row` lives. Same title as the other two wordings. */}
+      {usd.noRow
+        ? <span className="no-row" title={NO_ROW.title}>{NO_ROW.card}</span>
+        : <span className="muted" title={usd.title}>{usd.text}</span>}
       <span className="wfdef-view">View →</span>
     </button>
   )

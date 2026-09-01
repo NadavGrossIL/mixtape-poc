@@ -5,12 +5,15 @@ import type { ConsoleMeta } from './Workflows'
 import { runCommand } from './Workflows'
 import { RUN_COPY, dash, dotOf, elapsedOf, fmtClock, fmtDuration, isLive, outcomeOf, projectTag, specOf, specShort, startOf, usdOf, whenAbs, whenRel } from './format'
 
-// The Runs tab (IA-SPEC §6): runs grouped by workflow — the reader arrives from
-// a card, so "the other runs of this workflow" is the question — newest first
-// inside a group, one text filter. A row reads left to right across the screen:
-// the outcome word and the spec, then when / how long / what it cost, right-
-// aligned. It was a 280 px rail beside the canvas, where those same two lines
-// wrapped into four and the graph paid a third of its width for them.
+// The Runs tab (IA-SPEC §6): the runs of the workflow on screen, newest first,
+// one text filter — the screen is scoped to one workflow and you change
+// workflows from the home screen, so `runs` arrives already filtered and the
+// grouping resolves to that single group (it stays general: a caller that hands
+// this list more than one workflow still gets headed groups, the named one
+// first and open). A row reads left to right across the screen: the outcome
+// word and the spec, then when / how long / what it cost, right-aligned. It was
+// a 280 px rail beside the canvas, where those same two lines wrapped into four
+// and the graph paid a third of its width for them.
 
 const TIP = RUN_COPY
 const PLACEHOLDER = 'filter by spec, outcome or run id'
@@ -55,7 +58,7 @@ export function RunList({ runs, ledger, files, meta, now, selectedId, workflow, 
   return (
     <section className="runs-screen" aria-label="runs">
       {runs.length === 0
-        ? <Empty files={files} meta={meta} />
+        ? <Empty files={files} meta={meta} workflow={workflow} />
         : <input className="filter" type="search" value={filter} placeholder={PLACEHOLDER} aria-label={PLACEHOLDER} onChange={(e) => setFilter(e.target.value)} />}
       {runs.length > 0 && shown.length === 0 && <p className="muted small">No run matches “{filter.trim()}”.</p>}
       {groups.map((g) => (
@@ -120,14 +123,20 @@ function rowOf(run: RunManifest, i: number, ledger: Ledger, now: number): Row {
   }
 }
 
-/** Nothing on disk: where the page looked, and the one command that starts a run (no spec to bind to yet — the placeholder). */
-function Empty({ files, meta }: { files: WorkflowFile[]; meta: ConsoleMeta }) {
+/**
+ * Nothing to list: where the page looked, and the one command that starts a run
+ * (no spec to bind to yet — the placeholder). The list is scoped to one
+ * workflow, so the sentence names it and the command is that workflow's own; a
+ * caller with no workflow in hand gets the repo-wide wording it had.
+ */
+function Empty({ files, meta, workflow }: { files: WorkflowFile[]; meta: ConsoleMeta; workflow?: string }) {
   const dirs = meta.projectDirs?.length ? meta.projectDirs : ['~/.claude/projects/<slug>*']
-  const first = files.filter((f) => f.kind === 'script' || f.kind === 'yaml').sort((a, b) => a.name.localeCompare(b.name))[0]
-  const command = runCommand(first?.name ?? 'implement-from-spec', undefined, first?.meta)
+  const runnable = files.filter((f) => f.kind === 'script' || f.kind === 'yaml')
+  const first = (workflow && runnable.find((f) => f.name === workflow)) || runnable.slice().sort((a, b) => a.name.localeCompare(b.name))[0]
+  const command = runCommand(first?.name ?? workflow ?? 'implement-from-spec', undefined, first?.meta)
   return (
     <div className="rail-empty">
-      <p>No runs on disk for this repo.</p>
+      <p>{workflow ? `No runs of ${workflow} on disk.` : 'No runs on disk for this repo.'}</p>
       {dirs.map((d) => <p key={d} className="muted small dir">{d}</p>)}
       <p>Start one: </p>
       <code>{command}</code>

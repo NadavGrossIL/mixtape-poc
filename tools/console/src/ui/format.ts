@@ -243,7 +243,7 @@ export function stoppedAt(run?: RunManifest): string | undefined {
   return hit ? `stopped at ${labelOf(hit)}` : undefined
 }
 
-/** `branch <b> · worktree <cwd>` — where a run happened, worded once for the card's tooltip and the ledger row's notes. Empty when the transcript said neither. */
+/** `branch <b> · worktree <cwd>` — where a run happened, as the `notes` cell of the RUNS.md row `rowValuesOf` prefills. Empty when the transcript said neither. */
 export function whereOfGit(git?: RunGit): string {
   return [git?.branch && `branch ${git.branch}`, git?.cwd && `worktree ${git.cwd}`].filter(Boolean).join(' · ')
 }

@@ -566,6 +566,9 @@ function StudioChatter({ pool: name, inline }: { pool: ChatterPool; inline?: boo
   );
 }
 
+// see the /api/view effect below — survives a hot-reload remount
+let viewCounted = false;
+
 export default function LinerNotes() {
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
@@ -636,6 +639,15 @@ export default function LinerNotes() {
       .then((r) => r.json())
       .then((d: { loggedIn?: boolean }) => setLoggedIn(Boolean(d.loggedIn)))
       .catch(() => setLoggedIn(false));
+  }, []);
+
+  // One page-view tick per load, counted server-side (server/metrics.ts).
+  // The module-level guard, not the empty dep array, is what makes it once:
+  // a dev hot-reload remounts the app without reloading the page.
+  useEffect(() => {
+    if (viewCounted) return;
+    viewCounted = true;
+    fetch("/api/view", { method: "POST", keepalive: true }).catch(() => {});
   }, []);
 
   // the seed picker's playlist list. 403 = the stored token predates the

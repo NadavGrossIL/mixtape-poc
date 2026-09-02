@@ -86,7 +86,7 @@ type GenerateStreamEvent =
   | ["resolving", { index: number; artist: string; title: string } | null]
   | ["resolved", { index: number; resolved: boolean }]
   | ["done", { card?: MixCard; verified?: number } | null]
-  | ["error", { message?: string; detail?: string } | null];
+  | ["error", { message?: string; detail?: string; quota?: boolean; outage?: boolean } | null];
 
 type AdjustStreamEvent =
   | ["adjusting", { adjustment?: string } | null]
@@ -95,7 +95,7 @@ type AdjustStreamEvent =
   | ["resolving", { index: number; artist: string; title: string } | null]
   | ["resolved", { index: number; resolved: boolean }]
   | ["done", { card?: MixCard } | null]
-  | ["error", { message?: string; detail?: string } | null];
+  | ["error", { message?: string; detail?: string; quota?: boolean; outage?: boolean } | null];
 
 type SaveStreamEvent =
   | ["creating", { name?: string } | null]
@@ -108,9 +108,51 @@ type SaveStreamEvent =
 // A daily-cap refusal (HTTP 429). Not a failure: the server's line IS the
 // message, and "try the same prompt again" would be the wrong advice.
 class CapError extends Error {
-  constructor(message?: string) {
+  // `detail` is the owner-only upstream message the server attaches to a
+  // stream error; a 429 has none.
+  detail: string | null;
+  constructor(message?: string, detail: string | null = null) {
     super(message || "that’s it for today — come back tomorrow.");
     this.name = "CapError";
+    this.detail = detail;
+  }
+}
+
+// Spotify's app-wide daily quota, arriving mid-stream as an `error` event.
+// It is a cap like the 429 above, not a fault — so it must not wear the
+// "dropped the needle, try again" line, which contradicts its own detail.
+// The server flags it with `quota: true`; the exact message is the fallback
+// for a server that predates the flag.
+const QUOTA_MESSAGE = "Spotify's daily limit for this app is used up.";
+const QUOTA_COPY = "spotify’s daily limit for this app is used up — come back tomorrow.";
+function isQuotaEvent(data: { message?: string; quota?: boolean } | null) {
+  return data?.quota === true || data?.message === QUOTA_MESSAGE;
+}
+
+// The stream ended with no card and no error event: the connection was cut
+// mid-run (a redeploy, a webview backgrounding the tab). Not the curator's
+// fault, and "empty" is not a detail anyone can act on.
+class StreamDroppedError extends Error {
+  constructor() {
+    super("stream dropped");
+    this.name = "StreamDroppedError";
+  }
+}
+
+// The server's message IS the whole story — shown as the headline, with no
+// "dropped the needle, try the same prompt again" over it. Two sources: a
+// 400 that names what was wrong with the request ("that prompt is too
+// long"), and an `error` event flagged `outage` (the curator is offline or
+// busy — our side, not the visitor's). Both used to wear the generic retry
+// line, which contradicted them. `detail` is the owner-only upstream message
+// when the server sent one (a 400 has none), so the owner can still tell a
+// revoked key from an empty balance without opening the log.
+class PlainError extends Error {
+  detail: string | null;
+  constructor(message: string, detail: string | null = null) {
+    super(message);
+    this.name = "PlainError";
+    this.detail = detail;
   }
 }
 
@@ -419,7 +461,7 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
       ref={setNodeRef}
       href={href}
       target="_blank"
-      rel="noreferrer"
+      rel="noopener noreferrer"
       {...(editable ? attributes : {})}
       {...(editable ? listeners : {})}
       // An <a href> is natively draggable: without this, Chrome starts its own
@@ -431,10 +473,11 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
           e.preventDefault();
           return;
         }
-        // cmd/ctrl/shift-click keeps its native "open the web URL" meaning
+        // cmd/ctrl/shift-click keeps its native "open the web URL" meaning;
+        // so does a phone tap — the anchor's own navigation is the one
+        // hand-off that works inside an in-app webview (see spotifyLink.ts)
         if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        e.preventDefault();
-        openInSpotify(href);
+        if (openInSpotify(href)) e.preventDefault();
       }}
       className={"track-row" + (isDragging ? " dragging" : "")}
       style={{
@@ -462,14 +505,17 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
           {t.artist} — {t.title}
         </div>
         <div className="track-note">{t.note}</div>
+        {/* under the note, not in the chrome column: as a sibling it
+            squeezed a phone's title column to ~110px */}
+        {!t.resolved && (
+          <div className="unverified" title={UNVERIFIED_TITLE}>
+            unverified
+          </div>
+        )}
       </div>
-      {t.resolved ? (
+      {t.resolved && (
         <div className="play-hint" aria-hidden>
           ▸
-        </div>
-      ) : (
-        <div className="unverified" title={UNVERIFIED_TITLE}>
-          unverified
         </div>
       )}
       {editable && (
@@ -522,8 +568,10 @@ const CHATTER = {
     "rewinding to track one…",
     "listening for the through-line…",
   ],
+  // no "digging through the crates…" here: the progress log prints that
+  // exact line at the same instant, and two of it reads as a stutter
   curating: [
-    "digging through the crates…",
+    "thumbing the dividers…",
     "flipping past the B-sides…",
     "dusting off a deep cut…",
     "asking the record-store guy…",
@@ -596,6 +644,9 @@ export default function LinerNotes() {
   // line — the log panel has the rest of the run.
   const [errorDetail, setErrorDetail] = useState<string | null>(null);
   const [booked, setBooked] = useState(false); // the error is a cap, not a fault
+  // bumps on every failure so the alert is scrolled into view even when the
+  // same line lands twice in a row (a capped visitor pressing again)
+  const [errorTick, setErrorTick] = useState(0);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
@@ -627,6 +678,7 @@ export default function LinerNotes() {
   const [adjusting, setAdjusting] = useState(false);
   const [adjustError, setAdjustError] = useState<string | null>(null);
   const [adjustErrorDetail, setAdjustErrorDetail] = useState<string | null>(null);
+  const [adjustBooked, setAdjustBooked] = useState(false); // same cap-not-fault split as `booked`
   const [adjustStage, setAdjustStage] = useState<"adjusting" | "resolving" | null>(null);
   const [adjustLog, setAdjustLog] = useState<AdjustLogLine[]>([]);
 
@@ -640,8 +692,25 @@ export default function LinerNotes() {
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const refineRef = useRef<HTMLInputElement | null>(null);
   const cardTitleRef = useRef<HTMLHeadingElement | null>(null);
+  const errorRef = useRef<HTMLDivElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const adjustAbortRef = useRef<AbortController | null>(null);
+
+  // The error renders inside the composer, but a phone that scrolled down to
+  // the progress log is still looking below it — the button just snapped
+  // from STOP back to MAKE THE MIXTAPE and looked like it did nothing. Pull
+  // the alert into view and focus it, so eye and screen reader both land on
+  // it. An effect, not a rAF in the catch: it runs after the commit that
+  // mounts the element, whichever way React schedules that.
+  useEffect(() => {
+    const el = errorRef.current;
+    if (!errorTick || !el) return;
+    const reduce =
+      typeof window.matchMedia === "function" &&
+      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+    el.focus({ preventScroll: true });
+  }, [errorTick]);
 
   // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
   // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
@@ -862,12 +931,16 @@ export default function LinerNotes() {
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
         if (response.status === 429) throw new CapError(data.error);
+        if (response.status === 400 && data.error) throw new PlainError(data.error);
         throw new Error(data.error || "generate failed");
       }
       // widened initializers: the assignments happen inside the readSSE
       // callback, which TS's control-flow analysis can't see
       let doneCard = null as MixCard | null;
       let streamError = null as string | null;
+      let streamQuota = false;
+      let streamOutage = null as string | null;
+      let streamDetail = null as string | null;
       await readSSE<GenerateStreamEvent>(response, (event, data) => {
         if (event === "seeding") {
           setStage("seeding");
@@ -901,11 +974,16 @@ export default function LinerNotes() {
         } else if (event === "done") {
           doneCard = data?.card ?? null;
         } else if (event === "error") {
+          if (isQuotaEvent(data)) streamQuota = true;
+          if (data?.outage && data.message) streamOutage = data.message;
+          streamDetail = data?.detail ?? null;
           streamError = data?.detail || data?.message || "generate failed";
         }
       });
+      if (streamQuota) throw new CapError(QUOTA_COPY, streamDetail);
+      if (streamOutage) throw new PlainError(streamOutage, streamDetail);
       if (streamError) throw new Error(streamError);
-      if (!doneCard?.tracks?.length) throw new Error("empty");
+      if (!doneCard?.tracks?.length) throw new StreamDroppedError();
       const verified = doneCard.tracks.filter((t) => t.resolved).length;
       setAnnounce(
         `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
@@ -922,11 +1000,22 @@ export default function LinerNotes() {
       } else if (e instanceof CapError) {
         setBooked(true);
         setError(e.message);
+        setErrorDetail(e.detail);
         setAnnounce(e.message);
+        setErrorTick((t) => t + 1);
+      } else if (e instanceof StreamDroppedError) {
+        setError("the connection dropped mid-run — try the same prompt again.");
+        setErrorTick((t) => t + 1);
+      } else if (e instanceof PlainError) {
+        setError(e.message);
+        setErrorDetail(e.detail);
+        setAnnounce(e.message);
+        setErrorTick((t) => t + 1);
       } else {
         console.error(e);
         setError("The curator dropped the needle. Try the same prompt again.");
         setErrorDetail(e instanceof Error ? e.message : String(e));
+        setErrorTick((t) => t + 1);
       }
     } finally {
       abortRef.current = null;
@@ -951,6 +1040,7 @@ export default function LinerNotes() {
     setAdjusting(true);
     setAdjustError(null);
     setAdjustErrorDetail(null);
+    setAdjustBooked(false);
     setAdjustStage(null);
     setAdjustLog([]);
     setAnnounce("Rewinding the tape.");
@@ -967,11 +1057,15 @@ export default function LinerNotes() {
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
         if (response.status === 429) throw new CapError(data.error);
+        if (response.status === 400 && data.error) throw new PlainError(data.error);
         throw new Error(data.error || "adjust failed");
       }
       // widened initializers, same reason as in generate
       let doneCard = null as MixCard | null;
       let streamError = null as string | null;
+      let streamQuota = false;
+      let streamOutage = null as string | null;
+      let streamDetail = null as string | null;
       await readSSE<AdjustStreamEvent>(response, (event, data) => {
         if (event === "adjusting") {
           setAdjustStage("adjusting");
@@ -993,11 +1087,16 @@ export default function LinerNotes() {
         } else if (event === "done") {
           doneCard = data?.card ?? null;
         } else if (event === "error") {
+          if (isQuotaEvent(data)) streamQuota = true;
+          if (data?.outage && data.message) streamOutage = data.message;
+          streamDetail = data?.detail ?? null;
           streamError = data?.detail || data?.message || "adjust failed";
         }
       });
+      if (streamQuota) throw new CapError(QUOTA_COPY, streamDetail);
+      if (streamOutage) throw new PlainError(streamOutage, streamDetail);
       if (streamError) throw new Error(streamError);
-      if (!doneCard?.tracks?.length) throw new Error("empty");
+      if (!doneCard?.tracks?.length) throw new StreamDroppedError();
       setAnnounce(
         `Mixtape adjusted: ${changeCount} track${changeCount === 1 ? "" : "s"} changed.`
       );
@@ -1007,8 +1106,15 @@ export default function LinerNotes() {
       if (e instanceof Error && e.name === "AbortError") {
         setAnnounce("Stopped.");
       } else if (e instanceof CapError) {
+        setAdjustBooked(true);
         setAdjustError(e.message);
+        setAdjustErrorDetail(e.detail);
         setAnnounce(e.message);
+      } else if (e instanceof StreamDroppedError) {
+        setAdjustError("the connection dropped mid-rewind — try it again.");
+      } else if (e instanceof PlainError) {
+        setAdjustError(e.message);
+        setAdjustErrorDetail(e.detail);
       } else {
         console.error(e);
         setAdjustError("The curator couldn't rewind that one. Try rewording it.");
@@ -1356,16 +1462,20 @@ export default function LinerNotes() {
                 {inputHint}
               </div>
             )}
-            {/* the allowlisted few connect here; it is deliberately quiet —
-                the product does not need it, and it cannot be offered to
-                everyone (Spotify caps dev-mode apps at 5 accounts) */}
-            {loggedIn === false && !loading && (
-              <div className="connect-note">
-                on the list?{" "}
-                <a href="/auth/login" className="connect-link">
-                  connect your Spotify
-                </a>{" "}
-                to pick from your own playlists and save in one go
+            {/* failures and the daily cap live right under the button that
+                caused them. They used to render after the whole empty state,
+                which on a phone put them below the fold — the button snapped
+                from STOP back to MAKE THE MIXTAPE and looked inert. tabIndex
+                -1 so the effect above can focus it. */}
+            {error && (
+              <div
+                className={"error" + (booked ? " booked" : "")}
+                role="alert"
+                tabIndex={-1}
+                ref={errorRef}
+              >
+                {error}
+                {errorDetail && <span className="error-detail">{errorDetail}</span>}
               </div>
             )}
 
@@ -1519,6 +1629,23 @@ export default function LinerNotes() {
                   </div>
                 </div>
 
+                {/* the allowlisted few connect here; it is deliberately the
+                    quietest line on the screen and sits below the examples —
+                    the product does not need it, and it cannot be offered to
+                    everyone (Spotify caps dev-mode apps at 5 accounts). It
+                    names the cap outright: "on the list?" read like a
+                    waitlist, and a stranger who took it up hit OAuth and a
+                    dev-mode rejection. */}
+                {loggedIn === false && (
+                  <div className="connect-note">
+                    already one of the 5 test accounts?{" "}
+                    <a href="/auth/login" className="connect-link">
+                      connect your Spotify
+                    </a>{" "}
+                    to pick from your own playlists and save in one go
+                  </div>
+                )}
+
                 <DeckHero />
               </>
             )}
@@ -1573,13 +1700,6 @@ export default function LinerNotes() {
                 </div>
               )}
             </div>
-          </div>
-        )}
-
-        {error && (
-          <div className={"error" + (booked ? " booked" : "")} role="alert">
-            {error}
-            {errorDetail && <span className="error-detail">{errorDetail}</span>}
           </div>
         )}
 
@@ -1735,7 +1855,7 @@ export default function LinerNotes() {
                   </div>
                 )}
                 {adjustError && (
-                  <div className="error" role="alert">
+                  <div className={"error" + (adjustBooked ? " booked" : "")} role="alert">
                     {adjustError}
                     {adjustErrorDetail && (
                       <span className="error-detail">{adjustErrorDetail}</span>
@@ -1778,17 +1898,17 @@ export default function LinerNotes() {
               <div className="pressed">
                 {/* the one primary action after pressing: open it. The https
                     href stays in the DOM (copy, middle-click, no-app fallback);
-                    a plain click hands off to the installed app. */}
+                    a desktop click hands off to the installed app, a phone
+                    tap lets the anchor navigate (see spotifyLink.ts). */}
                 <a
                   href={playlistUrl}
                   target="_blank"
-                  rel="noreferrer"
+                  rel="noopener noreferrer"
                   className="btn-press pressed-open"
                   aria-label="Open this mixtape in Spotify"
                   onClick={(e) => {
                     if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                    e.preventDefault();
-                    openInSpotify(playlistUrl);
+                    if (openInSpotify(playlistUrl)) e.preventDefault();
                   }}
                 >
                   <SpotifyMark />

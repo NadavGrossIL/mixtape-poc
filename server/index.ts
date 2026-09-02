@@ -21,6 +21,12 @@ import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
 import { parseTrackUris } from "./trackUris.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
+import { drain } from "./drain.ts";
+// The SDK is imported here only for `instanceof Anthropic.APIError` — the
+// one question outage.ts cannot answer on its own (Spotify errors carry a
+// `status` too).
+import Anthropic from "@anthropic-ai/sdk";
+import { makeOutageTracker } from "./outage.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
 // startup config warnings below are readable from the browser.
@@ -31,7 +37,12 @@ logbook.patchConsole();
 // default keeps local dev LAN-invisible.
 const PORT = Number(process.env.PORT) || 8888;
 const HOST = process.env.HOST || "127.0.0.1";
-const CLIENT_URL = process.env.CLIENT_URL || "http://localhost:5173";
+// 127.0.0.1, not localhost: client/vite.config.ts binds 127.0.0.1, and
+// /callback sets the session cookie on whichever host the browser used to
+// reach the server. With a localhost default the cookie landed on 127.0.0.1
+// and the redirect went to localhost, where the browser can't see it — a dev
+// login that "worked" and left you logged out.
+const CLIENT_URL = process.env.CLIENT_URL || "http://127.0.0.1:5173";
 // "Is this process reachable from off the machine?" — the one bit that decides
 // how the owner gate fails (below) and what the startup warnings are about.
 //
@@ -57,8 +68,29 @@ const DEPLOYED =
 // so the clean-exit write is registered here and nowhere else.
 const metrics = makeMetrics({ dir: process.env.DATA_DIR || import.meta.dirname });
 process.on("exit", metrics.flush);
+// Remembers a dead Anthropic key or an empty credit balance between runs, so
+// /healthz can go red for it. See outage.ts for the 2026-09-02 story.
+const outages = makeOutageTracker();
+
+// Process-level safety nets. The asymmetry is deliberate: the daily caps and
+// the Spotify quota breaker live in memory, so a crash resets today's guest
+// budget for everyone — worse than one leaked promise. An unhandled rejection
+// (a resolver worker outliving its response, a flush racing a shutdown) is
+// logged and the process carries on. An uncaught exception is different:
+// state is undefined after it, so we log and exit 1 and let Railway restart
+// the container. Both go through console.* so they land in the logbook.
+process.on("unhandledRejection", (reason) => {
+  const msg = reason instanceof Error ? (reason.stack ?? reason.message) : String(reason);
+  console.error("[process] unhandled rejection:", msg);
+});
+process.on("uncaughtException", (err) => {
+  console.error("[process] uncaught exception, exiting:", err.stack ?? String(err));
+  process.exit(1);
+});
 
 const app = express();
+// No `X-Powered-By: Express` — a stranger is not owed the framework name.
+app.disable("x-powered-by");
 // req.secure must reflect the platform's TLS terminator, not the internal hop
 app.set("trust proxy", 1);
 
@@ -469,7 +501,12 @@ app.get("/healthz", async (req, res) => {
   const body = healthBody(
     {
       spotifyCredentials: spotify.credentialsConfigured(),
-      anthropicKey: curator.anthropicConfigured(),
+      // Present AND believed to work: a key that Anthropic rejected (revoked,
+      // or the account is out of credit) on the last run is a human-fixable
+      // outage, which is the whole point of this check. It went unnoticed for
+      // a day once because only presence was checked. Cleared by the next
+      // successful run (outage.ts).
+      anthropicKey: curator.anthropicConfigured() && !outages.current(),
       // The owner token powers catalog search AND the owner gate, so on a
       // deployed host its absence is an outage, not a local-dev convenience.
       ownerToken: !DEPLOYED || spotify.isLoggedIn(),
@@ -478,8 +515,18 @@ app.get("/healthz", async (req, res) => {
       // `isLoggedIn(hostUser())` would answer "yes" on exactly the deploy
       // this check exists to notice.
       hostAccount: spotify.isLoggedIn("host"),
+      // Reported only. Unset means SESSION_KEY fell through its chain — see
+      // the [config] warning at the bottom of this file for why that matters.
+      sessionSecret: Boolean(process.env.SESSION_SECRET),
     },
-    process.uptime()
+    process.uptime(),
+    // `req.ip` as resolved through `trust proxy` (set to 1 above). This is
+    // the only way to learn from OUTSIDE whether Railway's proxy is really one
+    // hop: the owner curls /healthz and should see their own public address.
+    // A `100.x` or other private address means the hop count is wrong — every
+    // request is being attributed to the proxy, so the per-IP caps have
+    // collapsed into one shared counter. Owner-only, with the rest.
+    req.ip
   );
   const full = await isOwner(req);
   res.status(body.ok ? 200 : 503).json(full ? body : publicHealthBody(body));
@@ -680,7 +727,16 @@ app.get("/auth/status", async (req, res) => {
 // ── api ──────────────────────────────────────────────────────
 
 // SSE helpers — every event sent is driven by a real backend event.
-function sseInit(res: Response) {
+//
+// `openStreams` is what the SIGTERM handler at the bottom waits on. It counts
+// streams doing paid, already-charged work (generate, adjust, press) —
+// `drain: false` opts a stream out, and the only one that does is the owner's
+// log tail, which never ends on its own and would otherwise hold every
+// redeploy for the full ceiling; its client resumes with `since` anyway.
+// `close` fires after a normal end as well as an abort, so one handler
+// covers both and the count can't drift.
+let openStreams = 0;
+function sseInit(res: Response, { drain: counted = true }: { drain?: boolean } = {}) {
   res.writeHead(200, {
     "Content-Type": "text/event-stream",
     "Cache-Control": "no-cache",
@@ -688,6 +744,12 @@ function sseInit(res: Response) {
     "X-Accel-Buffering": "no",
   });
   res.flushHeaders?.();
+  if (counted) {
+    openStreams++;
+    res.once("close", () => {
+      openStreams--;
+    });
+  }
 }
 
 function sseSend(res: Response, event: string, data?: unknown) {
@@ -710,7 +772,8 @@ app.get("/api/logs", async (req, res) => {
 // or dropping lines it already has.
 app.get("/api/logs/stream", async (req, res) => {
   if (!(await requireOwner(req, res))) return;
-  sseInit(res);
+  // Not counted for the SIGTERM drain — see sseInit.
+  sseInit(res, { drain: false });
   for (const entry of logbook.since(Number(req.query.since) || 0)) {
     sseSend(res, "log", entry);
   }
@@ -853,6 +916,10 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
       onTrack: (index, t) =>
         sseSend(res, "track", { index, artist: t.artist, title: t.title }),
     });
+    // The model answered: whatever /healthz remembered about the key is
+    // stale. Cleared HERE, before resolution — a Spotify failure after this
+    // point must not keep blaming a key that just worked.
+    outages.clear();
     sseSend(res, "curated", { count: card.tracks.length, title: card.title });
     card.tracks = await spotify.resolveTracks(
       card.tracks,
@@ -880,6 +947,10 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
     }
     metrics.count("errors");
     console.error("[generate/stream] failed:", err.message);
+    // Classify before choosing copy: an Anthropic auth/billing failure is
+    // remembered for /healthz and told to the visitor as "our side, not yours";
+    // a rate limit or overload as "busy". Neither is "try the same prompt".
+    const upstream = outages.note(err, err instanceof Anthropic.APIError);
     // `detail` is the raw upstream message — things like
     // "Spotify API 502 on /v1/search: …". The OWNER still gets it on screen,
     // because the logbook it would otherwise send them to is one tap away in
@@ -890,10 +961,17 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
     // stranger. The detail is in the log either way.
     sseSend(res, "error", {
       // Quota exhaustion is a wait-until-tomorrow condition, not a bug to retry
-      // into — say so, or the obvious response is to hammer the button.
+      // into — say so, or the obvious response is to hammer the button. The
+      // `quota` flag is the same verdict as a boolean (spotify.ts sets
+      // `quotaExceeded` on the error when the breaker opens) so the client can
+      // render a sold-out state instead of a crash without matching on prose.
       message: err.quotaExceeded
         ? "Spotify's daily limit for this app is used up."
-        : "Generation failed.",
+        : (upstream.message ?? "Generation failed."),
+      ...(err.quotaExceeded ? { quota: true } : {}),
+      // `outage`: the message IS the whole story — the client shows it as the
+      // headline instead of the generic "dropped the needle" line.
+      ...(upstream.message ? { outage: true } : {}),
       ...((await isOwner(req)) ? { detail: err.message } : {}),
     });
   }
@@ -961,6 +1039,7 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
           title: c.track.title,
         }),
     });
+    outages.clear(); // the model answered — same as /api/generate/stream
     sseSend(res, "adjusted", { count: diff.changes.length });
     // Resolve ONLY the replacements; remap the subset index back to the
     // track's position on the card so the client updates the right row.
@@ -1000,11 +1079,15 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
     }
     metrics.count("errors");
     console.error("[adjust/stream] failed:", err.message);
-    // detail is owner-only, same reasoning as /api/generate/stream
+    // detail is owner-only, `quota` is the breaker verdict as a boolean and
+    // `outage` is the Anthropic verdict — same reasoning as /api/generate/stream
+    const upstream = outages.note(err, err instanceof Anthropic.APIError);
     sseSend(res, "error", {
       message: err.quotaExceeded
         ? "Spotify's daily limit for this app is used up."
-        : "Adjustment failed.",
+        : (upstream.message ?? "Adjustment failed."),
+      ...(err.quotaExceeded ? { quota: true } : {}),
+      ...(upstream.message ? { outage: true } : {}),
       ...((await isOwner(req)) ? { detail: err.message } : {}),
     });
   }
@@ -1127,6 +1210,49 @@ if (DEPLOYED && !APP_SECRET) {
   );
 }
 
-app.listen(PORT, HOST, () => {
+if (DEPLOYED && !process.env.SESSION_SECRET) {
+  // Which link of the SESSION_KEY chain (above) it landed on, so the warning
+  // names the actual exposure. In public mode that is SPOTIFY_CLIENT_SECRET —
+  // the one credential doing two jobs that the 2026-09-01 audit removed, back
+  // by omission: rotating the Spotify secret logs everyone out, and a leak of
+  // either forges the other. The random fallback is not a leak, but on a
+  // deployed host every restart logs every user out.
+  const fallback = APP_SECRET
+    ? "APP_SECRET (the shared door code is also signing sessions)"
+    : process.env.SPOTIFY_CLIENT_SECRET
+      ? "SPOTIFY_CLIENT_SECRET (one credential doing two jobs — the reuse the " +
+        "audit removed)"
+      : "a per-boot random key (every redeploy logs every user out)";
+  console.warn(
+    `[config] SESSION_SECRET is unset on a deployed host — sessions are signed ` +
+      `with ${fallback}. Set SESSION_SECRET (README → Deploy).`
+  );
+}
+
+const server = app.listen(PORT, HOST, () => {
   console.log(`Mixtape POC server listening on http://${HOST}:${PORT}`);
+});
+
+// Railway sends SIGTERM on every redeploy. Before this handler, spotify.ts
+// exited on it at once, and any curator run mid-stream — already counted
+// against the visitor's cap — died with a generic failure. Now: stop taking
+// new connections, wait for the counted SSE streams (sseInit) to finish, up
+// to 25 s, then exit 143 — through process.exit, so the "exit" handlers
+// (metrics.flush here, the search-cache flush in spotify.ts) still run.
+// This only buys anything once Railway is told to wait as well:
+// RAILWAY_DEPLOYMENT_DRAINING_SECONDS defaults to 0, meaning SIGKILL follows
+// SIGTERM almost immediately. Set it to >= 30 (README → Deploy) so the 25 s
+// ceiling and the flush fit inside it. Reasoning and the bounded wait itself:
+// drain.ts.
+const DRAIN_MAX_MS = 25_000;
+process.once("SIGTERM", async () => {
+  console.log(`[process] SIGTERM — draining ${openStreams} open stream(s), up to ${DRAIN_MAX_MS}ms`);
+  server.close();
+  const r = await drain({ openStreams: () => openStreams, maxWaitMs: DRAIN_MAX_MS });
+  if (r.reason === "timeout") {
+    console.warn(`[process] drain timed out after ${r.waitedMs}ms with ${r.left} stream(s) open`);
+  } else {
+    console.log(`[process] drained in ${r.waitedMs}ms`);
+  }
+  process.exit(143);
 });

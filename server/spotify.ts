@@ -741,6 +741,16 @@ function scheduleCacheWrite() {
 // Railway redeploy (SIGTERM) and the eval harness (process.exit on its error
 // path) both hit this, and the eval harness is the biggest spender of all.
 // flushSearchCache is fully synchronous, so it is safe in an exit handler.
+//
+// Only SIGINT is handled here, and it exits at once: dev ctrl-C must stay
+// instant. SIGTERM is NOT — it is handled in index.ts, which drains the open
+// SSE streams first (a redeploy used to cut in-flight curator runs that were
+// already charged to the visitor's cap) and then calls process.exit, which
+// runs the "exit" handler below, so the cache is still flushed on that path.
+// Scripts that import this module without index.ts (evals/, scripts/) get
+// Node's default SIGTERM: immediate exit, no exit handlers — the eval
+// harness already flushes on its own error path, and nobody SIGTERMs a
+// one-shot script mid-run on purpose.
 let flushedOnExit = false;
 function flushOnce() {
   if (flushedOnExit) return;
@@ -749,12 +759,10 @@ function flushOnce() {
   flushSearchCache();
 }
 process.on("exit", flushOnce);
-for (const sig of ["SIGINT", "SIGTERM"] as const) {
-  process.on(sig, () => {
-    flushOnce();
-    process.exit(sig === "SIGINT" ? 130 : 143);
-  });
-}
+process.on("SIGINT", () => {
+  flushOnce();
+  process.exit(130);
+});
 
 // True when this query can be answered without spending quota. Both spenders
 // check it first — the curator's agent loop (curator.ts, `free`) and resolveTrack

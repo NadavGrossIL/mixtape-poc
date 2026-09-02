@@ -1,8 +1,9 @@
 # mixtape-poc
 
-Type a music prompt → Claude curates an 8-track mixtape with liner notes →
-tracks are resolved against Spotify → a record-sleeve card renders → save it
-to your Spotify account.
+Type a mood → Claude curates an 8-track mixtape with liner notes → every
+track is verified against Spotify → a record-sleeve card renders → one tap
+presses it as a real, public playlist on the Mixtape account → open it in
+Spotify and tap **+** to keep it. No Spotify login.
 
 The card is honest about hallucination: tracks the curator invented that
 don't resolve on Spotify are kept and marked `unverified` — the
@@ -32,19 +33,28 @@ In two terminals:
 
 ```sh
 cd server && npm run dev   # Express on http://127.0.0.1:8888
-cd client && npm run dev   # Vite — open the printed URL (http://localhost:5173)
+cd client && npm run dev   # Vite — open the printed URL (http://127.0.0.1:5173)
 ```
 
-Visit the Vite URL, connect Spotify, type a prompt, press it.
+Open it on `127.0.0.1`, not `localhost`: the session cookie is set on the
+host the server redirects to after OAuth (`CLIENT_URL`, default
+`http://127.0.0.1:5173`), and a browser on `localhost` never sees it — a
+connected account looks disconnected.
+
+Visit the Vite URL, type a prompt, press it. Nobody logs in to make a
+mixtape; the owner connects their own Spotify once (below) so the server has
+a token for catalog search.
 
 On the finished card you can:
 
 - **Refine** — a prompt box reworks the mixtape ("swap track 3 for something
   slower", "more 90s"); only changed tracks round-trip through the model, the
   rest survive byte-identical. Each track also has a one-tap ↻ swap.
-- **Drag to reorder** — the saved playlist follows the card's order.
-- **Press it** — saves the verified tracks as a private playlist in your
-  Spotify account. Track links deep-link into the installed Spotify app.
+- **Drag to reorder** — the pressed playlist follows the card's order.
+- **Press it** — presses the verified tracks as a public playlist on the
+  Mixtape host account; open it in Spotify and tap **+** to keep it (*Sharing*,
+  below). On desktop, track links deep-link into the installed Spotify app;
+  on phones they open Spotify's web page, which offers its own "Open app".
 
 Progress stages during generation are real backend events streamed over SSE —
 nothing is invented for show. Tracks appear one at a time because the card is
@@ -87,16 +97,25 @@ dev-only). Required env vars on the host:
 | `CLIENT_URL` | `/` |
 | `SPOTIFY_REDIRECT_URI` | `https://<app-host>/callback` — must also be registered in the Spotify dashboard |
 | `APP_SECRET` | optional — set it for **invite-only** mode (a cookie gate; the invite link is `/?key=<APP_SECRET>`). Unset = public mode: the daily caps below are the protection |
+| `SESSION_SECRET` | signs the identity cookie. Set it (any long random value: `openssl rand -hex 32`): the fallback is `APP_SECRET` then `SPOTIFY_CLIENT_SECRET`, and letting one credential do two jobs means rotating Spotify logs everyone out. A deployed host warns at boot when it is unset |
+| `DEPLOYED` | `1` forces "reachable from outside" on. It is inferred from a non-loopback bind, an `APP_SECRET` or a remote `CLIENT_URL` — set it explicitly behind a proxy that fronts a loopback bind, or the owner gate stays open to everyone |
 | `SPOTIFY_CLIENT_ID` / `SPOTIFY_CLIENT_SECRET` / `ANTHROPIC_API_KEY` | as in local dev |
-| `SPOTIFY_REFRESH_TOKEN` | the OWNER's token — paste from `server/.tokens.json` after one login; survives the host's ephemeral disk and powers catalog search |
+| `SPOTIFY_REFRESH_TOKEN` | the OWNER's token — `node scripts/list-tokens.ts --reveal` after one login; survives the host's ephemeral disk and powers catalog search |
 | `SPOTIFY_HOST_REFRESH_TOKEN` | the **Mixtape host account's** token — every mixtape is pressed into this account, public. Unset = the owner's account hosts them (fine for testing, not for sharing widely). See *Sharing* below |
 | `DATA_DIR` | optional — a writable directory for the counters (`.metrics.json`). Unset, they sit on the host's ephemeral disk and reset on every redeploy; point it at a Railway volume to keep the history |
 | `DAILY_GENERATIONS_PER_USER` | optional, default 25 — per-account generate/adjust cap (Anthropic spend and Spotify's daily quota are shared by everyone) |
-| `GUEST_DAILY_CAP` / `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 5 / 10 / 12 — caps for visitors who never connect Spotify: per guest cookie, per IP, and all guests together (the last one bounds the bill). Pressing a playlist is capped separately, at these numbers plus headroom (`server/pressCaps.ts`) |
+| `GUEST_DAILY_CAP` / `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 5 / 10 / 12 — caps for visitors who never connect Spotify: per guest cookie, per IP, and all guests together (the last one bounds the bill). Pressing a playlist is capped separately, at these numbers plus headroom (`server/pressCaps.ts`). All caps are in-memory: they refill on every restart or redeploy |
+
+Also set `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=30` on the service. On SIGTERM
+the server keeps open SSE streams alive for up to 25 s so in-flight runs
+finish, but Railway's default drain window is 0 s
+([docs](https://docs.railway.com/deployments/reference)), so without it a
+redeploy kills every run in progress instantly.
 
 Log in once (from any device — the callback is same-origin in production),
-copy the owner `refresh_token` from `.tokens.json` into the env var, and the
-server re-auths itself on every cold start from then on.
+run `node scripts/list-tokens.ts --reveal`, put the owner `refresh_token`
+in the env var, and the server re-auths itself on every cold start from
+then on.
 
 ## Monitoring
 
@@ -105,17 +124,33 @@ server re-auths itself on every cold start from then on.
 "the monitor can't reach it" and "it's down" have to be different answers.
 
 ```json
-{ "ok": true, "uptime": 5231,
-  "checks": { "spotifyCredentials": true, "anthropicKey": true,
-              "ownerToken": true, "hostAccount": true } }
+{ "ok": true }
 ```
+
+That is the anonymous body. The owner (signed-in owner cookie) gets the
+readings behind it — booleans about configuration tell a stranger which
+credentials exist, and `uptime` says when the in-memory caps last reset:
+
+```json
+{ "ok": true, "uptime": 5231, "ip": "203.0.113.7",
+  "checks": { "spotifyCredentials": true, "anthropicKey": true,
+              "ownerToken": true, "hostAccount": true, "sessionSecret": true } }
+```
+
+`ip` is the caller's address as Express resolved it through `trust proxy`:
+curl it from outside and you should see your own public address. A private or
+`100.x` one means the proxy is more hops than the app was told and the
+per-IP caps have collapsed into one shared counter.
 
 **200 when `ok`, 503 when not**, so a free uptime monitor needs no keyword
 rules — the default "is it 200?" check is the whole configuration. A 503 is
 never "a request failed"; it means the deployment is misconfigured in a way
 only a human can clear, and it will keep saying so until one does. Three
 checks decide it: `spotifyCredentials` and `anthropicKey` (the client id /
-secret / API key the app cannot run without), and `ownerToken`, which on a
+secret / API key the app cannot run without — and `anthropicKey` also goes
+false when the last run was *rejected* by Anthropic, a revoked key or an
+empty credit balance, until a run succeeds again; `server/outage.ts`), and
+`ownerToken`, which on a
 deployed host means `SPOTIFY_REFRESH_TOKEN` resolved to a real token —
 without it catalog search is dead and the owner-only routes are shut to
 everyone, per *Sharing* below. Run locally, `ownerToken` is always true: a
@@ -126,6 +161,8 @@ on its own — `SPOTIFY_HOST_REFRESH_TOKEN`, not the owner fallback that serves
 in its place — so false is an honest "no dedicated Mixtape account here",
 meaning mixtapes press into the owner's own account. That is degraded, not
 down, and worth seeing in the payload without waking anyone.
+`sessionSecret` is the same kind of reading: false means `SESSION_SECRET` is
+unset and cookies are signed with a fallback (the server also warns at boot).
 
 Spotify's daily quota is deliberately **not** in here. It is a
 wait-until-tomorrow condition that clears itself, and paging someone at 3am for
@@ -228,8 +265,8 @@ Being locked out of your own logs is the safe half of that trade, and
 ## Tests
 
 ```sh
-cd server && npm test      # unit tests: streaming JSON extraction, track matching
-node evals/selftest.ts     # eval-harness enforcement + aggregation, offline
+cd server && npm test      # unit tests (streaming JSON extraction, track matching, caps)
+                           # + evals/selftest.ts (harness enforcement + aggregation); all offline
 ```
 
 Tests and evals answer different questions and neither replaces the other.
@@ -281,6 +318,10 @@ Generation, judging and reliability cost real API money; the selftest doesn't.
 - `docs/reviews/` — architecture + code review (2026-08-14): production
   path, framework decisions, and the reasoning behind them.
 - `docs/research/` — design research with citations (refine-flow UX/API).
+- `docs/decisions/` — three ADRs; ADR 0002 explains the host-account design
+  (public playlists on a Mixtape account instead of per-user saves).
+- `docs/playbooks/` — how to add a route, add an eval case, change the
+  curator prompt.
 
 ## Constraints worth knowing
 
@@ -310,7 +351,7 @@ thing a schema checks.
 
 Spotify dev-mode apps are capped at 5 allowlisted users, permanently, for
 individual developers — so "sign in with Spotify" can never be this app's
-growth path. Multi-user login exists (see "Sharing with friends") but only
+growth path. Multi-user login exists (see *Sharing*) but only
 inside that cap; the production shape for everyone else remains
 owner-generates / anyone-views-the-shared-card. Details in the architecture
 review.

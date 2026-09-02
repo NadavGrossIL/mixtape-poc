@@ -12,7 +12,7 @@ file is a map. The reasoning lives next to the code as comments; read those.
   Claude agent, prompts and tool schemas · `spotify.ts` OAuth, search cache,
   quota breaker, playlist writes · `caps.ts` `pressCaps.ts` `session.ts`
   `usage.ts` `metrics.ts` `health.ts` `logbook.ts` `searchBudget.ts`
-  `httpOrigin.ts` `trackUris.ts` `gateThrottle.ts` pure helpers · `test/`
+  `httpOrigin.ts` `trackUris.ts` `gateThrottle.ts` `drain.ts` `outage.ts` pure helpers · `test/`
   unit tests (`node:test`). `pressCaps.ts` caps `/api/playlist`, the one paid
   route reachable without the curator; `metrics.ts` is the per-day funnel
   (`makeMetrics({ dir, today })`, `DATA_DIR` or beside the code — an
@@ -24,11 +24,19 @@ file is a map. The reasoning lives next to the code as comments; read those.
   against a documented 8-20 and trip the quota breaker for everyone);
   `httpOrigin.ts` is the cross-site rule for the state-changing POSTs;
   `trackUris.ts` validates `uris` before Spotify sees them; `gateThrottle.ts`
-  rate-limits `/gate` guessing. Session cookies now carry a signed issued-at
+  rate-limits `/gate` guessing. `drain.ts` (2026-09-02) is the bounded wait
+  the SIGTERM handler in `index.ts` uses so a Railway redeploy lets in-flight
+  SSE runs finish instead of cutting them; inert until
+  `RAILWAY_DEPLOYMENT_DRAINING_SECONDS` ≥ 30 on the service. `outage.ts` (2026-09-02) classifies an Anthropic
+  auth/billing failure so `/healthz` goes 503 for it and the visitor is told
+  "our side, not yours" — every generation had been failing on an empty
+  credit balance while `/healthz` stayed green, because it only checked that
+  the key was present. Session cookies now carry a signed issued-at
   and expire (`SESSION_MAX_AGE_MS` in `session.ts`), so the `Set-Cookie`
   `Max-Age` in `index.ts` is derived from it rather than picked separately,
-  and `SESSION_SECRET` is the signing key — the old fallback to
-  `SPOTIFY_CLIENT_SECRET` made one credential do two jobs.
+  and `SESSION_SECRET` is the signing key; unset, it still falls back to
+  `APP_SECRET` then `SPOTIFY_CLIENT_SECRET` (one credential doing two jobs),
+  which a deployed host now warns about at boot.
 - `client/` — Vite + React 18, one screen: `src/App.tsx`, tokens in
   `src/styles.css`. Dev proxy in `vite.config.ts`; served from Express when built.
 - `evals/` — truthfulness (`generate` → `judge` → `aggregate`, plus
@@ -80,12 +88,10 @@ are not in CI — they cost money (`docs/playbooks/change-the-curator-prompt.md`
   including `cat server/.env` — and the same edit disables step 0, since
   `gate.sh` is what calls it. `factory.config.json` sets the *next* run's
   `permissionMode` and budget, which no in-run check would ever see.
-  **Those three are enforced by `scripts/protected-check.sh` only** — the
-  matching `Edit(...)` rules in `.claude/settings.json` are not there yet
-  (never tier). So the gate catches them, but the Edit tool will not prompt
-  on them. The diff a human needs, with the two other never-tier patches and
-  the eval run still owed, is
-  `docs/factory/security-never-tier-patches-2026-09-01.md`.
+  Both layers — the `scripts/protected-check.sh` gate check and the matching
+  `Edit(...)` rules in `.claude/settings.json` — are in place since
+  2026-09-01 (`d768ccf`); the only thing still owed from that pass is the
+  eval run (`docs/factory/security-never-tier-patches-2026-09-01.md`).
   Ask rules stop the Edit
   tool only — a Bash redirect walks past them — so `npm run gate` step 0
   fails when any of them differs from `origin/main`; a human passes it

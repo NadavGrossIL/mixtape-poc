@@ -2,6 +2,7 @@
   "name": "mixtape-poc",
   "version": "0.1.0",
   "private": true,
+  "license": "MIT",
   "description": "Prompt \u2192 Claude-curated mixtape card \u2192 real Spotify playlist",
   "type": "module",
   "engines": {

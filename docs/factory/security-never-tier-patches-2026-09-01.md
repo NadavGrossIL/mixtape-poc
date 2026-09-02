@@ -1,15 +1,24 @@
-# Never-tier patches — prepared, NOT applied
+# Never-tier patches — from the 2026-09-01 security pass
+
+> **Status (2026-09-02): applied.** A human landed every patch below —
+> `d768ccf` (`.claude/settings.json`, `.github/workflows/ci.yml`, the
+> `.claude/rules/curator.md` rule) and `8a79ce5` (`server/.env.example`).
+> The one remaining item is the eval run owed for the `SYSTEM` prompt change:
+> it is half-done — `evals/runs/2026-09-01T16-02-29-317Z/` holds `cards.json`
+> (generated) but no judge or aggregate output yet. The diffs below stay as
+> the record of what was proposed.
 
 From the 2026-09-01 security pass (`docs/factory/handoff-security-2026-09-01.md`,
 implemented in `7e4d6e9`). These findings land on paths the agent tier forbids it
 to edit — `.claude/**`, `.github/**`, `server/.env*` — so the fixes were prepared
-rather than applied. **Nothing here is in effect.** Each is a human action.
+by the agent and were not applied at the time. Each was a human action, since
+taken.
 
-A note on #20 in particular: the `scripts/protected-check.sh` half of it **is**
-applied, so `npm run gate` already fails when `scripts/**`, a `package.json` or
-`factory.config.json` changes. The `.claude/settings.json` half below is what
-makes the *Edit tool* prompt on them. Until it lands, the gate catches those
-paths and the permission rules do not.
+A note on #20 in particular: the `scripts/protected-check.sh` half of it was
+applied in the same pass, so `npm run gate` already failed when `scripts/**`, a
+`package.json` or `factory.config.json` changed. The `.claude/settings.json`
+half below is what makes the *Edit tool* prompt on them; until `d768ccf` landed,
+the gate caught those paths and the permission rules did not.
 
 ## #20 — `.claude/settings.json`: close the `gate.sh` shell escape
 
@@ -21,8 +30,9 @@ disables `protected-check.sh`, because `gate.sh` is what calls it.
 `factory.config.json` is likewise free tier and sets the *next* run's
 `permissionMode` and `maxBudgetUsd`.
 
-The `scripts/protected-check.sh` half of this fix IS applied (the `ASK_TIER`
-regex now covers these paths). This half is not:
+The `scripts/protected-check.sh` half of this fix was applied in `7e4d6e9` (the
+`ASK_TIER` regex covers these paths). This half was not at the time; it landed
+in `d768ccf`:
 
 ```diff
 --- a/.claude/settings.json
@@ -106,7 +116,8 @@ rule, plus fenced user blocks and a labelled tool result). That is a
 `touches_prompt` change under `docs/playbooks/change-the-curator-prompt.md`,
 which means **one eval run, human-read**, against `evals/thresholds.json`. It was
 deliberately not run here — evals cost money and are not in CI. The debt is real
-and outstanding.
+and still outstanding: `generate` ran on 2026-09-01 (`cards.json` in
+`evals/runs/2026-09-01T16-02-29-317Z/`); `judge` and `aggregate` have not.
 
 **`.claude/rules/curator.md` is now stale in three places** (never tier, so it
 needs a human):

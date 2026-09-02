@@ -14,6 +14,7 @@ const ALL_GOOD: HealthChecks = {
   anthropicKey: true,
   ownerToken: true,
   hostAccount: true,
+  sessionSecret: true,
 };
 
 test("every check passing is ok", () => {
@@ -38,9 +39,23 @@ test("hostAccount failing alone is reported but stays ok", () => {
   assert.equal(body.checks.hostAccount, false);
 });
 
+test("sessionSecret failing alone is reported but stays ok", () => {
+  // Unset SESSION_SECRET means the signing key fell through to a shared
+  // credential — worth reading off the health body, not worth a 3am page.
+  const body = healthBody({ ...ALL_GOOD, sessionSecret: false }, 1);
+  assert.equal(body.ok, true, "a fallback session key is degraded, not down");
+  assert.equal(body.checks.sessionSecret, false);
+});
+
 test("every check failing is not ok", () => {
   const body = healthBody(
-    { spotifyCredentials: false, anthropicKey: false, ownerToken: false, hostAccount: false },
+    {
+      spotifyCredentials: false,
+      anthropicKey: false,
+      ownerToken: false,
+      hostAccount: false,
+      sessionSecret: false,
+    },
     1
   );
   assert.equal(body.ok, false);
@@ -65,8 +80,23 @@ test("uptime is always an integer", () => {
   }
 });
 
-test("the body carries exactly ok, uptime and checks", () => {
-  assert.deepEqual(Object.keys(healthBody(ALL_GOOD, 1)).sort(), ["checks", "ok", "uptime"]);
+test("the body carries exactly ok, uptime, checks and ip", () => {
+  assert.deepEqual(Object.keys(healthBody(ALL_GOOD, 1, "1.2.3.4")).sort(), [
+    "checks",
+    "ip",
+    "ok",
+    "uptime",
+  ]);
+});
+
+test("ip is passed through verbatim, and a missing one is null, not undefined", () => {
+  // The owner diffs this against what they expect from outside; the key has
+  // to be there to diff, whatever Express resolved.
+  assert.equal(healthBody(ALL_GOOD, 1, "100.64.0.7").ip, "100.64.0.7");
+  assert.equal(healthBody(ALL_GOOD, 1, undefined).ip, null);
+  assert.equal(healthBody(ALL_GOOD, 1, "").ip, null);
+  assert.equal(healthBody(ALL_GOOD, 1).ip, null);
+  assert.ok("ip" in healthBody(ALL_GOOD, 1));
 });
 
 // ── what a stranger sees ─────────────────────────────────────
@@ -87,16 +117,24 @@ test("the public body never leaks checks or uptime, whatever the state", () => {
     { ...ALL_GOOD, anthropicKey: false },
     { ...ALL_GOOD, ownerToken: false },
     { ...ALL_GOOD, hostAccount: false },
-    { spotifyCredentials: false, anthropicKey: false, ownerToken: false, hostAccount: false },
+    { ...ALL_GOOD, sessionSecret: false },
+    {
+      spotifyCredentials: false,
+      anthropicKey: false,
+      ownerToken: false,
+      hostAccount: false,
+      sessionSecret: false,
+    },
   ];
   for (const checks of states) {
     for (const uptime of [0, 3, 86_400]) {
-      const body = publicHealthBody(healthBody(checks, uptime));
+      const body = publicHealthBody(healthBody(checks, uptime, "100.64.0.7"));
       const seen = JSON.stringify(body);
       assert.deepEqual(Object.keys(body), ["ok"], `leaked a field: ${seen}`);
       assert.ok(!seen.includes("uptime"), `leaked uptime: ${seen}`);
       assert.ok(!seen.includes("check"), `leaked checks: ${seen}`);
-      assert.ok(!/host|anthropic|spotify|token/i.test(seen), `leaked config: ${seen}`);
+      assert.ok(!seen.includes("100.64"), `leaked the caller's resolved ip: ${seen}`);
+      assert.ok(!/host|anthropic|spotify|token|session/i.test(seen), `leaked config: ${seen}`);
     }
   }
 });
@@ -109,8 +147,9 @@ test("the public body keeps the monitor's signal — the ok bit is unchanged", (
 });
 
 test("reducing the body does not mutate the full one the owner gets", () => {
-  const full = healthBody(ALL_GOOD, 42);
+  const full = healthBody(ALL_GOOD, 42, "1.2.3.4");
   publicHealthBody(full);
-  assert.deepEqual(Object.keys(full).sort(), ["checks", "ok", "uptime"]);
+  assert.deepEqual(Object.keys(full).sort(), ["checks", "ip", "ok", "uptime"]);
   assert.equal(full.uptime, 42);
+  assert.equal(full.ip, "1.2.3.4");
 });

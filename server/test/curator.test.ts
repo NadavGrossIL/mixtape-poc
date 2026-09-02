@@ -220,6 +220,21 @@ test("toTrackList still reads a plain array", () => {
   assert.deepStrictEqual(toTrackList(null), []);
 });
 
+test("rejects the observed all-\"none\" card (the NO_REF sentinel leaking into every field)", () => {
+  // Seen on prod 2026-09-02: ref, artist, title and note all "none" in all
+  // eight slots. "none" is legitimate in `ref` alone.
+  const tracks = Array.from({ length: 8 }, () => ({
+    ref: "none",
+    artist: "none",
+    title: "none",
+    note: "none",
+  }));
+  assert.match(String(cardIncompleteReason(card({ tracks: keyed(tracks) }))), /track 1/);
+  // and "none" in `ref` with real prose elsewhere is still a complete card
+  const honest = full().map((t) => ({ ...t, ref: "none" }));
+  assert.strictEqual(cardIncompleteReason(card({ tracks: keyed(honest) })), null);
+});
+
 test("rejects a placeholder row hiding in a full-length list", () => {
   const tracks = full();
   tracks[4] = { artist: "TBD", title: "Title 4", note: "Note 4" };

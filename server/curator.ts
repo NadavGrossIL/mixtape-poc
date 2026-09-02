@@ -372,7 +372,12 @@ You are adjusting an existing mixtape, not building a new one:
 
 // Stubs the model reaches for when it commits a card it hasn't really
 // written. "placeholder" in every field of a lone track was observed live.
-const STUB_RE = /^(placeholder|tbd|todo|n\/?a|unknown|\.{2,})$/i;
+// "none" joined the list 2026-09-02: it is the documented NO_REF sentinel
+// for `ref`, and on prod the model applied it to artist, title and note as
+// well — a whole card of "none" that this check waved through and the route
+// shipped, eight unverified rows. isFilled never sees `ref`, so listing it
+// here costs the escape hatch nothing.
+const STUB_RE = /^(placeholder|tbd|todo|n\/?a|none|null|undefined|unknown|-+|\.{2,})$/i;
 
 function isFilled(v: unknown): boolean {
   return typeof v === "string" && v.trim() !== "" && !STUB_RE.test(v.trim());

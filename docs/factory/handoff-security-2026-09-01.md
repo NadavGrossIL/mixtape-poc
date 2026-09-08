@@ -119,7 +119,8 @@ anonymous callers; keep `checks` and `uptime` behind `requireOwner`. Keep
 them by hand rather than pulling in helmet (this server has three dependencies and
 that is a feature). The page loads Google Fonts and iframes `open.spotify.com`, so
 a real CSP is writable — verify the app still renders and the Spotify embed still
-loads before you commit.
+loads before you commit. *(2026-09-08: the embed was removed from the pressed
+card and `frame-src` is now `'none'`; only the fonts check still applies.)*
 
 **6 · MEDIUM — no body size limit.** `express.json()` keeps its 100 KB default.
 Neither `prompt` nor `card.tracks` is length-capped, and because the curator's

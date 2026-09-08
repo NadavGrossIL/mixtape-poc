@@ -128,7 +128,8 @@ app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
 //     is all style attributes. Google Fonts serves the stylesheet itself.
 //   img-src data: + *.scdn.co — album art comes from Spotify's CDN at runtime;
 //     some inline SVG is data:.
-//   frame-src open.spotify.com — the playlist embed on the pressed card.
+//   frame-src 'none' — nothing on the page is framed. The Spotify playlist
+//     embed on the pressed card was the one exception until 2026-09-08.
 // In dev none of this reaches the page: Vite serves the client on :5173 and
 // only proxies the API here, so these headers ride the JSON and SSE responses.
 const CSP = [
@@ -138,7 +139,7 @@ const CSP = [
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https://*.scdn.co",
   "connect-src 'self'",
-  "frame-src https://open.spotify.com",
+  "frame-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",
   "form-action 'self'",

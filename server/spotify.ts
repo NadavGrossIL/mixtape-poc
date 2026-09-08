@@ -901,6 +901,11 @@ interface ResolvedFields {
   spotifyUri?: string;
   albumArt?: string | null;
   matchedName?: string;
+  // From the same catalog row that verified the track — what the card's
+  // stamp line (runtime, era) is built from. Never model-supplied; trimItem
+  // keeps duration_ms and release_date so cache-served rows carry them too.
+  durationMs?: number | null;
+  year?: number | null;
 }
 
 // Resolve one curated track against Spotify search (multi-strategy).
@@ -994,7 +999,16 @@ async function resolveTrack<T extends { artist: string; title: string; ref?: str
     spotifyUri: item.uri,
     albumArt,
     matchedName,
+    durationMs: typeof item.duration_ms === "number" ? item.duration_ms : null,
+    year: releaseYear(item.album?.release_date),
   };
+}
+
+// "1972-02-25" | "1972" | "" → 1972 | null. release_date_precision can be
+// year, month or day; the first four characters are the year in all three.
+function releaseYear(releaseDate: unknown): number | null {
+  const y = parseInt(String(releaseDate ?? "").slice(0, 4), 10);
+  return Number.isFinite(y) ? y : null;
 }
 
 // Compact catalog search backing the curator's search_spotify tool — just

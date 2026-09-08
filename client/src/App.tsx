@@ -1,4 +1,5 @@
 import {
+  Fragment,
   useEffect,
   useRef,
   useState,
@@ -36,6 +37,29 @@ interface Track {
   spotifyUri?: string | null;
   spotifyUrl?: string | null;
   albumArt?: string | null;
+  // from the catalog row that verified the track (spotify.ts resolveTrack)
+  durationMs?: number | null;
+  year?: number | null;
+}
+
+// The sleeve's stamp line. Runtime and era come from the resolved Spotify
+// rows — the same records that verified the tracks — never from the model.
+// Unverified tracks carry neither and won't be pressed, so the runtime is the
+// runtime of what actually lands in the playlist. A segment is dropped when
+// no track can supply it, so the line never says "0 MIN".
+function cardFacts(tracks: Track[]): string[] {
+  const ms = tracks.reduce((sum, t) => sum + (t.durationMs ?? 0), 0);
+  const years = tracks
+    .map((t) => t.year)
+    .filter((y): y is number => typeof y === "number");
+  const facts: string[] = [];
+  if (ms > 0) facts.push(`${Math.max(1, Math.round(ms / 60000))} MIN`);
+  if (years.length) {
+    const lo = Math.min(...years);
+    const hi = Math.max(...years);
+    facts.push(lo === hi ? String(lo) : `${lo}–${hi}`);
+  }
+  return facts;
 }
 
 interface MixCard {
@@ -206,12 +230,12 @@ const ACCENT_INK: Record<string, string> = {
   rust: "#7a5518",
 };
 
-// One static placeholder: the example chips carry the "what can I type"
-// teaching, so the box itself holds still. A second variant takes over when
-// a seed playlist is armed — the prompt is optional in that mode and the
-// placeholder is where that contract is stated.
-const PLACEHOLDER =
-  "a mood, a moment, an era — “songs for driving at night through 1984”";
+// One static placeholder that names the three prompt axes and stops there:
+// the example chips carry the "what can I type" teaching, so the box itself
+// holds still — a fifth example here read as a twin of the 2am-drive chip.
+// A second variant takes over when a seed playlist is armed — the prompt is
+// optional in that mode and the placeholder is where that contract is stated.
+const PLACEHOLDER = "a mood, a moment, an era…";
 const SEEDED_PLACEHOLDER =
   "optional: add a twist — “more instrumental, nothing in english…”";
 
@@ -249,6 +273,12 @@ function debugRequested(): boolean {
 }
 
 const SHOW_LOGS = import.meta.env.DEV || debugRequested();
+
+// Autofocus the prompt only where a blinking cursor is the cheapest "act
+// here" signal and costs nothing: a pointer device. On a phone it would raise
+// the keyboard over the example chips before the visitor has read them.
+const AUTOFOCUS_PROMPT =
+  typeof window !== "undefined" && !!window.matchMedia?.("(hover: hover)").matches;
 
 const UNVERIFIED_TITLE =
   "Spotify couldn't confirm this track exists — the curator may have " +
@@ -650,7 +680,6 @@ export default function LinerNotes() {
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
-  const [playlistId, setPlaylistId] = useState<string | null>(null);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [copied, setCopied] = useState<"link" | "tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
@@ -891,7 +920,7 @@ export default function LinerNotes() {
     // a seed playlist alone is a valid ask ("just like this one")
     if (!thePrompt && !seedPlaylist) {
       setInputHint(
-        "Type a vibe first — a mood, a moment, an era — or start from one of your playlists."
+        "Type a vibe first — a mood, a moment, an era — or start from a playlist."
       );
       inputRef.current?.focus();
       return;
@@ -903,7 +932,6 @@ export default function LinerNotes() {
     setBooked(false);
     setCard(null);
     setPlaylistUrl(null);
-    setPlaylistId(null);
     setSavedToLibrary(false);
     setCopied(null);
     setSaveError(null);
@@ -1165,7 +1193,6 @@ export default function LinerNotes() {
       }
       // widened initializers, same reason as in generate
       let url = null as string | null;
-      let id = null as string | null;
       let saved = false;
       let streamError = null as string | null;
       await readSSE<SaveStreamEvent>(response, (event, data) => {
@@ -1173,7 +1200,6 @@ export default function LinerNotes() {
         else if (event === "adding") setSaveStage(`ADDING ${data?.count} TRACKS…`);
         else if (event === "done") {
           url = data?.playlistUrl ?? null;
-          id = data?.playlistId ?? null;
           saved = Boolean(data?.saved);
         } else if (event === "error") streamError = data?.message || "save failed";
       });
@@ -1185,7 +1211,6 @@ export default function LinerNotes() {
           : "Pressed. Open it in Spotify and tap plus to keep it."
       );
       setPlaylistUrl(url);
-      setPlaylistId(id);
       setSavedToLibrary(saved);
     } catch (e) {
       console.error(e);
@@ -1370,6 +1395,7 @@ export default function LinerNotes() {
                 >
                   <textarea
                     ref={inputRef}
+                    autoFocus={AUTOFOCUS_PROMPT}
                     value={prompt}
                     onChange={(e) => {
                       setPrompt(e.target.value);
@@ -1629,14 +1655,15 @@ export default function LinerNotes() {
                   </div>
                 </div>
 
-                {/* the allowlisted few connect here; it is deliberately the
-                    quietest line on the screen and sits below the examples —
-                    the product does not need it, and it cannot be offered to
-                    everyone (Spotify caps dev-mode apps at 5 accounts). It
-                    names the cap outright: "on the list?" read like a
-                    waitlist, and a stranger who took it up hit OAuth and a
-                    dev-mode rejection. */}
-                {loggedIn === false && (
+                {/* the allowlisted few connect here. It cannot be offered to
+                    everyone (Spotify caps dev-mode apps at 5 accounts), and
+                    "5 test accounts" is internal vocabulary on a public page,
+                    so it only renders in dev or behind ?debug — the same door
+                    as the log console. The five who have an account know the
+                    door; a stranger never sees a line that reads as "this is
+                    a test". The wording stays literal: "on the list?" once
+                    read like a waitlist and sent strangers into OAuth. */}
+                {loggedIn === false && SHOW_LOGS && (
                   <div className="connect-note">
                     already one of the 5 test accounts?{" "}
                     <a href="/auth/login" className="connect-link">
@@ -1713,15 +1740,30 @@ export default function LinerNotes() {
               </div>
 
               <div className="card-body">
+                {/* facts and date in two spans so a narrow card wraps at the
+                    date; each fact is its own no-wrap span so a line never
+                    breaks inside "1984–2018" */}
                 <div className="eyebrow">
-                  SIDE A · {card.tracks.length} TRACKS · CUT{" "}
-                  {new Date()
-                    .toLocaleDateString("en-GB", {
-                      day: "2-digit",
-                      month: "short",
-                      year: "2-digit",
-                    })
-                    .toUpperCase()}
+                  <span>
+                    {["SIDE A", `${card.tracks.length} TRACKS`, ...cardFacts(card.tracks)].map(
+                      (fact, i) => (
+                        <Fragment key={fact}>
+                          {i > 0 && " · "}
+                          <span className="fact">{fact}</span>
+                        </Fragment>
+                      )
+                    )}
+                  </span>
+                  <span>
+                    CUT{" "}
+                    {new Date()
+                      .toLocaleDateString("en-GB", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "2-digit",
+                      })
+                      .toUpperCase()}
+                  </span>
                 </div>
                 <h2 className="card-title" tabIndex={-1} ref={cardTitleRef}>
                   {card.title}
@@ -1871,7 +1913,7 @@ export default function LinerNotes() {
                 <button
                   onClick={saveToSpotify}
                   disabled={saving || adjusting}
-                  className="btn-press"
+                  className="btn-press press-cta"
                   style={{ marginTop: 24 }}
                 >
                   {/* the brand verb is spent exactly here — the action that
@@ -1936,18 +1978,11 @@ export default function LinerNotes() {
                     {copied === "share" ? "copied ✓" : "share"}
                   </button>
                 </div>
-                {playlistId && (
-                  <iframe
-                    className="pressed-embed"
-                    title={`${card.title} on Spotify`}
-                    src={`https://open.spotify.com/embed/playlist/${playlistId}?theme=0`}
-                    width="100%"
-                    height="352"
-                    frameBorder="0"
-                    allow="autoplay; clipboard-write; encrypted-media; fullscreen; picture-in-picture"
-                    loading="lazy"
-                  />
-                )}
+                {/* no embedded player here (removed 2026-09-08): it repeated
+                    the track list above, ran 352px tall on a phone, and its
+                    one unique control — the save heart — needs a Spotify
+                    cookie inside a cross-site iframe, which Safari and iOS
+                    block. OPEN IN SPOTIFY is the listen action. */}
                 <details className="pressed-mine">
                   <summary>want your own editable copy?</summary>
                   <p>
@@ -1975,7 +2010,6 @@ export default function LinerNotes() {
               onClick={() => {
                 setCard(null);
                 setPlaylistUrl(null);
-                setPlaylistId(null);
                 setSavedToLibrary(false);
                 setCopied(null);
                 setSaveError(null);

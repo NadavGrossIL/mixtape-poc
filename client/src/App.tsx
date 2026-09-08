@@ -1674,6 +1674,20 @@ export default function LinerNotes() {
                 )}
 
                 <DeckHero />
+
+                {/* the credit: the quietest line on the screen, under the
+                    garnish. A visitor from the post knows who made it; a
+                    visitor from a shared link doesn't, and this is the one
+                    backlink to the maker. One name, one link, nothing that
+                    competes with the composer above it. */}
+                <a
+                  className="credit-line"
+                  href="https://www.linkedin.com/in/nadavgr/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  made by Nadav Gross
+                </a>
               </>
             )}
           </>

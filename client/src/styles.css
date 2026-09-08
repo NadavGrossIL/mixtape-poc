@@ -1632,6 +1632,21 @@
 .connect-link:hover {
   color: var(--ink);
 }
+/* the maker credit under the cassette: the connect-note's tier (11px,
+   ink-faint), a link only on hover so it reads as a colophon, not a CTA */
+.credit-line {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 28px;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.credit-line:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
 
 /* pasted-link seed: the same field as the picker's filter, plus a submit */
 .seed-paste {

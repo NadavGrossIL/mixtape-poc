@@ -7,6 +7,7 @@
 import "../env.ts";
 import { createAgent, tool } from "langchain";
 import * as z from "zod";
+import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
 import { searchCatalog } from "../spotify.ts";
 
 // 1. The tool: the existing Spotify search, wrapped for LangChain.
@@ -39,3 +40,7 @@ for (const m of result.messages) {
   const text = typeof m.content === "string" ? m.content : JSON.stringify(m.content);
   console.log(`\n[${m.type}]`, calls.length ? `asks: ${calls.join(", ")}` : text.slice(0, 300));
 }
+
+// LangSmith tracing (on when LANGSMITH_TRACING=true in .env) sends the trace
+// in the background. Wait for it, or this short script exits before it lands.
+await awaitAllCallbacks();

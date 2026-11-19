@@ -24,6 +24,7 @@ import {
 } from "langchain";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
+import { MemorySaver } from "@langchain/langgraph";
 import { recallByRef, searchCatalog } from "../spotify.ts";
 import {
   MODEL,
@@ -33,6 +34,7 @@ import {
   generateUserContent,
   makeGroundingGate,
   catalogResultContent,
+  fence,
   toTrackList,
 } from "../curator.ts";
 import type { MixtapeCard } from "../curator.ts";
@@ -92,6 +94,13 @@ const Card = z.object({
 const SEARCH_LIMIT = Number(process.env.LC_SEARCH_LIMIT) || 20;
 const ROUND_LIMIT = 8;
 
+// Learning step 4: memory. The checkpointer is the notebook — after every
+// round the whole conversation is saved in it, under a thread id. Invoke again
+// with the same thread id and the agent continues that conversation.
+// MemorySaver keeps it in this process only (gone on restart); a database
+// checkpointer would be a one-line swap.
+const memory = new MemorySaver();
+
 // The check, as our own middleware. The rules are curator.ts's, unchanged:
 // makeGroundingGate(cardIncompleteReason) — 8 filled slots, nothing hollow,
 // and note facts that match the search results, with at most 2 send-backs.
@@ -105,14 +114,17 @@ function checkMiddleware(
   // Fresh per run: the gate counts its own send-backs.
   const check = makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef });
   let attempt = 0;
+  // Rounds of THIS run. Counted here, not from state.messages: with memory,
+  // the thread also holds the rounds of earlier runs.
+  let rounds = 0;
 
   return createMiddleware({
     name: "CardCheck",
     afterModel: {
       canJumpTo: ["model"],
       hook: (state) => {
-        const messages = state.messages;
-        const last = messages.at(-1) as any;
+        rounds++;
+        const last = state.messages.at(-1) as any;
         if (!last || last.tool_calls?.length) return; // still searching
 
         let card: Record<string, unknown>;
@@ -125,7 +137,6 @@ function checkMiddleware(
         attempt++;
         // No round left to fix anything in: tell the gate, so a soft problem
         // is accepted instead of bounced into the round limit.
-        const rounds = messages.filter((m: any) => m.type === "ai").length;
         let problem = check(card, { lastTurn: rounds >= ROUND_LIMIT });
         // Test switch: reject the first card once, to watch a send-back.
         if (process.env.LC_TEST_BOUNCE && attempt === 1 && !problem) {
@@ -162,6 +173,7 @@ const makeAgent = (
   // Not toolStrategy — that forces a tool call every round, and the newer
   // models (Opus 5.5, Sonnet 5.5, Fable) reject forced tool calls with a 400.
   responseFormat: providerStrategy(Card),
+  checkpointer: memory,
   middleware: [
     // Searches: past the limit the search is not run; the model is told
     // "limit reached" and carries on, so it finishes the card with what it has.
@@ -178,26 +190,29 @@ const makeAgent = (
   ],
 });
 
-// Same signature as generateCard in ../curator.ts.
-async function generateCard(
-  prompt: string,
-  {
-    seed,
-    onTrack,
-    onCommit,
-    signal,
-  }: {
-    seed?: { name: string; tracks: { artist: string; title: string }[]; total: number } | null;
-    onTrack?: (index: number, t: { artist: string; title: string }) => void;
-    onCommit?: (attempt: number, gap: string | null) => void;
-    signal?: AbortSignal;
-    budget?: SearchBudget; // accepted, not spent — the request-wide allowance is still to do
-  } = {}
+type RunOpts = {
+  onTrack?: (index: number, t: { artist: string; title: string }) => void;
+  onCommit?: (attempt: number, gap: string | null) => void;
+  signal?: AbortSignal;
+};
+
+// One run on one thread: send a message, get back an accepted card.
+async function runOnThread(
+  threadId: string,
+  content: string,
+  { onTrack, onCommit, signal }: RunOpts
 ): Promise<MixtapeCard> {
   const verdict = { accepted: false };
   const result = await makeAgent(onCommit, verdict).invoke(
-    { messages: [{ role: "user", content: generateUserContent(prompt, seed) }] },
+    { messages: [{ role: "user", content }] },
     {
+      // Which page of the notebook this run reads and writes.
+      configurable: { thread_id: threadId },
+      // LangGraph's own step counter (default 25). Every node is a step — the
+      // model, the tools, each middleware hook — about 5 per round here, so
+      // the default would cut a run at round 5. ROUND_LIMIT is the real limit;
+      // this only has to stay out of its way.
+      recursionLimit: ROUND_LIMIT * 10,
       // The clock: the caller's cancel, or the deadline, whichever comes first.
       signal: AbortSignal.any([
         AbortSignal.timeout(RUN_DEADLINE_MS),
@@ -207,8 +222,8 @@ async function generateCard(
   );
 
   const card = result.structuredResponse as z.infer<typeof Card> | undefined;
-  // `accepted` matters: after a send-back that ran out of rounds, the state
-  // still holds the rejected card.
+  // `accepted` matters: after a send-back that ran out of rounds — or an
+  // adjust that never delivered — the state still holds an older card.
   if (!card || !verdict.accepted) {
     throw new Error(`The curator used all ${ROUND_LIMIT} rounds without finishing a card.`);
   }
@@ -217,20 +232,64 @@ async function generateCard(
   return { ...card, tracks } as MixtapeCard;
 }
 
-export { generateCard };
+// Same signature as generateCard in ../curator.ts, plus `threadId`: pass one
+// to be able to adjust this card later.
+async function generateCard(
+  prompt: string,
+  {
+    seed,
+    threadId = crypto.randomUUID(),
+    ...opts
+  }: RunOpts & {
+    seed?: { name: string; tracks: { artist: string; title: string }[]; total: number } | null;
+    threadId?: string;
+    budget?: SearchBudget; // accepted, not spent — the request-wide allowance is still to do
+  } = {}
+): Promise<MixtapeCard> {
+  return runOnThread(threadId, generateUserContent(prompt, seed), opts);
+}
 
-// Run directly: one card, printed.
+// Adjust, with memory: one new message on the card's own thread. The model
+// already has the prompt, every search result and the card it delivered.
+// Unlike adjustCard in ../curator.ts (stateless, returns only the changed
+// tracks) this returns the whole new card.
+async function adjustCard(
+  threadId: string,
+  adjustment: string,
+  opts: RunOpts = {}
+): Promise<MixtapeCard> {
+  return runOnThread(
+    threadId,
+    `Adjust the mixtape you delivered:\n${fence("listener_adjustment", adjustment)}\n\n` +
+      "Keep every track the adjustment does not touch. Deliver the full card again.",
+    opts
+  );
+}
+
+export { generateCard, adjustCard };
+
+// Run directly: make a card, then adjust it on the same thread.
 if (import.meta.main) {
+  const show = (label: string, card: MixtapeCard, started: number) => {
+    console.log(`\n${label}: ${card.title} — ${card.vibe}  [${card.accent}]`);
+    card.tracks.forEach((t, i) => console.log(`${i + 1}. ${t.artist} — ${t.title}\n   ${t.note}`));
+    console.log(`${((Date.now() - started) / 1000).toFixed(1)} s`);
+  };
+  const onCommit = (attempt: number, gap: string | null) =>
+    console.log(`[check] attempt ${attempt}: ${gap ?? "accepted"}`);
   try {
-    const started = Date.now();
-    const card = await generateCard("rainy Sunday morning, slow coffee", {
-      onCommit: (attempt, gap) => console.log(`[check] attempt ${attempt}: ${gap ?? "accepted"}`),
-    });
-    console.log(`${card.title} — ${card.vibe}  [${card.accent}]`);
-    card.tracks.forEach((t, i) =>
-      console.log(`${i + 1}. ${t.artist} — ${t.title}  (${t.ref})\n   ${t.note}`)
-    );
-    console.log(`\n${((Date.now() - started) / 1000).toFixed(1)} s`);
+    const threadId = crypto.randomUUID();
+    let started = Date.now();
+    show("CARD", await generateCard("rainy Sunday morning, slow coffee", { threadId, onCommit }), started);
+
+    started = Date.now();
+    const adjustment =
+      process.env.LC_ADJUST || "swap the two slowest tracks for something warmer";
+    show(`ADJUSTED (“${adjustment}”)`, await adjustCard(threadId, adjustment, { onCommit }), started);
+
+    const saved = await memory.getTuple({ configurable: { thread_id: threadId } });
+    const msgs = (saved?.checkpoint.channel_values.messages ?? []) as any[];
+    console.log(`\nThread ${threadId}: ${msgs.length} messages saved`);
   } finally {
     // Wait for the LangSmith trace to be sent before the script exits.
     await awaitAllCallbacks();

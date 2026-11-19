@@ -14,7 +14,7 @@
 
 // Must come first: spotify.ts reads process.env when it is evaluated.
 import "../env.ts";
-import { createAgent, providerStrategy, tool, toolStrategy } from "langchain";
+import { createAgent, providerStrategy, tool } from "langchain";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
 import { searchCatalog } from "../spotify.ts";
@@ -82,12 +82,10 @@ const agent = createAgent({
   model: `anthropic:${process.env.LC_MODEL || MODEL}`,
   tools: [searchSpotify],
   systemPrompt: SYSTEM,
-  // toolStrategy forces a tool call every round, which Opus 5.5 rejects (400).
-  // LC_NATIVE=1 uses the model's own structured output instead. The two
-  // strategies have different types, hence the cast here and at the read.
-  responseFormat: (process.env.LC_NATIVE
-    ? providerStrategy(Card)
-    : toolStrategy(Card)) as any,
+  // The model's own structured output: the final answer must fit Card.
+  // Not toolStrategy — that forces a tool call every round, and the newer
+  // models (Opus 5.5, Sonnet 5.5, Fable) reject forced tool calls with a 400.
+  responseFormat: providerStrategy(Card),
 });
 
 // Same signature as generateCard in ../curator.ts.

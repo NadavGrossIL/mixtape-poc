@@ -82,7 +82,12 @@ const agent = createAgent({
   model: `anthropic:${process.env.LC_MODEL || MODEL}`,
   tools: [searchSpotify],
   systemPrompt: SYSTEM,
-  responseFormat: process.env.LC_NATIVE ? providerStrategy(Card) : toolStrategy(Card),
+  // toolStrategy forces a tool call every round, which Opus 5.5 rejects (400).
+  // LC_NATIVE=1 uses the model's own structured output instead. The two
+  // strategies have different types, hence the cast here and at the read.
+  responseFormat: (process.env.LC_NATIVE
+    ? providerStrategy(Card)
+    : toolStrategy(Card)) as any,
 });
 
 // Same signature as generateCard in ../curator.ts.
@@ -106,7 +111,7 @@ async function generateCard(
     { signal }
   );
 
-  const card = result.structuredResponse;
+  const card = result.structuredResponse as z.infer<typeof Card>;
   const tracks = toTrackList(card.tracks);
   tracks.forEach((t, i) => onTrack?.(i, t));
   onCommit?.(1, null);

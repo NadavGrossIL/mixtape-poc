@@ -14,7 +14,7 @@
 
 // Must come first: spotify.ts reads process.env when it is evaluated.
 import "../env.ts";
-import { createAgent, tool, toolStrategy } from "langchain";
+import { createAgent, providerStrategy, tool, toolStrategy } from "langchain";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
 import { searchCatalog } from "../spotify.ts";
@@ -78,10 +78,11 @@ const Card = z.object({
 });
 
 const agent = createAgent({
-  model: `anthropic:${MODEL}`,
+  // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
+  model: `anthropic:${process.env.LC_MODEL || MODEL}`,
   tools: [searchSpotify],
   systemPrompt: SYSTEM,
-  responseFormat: toolStrategy(Card),
+  responseFormat: process.env.LC_NATIVE ? providerStrategy(Card) : toolStrategy(Card),
 });
 
 // Same signature as generateCard in ../curator.ts.

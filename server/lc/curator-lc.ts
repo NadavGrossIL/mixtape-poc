@@ -8,14 +8,15 @@
 // Not here yet, on purpose (learning steps still to come):
 //   - live per-track streaming: onTrack fires for all 8 once the card lands
 //   - `budget`, the request-wide search allowance (the per-run limits are in)
-//   - the check that every track came from a search (step 3)
 //
 // Try it from server/:  node lc/curator-lc.ts
 
 // Must come first: spotify.ts reads process.env when it is evaluated.
 import "../env.ts";
 import {
+  HumanMessage,
   createAgent,
+  createMiddleware,
   modelCallLimitMiddleware,
   providerStrategy,
   tool,
@@ -23,12 +24,14 @@ import {
 } from "langchain";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
-import { searchCatalog } from "../spotify.ts";
+import { recallByRef, searchCatalog } from "../spotify.ts";
 import {
   MODEL,
   RUN_DEADLINE_MS,
   SYSTEM,
+  cardIncompleteReason,
   generateUserContent,
+  makeGroundingGate,
   catalogResultContent,
   toTrackList,
 } from "../curator.ts";
@@ -89,7 +92,68 @@ const Card = z.object({
 const SEARCH_LIMIT = Number(process.env.LC_SEARCH_LIMIT) || 20;
 const ROUND_LIMIT = 8;
 
-const agent = createAgent({
+// The check, as our own middleware. The rules are curator.ts's, unchanged:
+// makeGroundingGate(cardIncompleteReason) — 8 filled slots, nothing hollow,
+// and note facts that match the search results, with at most 2 send-backs.
+// This part only supplies the place to run them: right after each model
+// answer. A problem goes back to the model as a message and the loop takes one
+// more round (jumpTo "model"); no problem lets the run end.
+function checkMiddleware(
+  onCommit: ((attempt: number, gap: string | null) => void) | undefined,
+  verdict: { accepted: boolean }
+) {
+  // Fresh per run: the gate counts its own send-backs.
+  const check = makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef });
+  let attempt = 0;
+
+  return createMiddleware({
+    name: "CardCheck",
+    afterModel: {
+      canJumpTo: ["model"],
+      hook: (state) => {
+        const messages = state.messages;
+        const last = messages.at(-1) as any;
+        if (!last || last.tool_calls?.length) return; // still searching
+
+        let card: Record<string, unknown>;
+        try {
+          card = JSON.parse(typeof last.content === "string" ? last.content : last.text);
+        } catch {
+          return; // not a card; the run ends and generateCard reports it
+        }
+
+        attempt++;
+        // No round left to fix anything in: tell the gate, so a soft problem
+        // is accepted instead of bounced into the round limit.
+        const rounds = messages.filter((m: any) => m.type === "ai").length;
+        let problem = check(card, { lastTurn: rounds >= ROUND_LIMIT });
+        // Test switch: reject the first card once, to watch a send-back.
+        if (process.env.LC_TEST_BOUNCE && attempt === 1 && !problem) {
+          problem = "test: this is a practice rejection, the card is fine";
+        }
+        onCommit?.(attempt, problem);
+        verdict.accepted = !problem;
+        if (!problem) return;
+
+        return {
+          messages: [
+            new HumanMessage(
+              `The card was not accepted: ${problem}. Fix it and deliver the full card again.`
+            ),
+          ],
+          jumpTo: "model" as const,
+        };
+      },
+    },
+  });
+}
+
+// One agent per run, because the check middleware holds per-run state.
+const makeAgent = (
+  onCommit: ((attempt: number, gap: string | null) => void) | undefined,
+  verdict: { accepted: boolean }
+) =>
+  createAgent({
   // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
   model: `anthropic:${process.env.LC_MODEL || MODEL}`,
   tools: [searchSpotify],
@@ -110,6 +174,7 @@ const agent = createAgent({
     // Rounds: the hard safety net. It stops the run WITHOUT a card (curator.ts
     // forces one on its last round), so generateCard turns that into an error.
     modelCallLimitMiddleware({ runLimit: ROUND_LIMIT, exitBehavior: "end" }),
+    checkMiddleware(onCommit, verdict),
   ],
 });
 
@@ -129,7 +194,8 @@ async function generateCard(
     budget?: SearchBudget; // accepted, not spent — the request-wide allowance is still to do
   } = {}
 ): Promise<MixtapeCard> {
-  const result = await agent.invoke(
+  const verdict = { accepted: false };
+  const result = await makeAgent(onCommit, verdict).invoke(
     { messages: [{ role: "user", content: generateUserContent(prompt, seed) }] },
     {
       // The clock: the caller's cancel, or the deadline, whichever comes first.
@@ -141,12 +207,13 @@ async function generateCard(
   );
 
   const card = result.structuredResponse as z.infer<typeof Card> | undefined;
-  if (!card) {
+  // `accepted` matters: after a send-back that ran out of rounds, the state
+  // still holds the rejected card.
+  if (!card || !verdict.accepted) {
     throw new Error(`The curator used all ${ROUND_LIMIT} rounds without finishing a card.`);
   }
   const tracks = toTrackList(card.tracks);
   tracks.forEach((t, i) => onTrack?.(i, t));
-  onCommit?.(1, null);
   return { ...card, tracks } as MixtapeCard;
 }
 
@@ -156,7 +223,9 @@ export { generateCard };
 if (import.meta.main) {
   try {
     const started = Date.now();
-    const card = await generateCard("rainy Sunday morning, slow coffee");
+    const card = await generateCard("rainy Sunday morning, slow coffee", {
+      onCommit: (attempt, gap) => console.log(`[check] attempt ${attempt}: ${gap ?? "accepted"}`),
+    });
     console.log(`${card.title} — ${card.vibe}  [${card.accent}]`);
     card.tracks.forEach((t, i) =>
       console.log(`${i + 1}. ${t.artist} — ${t.title}  (${t.ref})\n   ${t.note}`)

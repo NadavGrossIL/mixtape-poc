@@ -7,19 +7,26 @@
 //
 // Not here yet, on purpose (learning steps still to come):
 //   - live per-track streaming: onTrack fires for all 8 once the card lands
-//   - `budget` and the round/search/clock limits (step 3)
+//   - `budget`, the request-wide search allowance (the per-run limits are in)
 //   - the check that every track came from a search (step 3)
 //
 // Try it from server/:  node lc/curator-lc.ts
 
 // Must come first: spotify.ts reads process.env when it is evaluated.
 import "../env.ts";
-import { createAgent, providerStrategy, tool } from "langchain";
+import {
+  createAgent,
+  modelCallLimitMiddleware,
+  providerStrategy,
+  tool,
+  toolCallLimitMiddleware,
+} from "langchain";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
 import { searchCatalog } from "../spotify.ts";
 import {
   MODEL,
+  RUN_DEADLINE_MS,
   SYSTEM,
   generateUserContent,
   catalogResultContent,
@@ -77,6 +84,11 @@ const Card = z.object({
     .describe("All 8 tracks, ordered like a DJ set with an arc."),
 });
 
+// The limits, same numbers as curator.ts (SEARCH_BUDGET, MAX_TOOL_TURNS).
+// LC_SEARCH_LIMIT=2 node lc/curator-lc.ts shows what hitting the wall looks like.
+const SEARCH_LIMIT = Number(process.env.LC_SEARCH_LIMIT) || 20;
+const ROUND_LIMIT = 8;
+
 const agent = createAgent({
   // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
   model: `anthropic:${process.env.LC_MODEL || MODEL}`,
@@ -86,6 +98,19 @@ const agent = createAgent({
   // Not toolStrategy — that forces a tool call every round, and the newer
   // models (Opus 5.5, Sonnet 5.5, Fable) reject forced tool calls with a 400.
   responseFormat: providerStrategy(Card),
+  middleware: [
+    // Searches: past the limit the search is not run; the model is told
+    // "limit reached" and carries on, so it finishes the card with what it has.
+    // Unlike curator.ts this counts cache hits too — every call is one.
+    toolCallLimitMiddleware({
+      toolName: "search_spotify",
+      runLimit: SEARCH_LIMIT,
+      exitBehavior: "continue",
+    }),
+    // Rounds: the hard safety net. It stops the run WITHOUT a card (curator.ts
+    // forces one on its last round), so generateCard turns that into an error.
+    modelCallLimitMiddleware({ runLimit: ROUND_LIMIT, exitBehavior: "end" }),
+  ],
 });
 
 // Same signature as generateCard in ../curator.ts.
@@ -101,15 +126,24 @@ async function generateCard(
     onTrack?: (index: number, t: { artist: string; title: string }) => void;
     onCommit?: (attempt: number, gap: string | null) => void;
     signal?: AbortSignal;
-    budget?: SearchBudget; // accepted, not spent yet — step 3
+    budget?: SearchBudget; // accepted, not spent — the request-wide allowance is still to do
   } = {}
 ): Promise<MixtapeCard> {
   const result = await agent.invoke(
     { messages: [{ role: "user", content: generateUserContent(prompt, seed) }] },
-    { signal }
+    {
+      // The clock: the caller's cancel, or the deadline, whichever comes first.
+      signal: AbortSignal.any([
+        AbortSignal.timeout(RUN_DEADLINE_MS),
+        ...(signal ? [signal] : []),
+      ]),
+    }
   );
 
-  const card = result.structuredResponse as z.infer<typeof Card>;
+  const card = result.structuredResponse as z.infer<typeof Card> | undefined;
+  if (!card) {
+    throw new Error(`The curator used all ${ROUND_LIMIT} rounds without finishing a card.`);
+  }
   const tracks = toTrackList(card.tracks);
   tracks.forEach((t, i) => onTrack?.(i, t));
   onCommit?.(1, null);

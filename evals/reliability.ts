@@ -36,7 +36,14 @@ loadServerEnv();
 
 // Dynamic import so server/.env is in process.env before the module evaluates
 // (a static ESM import would hoist above loadServerEnv()).
-const curator = await import("../server/curator.ts");
+const base = await import("../server/curator.ts");
+// CURATOR=lc measures the LangChain rebuild (server/lc/curator-lc.ts) through
+// the same front door. Unset, this is the hand-written curator, as always.
+const WHICH = process.env.CURATOR === "lc" ? "lc" : "hand-written";
+const curator =
+  WHICH === "lc"
+    ? { ...base, generateCard: (await import("../server/lc/curator-lc.ts")).generateCard }
+    : base;
 
 const DEFAULT_TRIALS = 5;
 const DEFAULT_PROMPTS = 3;
@@ -273,7 +280,7 @@ async function main() {
   console.log(`[reliability] run dir: ${runDir}`);
   console.log(
     `[reliability] ${prompts.length} prompts x ${trials} trials = ` +
-      `${prompts.length * trials} live curator runs, model ${curator.MODEL}`
+      `${prompts.length * trials} live curator runs, model ${curator.MODEL}, curator ${WHICH}`
   );
 
   const entries: any[] = [];

@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
 import { shareOrCopy } from "./share";
+import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
 import LogConsole from "./LogConsole";
 
 // The card/track shapes the server streams back. Unresolved tracks keep only
@@ -665,6 +666,19 @@ function StudioChatter({ pool: name, inline }: { pool: ChatterPool; inline?: boo
 // see the /api/view effect below — survives a hot-reload remount
 let viewCounted = false;
 
+// a getter, not a value: in some browsers reading `window.localStorage`
+// itself throws (blocked storage); recent.ts catches that as well
+const browserStorage = () => window.localStorage;
+
+// the host account every mixtape is pressed to (ADR 0002) — the fallback for
+// anything this browser's list doesn't hold. Must be the account
+// SPOTIFY_HOST_REFRESH_TOKEN holds — or the owner's, which spotify.ts falls
+// back to when that is unset — or this link points at the wrong shelf.
+// how many of "your mixtapes" show before the "+ N more" toggle
+const RECENT_SHOWN = 3;
+
+const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
+
 export default function LinerNotes() {
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
@@ -683,6 +697,9 @@ export default function LinerNotes() {
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [copied, setCopied] = useState<"link" | "tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // "your mixtapes": this browser's presses, newest first (see recent.ts)
+  const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
+  const [showAllRecent, setShowAllRecent] = useState(false);
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
@@ -1212,6 +1229,10 @@ export default function LinerNotes() {
       );
       setPlaylistUrl(url);
       setSavedToLibrary(saved);
+      // remembered here so a guest who didn't tap + can find it again
+      setRecent(
+        recordRecent(browserStorage, recent, { title: card.title, url, pressedAt: Date.now() })
+      );
     } catch (e) {
       console.error(e);
       setSaveError("Couldn't press it to Spotify. Try again.");
@@ -1634,6 +1655,60 @@ export default function LinerNotes() {
                     ? "prompt optional — the tape follows that playlist’s spirit; add words to steer it"
                     : "takes about a minute — every track is verified on Spotify before you see it"}
                 </div>
+
+                {/* this browser's presses, so a guest who didn't tap + in
+                    Spotify can get back to one. Right under the composer,
+                    above the example prompts: for a returning visitor their
+                    own tapes outrank strangers' prompts. Newest three, the
+                    rest behind one toggle, so it never outgrows the composer. */}
+                {recent.length > 0 && (
+                  <section className="recent" aria-labelledby="recent-heading">
+                    <div className="section-note" id="recent-heading">
+                      your mixtapes
+                    </div>
+                    <ul className="recent-list">
+                      {(showAllRecent ? recent : recent.slice(0, RECENT_SHOWN)).map((m) => (
+                        <li key={m.url}>
+                          <a
+                            href={m.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="recent-row"
+                            aria-label={`${m.title} (opens Spotify)`}
+                            onClick={(e) => {
+                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                              if (openInSpotify(m.url)) e.preventDefault();
+                            }}
+                          >
+                            <SpotifyMark size={14} />
+                            <span className="recent-title">{m.title}</span>
+                            <span className="recent-open" aria-hidden>
+                              open ↗
+                            </span>
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    {recent.length > RECENT_SHOWN && (
+                      <button
+                        type="button"
+                        className="recent-more"
+                        aria-expanded={showAllRecent}
+                        onClick={() => setShowAllRecent((v) => !v)}
+                      >
+                        {showAllRecent ? "show fewer" : `+ ${recent.length - RECENT_SHOWN} more`}
+                      </button>
+                    )}
+                    <a
+                      className="recent-fallback"
+                      href={MIXTAPE_PROFILE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      every mixtape lives on Mixtape’s Spotify profile
+                    </a>
+                  </section>
+                )}
 
                 {/* example chips: populate the prompt, stay editable */}
                 <div className="examples">

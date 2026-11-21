@@ -140,11 +140,12 @@
   border-color: var(--line);
 }
 
-/* ── error detail + server log console ──────────────────────────
-   Both exist for the same reason: this is a learning project whose
-   failures used to surface as one friendly sentence with the actual
-   cause locked in a hosting dashboard. The detail line gives the
-   server's own words; the panel gives the run around them.
+/* ── error detail ───────────────────────────────────────────────
+   It and the server log console (log-console.css) exist for the same
+   reason: this is a learning project whose failures used to surface as
+   one friendly sentence with the actual cause locked in a hosting
+   dashboard. The detail line gives the server's own words; the panel
+   gives the run around them.
    Everything here sits on the clay shell, so the same cream-band ink
    rules as the rest of the shell apply — no dark type. */
 .error-detail {

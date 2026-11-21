@@ -2,7 +2,7 @@
    lines themselves are primitives (the refine flow shares them). Layer:
    components. */
 
-/* ── loading: spinning record + console log ── */
+/* ── loading: spinning record ── */
 .loading {
   /* equal space above and below the disc: margin-top matches the gap */
   margin-top: 32px;

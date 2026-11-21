@@ -147,7 +147,33 @@ node harness/diff.mjs base1 c2
 - T4: pass (reasoned; also covered by T2's declaration check).
 - T5: pass. The final CSS bundle is `index-BaqzZR4W.css` from both the real
   config and the harness config.
-- T6: see the PR.
+- T6: pass. Three reviewers who hadn't seen these results each checked
+  independently:
+  - **Re-run.** Rebuilt both CSS bundles from source (byte-identical to the
+    harness builds), re-ran T2, and repeated the 96-snapshot browser run.
+    Result: 0 differences across 5,382,384 values. A capture of the old
+    build also matched the baseline, and the gate passed. Its mutation
+    tests caught all four planted changes:
+    - a rule moved into the wrong layer: flagged by T2;
+    - a same-specificity reorder: flagged by T2;
+    - two one-value edits to capture files: both caught by the diff.
+  - **Diff review.** Its own rule-by-rule comparison found 261 → 262
+    rules, differing only by the `.press-cta` split, and 0 winner flips on
+    elements that share classes. It also confirmed every build is fully
+    layered. Its three stale-comment findings are fixed; the CSS bundle
+    hash is unchanged.
+  - **Gap hunt.** Dev-server mode keeps the same layer order. Every
+    browser in the build's targets supports `@layer`. Nothing unlayered
+    competes, and no `!important` or custom property is redefined.
+  - **Harness blind spots.** Two were found:
+    - the className scan missed the `track-row` + `dragging` element;
+    - the property-overlap table missed `border-*` against
+      `border-color` / `border-style` / `border-width`.
+    Both were patched and T2 re-run: still only the two known false
+    positives.
+  - **Not covered.** `:hover`, `:active`, `:focus-visible` and drag were
+    never rendered in a browser. They rest on T2 plus a hand check of
+    `.press-cta`.
 
 ## Notes
 

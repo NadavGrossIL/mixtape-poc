@@ -1,6 +1,8 @@
-/* Every @keyframes in the app, in one place: several are shared (lnfade
-   by six components, spin by the disc and both reels). Animations only run
-   inside the prefers-reduced-motion: no-preference blocks. Layer: base. */
+/* The shared @keyframes: several are used by more than one component
+   (lnfade by six, spin by the disc and both reels). The one exception is
+   mic-pulse, which stays in composer.css inside the mic's own motion
+   block. Animations only run inside the prefers-reduced-motion:
+   no-preference blocks. Layer: base. */
 
 /* ── motion: opt-in only ── */
 @keyframes spin {

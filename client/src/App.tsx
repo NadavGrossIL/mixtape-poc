@@ -693,7 +693,7 @@ export default function LinerNotes() {
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
-  const [copied, setCopied] = useState<"link" | "tracks" | "share" | null>(null);
+  const [copied, setCopied] = useState<"tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   // "your mixtapes": this browser's presses, newest first (see recent.ts)
   const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
@@ -1276,11 +1276,11 @@ export default function LinerNotes() {
     `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
 
   // Clipboard feedback is the button's own label for a beat, not a toast.
-  const copyText = async (text: string, what: "link" | "tracks") => {
+  const copyText = async (text: string, what: "tracks") => {
     try {
       await navigator.clipboard.writeText(text);
       setCopied(what);
-      setAnnounce(what === "link" ? "Link copied." : "Track list copied.");
+      setAnnounce("Song list copied.");
       setTimeout(() => setCopied((c) => (c === what ? null : c)), 1800);
     } catch {
       setAnnounce("Couldn't copy — select it by hand.");
@@ -2095,13 +2095,9 @@ export default function LinerNotes() {
                     : "Your playlist is ready. Open it and tap + to add it to your library."}
                 </div>
                 <div className="pressed-actions">
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => copyText(playlistUrl, "link")}
-                  >
-                    {copied === "link" ? "copied ✓" : "copy link"}
-                  </button>
+                  {/* one button, not "copy link" + "share": with no share
+                      sheet (a desktop) share IS a copy, so the pair was the
+                      same action twice */}
                   <button
                     type="button"
                     className="btn-ghost"

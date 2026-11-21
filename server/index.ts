@@ -22,11 +22,11 @@ import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin
 import { parseTrackUris } from "./trackUris.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
-// The SDK is imported here only for `instanceof Anthropic.APIError` — the
-// one question outage.ts cannot answer on its own (Spotify errors carry a
-// `status` too).
-import Anthropic from "@anthropic-ai/sdk";
 import { makeOutageTracker } from "./outage.ts";
+// Which agent curates: the hand-written loop (default) or the LangChain one
+// (CURATOR=lc). `fromAnthropic` answers the one question outage.ts cannot on
+// its own — Spotify errors carry a `status` too. See curatorSwitch.ts.
+import { whichCurator, loadCurator, fromAnthropic } from "./curatorSwitch.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
 // startup config warnings below are readable from the browser.
@@ -208,6 +208,12 @@ if (!spotify.isLoggedIn("host") && spotify.isLoggedIn()) {
       "account before sharing widely; see README → Sharing."
   );
 }
+// `curator` (the static import) stays the source of the shared checks, e.g.
+// anthropicConfigured — both agents read the same key. `agent` is only the
+// two calls that differ: generateCard and adjustCard.
+const CURATOR_NAME = whichCurator(process.env);
+const agent = await loadCurator(CURATOR_NAME);
+console.log(`[config] curator: ${CURATOR_NAME}`);
 if (!curator.anthropicConfigured()) {
   console.warn(
     "[config] ANTHROPIC_API_KEY is missing or still a placeholder.\n" +
@@ -910,10 +916,11 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
         (seedId ? ` seed=${seedId}` : "")
     );
     sseSend(res, "curating", { prompt });
-    const card = await curator.generateCard(prompt, {
+    const card = await agent.generateCard(prompt, {
       seed,
       signal: abort.signal,
       budget,
+      owner: user,
       onTrack: (index, t) =>
         sseSend(res, "track", { index, artist: t.artist, title: t.title }),
     });
@@ -951,7 +958,7 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
     // Classify before choosing copy: an Anthropic auth/billing failure is
     // remembered for /healthz and told to the visitor as "our side, not yours";
     // a rate limit or overload as "busy". Neither is "try the same prompt".
-    const upstream = outages.note(err, err instanceof Anthropic.APIError);
+    const upstream = outages.note(err, fromAnthropic(err));
     // `detail` is the raw upstream message — things like
     // "Spotify API 502 on /v1/search: …". The OWNER still gets it on screen,
     // because the logbook it would otherwise send them to is one tap away in
@@ -1030,9 +1037,10 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
   );
   sseSend(res, "adjusting", { adjustment });
   try {
-    const diff = await curator.adjustCard(card, adjustment, {
+    const diff = await agent.adjustCard(card, adjustment, {
       signal: abort.signal,
       budget,
+      owner: user,
       onChange: (_, c) =>
         sseSend(res, "change", {
           index: c.index,
@@ -1068,6 +1076,8 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
       vibe: diff.vibe ?? card.vibe,
       accent: diff.accent ?? card.accent,
       prompt: card.prompt, // the original prompt stays on the card
+      // LangChain curator only: the card may have moved to a new memory thread
+      ...(diff.threadId ? { threadId: diff.threadId } : {}),
     };
     sseSend(res, "done", {
       card: merged,
@@ -1082,7 +1092,7 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
     console.error("[adjust/stream] failed:", err.message);
     // detail is owner-only, `quota` is the breaker verdict as a boolean and
     // `outage` is the Anthropic verdict — same reasoning as /api/generate/stream
-    const upstream = outages.note(err, err instanceof Anthropic.APIError);
+    const upstream = outages.note(err, fromAnthropic(err));
     sseSend(res, "error", {
       message: err.quotaExceeded
         ? "Spotify's daily limit for this app is used up."

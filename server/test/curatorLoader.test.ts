@@ -1,67 +1,39 @@
-// The curator switch: only the exact value "lc" may move the live app off the
-// hand-written agent, and an Anthropic failure must be recognised from either
-// agent — or /healthz stays green through a dead key. And on a deployed host
-// LangSmith tracing must not start from a stray variable: it would send every
-// visitor's prompt and card to a third party.
+// Loading the curator: on a deployed host LangSmith tracing must not start
+// from a stray variable — it would send every visitor's prompt and card to a
+// third party — and the guard must run before LangChain is imported. And an
+// Anthropic failure must be recognised, or /healthz stays green through a
+// dead key.
 
 import test from "node:test";
 import assert from "node:assert";
-import Anthropic from "@anthropic-ai/sdk";
 import {
-  whichCurator,
   loadCurator,
   fromAnthropic,
   tracingDecision,
   TRACING_VARS,
   TRACE_OPT_IN,
-} from "../curatorSwitch.ts";
-import type { Curator } from "../curatorSwitch.ts";
+} from "../curatorLoader.ts";
+import type { Curator } from "../curatorLoader.ts";
 
-test("off by default: unset, empty or a typo is the hand-written agent", () => {
-  for (const CURATOR of [undefined, "", "langchain", "true", "1", "lcc", "hand-written"]) {
-    assert.equal(whichCurator({ CURATOR }), "hand-written", `CURATOR=${CURATOR}`);
-  }
-});
-
-test("CURATOR=lc turns the LangChain curator on, whatever the case or spacing", () => {
-  for (const CURATOR of ["lc", "LC", " lc "]) {
-    assert.equal(whichCurator({ CURATOR }), "langchain", `CURATOR=${JSON.stringify(CURATOR)}`);
-  }
-});
-
-// The real loader is exercised only for the hand-written agent, which reads
-// no .env on import. The LangChain curator imports env.ts (server/.env into
-// process.env) and the LangChain packages, so every "langchain" test below
-// hands in its own `env` and `load` — nothing here reads or changes the
-// developer's real environment.
-test("switch off loads the very module index.ts has always used", async () => {
-  const env = { LANGSMITH_TRACING: "true" };
-  const picked = await loadCurator("hand-written", { deployed: true, env, log: () => assert.fail("no log") });
-  const direct = await import("../curator.ts");
-  assert.equal(picked.generateCard, direct.generateCard);
-  assert.equal(picked.adjustCard, direct.adjustCard);
-  // nothing in the hand-written agent reads tracing variables: left alone
-  assert.deepEqual(env, { LANGSMITH_TRACING: "true" });
-});
-
+// Every loadCurator test below hands in its own `env` and `load`: the real
+// curator imports env.ts (server/.env into process.env) and the LangChain
+// packages, and nothing here may read or change the developer's environment.
 const fakeCurator: Curator = {
   generateCard: async () => ({ title: "", vibe: "", accent: "", tracks: [] }),
   adjustCard: async () => ({ changes: [] }),
 };
 
-test("switch on asks for the LangChain curator and hands back its two calls", async () => {
-  const asked: string[] = [];
-  const picked = await loadCurator("langchain", {
+test("loadCurator hands back the curator's two calls", async () => {
+  let loads = 0;
+  const picked = await loadCurator({
     deployed: false,
     env: {},
-    load: async (name) => (asked.push(name), fakeCurator),
+    load: async () => (loads++, fakeCurator),
   });
-  assert.deepEqual(asked, ["langchain"]);
+  assert.equal(loads, 1);
   assert.equal(picked.generateCard, fakeCurator.generateCard);
   assert.equal(picked.adjustCard, fakeCurator.adjustCard);
 });
-
-// ── the LangSmith tracing guard ──────────────────────────────
 
 test("tracing: never set means nothing to do, deployed or not", () => {
   for (const deployed of [true, false]) {
@@ -132,7 +104,7 @@ test("loadCurator: on a deployed host the variables are gone BEFORE LangChain is
   };
   const logs: string[] = [];
   let seenAtImport: object | null = null;
-  await loadCurator("langchain", {
+  await loadCurator({
     deployed: true,
     env,
     log: (l) => logs.push(l),
@@ -151,15 +123,13 @@ test("loadCurator: opt-in or local leaves the environment exactly as it was", as
     const env = { LANGSMITH_TRACING: "true", ...extra };
     const before = { ...env };
     const logs: string[] = [];
-    await loadCurator("langchain", { deployed, env, log: (l) => logs.push(l), load: async () => fakeCurator });
+    await loadCurator({ deployed, env, log: (l) => logs.push(l), load: async () => fakeCurator });
     assert.deepEqual(env, before);
     assert.equal(logs.length, lines);
   }
 });
 
-test("fromAnthropic: the SDK's own error, or one the LangChain curator marked", () => {
-  const sdkError = new Anthropic.APIError(401, undefined, "bad key", undefined as any);
-  assert.equal(fromAnthropic(sdkError), true);
+test("fromAnthropic: an error the curator marked at the model call", () => {
   assert.equal(fromAnthropic(Object.assign(new Error("x"), { status: 401, fromAnthropic: true })), true);
 });
 

@@ -1,24 +1,22 @@
-// Which curator answers /api/generate/stream and /api/adjust/stream.
+// Loading the curator — the LangChain agent in lc/curator-lc.ts — safely.
 //
-// Two agents sit behind the same front door:
-//   - "hand-written": server/curator.ts, the Anthropic SDK loop. The default.
-//   - "langchain":    server/lc/curator-lc.ts, the LangChain/LangGraph rebuild.
-// One setting picks: CURATOR=lc. Anything else — unset, empty, a typo — is the
-// hand-written agent, so a bad value can never switch the live app by accident,
-// and unsetting it is the whole rollback.
+// index.ts does not import the agent directly, for one reason: LangChain
+// starts sending traces to a third party from environment variables alone, so
+// those variables are checked BEFORE any LangChain module is loaded (the
+// tracing guard below). This file is that one doorway, plus the answer to "did
+// this failure come from Anthropic?".
+//
+// (Until 2026-11-21 this was curatorSwitch.ts: CURATOR=lc chose between this
+// agent and a hand-written one. The hand-written one is gone; so is the switch.)
 //
 // Pure where it can be (ADR 0003): index.ts stays thin, this is what is tested.
 
-import Anthropic from "@anthropic-ai/sdk";
 import type { MixtapeCard, AdjustDiff } from "./curator.ts";
 import type { SearchBudget } from "./searchBudget.ts";
 
-type CuratorName = "hand-written" | "langchain";
-
 // What index.ts needs from a curator — the two calls and nothing else.
-// `owner` is the caller's identity: the LangChain curator keeps a memory
-// thread per card and uses it to refuse a thread to anyone but the visitor
-// who made the card. The hand-written agent has no memory and ignores it.
+// `owner` is the caller's identity: the curator keeps a memory thread per card
+// and uses it to refuse a thread to anyone but the visitor who made the card.
 interface Curator {
   generateCard(
     prompt: string,
@@ -40,10 +38,6 @@ interface Curator {
       owner?: string;
     }
   ): Promise<AdjustDiff>;
-}
-
-function whichCurator(env: Record<string, string | undefined>): CuratorName {
-  return (env.CURATOR ?? "").trim().toLowerCase() === "lc" ? "langchain" : "hand-written";
 }
 
 // ── LangSmith tracing: never on for visitors by accident ─────
@@ -123,50 +117,41 @@ function tracingDecision(
 
 // Where the curator runs: is the host reachable by strangers, and the
 // environment to guard. `env`, `log` and `load` exist so the tests never read
-// or change the real environment and never import the real LangChain curator
-// (which loads server/.env on the way in).
+// or change the real environment and never import the real curator (which
+// loads server/.env on the way in).
 type Host = {
   deployed: boolean;
   env?: Record<string, string | undefined>;
   log?: (line: string) => void;
-  load?: (name: CuratorName) => Promise<Curator>;
+  load?: () => Promise<Curator>;
 };
 
-const importCurator = async (name: CuratorName): Promise<Curator> =>
-  name === "langchain" ? await import("./lc/curator-lc.ts") : await import("./curator.ts");
+const importCurator = async (): Promise<Curator> => await import("./lc/curator-lc.ts");
 
-// Imported on demand, so with the switch off the LangChain packages are never
-// loaded and the server starts exactly as it did before the switch existed —
-// which is also why the tracing guard runs only for "langchain": the
-// hand-written agent has nothing that reads those variables.
+// Imported on demand, never statically: the tracing guard has to run BEFORE
+// the import, so no LangChain module ever sees the variables it removes. It
+// works on the environment as it is at this moment — index.ts imports env.ts
+// first, so server/.env is already in.
 //
 // `host` is required, not optional: a caller that could leave it out would
-// load LangChain unguarded. The guard runs BEFORE the import, so no LangChain
-// module ever sees the variables it removes. It works on the environment as
-// it is at this moment — index.ts imports env.ts first, so server/.env is
-// already in.
-async function loadCurator(name: CuratorName, host: Host): Promise<Curator> {
-  if (name === "langchain") {
-    const env = host.env ?? process.env;
-    const decision = tracingDecision(env, host.deployed);
-    for (const key of decision.unset) delete env[key];
-    if (decision.log) (host.log ?? console.warn)(decision.log);
-  }
-  return (host.load ?? importCurator)(name);
+// load LangChain unguarded.
+async function loadCurator(host: Host): Promise<Curator> {
+  const env = host.env ?? process.env;
+  const decision = tracingDecision(env, host.deployed);
+  for (const key of decision.unset) delete env[key];
+  if (decision.log) (host.log ?? console.warn)(decision.log);
+  return (host.load ?? importCurator)();
 }
 
 // Did this failure come from the Anthropic API? outage.ts needs to be told
-// (Spotify errors carry a `status` too). Two ways to know:
-//   - the hand-written agent throws the SDK's own APIError;
-//   - LangChain carries a SECOND copy of the SDK (a newer version, nested in
-//     @langchain/anthropic), so `instanceof` against ours is always false for
-//     its errors. curator-lc.ts marks them `fromAnthropic` where they happen.
+// (Spotify errors carry a `status` too). `instanceof` cannot answer it:
+// @langchain/anthropic carries its own copy of the Anthropic SDK, so its
+// errors are not our SDK's class. curator-lc.ts marks them `fromAnthropic`
+// inside the model call, the one place a failure with a status can only be
+// Anthropic's (lc/modelCall.ts).
 function fromAnthropic(err: unknown): boolean {
-  return (
-    err instanceof Anthropic.APIError ||
-    (typeof err === "object" && err !== null && (err as any).fromAnthropic === true)
-  );
+  return typeof err === "object" && err !== null && (err as any).fromAnthropic === true;
 }
 
-export type { Curator, CuratorName, Host, TracingDecision };
-export { whichCurator, loadCurator, fromAnthropic, tracingDecision, TRACING_VARS, TRACE_OPT_IN };
+export type { Curator, Host, TracingDecision };
+export { loadCurator, fromAnthropic, tracingDecision, TRACING_VARS, TRACE_OPT_IN };

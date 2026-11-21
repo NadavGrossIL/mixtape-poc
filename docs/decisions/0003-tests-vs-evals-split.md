@@ -28,7 +28,7 @@ printed rates that could not fail anything.
 - A bug fix ships with a test if deterministic, an eval case if not.
 - Deterministic harness logic gets its own tests (`selftest.ts`) so the
   paid runs are never the first place a harness bug shows.
-- `server/curator.ts` exposes `onCommit` so the eval measures the
+- The curator (`server/lc/curator-lc.ts`; `server/curator.ts` when this was written) exposes `onCommit` so the eval measures the
   production path rather than a copy that drifts.
 
 Sources: README "Tests"; commit `99d0ff0`; `.github/workflows/ci.yml`;

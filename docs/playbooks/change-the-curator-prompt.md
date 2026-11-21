@@ -1,10 +1,16 @@
 # Playbook — change the curator prompt
 
-The prompt is `SYSTEM` in `server/curator.ts` (~line 289); `ADJUST_SYSTEM`
-extends it for the refine flow. The tool schemas sit in the same file — read
-the schema next to any rule you add, because a strict schema can forbid
-what the prompt demands (`d69f4bb`), and it silently drops constraints it
-can't compile (ADR 0001). Changing `MODEL` counts as a prompt change.
+The prompt is `SYSTEM` in `server/curator.ts`. Generate and adjust use the
+same one; the extra rules for an adjust are in the message built by
+`adjustMessage` in `server/lc/cardDiff.ts`. The two tool definitions the model
+sees (`SEARCH_TOOL`, `CURATOR_TOOL`) sit in `curator.ts` too — read the schema
+next to any rule you add, because a strict schema can forbid what the prompt
+demands (`d69f4bb`), and it silently drops constraints it can't compile
+(ADR 0001). Changing `MODEL` counts as a prompt change.
+
+The agent that runs the prompt is `server/lc/curator-lc.ts` (LangChain). A
+change there to what the model is sent — a tool, a message, the last-round
+note — counts as a prompt change as well.
 
 Mark the spec `touches_prompt: true`. Evals run **once** after review and a
 human reads the result. Nothing loops on it.

@@ -205,6 +205,27 @@ test("the last round offers only the delivery tool, and never forces it", async 
   assert.doesNotMatch(model.calls[6]!.messages[0]!.text, /last round/);
 });
 
+test("the model is sent exactly curator.ts's two tool definitions", async () => {
+  // What the model reads about its tools is defined once, in curator.ts:
+  // descriptions, the eight required track slots, `strict`, and
+  // eager_input_streaming (without it all eight tracks arrive at once). This
+  // pins that the LangChain tools pass those definitions through untouched —
+  // formatStructuredToolToAnthropic is the very function ChatAnthropic uses
+  // to build the request.
+  const { SEARCH_TOOL, CURATOR_TOOL } = await import("../curator.ts");
+  const { ChatAnthropic } = await import("@langchain/anthropic");
+  const model = fakeModel();
+  model.respond(says(deliver()));
+  let bound: any[] = [];
+  const bind = model.bindTools.bind(model);
+  (model as any).bindTools = (tools: any[]) => ((bound = tools), bind(tools));
+  await generateCard("x", { model, search: catalog().search, owner: owner() });
+  const onTheWire = new ChatAnthropic({ apiKey: "test", model: "m" }).formatStructuredToolToAnthropic(bound);
+  assert.deepEqual(onTheWire, [SEARCH_TOOL, CURATOR_TOOL]);
+  assert.equal((CURATOR_TOOL as any).eager_input_streaming, true);
+  assert.equal((CURATOR_TOOL as any).strict, true);
+});
+
 test("a run that never delivers fails with the round-limit error after 8 model calls", async () => {
   const { model } = script(...Array.from({ length: 12 }, () => says(search())));
   const spotify = catalog();

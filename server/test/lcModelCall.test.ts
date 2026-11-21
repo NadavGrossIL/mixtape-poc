@@ -12,7 +12,7 @@ import {
   modelFailure,
 } from "../lc/modelCall.ts";
 import { classifyUpstream } from "../outage.ts";
-import { fromAnthropic } from "../curatorSwitch.ts";
+import { fromAnthropic } from "../curatorLoader.ts";
 
 const request = () => ({
   model: "m",

@@ -112,6 +112,16 @@ finish, but Railway's default drain window is 0 s
 ([docs](https://docs.railway.com/deployments/reference)), so without it a
 redeploy kills every run in progress instantly.
 
+The variable alone is not enough. Also set the service's **Custom Start
+Command** (Settings → Deploy) to `node server/index.ts`. Left on the default,
+Railway starts the app with `npm start`, `npm` becomes the main process and
+the stop signal never reaches the server — the drain above never ran in
+production from 2026-09-02 until this was set on 2026-11-21 (the deploy log
+showed "Stopping Container" with no `[process] SIGTERM` line after it). The
+line to look for after a restart: `[process] SIGTERM — draining N open
+stream(s)`. Set it in the dashboard, not in a `railway.json`: Railway's docs
+mark config-as-code files as deprecated.
+
 Log in once (from any device — the callback is same-origin in production),
 run `node scripts/list-tokens.ts --reveal`, put the owner `refresh_token`
 in the env var, and the server re-auths itself on every cold start from

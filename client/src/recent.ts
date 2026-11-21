@@ -62,14 +62,35 @@ export function parseRecent(raw: string | null): RecentMixtape[] {
   return out;
 }
 
-// Newest first, one entry per URL (a re-press of the same playlist moves it
-// to the top), capped.
+// Newest first, one entry per URL, capped. The dedupe is defensive: each press
+// makes a new playlist, so a repeat URL only arrives from another tab or
+// edited storage — it moves to the top instead of showing twice.
 export function addRecent(
   list: RecentMixtape[],
   entry: RecentMixtape,
   max: number = RECENT_MAX
 ): RecentMixtape[] {
   return [entry, ...list.filter((e) => e.url !== entry.url)].slice(0, max);
+}
+
+// Record one press. The base is what storage holds NOW, not what this tab
+// loaded at mount: with two tabs open, building on the mount-time copy would
+// overwrite the other tab's press. When storage can't be read (blocked site
+// data) the base is this tab's in-memory list, so the visit keeps its list.
+export function recordRecent(
+  getStorage: () => StorageLike,
+  current: RecentMixtape[],
+  entry: RecentMixtape
+): RecentMixtape[] {
+  let base = current;
+  try {
+    base = parseRecent(getStorage().getItem(RECENT_KEY));
+  } catch {
+    // unreadable: keep `current`
+  }
+  const next = addRecent(base, entry);
+  saveRecent(getStorage, next);
+  return next;
 }
 
 export function loadRecent(getStorage: () => StorageLike): RecentMixtape[] {

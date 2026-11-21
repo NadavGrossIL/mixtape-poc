@@ -25,7 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
 import { shareOrCopy } from "./share";
-import { addRecent, loadRecent, saveRecent, type RecentMixtape } from "./recent";
+import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
 import LogConsole from "./LogConsole";
 
 // The card/track shapes the server streams back. Unresolved tracks keep only
@@ -671,7 +671,9 @@ let viewCounted = false;
 const browserStorage = () => window.localStorage;
 
 // the host account every mixtape is pressed to (ADR 0002) — the fallback for
-// anything this browser's list doesn't hold
+// anything this browser's list doesn't hold. Must be the account
+// SPOTIFY_HOST_REFRESH_TOKEN holds — or the owner's, which spotify.ts falls
+// back to when that is unset — or this link points at the wrong shelf.
 const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
 
 export default function LinerNotes() {
@@ -1224,9 +1226,9 @@ export default function LinerNotes() {
       setPlaylistUrl(url);
       setSavedToLibrary(saved);
       // remembered here so a guest who didn't tap + can find it again
-      const next = addRecent(recent, { title: card.title, url, pressedAt: Date.now() });
-      setRecent(next);
-      saveRecent(browserStorage, next);
+      setRecent(
+        recordRecent(browserStorage, recent, { title: card.title, url, pressedAt: Date.now() })
+      );
     } catch (e) {
       console.error(e);
       setSaveError("Couldn't press it to Spotify. Try again.");

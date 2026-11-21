@@ -9,6 +9,7 @@ import {
   loadRecent,
   parseRecent,
   RECENT_KEY,
+  recordRecent,
   RECENT_MAX,
   saveRecent,
   type RecentMixtape,
@@ -111,4 +112,20 @@ test("storage whose reads and writes throw never throws either", () => {
   };
   assert.deepStrictEqual(loadRecent(() => refusing), []);
   assert.strictEqual(saveRecent(() => refusing, [A]), false);
+});
+
+test("a press in one tab doesn't erase another tab's press", () => {
+  const { storage } = fakeStorage();
+  // tab 1 and tab 2 both loaded an empty list; tab 1 presses A first
+  recordRecent(() => storage, [], A);
+  const tab2 = recordRecent(() => storage, [], B);
+  assert.deepStrictEqual(tab2, [B, A]);
+  assert.deepStrictEqual(loadRecent(() => storage), [B, A]);
+});
+
+test("with storage unreadable a press still keeps this visit's list", () => {
+  const unreachable = (): StorageLike => {
+    throw new Error("SecurityError");
+  };
+  assert.deepStrictEqual(recordRecent(unreachable, [A], B), [B, A]);
 });

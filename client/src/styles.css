@@ -1648,7 +1648,8 @@
   text-decoration: underline;
 }
 
-/* "your mixtapes": the examples' tier of air and type, titles as quiet
+/* "your mixtapes": a step less air than the examples (32px vs 40px), the
+   same type, titles as quiet
    links. The fallback line sits at the credit's tier — a colophon, not a CTA */
 .recent {
   display: flex;
@@ -1664,7 +1665,7 @@
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
+  gap: 0;
   max-width: 100%;
 }
 .recent-list li {
@@ -1680,7 +1681,10 @@
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  padding: 2px 4px;
+  /* 20 + 2×12 = 44px: a real touch target, like every other control on the
+     page; the padding is the spacing, so the list has no gap */
+  line-height: 20px;
+  padding: 12px 4px;
 }
 .recent-link:hover,
 .recent-link:focus-visible {

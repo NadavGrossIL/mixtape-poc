@@ -50,17 +50,22 @@ on Spotify, where every press lives regardless.
       JSON, a non-array, or a malformed entry yields `[]` / drops the entry.
       Only `https://open.spotify.com/…` URLs survive, so a tampered entry
       can't become a `javascript:` href.
-    - `addRecent(list, entry, max = 10)` — newest first, deduped by `url`
-      (a re-press of the same URL moves it to the top), capped.
+    - `addRecent(list, entry, max = 10)` — newest first, deduped by `url`,
+      capped. The dedupe is defensive: each press makes a new playlist, so a
+      repeat URL only arrives from another tab or edited storage.
+    - `recordRecent(getStorage, current, entry)` — builds on what storage
+      holds at press time (so a second open tab's press isn't overwritten),
+      falling back to `current` when storage can't be read; saves; returns
+      the new list.
     - `loadRecent(getStorage)` / `saveRecent(getStorage, list)` — take a
       function returning a `{ getItem, setItem }`, so a `localStorage`
-      getter that throws (Safari private mode, blocked storage) is caught
+      getter that throws (site data blocked in browser settings) is caught
       along with a throwing `getItem`/`setItem`. Neither ever throws.
   - `server/test/recent.test.ts` (new) — `node:test`, imports
     `../../client/src/recent.ts`.
   - `client/src/App.tsx` — `recent` state seeded from `loadRecent`; the press
-    handler records `{ title: card.title, url, pressedAt: Date.now() }` right
-    after `setPlaylistUrl(url)`; the landing screen renders the list after
+    handler records `{ title: card.title, url, pressedAt: Date.now() }` via
+    `recordRecent` right after `setPlaylistUrl(url)`; the landing screen renders the list after
     the example chips, only when non-empty.
   - `client/src/styles.css` — `.recent` list styles on existing tokens.
   - `specs/0003-your-mixtapes-recent-presses.md` — this file.
@@ -80,7 +85,8 @@ git diff --stat origin/main -- server evals   # only server/test/recent.test.ts
 
 The test file guards: bad/empty storage parses to `[]`; non-Spotify URLs
 and malformed entries are dropped; newest first; dedupe by URL moves a
-re-press to the top; the cap holds; `loadRecent`/`saveRecent` never throw when
+re-press to the top; the cap holds; a press in one tab doesn't erase another
+tab's press; a press with storage unreadable still keeps the in-memory list; `loadRecent`/`saveRecent` never throw when
 the storage getter or its methods throw; a round trip through a fake storage
 preserves the list.
 

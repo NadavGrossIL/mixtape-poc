@@ -13,6 +13,7 @@ evals/baseline-logs/
 server/.tokens.json*
 server/.usage.json*
 server/.metrics.json*
+server/.latest.json*
 server/.search-cache.json*
 
 # Same reasoning for env files: `.env`, `.env.local`, `.env.production` and any

@@ -102,3 +102,62 @@
   color: var(--ink);
   text-decoration: underline;
 }
+
+/* "fresh off the press": the same shelf language as "your mixtapes", one
+   more line per row for the vibe. Sits under the sample card, so it takes
+   the sample's gap rather than the composer's. */
+.latest {
+  margin-top: 40px;
+}
+
+.latest-item {
+  display: flex;
+  align-items: stretch;
+}
+
+.latest-row {
+  flex: 1;
+  min-width: 0;
+}
+
+.latest-text {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.latest-text .recent-title {
+  flex: none;
+}
+
+.latest-vibe {
+  font-size: 13px;
+  font-style: italic;
+  color: var(--ink-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.latest-row .recent-open {
+  white-space: nowrap;
+}
+
+/* owner only: a quiet word, not a control strangers ever see */
+.latest-hide {
+  flex: none;
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  background: transparent;
+  border: 0;
+  border-left: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  color: var(--ink-faint);
+  min-width: 52px;
+  cursor: pointer;
+}
+
+.latest-hide:hover {
+  color: var(--ink);
+}

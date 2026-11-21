@@ -20,7 +20,8 @@ import { makePressCaps } from "./pressCaps.ts";
 import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
 import { parseTrackUris } from "./trackUris.ts";
-import { playlistDescription } from "./playlistDescription.ts";
+import { playlistDescription, cleanVibe } from "./playlistDescription.ts";
+import { makeLatest } from "./latest.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
 import { makeOutageTracker } from "./outage.ts";
@@ -70,6 +71,9 @@ const DEPLOYED =
 // so the clean-exit write is registered here and nowhere else.
 const metrics = makeMetrics({ dir: process.env.DATA_DIR || import.meta.dirname });
 process.on("exit", metrics.flush);
+// "fresh off the press" — the newest public presses, for the front page
+// (latest.ts). Same DATA_DIR story as the counters.
+const latest = makeLatest({ dir: process.env.DATA_DIR || import.meta.dirname });
 // Remembers a dead Anthropic key or an empty credit balance between runs, so
 // /healthz can go red for it. See outage.ts for the 2026-09-02 story.
 const outages = makeOutageTracker();
@@ -812,6 +816,26 @@ app.get("/api/usage", async (req, res) => {
   res.json({ users: usage.list() });
 });
 
+// "Fresh off the press": the newest mixtapes anyone pressed, so a stranger
+// can hear what comes out before typing. Public on purpose — every entry is
+// already a public playlist on the host profile, and latest.ts keeps only
+// what that playlist shows (name, vibe line, link). Costs no Spotify call.
+app.get("/api/latest", (req, res) => {
+  res.setHeader("Cache-Control", "no-store");
+  res.json({ mixtapes: latest.list() });
+});
+
+// Owner moderation: take one off the shelf. The playlist itself stays —
+// deleting or privatizing it would revoke it from every library that saved
+// it (.claude/rules/spotify.md).
+app.post("/api/latest/hide", sameOriginOnly, async (req, res) => {
+  if (!(await requireOwner(req, res))) return;
+  const id = String(req.body?.id || "");
+  const hidden = latest.hide(id);
+  if (hidden) console.log(`[latest] owner hid ${id}`);
+  res.json({ hidden, mixtapes: latest.list() });
+});
+
 // The caller's playlists, for the "in the spirit of" seed picker.
 app.get("/api/playlists", async (req, res) => {
   const user = requireSpotifyUser(req, res);
@@ -1170,6 +1194,13 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
     }
     usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "save");
     metrics.count("pressed");
+    // Only what the public playlist itself shows: its name, its vibe line,
+    // its link. A failure here must not fail a press that already happened.
+    try {
+      latest.record({ id, title: name, vibe: cleanVibe(req.body?.vibe) });
+    } catch (err: any) {
+      console.warn(`[latest] couldn't record ${id}: ${err.message}`);
+    }
     console.log(
       `[playlist] (${whoLabel(user)}) pressed ${JSON.stringify(name)} → ${id}` +
         (saved ? " (in their library)" : "")

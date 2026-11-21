@@ -163,3 +163,13 @@
   line-height: 1.3;
   color: var(--ink);
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .cursor {
+    animation: lnblink 1s steps(1) infinite;
+  }
+  .log-line,
+  .log-track {
+    animation: lnfade 0.35s ease;
+  }
+}

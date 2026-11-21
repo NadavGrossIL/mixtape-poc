@@ -16,5 +16,4 @@
 @import "./loading.css" layer(components);
 @import "./card.css" layer(components);
 @import "./hero.css" layer(components);
-@import "./media.css" layer(components);
 @import "./log-console.css" layer(components);

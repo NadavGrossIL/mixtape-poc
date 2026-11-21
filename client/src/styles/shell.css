@@ -167,3 +167,26 @@
   color: var(--ink);
   text-decoration: underline;
 }
+
+@media (max-width: 520px) {
+  .tagline {
+    font-size: 19px;
+    max-width: 22ch;
+  }
+  .tagline-sub {
+    font-size: 12px;
+    max-width: 40ch; /* two lines on a 390px phone, not three */
+  }
+  /* the full wordmark + cassette runs ~460px at desktop size */
+  .wordmark {
+    font-size: clamp(17px, 5.4vw, 24px);
+    letter-spacing: 1px;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .logo {
+    width: 30px;
+    height: 23px;
+  }
+}

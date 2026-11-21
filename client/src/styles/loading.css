@@ -48,3 +48,12 @@
   text-align: left;
   letter-spacing: 0;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  .spinner-disc {
+    animation: spin 1.4s linear infinite;
+  }
+  .studio-chatter {
+    animation: lnfade 0.45s ease;
+  }
+}

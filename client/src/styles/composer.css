@@ -443,3 +443,60 @@
   flex: 1;
   min-width: 0;
 }
+
+@media (prefers-reduced-motion: no-preference) {
+  /* chips deal in one after another on first paint */
+  .chip {
+    animation: lnfade 0.4s ease backwards;
+  }
+  .chip:nth-child(2) {
+    animation-delay: 0.07s;
+  }
+  .chip:nth-child(3) {
+    animation-delay: 0.14s;
+  }
+  .chip:nth-child(4) {
+    animation-delay: 0.21s;
+  }
+  .seed-panel {
+    animation: seed-open 0.22s ease;
+  }
+  .seed-token {
+    animation: seed-dock 0.25s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .seed-chip {
+    animation: lnfade 0.25s ease;
+  }
+  /* rows cascade in as the shelf unfolds — first few only, then instant */
+  .seed-item {
+    animation: lnfade 0.3s ease backwards;
+  }
+  .seed-item:nth-child(1) {
+    animation-delay: 0.03s;
+  }
+  .seed-item:nth-child(2) {
+    animation-delay: 0.06s;
+  }
+  .seed-item:nth-child(3) {
+    animation-delay: 0.09s;
+  }
+  .seed-item:nth-child(4) {
+    animation-delay: 0.12s;
+  }
+  .seed-item:nth-child(5) {
+    animation-delay: 0.15s;
+  }
+}
+
+@media (max-width: 520px) {
+  .composer-bar {
+    flex-wrap: wrap;
+  }
+  /* the one primary action first and full width, the seed trigger under
+     it: on one wrapped row the trigger landed on its own line BETWEEN the
+     textarea and the button, and the button broke onto two lines */
+  .composer-bar .btn-press {
+    flex: 1 1 100%;
+    order: -1;
+  }
+}

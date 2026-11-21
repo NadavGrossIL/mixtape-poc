@@ -38,7 +38,9 @@ file is a map. The reasoning lives next to the code as comments; read those.
   `APP_SECRET` then `SPOTIFY_CLIENT_SECRET` (one credential doing two jobs),
   which a deployed host now warns about at boot.
 - `client/` — Vite + React 18, one screen: `src/App.tsx`, tokens in
-  `src/styles.css`. Dev proxy in `vite.config.ts`; served from Express when built.
+  `src/styles/tokens.css` (all CSS under `src/styles/`, one file per
+  surface, layered via `index.css`). Dev proxy in `vite.config.ts`; served
+  from Express when built.
 - `evals/` — truthfulness (`generate` → `judge` → `aggregate`, plus
   `grounding`), `reliability` (pass^k), `selftest` (offline), `prompts.json`
   (the cases), `thresholds.json` (the gates), `runs/` (evidence).

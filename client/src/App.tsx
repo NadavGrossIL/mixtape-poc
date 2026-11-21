@@ -216,7 +216,7 @@ const MIC_UNBLOCK_STEPS = (() => {
   );
 })();
 
-// Color tokens live in styles.css. This map is the per-mixtape accent,
+// Color tokens live in styles/tokens.css. This map is the per-mixtape accent,
 // darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
 // Record<string, string>: the accent name arrives from the server, and the
 // lookup below already falls back to ember for anything unknown — including

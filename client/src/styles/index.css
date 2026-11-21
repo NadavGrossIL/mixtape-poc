@@ -1,0 +1,20 @@
+/* Entry stylesheet. One global stylesheet, split by surface, ordered by
+   cascade layers rather than by where a rule sits in a file: a later layer
+   beats an earlier one whatever the specificity, so the shared primitives
+   can never accidentally override a component's own rule. Every file is
+   imported INTO a layer — an unlayered rule would beat all of them. */
+
+@layer tokens, base, primitives, components;
+
+@import "./tokens.css" layer(tokens);
+@import "./base.css" layer(base);
+@import "./keyframes.css" layer(base);
+@import "./primitives.css" layer(primitives);
+@import "./shell.css" layer(components);
+@import "./composer.css" layer(components);
+@import "./recent.css" layer(components);
+@import "./loading.css" layer(components);
+@import "./card.css" layer(components);
+@import "./hero.css" layer(components);
+@import "./media.css" layer(components);
+@import "./log-console.css" layer(components);

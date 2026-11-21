@@ -1,0 +1,456 @@
+/* The card: paper sleeve, track list, footer, refine, swap, save and the
+   pressed state. Layer: components. */
+
+/* ── the card: paper object on a table ── */
+.card-wrap {
+  margin-top: 36px;
+  width: 100%;
+  max-width: 560px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.card {
+  width: 100%;
+  background: var(--paper);
+  color: var(--paper-ink);
+  display: flex;
+  position: relative;
+  transform: rotate(-0.4deg);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 8px 16px rgba(0, 0, 0, 0.35),
+    0 24px 48px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65),
+    inset 0 -1px 0 rgba(20, 18, 15, 0.12);
+}
+
+.card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image: var(--grain);
+  opacity: 0.05;
+  mix-blend-mode: multiply;
+  pointer-events: none;
+}
+
+.spine {
+  width: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  mix-blend-mode: multiply;
+}
+
+.spine-text {
+  writing-mode: vertical-rl;
+  transform: rotate(180deg);
+  font-family: "Archivo Black", sans-serif;
+  font-size: 12px;
+  letter-spacing: 3px;
+  color: var(--paper);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-height: 92%;
+}
+
+.card-body {
+  padding: 22px 20px 16px;
+  flex: 1;
+  min-width: 0;
+}
+
+.eyebrow {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 1.5px;
+  color: var(--paper-dim);
+  /* facts left, cut date right; on a narrow card the date wraps to its
+     own line instead of the facts breaking mid-token */
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 2px 12px;
+}
+
+.eyebrow .fact {
+  white-space: nowrap;
+}
+
+.card-title {
+  font-family: "Archivo Black", sans-serif;
+  font-size: 28px;
+  line-height: 1.05;
+  margin: 8px 0 12px;
+  font-weight: 400;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* focus lands here programmatically so screen readers announce the new
+   card; it's tabIndex={-1}, unreachable by Tab, so no visible ring */
+.card-title:focus-visible {
+  outline: none;
+}
+
+.vibe {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 15px;
+  line-height: 1.5;
+  border-left: 3px solid;
+  padding-left: 12px;
+  margin-bottom: 8px;
+  max-width: 60ch;
+}
+
+.prompt-line {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--paper-dim);
+  margin-bottom: 18px;
+}
+
+/* ── track list ── */
+.track-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.track-row {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 10px 6px 10px 0;
+  border-top: 1px solid var(--paper-line);
+  text-decoration: none;
+  color: var(--paper-ink);
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.track-row:hover {
+  background: var(--paper-hover);
+  transform: translateX(3px);
+}
+
+.track-row:hover .album-art {
+  filter: saturate(1.1);
+}
+
+.track-row:focus-visible {
+  outline: 2px solid var(--paper-ink);
+  outline-offset: -2px;
+}
+
+/* dnd-kit sets transform/transition inline while sorting; this class
+   carries the static elevation of the row being dragged */
+.track-row.dragging {
+  position: relative;
+  z-index: 2;
+  background: var(--paper);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
+}
+
+.album-art {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  flex-shrink: 0;
+  display: block;
+}
+
+.album-art-placeholder {
+  width: 40px;
+  height: 40px;
+  flex-shrink: 0;
+  background: var(--paper-hover);
+  border: 1px dashed var(--paper-line);
+}
+
+.track-num {
+  font-family: "Space Mono", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+  font-weight: 700;
+  width: 22px;
+  flex-shrink: 0;
+}
+
+.track-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.track-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: 14.5px;
+  line-height: 1.3;
+  overflow-wrap: break-word; /* long unbroken artist/title strings */
+}
+
+.track-note {
+  font-family: Georgia, serif;
+  font-style: italic;
+  font-size: 12.5px;
+  line-height: 1.45;
+  color: var(--paper-dim);
+  margin-top: 2px;
+}
+
+.play-hint {
+  font-size: 12px;
+  color: var(--paper-dim);
+  flex-shrink: 0;
+}
+
+/* a small tag under the note, inside the title column — it used to sit in
+   the chrome column beside the swap button, where on a phone it squeezed
+   the title to ~110px and had to shrink to 9.5px to fit at all */
+.unverified {
+  display: inline-block;
+  margin-top: 4px;
+  font-family: "Space Mono", monospace;
+  font-size: 10.5px;
+  letter-spacing: 1px;
+  color: var(--paper-dim);
+  border-bottom: 1px dotted var(--paper-dim);
+}
+
+/* ── card footer: print furniture ── */
+.card-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 1px;
+  color: var(--paper-dim);
+  margin-top: 18px;
+  padding-top: 10px;
+  border-top: 1px solid var(--paper-line);
+}
+
+.footer-brand {
+  font-weight: 700;
+  color: var(--paper-ink);
+  white-space: nowrap;
+}
+
+/* the affordance legend, in two widths — phones get the short one instead
+   of nothing */
+.card-hint-short {
+  display: none;
+}
+
+.barcode {
+  width: 58px;
+  height: 24px;
+  flex-shrink: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    var(--paper-ink) 0 2px,
+    transparent 2px 4px,
+    var(--paper-ink) 4px 5px,
+    transparent 5px 8px
+  );
+}
+
+/* ── refine: second-chance adjustments ── */
+.refine-area {
+  width: 100%;
+  margin-top: 18px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.refine-caption {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-bottom: -4px; /* sits tight over its own row, not floating between */
+}
+
+.refine-row {
+  display: flex;
+  gap: 10px;
+  width: 100%;
+  align-items: stretch;
+}
+
+.refine-input {
+  flex: 1;
+  min-width: 0;
+  background: var(--shell-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 16px; /* <16px triggers iOS focus zoom */
+  line-height: 1.4;
+  padding: 10px 14px;
+  min-height: 44px;
+  transition: border-color 0.15s ease;
+}
+
+.refine-input:hover {
+  border-color: var(--ink-faint);
+}
+
+.refine-input:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.refine-input::placeholder {
+  color: var(--ink-faint);
+}
+
+.refine-input:disabled {
+  opacity: 0.5;
+}
+
+.refine-btn {
+  flex-shrink: 0;
+}
+
+.refine-log {
+  max-width: 100%;
+}
+
+/* per-track swap: quiet print furniture on the paper */
+.swap-btn {
+  font-family: "Space Mono", monospace;
+  font-size: 15px;
+  line-height: 1;
+  background: transparent;
+  color: var(--paper-dim);
+  border: 1px solid var(--paper-line);
+  border-radius: 4px;
+  width: 30px;
+  height: 30px;
+  padding: 0;
+  flex-shrink: 0;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease, border-color 0.15s ease;
+  position: relative;
+}
+
+/* invisible hit-area: a 46px touch target around the 30px visual. Real for
+   hit-testing, but the button's own box stays 30px — phones get a true
+   44px box in the narrow-screen block below so a finger and an audit agree */
+.swap-btn::after {
+  content: "";
+  position: absolute;
+  inset: -8px;
+}
+
+.swap-btn:hover {
+  color: var(--paper-ink);
+  border-color: var(--paper-dim);
+}
+
+.swap-btn:disabled {
+  opacity: 0.4;
+  cursor: default;
+  color: var(--paper-dim);
+  border-color: var(--paper-line);
+}
+
+/* ── save area ── */
+.save-note {
+  font-family: "Space Mono", monospace;
+  font-size: 11.5px;
+  color: var(--ink-faint);
+  margin-top: 10px;
+  text-align: center;
+}
+
+.playlist-link {
+  margin-top: 20px;
+  font-family: "Space Mono", monospace;
+  font-size: 13px;
+  color: var(--accent-soft);
+  text-decoration: none;
+  border: 1px solid var(--accent-soft);
+  border-radius: 4px;
+  padding: 12px 18px;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  transition: background 0.15s ease;
+}
+
+.playlist-link:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+/* ── after pressing: one primary action (open it), the keep-it caption,
+   quiet secondary actions, and the "own a copy" disclosure ── */
+.pressed {
+  margin-top: 24px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.pressed-open {
+  width: 100%;
+  max-width: 360px;
+}
+
+.pressed-note {
+  margin-top: 10px;
+}
+
+.pressed-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.pressed-mine {
+  margin-top: 18px;
+  max-width: 560px;
+  width: 100%;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.pressed-mine summary {
+  cursor: pointer;
+  color: var(--ink-dim);
+  text-align: center;
+  padding: 8px;
+}
+
+.pressed-mine summary:hover {
+  color: var(--ink);
+}
+
+.pressed-mine p {
+  margin: 8px 0 12px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.pressed-mine b {
+  color: var(--ink-dim);
+  font-weight: 700;
+}
+
+.pressed-mine .btn-ghost {
+  display: block;
+  margin: 0 auto;
+}

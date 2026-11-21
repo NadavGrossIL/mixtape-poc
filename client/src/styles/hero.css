@@ -1,0 +1,60 @@
+/* The empty-state cassette deck. Layer: components. */
+
+/* ── empty-state deck hero ── */
+/* 32px from whatever sits above it (button on the gate, chips when signed
+   in): one step more than the 24px inside the action group, because the
+   cassette is garnish, not a fourth item in the stack */
+.deck-hero {
+  margin-top: 32px;
+  color: var(--ink-dim);
+}
+
+.deck {
+  display: block;
+  /* garnish, not headline: it must never outrank the input above it */
+  width: min(240px, 68vw);
+  height: auto;
+}
+
+/* on the login gate there is no input to compete with — let it breathe */
+.deck-hero.deck-hero-gate .deck {
+  width: min(320px, 80vw);
+}
+
+.deck-line {
+  stroke: var(--line);
+}
+
+.deck-accent {
+  stroke: var(--accent-soft);
+}
+
+.deck-label {
+  font-family: "Space Mono", monospace;
+  font-size: 9px;
+  letter-spacing: 2px;
+  fill: var(--ink-faint);
+  stroke: none;
+}
+
+/* fill-box makes each hub rotate around its own center */
+.deck-reel {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+
+.deck-tape {
+  stroke: var(--accent-soft);
+  stroke-width: 2;
+  /* the shared brand motif — visible on its own, not only under the
+     motion-gated shimmer */
+  opacity: 0.65;
+}
+
+/* the moving highlight — invisible unless motion is allowed */
+.deck-tape-flow {
+  stroke: var(--accent-soft);
+  stroke-width: 2;
+  stroke-dasharray: 26 206;
+  opacity: 0;
+}

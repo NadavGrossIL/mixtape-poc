@@ -1,0 +1,445 @@
+/* The composer card: prompt, mic, seed trigger, armed-seed token, the
+   inline seed picker, and the example chips. Layer: components. */
+
+/* ── input ── */
+/* ── the composer card: one bounded surface for everything that composes
+   the request — docked seed token, prompt, seed trigger, submit. Common
+   region does the section-separation work; nothing else on the landing
+   gets a container, so the card alone reads as "act here". ── */
+.composer {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 560px;
+  background: var(--shell-raised);
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  transition: border-color 0.15s ease;
+}
+
+.composer:hover {
+  border-color: var(--accent-soft); /* hover speaks the focus ring's language */
+}
+
+.composer:focus-within {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+.composer-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+}
+
+/* seed trigger: a labeled ghost affordance INSIDE the composer — a seed is
+   attached context, not an alternate mode, so it lives where attachments
+   live (the +) instead of floating as a sibling of the example chips */
+.seed-entry {
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: none;
+  border-radius: 4px;
+  padding: 6px 8px;
+  min-height: 44px;
+  cursor: pointer;
+  text-align: left;
+  transition: color 0.15s ease;
+}
+
+.seed-entry:hover {
+  color: var(--ink);
+}
+
+.prompt-input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 16px; /* <16px triggers iOS focus zoom */
+  line-height: 1.4;
+  padding: 12px 14px;
+  resize: none;
+}
+
+.prompt-input:focus-visible {
+  outline: none; /* the ring is the composer's (:focus-within) */
+}
+
+.prompt-input::placeholder {
+  /* the most-read text in the box — one full step above the caption floor */
+  color: var(--ink-dim);
+}
+
+/* mic sits inside the textarea's corner so the stacked mobile layout
+   doesn't gain a full-width third button */
+.prompt-wrap {
+  position: relative;
+  flex: 1;
+  display: flex;
+}
+
+/* ── armed seed: a removable token docked to the prompt box ── */
+.seed-token {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+  padding: 8px 6px 8px 12px;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-dim);
+}
+
+.seed-token-mark {
+  color: var(--accent-soft);
+  flex-shrink: 0;
+}
+
+.seed-token-label {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.seed-token-name {
+  color: var(--ink);
+  font-weight: 700;
+}
+
+.seed-token-clear {
+  background: transparent;
+  border: none;
+  color: var(--accent-soft);
+  font-family: "Space Mono", monospace;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 6px;
+  flex-shrink: 0;
+  position: relative;
+  border-radius: 4px;
+}
+
+/* invisible hit-area: full touch target around the small glyph */
+.seed-token-clear::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
+.seed-token-clear:hover {
+  color: var(--ink);
+}
+
+/* ── inline seed picker panel (opened from the composer-bar trigger) ── */
+.seed-panel {
+  width: 100%;
+  max-width: 560px;
+  margin-top: 10px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 12px 14px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.seed-panel-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  letter-spacing: 1px;
+  color: var(--ink-dim);
+}
+
+.seed-panel-close {
+  background: transparent;
+  border: none;
+  color: var(--ink-faint);
+  font-family: "Space Mono", monospace;
+  font-size: 13px;
+  cursor: pointer;
+  padding: 0 4px;
+  position: relative;
+  border-radius: 4px;
+}
+
+.seed-panel-close::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+}
+
+.seed-panel-close:hover {
+  color: var(--ink);
+}
+
+.seed-explainer {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--ink-faint);
+}
+
+.seed-error-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.seed-retry {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  padding: 6px 14px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.seed-retry:hover {
+  color: var(--ink);
+  border-color: var(--ink-faint);
+}
+
+.prompt-wrap .prompt-input {
+  flex: 1;
+}
+
+.prompt-wrap.has-mic .prompt-input {
+  padding-right: 52px; /* text never runs under the mic */
+}
+
+.mic-btn {
+  position: absolute;
+  right: 2px;
+  bottom: 2px;
+  width: 44px; /* full touch target, invisible padding */
+  height: 44px;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: var(--ink-dim); /* interactive: sits above the caption tier */
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.15s ease;
+  /* hold-to-talk: a long press must not scroll, select, or pop the
+     iOS callout menu */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
+
+.mic-btn:hover {
+  color: var(--ink);
+}
+
+.mic-btn.mic-live {
+  color: var(--accent-soft);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .mic-btn.mic-live svg {
+    animation: mic-pulse 1.2s ease-in-out infinite;
+  }
+  @keyframes mic-pulse {
+    50% {
+      opacity: 0.45;
+    }
+  }
+}
+
+.input-hint {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--accent-soft);
+  margin-top: 10px;
+  max-width: 560px;
+}
+
+.scope-line {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 10px;
+  text-align: center;
+}
+
+/* em-dash-flanked heading over each alternate way in — track-listing style.
+   One tier above the faint captions: headings must outrank what they organize */
+.section-note {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  letter-spacing: 2px;
+  color: var(--ink-dim);
+  text-align: center;
+}
+
+.section-note::before {
+  content: "— ";
+}
+
+.section-note::after {
+  content: " —";
+}
+
+.examples {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  /* a full tier of air above the examples: last-priority footnote, and the
+     only dashed pills left on the page — clearly not the composer's kin */
+  margin-top: 40px;
+}
+
+/* ── seed picker controls (inside .seed-panel) ── */
+.seed-filter {
+  width: 100%;
+  min-width: 0;
+  background: var(--shell-raised);
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 16px; /* <16px triggers iOS focus zoom */
+  padding: 8px 12px;
+  min-height: 44px;
+  transition: border-color 0.15s ease;
+}
+
+.seed-filter::placeholder {
+  color: var(--ink-dim);
+}
+
+.seed-filter:hover {
+  border-color: var(--accent-soft);
+}
+
+.seed-filter:focus-visible {
+  outline: 2px solid var(--accent-soft);
+  outline-offset: 0;
+  border-color: transparent;
+}
+
+/* the shelf: playlist rows ruled like a tracklist, scrolling in place */
+.seed-list {
+  max-height: 264px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+}
+
+.seed-item {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-top: 1px solid
+    color-mix(in srgb, var(--line) 40%, transparent);
+  padding: 10px 6px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+
+.seed-item:first-child {
+  border-top: none;
+}
+
+.seed-item:hover {
+  background: var(--shell-raised);
+  transform: translateX(3px);
+}
+
+.seed-item-name {
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--ink);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+
+.seed-item-meta {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  flex-shrink: 0;
+  white-space: nowrap;
+}
+
+.seed-note {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+}
+
+.seed-reauth {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--accent-soft);
+  /* a real touch target, like every other control on the page */
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* ── example chips ── */
+.chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+  max-width: 560px;
+  margin-top: 12px;
+}
+
+.chip {
+  font-family: "Space Mono", monospace;
+  font-size: 13px; /* control tier: chips must out-size the labels around them */
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px dashed var(--line);
+  border-radius: 999px;
+  padding: 7px 14px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.chip:hover {
+  color: var(--ink);
+  border-color: var(--accent-soft);
+}
+
+/* pasted-link seed: the same field as the picker's filter, plus a submit */
+.seed-paste {
+  display: flex;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.seed-paste .seed-filter {
+  flex: 1;
+  min-width: 0;
+}

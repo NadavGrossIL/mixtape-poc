@@ -1,0 +1,74 @@
+/* Every @keyframes in the app, in one place: several are shared (lnfade
+   by six components, spin by the disc and both reels). Animations only run
+   inside the prefers-reduced-motion: no-preference blocks. Layer: base. */
+
+/* ── motion: opt-in only ── */
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@keyframes lnfade {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes lnblink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@keyframes deal {
+  from {
+    opacity: 0;
+    transform: translateY(16px) rotate(0.4deg) scale(0.985);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(-0.4deg);
+  }
+}
+
+/* seed picker transitions: the panel unfolds from under the chip, and the
+   chosen playlist "docks" onto the prompt box from the panel's direction */
+@keyframes seed-open {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@keyframes seed-dock {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+/* cycle length = dasharray period (26 + 206) for a seamless loop */
+@keyframes tapeflow {
+  to {
+    stroke-dashoffset: -232;
+  }
+}

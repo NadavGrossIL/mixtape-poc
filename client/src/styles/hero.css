@@ -30,13 +30,29 @@
   stroke: var(--accent-soft);
 }
 
-/* a broken ring, so the turn is visible at this size; fill-box makes each
-   hub rotate around its own center */
+/* a solid hub with one off-centre hole in the wall's colour: the hole
+   orbiting is what shows the turn at this size. (A broken ring was tried
+   first and read as a "refresh" icon.) fill-box makes each hub rotate
+   around its own center. */
 .deck-reel {
-  stroke-dasharray: 6.4 3.02;
-  stroke-linecap: butt;
   transform-box: fill-box;
   transform-origin: center;
+}
+
+.deck-hub {
+  fill: currentColor;
+  stroke: none;
+}
+
+.deck-hub-hole {
+  fill: var(--shell);
+  stroke: none;
+}
+
+/* the same deck beside the smaller wordmark once a card is showing: no
+   tape, and it holds still — that screen is for reading the card */
+.deck-compact {
+  height: 1em;
 }
 
 .deck-tape {
@@ -59,10 +75,10 @@
   /* reels + tape shimmer are the mark's only motion. No entry fade: the
      deck is half of the logo, and a logo whose picture arrives after its
      word reads as two things again */
-  .deck-reel-supply {
+  .deck:not(.deck-compact) .deck-reel-supply {
     animation: spin 5.2s linear infinite;
   }
-  .deck-reel-takeup {
+  .deck:not(.deck-compact) .deck-reel-takeup {
     animation: spin 3.4s linear infinite;
   }
   .deck-tape-flow {

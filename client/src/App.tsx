@@ -331,33 +331,6 @@ async function readSSE<E extends [string, unknown]>(
   }
 }
 
-// Cassette mark. Stroke-based so it stays crisp at header size: the shell
-// inherits currentColor; reels and the spilled tape carry the accent.
-function Logo() {
-  return (
-    <svg
-      className="logo"
-      viewBox="0 0 44 33"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="2" y="3" width="40" height="22" rx="3" />
-      <path d="M15 9.5h14" className="logo-accent" />
-      <circle cx="15" cy="14" r="4.5" className="logo-accent" />
-      <circle cx="29" cy="14" r="4.5" className="logo-accent" />
-      <path d="M15.5 25l1.8-4h9.4l1.8 4" />
-      <path
-        d="M9 25c0 4.5 5.5 5 10.5 3.5 4-1.2 8-1 12.5 1"
-        className="logo-accent"
-      />
-    </svg>
-  );
-}
-
 // Leaves the notch, loops once, then runs level under the wordmark and stops
 // under its last letter. Units are the deck's own (84 wide); the end x is the
 // wordmark's right edge at the em sizes set in hero.css.
@@ -372,10 +345,14 @@ const TAPE_SPILL =
 // for ~45px tall, so few, heavy strokes: no screws, no window, no label.
 // Pure decoration, aria-hidden; all motion lives in CSS behind the
 // reduced-motion gate.
-function DeckHero() {
+//
+// `compact` is the same drawing once a card is on the table: no tape and no
+// motion, sized to the smaller wordmark. One cassette on every screen — it
+// used to swap to a different, older icon the moment the card arrived.
+function DeckHero({ compact = false }: { compact?: boolean }) {
   return (
     <svg
-      className="deck"
+      className={"deck" + (compact ? " deck-compact" : "")}
       // the box is the shell only, so flex baseline alignment puts the
       // shell's bottom edge on the wordmark's baseline; the tape overflows
       // it on purpose (overflow: visible in hero.css)
@@ -390,19 +367,29 @@ function DeckHero() {
       <rect x="1.25" y="1.25" width="81.5" height="41.5" rx="5" />
       {/* supply reel: fat tape pack */}
       <circle cx="27" cy="20" r="10.5" strokeWidth="1.75" className="deck-accent" />
-      <circle cx="27" cy="20" r="4.5" strokeWidth="2" className="deck-reel deck-reel-supply" />
+      <g className="deck-reel deck-reel-supply">
+        <circle cx="27" cy="20" r="4.75" className="deck-hub" />
+        <circle cx="29.3" cy="20" r="1.35" className="deck-hub-hole" />
+      </g>
       {/* take-up reel: thin pack */}
       <circle cx="57" cy="20" r="7.5" strokeWidth="1.75" className="deck-accent" />
-      <circle cx="57" cy="20" r="4.5" strokeWidth="2" className="deck-reel deck-reel-takeup" />
+      <g className="deck-reel deck-reel-takeup">
+        <circle cx="57" cy="20" r="4.75" className="deck-hub" />
+        <circle cx="59.3" cy="20" r="1.35" className="deck-hub-hole" />
+      </g>
       {/* tape running pack-top to pack-top */}
       <path d="M27 9.5 L57 12.5" strokeWidth="1.75" className="deck-accent" />
       {/* bottom notch */}
       <path d="M26 42.75l3.5-8h25l3.5 8" strokeWidth="2" />
-      {/* spilled tape: solid run + a brighter dash sliding along it */}
-      <path className="deck-tape" d={TAPE_SPILL} />
-      {/* pathLength = the dash period in keyframes.css, so exactly one
-          highlight travels the tape per cycle whatever its drawn length */}
-      <path className="deck-tape-flow" d={TAPE_SPILL} pathLength={232} />
+      {!compact && (
+        <>
+          {/* spilled tape: solid run + a brighter dash sliding along it */}
+          <path className="deck-tape" d={TAPE_SPILL} />
+          {/* pathLength = the dash period in keyframes.css, so exactly one
+              highlight travels the tape per cycle whatever its drawn length */}
+          <path className="deck-tape-flow" d={TAPE_SPILL} pathLength={232} />
+        </>
+      )}
     </svg>
   );
 }
@@ -1385,7 +1372,7 @@ export default function LinerNotes() {
             baseline and its tape underlines the word. Once a card is on
             the table the compact static mark takes over. */}
         <h1 className={card ? "wordmark" : "wordmark wordmark-lockup"}>
-          {card ? <Logo /> : <DeckHero />}
+          <DeckHero compact={Boolean(card)} />
           {BRAND}
         </h1>
         {/* the tagline: one human sentence about the playlist, not a

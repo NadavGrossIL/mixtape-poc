@@ -29,7 +29,9 @@ export const DESCRIPTION_PREFIX = "Made with Mixtape";
 // for a client that sends something else.
 export const VIBE_MAX = 150;
 
-export function playlistDescription(vibe: unknown): string {
+// The vibe line as it lands on the public profile, without the prefix — also
+// what latest.ts shows on the front page, so the two can never disagree.
+export function cleanVibe(vibe: unknown): string {
   const tidy = (typeof vibe === "string" ? vibe : "")
     .replace(/[\u0000-\u001f\u007f<>​-‏‪-‮⁦-⁩﻿]/g, " ")
     .replace(/[“”"]/g, "") // the card shows it in quotes; we add our own
@@ -41,7 +43,11 @@ export function playlistDescription(vibe: unknown): string {
     .replace(/\s*&\s*/g, " and ")
     .replace(/\s+/g, " ")
     .trim();
-  const line = Array.from(tidy).slice(0, VIBE_MAX).join("").trim();
+  return Array.from(tidy).slice(0, VIBE_MAX).join("").trim();
+}
+
+export function playlistDescription(vibe: unknown): string {
+  const line = cleanVibe(vibe);
   if (!line) return `${DESCRIPTION_PREFIX}.`;
   return `${DESCRIPTION_PREFIX} — “${line}”`;
 }

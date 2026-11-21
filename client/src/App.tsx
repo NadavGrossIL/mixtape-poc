@@ -26,6 +26,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
 import { shareOrCopy } from "./share";
 import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
+import { parseLatestResponse, pressedAgo, shelfFor, type LatestMixtape } from "./latest";
 import LogConsole from "./LogConsole";
 
 // The card/track shapes the server streams back. Unresolved tracks keep only
@@ -720,6 +721,7 @@ export default function LinerNotes() {
   // same line lands twice in a row (a capped visitor pressing again)
   const [errorTick, setErrorTick] = useState(0);
   const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
+  const [isOwner, setIsOwner] = useState(false); // shows the shelf's "hide"; the server enforces it
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
@@ -728,6 +730,15 @@ export default function LinerNotes() {
   // "your mixtapes": this browser's presses, newest first (see recent.ts)
   const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
   const [showAllRecent, setShowAllRecent] = useState(false);
+  // "fresh off the press": everyone's newest presses (server/latest.ts)
+  const [latest, setLatest] = useState<LatestMixtape[]>([]);
+  // one clock reading per render, for the filter and every row's label
+  const shelfNow = Date.now();
+  const shelf = shelfFor(
+    latest,
+    recent.map((m) => m.url),
+    shelfNow
+  );
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
@@ -798,9 +809,39 @@ export default function LinerNotes() {
   useEffect(() => {
     fetch("/auth/status")
       .then((r) => r.json())
-      .then((d: { loggedIn?: boolean }) => setLoggedIn(Boolean(d.loggedIn)))
+      .then((d: { loggedIn?: boolean; owner?: boolean }) => {
+        setLoggedIn(Boolean(d.loggedIn));
+        setIsOwner(Boolean(d.owner));
+      })
       .catch(() => setLoggedIn(false));
   }, []);
+
+  // The shelf is a nice-to-have: any failure just leaves it off the page.
+  // Re-read after this visitor's own press, so the list is current when
+  // they come back to the composer.
+  const loadLatest = () => {
+    fetch("/api/latest")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => setLatest(parseLatestResponse(d)))
+      .catch(() => {});
+  };
+  useEffect(loadLatest, []);
+
+  // owner only, and not undoable from here — so it asks first
+  const hideLatest = (id: string, title: string) => {
+    if (!window.confirm(`Hide “${title}” from the home page? The playlist itself stays.`)) return;
+    fetch("/api/latest/hide", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ id }),
+    })
+      .then((r) => {
+        if (!r.ok) throw new Error(`hide failed: ${r.status}`);
+        return r.json();
+      })
+      .then((d) => setLatest(parseLatestResponse(d)))
+      .catch((e) => window.alert(`Couldn't hide it (${e.message}).`));
+  };
 
   // One page-view tick per load, counted server-side (server/metrics.ts).
   // The module-level guard, not the empty dep array, is what makes it once:
@@ -1262,6 +1303,7 @@ export default function LinerNotes() {
       setRecent(
         recordRecent(browserStorage, recent, { title: card.title, url, pressedAt: Date.now() })
       );
+      loadLatest();
     } catch (e) {
       console.error(e);
       setSaveError("Couldn't save it to Spotify. Try again.");
@@ -1775,6 +1817,54 @@ export default function LinerNotes() {
                 {/* proof before more ways in: on a phone this was under the
                     chips and two gaps, off the first screen entirely */}
                 <SampleCard />
+
+                {/* everyone's newest presses: real results a stranger can
+                    open before typing anything. Under the sample (what you
+                    get → what people got), minus this browser's own, which
+                    "your mixtapes" already lists. Absent when empty. */}
+                {shelf.length > 0 && (
+                  <section className="recent latest" aria-labelledby="latest-heading">
+                    <div className="section-note" id="latest-heading">
+                      fresh off the press
+                    </div>
+                    <ul className="recent-list">
+                      {shelf.map((m) => (
+                        <li key={m.id} className="latest-item">
+                          <a
+                            href={m.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="recent-row latest-row"
+                            aria-label={`${m.title}, pressed ${pressedAgo(m.pressedAt, shelfNow)} (opens Spotify)`}
+                            onClick={(e) => {
+                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                              if (openInSpotify(m.url)) e.preventDefault();
+                            }}
+                          >
+                            <SpotifyMark size={14} />
+                            <span className="latest-text">
+                              <span className="recent-title">{m.title}</span>
+                              {m.vibe && <span className="latest-vibe">“{m.vibe}”</span>}
+                            </span>
+                            <span className="recent-open" aria-hidden>
+                              {pressedAgo(m.pressedAt, shelfNow)}
+                            </span>
+                          </a>
+                          {isOwner && (
+                            <button
+                              type="button"
+                              className="latest-hide"
+                              aria-label={`hide ${m.title} from this list`}
+                              onClick={() => hideLatest(m.id, m.title)}
+                            >
+                              hide
+                            </button>
+                          )}
+                        </li>
+                      ))}
+                    </ul>
+                  </section>
+                )}
 
                 {/* example chips: populate the prompt, stay editable */}
                 <div className="examples">

@@ -605,12 +605,42 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
 
 type Stage = "seeding" | "curating" | "resolving" | null;
 
-// Studio chatter: a rotating flavour line, cosmetic on purpose. Refine only
-// since 2026-11-21 — the generate screen now states its stage once, in
-// plain words, and a second moving line under that was noise. Refine has no
-// disc and no step line, so this is still its only sign of life between
-// events. aria-hidden: the live region narrates the milestones.
+// Studio chatter: the rotating flavour line ("thumbing the dividers…"), the
+// product's version of an assistant's "thinking…". Cosmetic on purpose: the
+// step line above it states the stage in plain words, and this is the part
+// that keeps moving while no song has landed yet, keyed to the stage so it
+// never claims a step that isn't happening. It was cut from the generate
+// screen for a day as noise (2026-11-21) and put back the same day: the
+// owner missed it, and it is the screen's charm. aria-hidden: the live
+// region narrates the milestones.
 const CHATTER = {
+  reading: [
+    "reading your liner notes…",
+    "decoding the vibe…",
+    "warming up the tubes…",
+    "tuning the dial…",
+    "checking the levels…",
+    "sharpening the pencil…",
+  ],
+  seeding: [
+    "dropping the needle on your playlist…",
+    "reading the grooves…",
+    "taking notes from your crate…",
+    "rewinding to track one…",
+    "listening for the through-line…",
+  ],
+  curating: [
+    "thumbing the dividers…",
+    "flipping past the B-sides…",
+    "dusting off a deep cut…",
+    "asking the record-store guy…",
+    "arguing about the opener…",
+    "sequencing side A…",
+    "pulling a few sleeves…",
+    "checking the bpm…",
+    "holding out for the closer…",
+    "cutting one that didn't earn it…",
+  ],
   resolving: [
     "matching wax to Spotify…",
     "checking the barcodes…",
@@ -1824,10 +1854,10 @@ export default function LinerNotes() {
               </div>
               <div className="loading-step-note">usually about a minute</div>
             </div>
-            {/* the songs as they land — every line is a real backend event.
-                Nothing renders until the first one: an empty rule down the
-                page said nothing. */}
-            <div className="progress-log" aria-hidden hidden={logTracks.length === 0}>
+            {/* the rotating chatter, then the songs as they land — every
+                song line is a real backend event */}
+            <div className="progress-log" aria-hidden>
+              <StudioChatter pool={stage ?? "reading"} inline />
               {logTracks.map(
                 (t, i) =>
                   t && (

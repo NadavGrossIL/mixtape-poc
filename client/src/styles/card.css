@@ -11,6 +11,16 @@
   align-items: center;
 }
 
+/* Straight under the compact header (the usual result screen) the header's
+   own 24px is the whole gap: the mark then sits midway between the page's
+   top edge and the sleeve and reads as its label. Stacked with the 36px
+   above it left 60px of bare wall — twice the mark's height — which read
+   as something missing. The 36px stays for when the loading block is above
+   the card (a refine in flight) and the two need telling apart. */
+.card-wrap:first-child {
+  margin-top: 0;
+}
+
 .card {
   width: 100%;
   background: var(--paper);

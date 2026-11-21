@@ -45,6 +45,9 @@ interface MixtapeCard {
   tracks: Track[];
   prompt?: string;
   seed?: { id: string; name: string };
+  // Set only by the LangChain curator (lc/curator-lc.ts): the memory thread
+  // this card's conversation lives on. This agent has no memory and ignores it.
+  threadId?: string;
 }
 
 interface AdjustDiff {
@@ -55,6 +58,9 @@ interface AdjustDiff {
   title?: string;
   vibe?: string;
   accent?: string;
+  // LangChain curator only: the thread the adjusted card now lives on, when
+  // it is not the one the card arrived with (lc/curator-lc.ts).
+  threadId?: string;
 }
 
 // One track's shape, shared by create_mixtape and adjust_mixtape.
@@ -1409,7 +1415,7 @@ async function adjustCard(
   return diff;
 }
 
-export type { Track, MixtapeCard };
+export type { Track, MixtapeCard, AdjustDiff };
 export {
   anthropicConfigured,
   generateCard,

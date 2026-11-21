@@ -21,7 +21,7 @@ import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
 import { parseTrackUris } from "./trackUris.ts";
 import { playlistDescription, cleanVibe } from "./playlistDescription.ts";
-import { makeLatest } from "./latest.ts";
+import { makeLatest, makeVouches } from "./latest.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
 import { makeOutageTracker } from "./outage.ts";
@@ -74,6 +74,12 @@ process.on("exit", metrics.flush);
 // "fresh off the press" — the newest public presses, for the front page
 // (latest.ts). Same DATA_DIR story as the counters.
 const latest = makeLatest({ dir: process.env.DATA_DIR || import.meta.dirname });
+// ...and only for cards the curator wrote here (latest.ts says why). The key
+// is the title and vibe exactly as the press would write them.
+const curatedCards = makeVouches();
+function shelfKey(title: unknown, vibe: unknown): string {
+  return `${spotify.sanitizePlaylistName(title)}\n${cleanVibe(vibe)}`;
+}
 // Remembers a dead Anthropic key or an empty credit balance between runs, so
 // /healthz can go red for it. See outage.ts for the 2026-09-02 story.
 const outages = makeOutageTracker();
@@ -975,6 +981,7 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
       `[generate/stream] done: "${card.title}" — ${verified}/${card.tracks.length} verified on Spotify`
     );
     metrics.count("generated");
+    curatedCards.add(shelfKey(card.title, card.vibe));
     sseSend(res, "done", { card, verified });
   } catch (err: any) {
     if (abort.signal.aborted) {
@@ -1107,6 +1114,7 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
       // LangChain curator only: the card may have moved to a new memory thread
       ...(diff.threadId ? { threadId: diff.threadId } : {}),
     };
+    curatedCards.add(shelfKey(merged.title, merged.vibe));
     sseSend(res, "done", {
       card: merged,
       verified: tracks.filter((t: any) => t.resolved).length,
@@ -1195,9 +1203,14 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
     usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "save");
     metrics.count("pressed");
     // Only what the public playlist itself shows: its name, its vibe line,
-    // its link. A failure here must not fail a press that already happened.
+    // its link — and only for a card the curator wrote here. A failure here
+    // must not fail a press that already happened.
     try {
-      latest.record({ id, title: name, vibe: cleanVibe(req.body?.vibe) });
+      if (curatedCards.has(shelfKey(title, req.body?.vibe))) {
+        latest.record({ id, title: name, vibe: cleanVibe(req.body?.vibe) });
+      } else {
+        console.log(`[latest] ${id} not listed — not a card this server curated`);
+      }
     } catch (err: any) {
       console.warn(`[latest] couldn't record ${id}: ${err.message}`);
     }

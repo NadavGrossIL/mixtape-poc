@@ -7,7 +7,7 @@ import assert from "node:assert";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { makeLatest, parseLatest, LATEST_KEEP } from "../latest.ts";
+import { makeLatest, makeVouches, parseLatest, LATEST_KEEP } from "../latest.ts";
 import { shelfFor, pressedAgo, parseLatestResponse } from "../../client/src/latest.ts";
 
 const dirs: string[] = [];
@@ -103,7 +103,7 @@ test("the shelf leaves out this browser's own presses and caps at max", () => {
     url: `https://open.spotify.com/playlist/${id(n)}`,
     pressedAt: n,
   }));
-  const shelf = shelfFor(rows, [rows[0]!.url], 2);
+  const shelf = shelfFor(rows, [`${rows[0]!.url}?si=abc`], 10, 2);
   assert.deepStrictEqual(shelf.map((m) => m.title), ["t2", "t3"]);
 });
 
@@ -127,4 +127,31 @@ test("only Spotify playlist links come out of the response", () => {
   );
   assert.deepStrictEqual(parseLatestResponse(null), []);
   assert.deepStrictEqual(parseLatestResponse({ mixtapes: "x" }), []);
+});
+
+test("the shelf drops entries older than a week", () => {
+  const day = 86_400_000;
+  const now = 30 * day;
+  const row = (n: number, age: number) => ({
+    id: id(n),
+    title: `t${n}`,
+    vibe: "",
+    url: `https://open.spotify.com/playlist/${id(n)}`,
+    pressedAt: now - age,
+  });
+  assert.deepStrictEqual(
+    shelfFor([row(1, day), row(2, 6 * day), row(3, 8 * day)], [], now).map((m) => m.title),
+    ["t1", "t2"]
+  );
+});
+
+test("vouches remember curated cards and forget the oldest past the cap", () => {
+  const v = makeVouches(2);
+  v.add("a");
+  v.add("b");
+  assert.ok(v.has("a") && v.has("b"));
+  assert.ok(!v.has("forged"));
+  v.add("a"); // refreshed: now b is oldest
+  v.add("c");
+  assert.ok(v.has("a") && v.has("c") && !v.has("b"));
 });

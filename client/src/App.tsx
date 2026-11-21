@@ -732,9 +732,12 @@ export default function LinerNotes() {
   const [showAllRecent, setShowAllRecent] = useState(false);
   // "fresh off the press": everyone's newest presses (server/latest.ts)
   const [latest, setLatest] = useState<LatestMixtape[]>([]);
+  // one clock reading per render, for the filter and every row's label
+  const shelfNow = Date.now();
   const shelf = shelfFor(
     latest,
-    recent.map((m) => m.url)
+    recent.map((m) => m.url),
+    shelfNow
   );
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
@@ -824,15 +827,20 @@ export default function LinerNotes() {
   };
   useEffect(loadLatest, []);
 
-  const hideLatest = (id: string) => {
+  // owner only, and not undoable from here — so it asks first
+  const hideLatest = (id: string, title: string) => {
+    if (!window.confirm(`Hide “${title}” from the home page? The playlist itself stays.`)) return;
     fetch("/api/latest/hide", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ id }),
     })
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => d && setLatest(parseLatestResponse(d)))
-      .catch(() => {});
+      .then((r) => {
+        if (!r.ok) throw new Error(`hide failed: ${r.status}`);
+        return r.json();
+      })
+      .then((d) => setLatest(parseLatestResponse(d)))
+      .catch((e) => window.alert(`Couldn't hide it (${e.message}).`));
   };
 
   // One page-view tick per load, counted server-side (server/metrics.ts).
@@ -1827,7 +1835,7 @@ export default function LinerNotes() {
                             target="_blank"
                             rel="noopener noreferrer"
                             className="recent-row latest-row"
-                            aria-label={`${m.title}, pressed ${pressedAgo(m.pressedAt, Date.now())} (opens Spotify)`}
+                            aria-label={`${m.title}, pressed ${pressedAgo(m.pressedAt, shelfNow)} (opens Spotify)`}
                             onClick={(e) => {
                               if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
                               if (openInSpotify(m.url)) e.preventDefault();
@@ -1839,7 +1847,7 @@ export default function LinerNotes() {
                               {m.vibe && <span className="latest-vibe">“{m.vibe}”</span>}
                             </span>
                             <span className="recent-open" aria-hidden>
-                              {pressedAgo(m.pressedAt, Date.now())}
+                              {pressedAgo(m.pressedAt, shelfNow)}
                             </span>
                           </a>
                           {isOwner && (
@@ -1847,7 +1855,7 @@ export default function LinerNotes() {
                               type="button"
                               className="latest-hide"
                               aria-label={`hide ${m.title} from this list`}
-                              onClick={() => hideLatest(m.id)}
+                              onClick={() => hideLatest(m.id, m.title)}
                             >
                               hide
                             </button>

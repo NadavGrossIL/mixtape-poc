@@ -13,18 +13,25 @@ export type LatestMixtape = {
 // browser's own presses (already under "your mixtapes") don't empty it
 export const LATEST_SHOWN = 5;
 
+// Older than this drops off: on a quiet week "fresh off the press" over a
+// row that says "9 days ago" tells a stranger the place is empty.
+export const LATEST_MAX_AGE_MS = 7 * 86_400_000;
+
 // What the shelf shows: the server's list minus anything this browser
 // pressed — those are already one section up, and the same tape in two
 // lists on one screen is noise.
 export function shelfFor(
   latest: LatestMixtape[],
   ownUrls: string[],
+  now: number,
   max: number = LATEST_SHOWN
 ): LatestMixtape[] {
   // by playlist id, not the raw string: a stored link may carry ?si= or a
   // locale prefix the server's rebuilt one doesn't
   const own = new Set(ownUrls.map(playlistIdOf));
-  return latest.filter((m) => !own.has(m.id)).slice(0, max);
+  return latest
+    .filter((m) => !own.has(m.id) && now - m.pressedAt <= LATEST_MAX_AGE_MS)
+    .slice(0, max);
 }
 
 function playlistIdOf(url: string): string {

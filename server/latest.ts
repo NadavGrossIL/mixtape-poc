@@ -12,6 +12,12 @@
 // (.claude/rules/spotify.md), and a front-page list read from it would spend
 // that on page views. Listing what we wrote costs zero Spotify calls.
 //
+// Only cards this server's curator wrote get on the shelf. /api/playlist
+// reads title and vibe from the request body (it is the one paid route that
+// skips the curator — pressCaps.ts), so without this a hand-written curl
+// could put any text on every visitor's home page. The press still happens;
+// it just isn't advertised. See makeVouches below.
+//
 // The owner can hide an entry (an ugly Claude title) without touching the
 // playlist itself — deleting or privatizing a pressed playlist revokes it
 // from every library that saved it, so that is never the moderation tool.
@@ -113,4 +119,22 @@ export function makeLatest({ dir, now = Date.now }: { dir: string; now?: () => n
   }
 
   return { record, hide, list: (): LatestMixtape[] => [...load()] };
+}
+
+// The cards the curator actually produced, by a key the caller builds from
+// the title and vibe exactly as they'd be pressed. In memory and bounded:
+// a card made before a redeploy and pressed after it just skips the shelf,
+// which costs nothing. 500 is days of traffic at the app's caps.
+export const VOUCH_MAX = 500;
+
+export function makeVouches(max: number = VOUCH_MAX) {
+  const keys = new Set<string>();
+  return {
+    add(key: string): void {
+      keys.delete(key); // re-adding moves it to the newest end
+      keys.add(key);
+      while (keys.size > max) keys.delete(keys.values().next().value as string);
+    },
+    has: (key: string): boolean => keys.has(key),
+  };
 }

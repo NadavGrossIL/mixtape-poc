@@ -1200,9 +1200,10 @@ export default function LinerNotes() {
           "Content-Type": "application/json",
           Accept: "text/event-stream",
         },
-        // the prompt stays off the playlist on purpose: it lands on a
-        // public profile, and a prompt can be more personal than intended
-        body: JSON.stringify({ title: card.title, uris }),
+        // the vibe line becomes the playlist description; the prompt stays
+        // off on purpose: it lands on a public profile, and a prompt can be
+        // more personal than intended
+        body: JSON.stringify({ title: card.title, vibe: card.vibe, uris }),
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));

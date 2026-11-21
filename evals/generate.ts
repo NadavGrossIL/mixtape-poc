@@ -5,6 +5,7 @@
 //   node evals/generate.ts                 # all prompts
 //   node evals/generate.ts --limit 2       # pilot: first N prompts
 //   node evals/generate.ts --only id1,id2  # specific prompt ids
+//   CURATOR=lc node evals/generate.ts      # the LangChain curator instead
 //
 // Writes evals/runs/<timestamp>/cards.json.
 
@@ -15,7 +16,15 @@ loadServerEnv();
 
 // Dynamic imports so server/.env is in process.env before the server modules
 // evaluate (static ESM imports would hoist above loadServerEnv()).
-const curator = await import("../server/curator.ts");
+const base = await import("../server/curator.ts");
+// CURATOR=lc runs the truth-check on the LangChain curator
+// (server/lc/curator-lc.ts) through the same front door, exactly as
+// evals/reliability.ts does. Unset, this is the hand-written curator, as always.
+const WHICH = process.env.CURATOR === "lc" ? "lc" : "hand-written";
+const curator =
+  WHICH === "lc"
+    ? { ...base, generateCard: (await import("../server/lc/curator-lc.ts")).generateCard }
+    : base;
 const spotify = await import("../server/spotify.ts");
 
 const DELAY_MS = 1500;
@@ -55,7 +64,7 @@ async function main() {
   const runDir = newRunDir();
   const cardsPath = path.join(runDir, "cards.json");
   console.log(`[generate] run dir: ${runDir}`);
-  console.log(`[generate] ${prompts.length} prompts, model ${curator.MODEL}`);
+  console.log(`[generate] ${prompts.length} prompts, model ${curator.MODEL}, curator ${WHICH}`);
 
   const results: any[] = [];
   for (const [i, p] of prompts.entries()) {
@@ -92,7 +101,8 @@ async function main() {
       shownReleaseDate: spotify.recallByRef(t.ref)?.album?.release_date ?? null,
     }));
 
-    results.push({ ...p, card: { ...card, tracks } });
+    // `curator` on every row: a run file must say which agent it measured.
+    results.push({ ...p, curator: WHICH, card: { ...card, tracks } });
     writeJson(cardsPath, results); // incremental — a crash keeps prior cards
     if (i < prompts.length - 1) await sleep(DELAY_MS);
   }

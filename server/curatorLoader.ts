@@ -51,7 +51,8 @@ interface Curator {
 //
 // So on a deployed host tracing is off unless someone says, in so many words,
 // that visitors may be traced: LANGSMITH_TRACE_VISITORS=1. Locally nothing is
-// touched.
+// touched. The app tells visitors their prompts are logged (the notice line
+// under the composer, client/src/App.tsx) — keep that line if this is on.
 //
 // The list is what @langchain/core reads (utils/callbacks.js, plus
 // callbacks/manager.js for the last one), checked 2026-11-21. Re-check it when

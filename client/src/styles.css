@@ -1647,6 +1647,14 @@
   color: var(--ink);
   text-decoration: underline;
 }
+/* the logging notice: the credit's own type, tucked right under it */
+.notice-line {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 6px;
+}
 
 /* "your mixtapes": the composer's width and border language, but flat on
    the wall (not the recessed --shell-raised) — the composer stays the one

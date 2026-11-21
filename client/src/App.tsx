@@ -362,16 +362,13 @@ const TAPE_SPILL =
   "M140 120 C118 138 88 146 76 136 C66 127 80 118 90 127 " +
   "C100 136 118 150 152 152 C196 154 224 144 262 152 C270 153.5 276 156 278 158";
 
-// Empty-state hero: an idle deck mid-play — spoked reels turning at
+// The header mark (landing and waiting screens): an idle deck mid-play — spoked reels turning at
 // different speeds (the take-up pack is smaller, so it spins faster) and
 // tape spilling out into a slow shimmer. Pure decoration, aria-hidden;
 // all motion lives in CSS behind the reduced-motion gate.
-function DeckHero({ gate = false }: { gate?: boolean }) {
+function DeckHero() {
   return (
-    <div
-      className={"deck-hero" + (gate ? " deck-hero-gate" : "")}
-      aria-hidden="true"
-    >
+    <div className="deck-hero" aria-hidden="true">
       <svg
         className="deck"
         // cropped to the drawn content (y 12–160 incl. stroke) so the box has
@@ -439,8 +436,7 @@ function DeckHero({ gate = false }: { gate?: boolean }) {
 }
 
 // What a stranger gets, shown before they spend a minute finding out: the
-// proof, placed right under the composer. The cassette deck above stays as
-// the page's closing garnish.
+// proof, placed right under the composer.
 //
 // The content is a real production run (2026-11-21), trimmed to two rows.
 // The notes are the curator's own output, not marketing copy, so the sample
@@ -449,7 +445,6 @@ const SAMPLE = {
   prompt: "songs that sound like driving home at 2am",
   title: "Taillights at 2AM",
   vibe: "For the long drive home when city lights blur into memory.",
-  accent: "cobalt",
   total: 8,
   tracks: [
     {
@@ -467,15 +462,17 @@ const SAMPLE = {
 
 // Static on purpose: no links, no hover, no drag. It is a picture of the
 // result, and a row that reacted to the pointer would read as the result.
+// No accent hue either: it is drawn in the wall's own cream line, like the
+// cassette in the header, so the one bright paper object on the site is the
+// real card.
 function SampleCard() {
-  const ink = ACCENT_INK[SAMPLE.accent];
   return (
     <section className="sample" aria-labelledby="sample-heading">
       <div className="section-note" id="sample-heading">
         what you get
       </div>
       <div className="card sample-card">
-        <div className="spine" style={{ background: ink }}>
+        <div className="spine">
           <span className="spine-text">{SAMPLE.title.toUpperCase()}</span>
         </div>
         <div className="card-body">
@@ -483,13 +480,13 @@ function SampleCard() {
             someone typed: <em>{SAMPLE.prompt}</em>
           </div>
           <div className="card-title sample-title">{SAMPLE.title}</div>
-          <div className="vibe" style={{ borderColor: ink }}>
+          <div className="vibe">
             “{SAMPLE.vibe}”
           </div>
           <div className="track-list">
             {SAMPLE.tracks.map((t, i) => (
               <div className="sample-row" key={t.title}>
-                <div className="track-num" style={{ color: ink }}>
+                <div className="track-num">
                   {String(i + 1).padStart(2, "0")}
                 </div>
                 <div className="track-main">
@@ -1408,8 +1405,13 @@ export default function LinerNotes() {
       </div>
 
       <header className="header">
+        {/* one cassette, not two: the animated deck is the mark over the
+            wordmark. It used to be garnish at the foot of the page while a
+            small static cassette sat here. Once a card is on the table the
+            compact inline mark takes over and the height goes to the card. */}
+        {!card && <DeckHero />}
         <h1 className="wordmark">
-          <Logo />
+          {card && <Logo />}
           {BRAND}
         </h1>
         {/* the tagline: one human sentence about the playlist, not a
@@ -1828,8 +1830,6 @@ export default function LinerNotes() {
                     visitor from a shared link doesn't, and this is the one
                     backlink to the maker. One name, one link, nothing that
                     competes with the composer above it. */}
-                <DeckHero />
-
                 <a
                   className="credit-line"
                   href="https://www.linkedin.com/in/nadavgr/"

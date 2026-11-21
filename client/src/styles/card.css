@@ -502,8 +502,11 @@
   }
 }
 
-/* ── the sample card on the empty state: the real card's paper, spine and
-   type at a smaller size, with nothing that reacts to the pointer ── */
+/* ── the sample card on the empty state: the real card's sleeve, spine and
+   type at a smaller size, with nothing that reacts to the pointer. It is the
+   sleeve in the wall's shade: kraft instead of sunlit paper, and a spine in
+   the wall's own dark instead of an accent hue, so it stays quieter than the
+   prompt box above it and brings no colour the wall doesn't already have. ── */
 .sample {
   margin-top: 40px;
   width: 100%;
@@ -515,18 +518,40 @@
 }
 
 /* no deal-in: it sits below the fold, and a card that lands with a flourish
-   says "your result arrived" */
+   says "your result arrived". A shallower shadow than the real card: this
+   one is pinned flat, not dealt onto the table. */
 .sample-card {
   animation: none;
+  background: var(--sample-paper);
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.35),
+    0 10px 24px rgba(0, 0, 0, 0.22);
+}
+
+/* not multiplied like the real spine: the pair must be the 5.06:1 that
+   tokens.css states, not whatever the blend makes of it */
+.sample .spine {
+  background: var(--shell-raised);
+  mix-blend-mode: normal;
+}
+
+.sample .spine-text {
+  color: var(--sample-paper);
 }
 
 .sample .prompt-line {
+  color: var(--sample-dim);
   margin-bottom: 8px;
 }
 
 .sample-title {
   font-size: 22px;
   margin: 0 0 10px;
+  text-shadow: none;
+}
+
+.sample .vibe {
+  border-color: var(--shell-raised);
 }
 
 .sample-row {
@@ -534,14 +559,22 @@
   gap: 12px;
   align-items: baseline;
   padding: 9px 0;
-  border-top: 1px solid var(--paper-line);
+  border-top: 1px solid var(--sample-line);
+}
+
+.sample .track-num {
+  color: var(--shell-raised);
+}
+
+.sample .track-note {
+  color: var(--sample-dim);
 }
 
 .sample-more {
   font-family: "Space Mono", monospace;
   font-size: 11px;
-  color: var(--paper-dim);
-  border-top: 1px solid var(--paper-line);
+  color: var(--sample-dim);
+  border-top: 1px solid var(--sample-line);
   padding-top: 10px;
 }
 

@@ -38,5 +38,13 @@
   --paper-dim: #7d6450; /* ≥4.5:1 on paper — muted print text */
   --paper-line: #e9dcc4;
   --paper-hover: #f3e8d2;
+  /* the landing sample only: the sleeve in the wall's shade. Kraft, 3.85:1
+     against the shell where --paper is 5.07:1, so it cannot out-shine the
+     cream button. On it: --paper-ink 12.08:1, --sample-dim 5.79:1,
+     --shell-raised (spine, numerals) 5.06:1 both ways. --paper-dim is 3.74:1
+     here and must not be used. */
+  --sample-paper: #e6d2b3;
+  --sample-dim: #5e4837;
+  --sample-line: #d3bc98;
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
 }

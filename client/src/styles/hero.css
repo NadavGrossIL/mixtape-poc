@@ -1,24 +1,25 @@
-/* The empty-state cassette deck. Layer: components. */
+/* The cassette deck in the header. Layer: components. */
 
-/* ── empty-state deck hero ── */
-/* 32px from whatever sits above it (button on the gate, chips when signed
-   in): one step more than the 24px inside the action group, because the
-   cassette is garnish, not a fourth item in the stack */
+/* ── the deck as the header mark ── */
+/* Sits over the wordmark, so it is sized as a mark, not an illustration:
+   big enough to see the reels turn, small enough that the input under the
+   header still leads. */
 .deck-hero {
-  margin-top: 32px;
   color: var(--ink-dim);
+  margin-bottom: 10px;
 }
 
 .deck {
   display: block;
-  /* garnish, not headline: it must never outrank the input above it */
-  width: min(240px, 68vw);
+  width: min(156px, 40vw);
   height: auto;
+  margin: 0 auto;
 }
 
-/* on the login gate there is no input to compete with — let it breathe */
-.deck-hero.deck-hero-gate .deck {
-  width: min(320px, 80vw);
+/* the printed "MIXTAPE — SIDE A" label: illegible at this size, and the
+   wordmark directly under it says the same thing */
+.deck-label {
+  display: none;
 }
 
 .deck-line {
@@ -27,14 +28,6 @@
 
 .deck-accent {
   stroke: var(--accent-soft);
-}
-
-.deck-label {
-  font-family: "Space Mono", monospace;
-  font-size: 9px;
-  letter-spacing: 2px;
-  fill: var(--ink-faint);
-  stroke: none;
 }
 
 /* fill-box makes each hub rotate around its own center */
@@ -74,14 +67,5 @@
   .deck-tape-flow {
     opacity: 1;
     animation: tapeflow 3.2s linear infinite;
-  }
-}
-
-@media (max-width: 520px) {
-  /* phones: DOM order IS the visual order — input, seed entry, caption,
-     examples, and the decorative deck dead last. Nothing that teaches or
-     acts may lose the fold-fight to decoration. */
-  .deck-hero {
-    margin-top: 24px;
   }
 }

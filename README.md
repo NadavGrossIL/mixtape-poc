@@ -208,7 +208,7 @@ Spotify quota (one burst can lock everyone out for ~19h) is the caps: per
 guest, per IP, and **all guests together** (`GUEST_TOTAL_DAILY_CAP`). Size
 that last one to the Spotify search quota, not the bill — a run costs ~8–20
 searches and the quota is a few hundred a day, so ~12 is the honest public
-ceiling; when it's spent, visitors see *"today's tapes are all pressed —
+ceiling; when it's spent, visitors see *"today's mixtapes are all taken —
 come back tomorrow"*, which is meant to read as scarcity, not an error.
 
 **Invite-only mode:** set `APP_SECRET` and share `https://<app-host>/?key=<APP_SECRET>`

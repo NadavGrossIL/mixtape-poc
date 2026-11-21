@@ -128,7 +128,7 @@ const Track = z.object({
 
 // Eight named slots, not a list (ADR 0001): a list can close after one track.
 const Card = z.object({
-  title: z.string().describe("Short evocative playlist title, max 5 words."),
+  title: z.string().describe("Short evocative playlist title, max 5 words. Public: no names or personal details from the prompt."),
   vibe: z.string().describe("One-line dedication, like a record sleeve note. Max 14 words. Public: no names or personal details from the prompt."),
   accent: z
     .enum(["ember", "rose", "plum", "cobalt", "forest", "rust"])

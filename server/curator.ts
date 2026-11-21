@@ -130,7 +130,7 @@ const CURATOR_TOOL = {
     properties: {
       title: {
         type: "string",
-        description: "Short evocative playlist title, max 5 words.",
+        description: "Short evocative playlist title, max 5 words. Public: no names or personal details from the prompt.",
       },
       vibe: {
         type: "string",
@@ -282,7 +282,7 @@ Rules:
 - Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
 - When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
-- The vibe line is published as the playlist's description on a public Spotify profile. Dedicate it to a moment, a mood or a kind of listener, never to a person: no names, no relationships (my sister, my ex), no health, places or other details the prompt gives about someone's own life — even when the prompt says who it is for.
+- The title and the vibe line are published as the playlist's name and description on a public Spotify profile. Write both about a moment, a mood, a sound or a kind of listener, never about a person: no names, no relationships (my sister, my ex), no ages, health, places or other details the prompt gives about someone's own life — even when the prompt says who it is for. An artist, a song, a genre or an era is fine. For "my dad's 70th in Haifa", not "Haifa Soul, Vol. 70" but "Horns Still Kicking".
 - Writing the card is a separate step from choosing it: once you commit, fill in all eight track slots (track1 through track8) in that single tool call.`;
 
 // Stubs the model reaches for when it commits a card it hasn't really

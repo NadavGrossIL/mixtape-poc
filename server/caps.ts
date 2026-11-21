@@ -43,15 +43,17 @@ function makeCaps(limits: CapLimits) {
       if (!isAnon(user)) {
         return under(user, limits.perAccount, day)
           ? null
-          : `that’s your ${limits.perAccount} tapes for today — come back tomorrow.`;
+          : `that’s your ${limits.perAccount} mixtapes for today — come back tomorrow.`;
       }
       if (!under(user, limits.perGuest, day) || !under(`ip:${ip}`, limits.perIp, day)) {
-        return `that’s your ${limits.perGuest} tapes for today — come back tomorrow.`;
+        return `that’s your ${limits.perGuest} mixtapes for today — come back tomorrow.`;
       }
       if (!under(GUEST_TOTAL_KEY, limits.allGuests, day)) {
         // the public ceiling: Spotify's daily search quota is shared by
         // everyone, so "sold out" is the honest state — say it like one
-        return "today’s tapes are all pressed — come back tomorrow.";
+        // plain words since 2026-11-21: "pressed" left the buttons, so "all
+        // pressed" had nothing on screen to refer to
+        return "today’s mixtapes are all taken — come back tomorrow.";
       }
       return null;
     },

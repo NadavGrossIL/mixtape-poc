@@ -65,7 +65,7 @@ mixtape better than the first.
 ## Limits — say these plainly when they bite
 
 - The app is capped for everyone: 5 mixtapes per guest per day, 12 for all
-  guests together. When the script prints *"today's tapes are all pressed"*
+  guests together. When the script prints *"today's mixtapes are all taken"*
   that is the whole answer — tomorrow.
 - A playlist is public on the Mixtape account and can never be deleted or
   made private (that would revoke it from everyone who kept it). Don't offer

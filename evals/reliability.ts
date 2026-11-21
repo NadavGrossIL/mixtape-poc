@@ -36,7 +36,21 @@ loadServerEnv();
 
 // Dynamic import so server/.env is in process.env before the module evaluates
 // (a static ESM import would hoist above loadServerEnv()).
-const curator = await import("../server/curator.ts");
+const base = await import("../server/curator.ts");
+// CURATOR=lc measures the LangChain rebuild (server/lc/curator-lc.ts) through
+// the same front door. Unset, this is the hand-written curator, as always.
+const WHICH = process.env.CURATOR === "lc" ? "lc" : "hand-written";
+const curator =
+  WHICH === "lc"
+    ? { ...base, generateCard: (await import("../server/lc/curator-lc.ts")).generateCard }
+    : base;
+// The model the trials really ran on. The LangChain curator lets LC_MODEL
+// override the shared MODEL (lc/curator-lc.ts, makeAgent — the same rule,
+// repeated here because that module does not export it); the hand-written
+// curator never reads LC_MODEL, so its runs record curator.MODEL as before.
+// Without this and the `curator` field below, a run made with CURATOR=lc sat
+// in evals/runs/ looking exactly like a hand-written one.
+const MODEL_USED = WHICH === "lc" ? process.env.LC_MODEL || base.MODEL : base.MODEL;
 
 const DEFAULT_TRIALS = 5;
 const DEFAULT_PROMPTS = 3;
@@ -162,7 +176,8 @@ function summarizeTrials(entries: any[], trials: number) {
   }
 
   return {
-    model: curator.MODEL,
+    curator: WHICH,
+    model: MODEL_USED,
     trialsPerPrompt: trials,
     prompts: entries.length,
     overall: {
@@ -195,6 +210,7 @@ function pct(f: number | null | undefined): string {
 function renderReliability(s: any): string {
   const o = s.overall;
   const lines = [
+    `Curator    : ${s.curator}`,
     `Model      : ${s.model}`,
     `Trials     : ${s.prompts} prompts x ${s.trialsPerPrompt} = ${o.trials} live runs ` +
       `(mean ${o.meanMs}ms)`,
@@ -273,7 +289,7 @@ async function main() {
   console.log(`[reliability] run dir: ${runDir}`);
   console.log(
     `[reliability] ${prompts.length} prompts x ${trials} trials = ` +
-      `${prompts.length * trials} live curator runs, model ${curator.MODEL}`
+      `${prompts.length * trials} live curator runs, model ${MODEL_USED}, curator ${WHICH}`
   );
 
   const entries: any[] = [];

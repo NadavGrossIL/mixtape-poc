@@ -1,0 +1,201 @@
+/* The page around the card: background glow, column, header, wordmark,
+   tagline, and the small connect/credit lines. Layer: components. */
+
+/* ── shell ── */
+.app {
+  min-height: 100vh;
+  /* Lit from above, but see the note on --shell-top: the sunlit colour can
+     only occupy the top edge, above the header. Everything a cream ink
+     touches stays at or below --shell luminance, which is what the palette's
+     contrast numbers are measured against.
+     The wall's shading and the glow live in the fixed ::after layer below;
+     this is the flat wall plus the sun on its top edge, which has to stay
+     document-anchored so nothing ever scrolls under it. */
+  background:
+    linear-gradient(to bottom, var(--shell-top), transparent 22px),
+    var(--shell);
+  color: var(--ink);
+  font-family: "Space Grotesk", sans-serif;
+  padding: 28px 16px 64px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  position: relative;
+  /* establishes a stacking context so the ::after glow can sit at
+     z-index:-1 — above this element's background, below all content */
+  z-index: 0;
+}
+
+.app::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background-image: var(--grain);
+  opacity: 0.05;
+  pointer-events: none;
+}
+
+/* The light in the room: a pool of glow where the card is pinned, over the
+   wall's fall-off into shade. position:fixed anchors both to the viewport,
+   so the pool stays a pool on a long eight-track page instead of stretching
+   into an invisible smear — and, just as importantly, it makes the contrast
+   under any given line of text scroll-invariant and independent of how many
+   tracks are on the card. z-index:-1 (inside .app's stacking context) keeps
+   it strictly behind text; ::before is already the grain overlay, so this is
+   ::after. */
+.app::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    /* the pool of light — same geometry as the picked mockup */
+    radial-gradient(58% 40% at 50% 58%, var(--glow), transparent 72%),
+    /* the wall falling into shade below the light. This is what pays for the
+       glow: the shade under the pool cancels the pool's lift exactly, so no
+       point in the viewport is ever lighter than a bare --shell. */
+    linear-gradient(to bottom, transparent, var(--shell-raised));
+  pointer-events: none;
+}
+
+.main-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+}
+
+.header {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.wordmark {
+  font-family: "Archivo Black", sans-serif;
+  font-size: 30px;
+  letter-spacing: 2px;
+  margin: 0;
+  font-weight: 400;
+  text-shadow: 0 1px 0 rgba(0, 0, 0, 0.6);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+}
+
+/* cassette mark — sized to the wordmark's cap height */
+.logo {
+  width: 40px;
+  height: 30px;
+  flex-shrink: 0;
+  color: var(--ink);
+}
+
+.logo-accent {
+  stroke: var(--accent-soft);
+}
+
+/* the tagline: a book-weight serif under the heavy grotesque wordmark — the
+   record-sleeve pairing. Upright, not italic; handwriting and italic were
+   both tried and read as costume. Full --ink because this line has to be
+   READ. Fallback is the shell's own body face. */
+.tagline {
+  font-family: Fraunces, "Space Grotesk", Georgia, serif;
+  font-weight: 500;
+  font-size: 23px;
+  line-height: 1.3;
+  letter-spacing: -0.01em;
+  color: var(--ink);
+  margin: 10px auto 0;
+  max-width: 30ch;
+  text-wrap: balance;
+}
+
+.tagline-sub {
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  line-height: 1.6;
+  color: var(--ink-dim);
+  margin: 6px auto 0;
+  max-width: 80ch;
+  text-wrap: balance;
+}
+
+.checking {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 24px;
+}
+
+/* ── the quiet "already one of the 5 test accounts?" connect line, below
+   the example chips; dev and ?debug only since 2026-09-08. Not a button,
+   and a tier under the scope-line caption (12px) that now leads under the
+   CTA: the product no longer needs a login, and the five who have one
+   already know they do. ── */
+.connect-note {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 20px;
+  max-width: 44ch;
+}
+
+.connect-link {
+  color: var(--accent-soft);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+.connect-link:hover {
+  color: var(--ink);
+}
+
+/* the maker credit under the cassette: the connect-note's tier (11px,
+   ink-faint), a link only on hover so it reads as a colophon, not a CTA */
+.credit-line {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 28px;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+
+.credit-line:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
+/* the logging notice: the credit's own type, tucked right under it */
+.notice-line {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 6px;
+}
+
+@media (max-width: 520px) {
+  .tagline {
+    font-size: 19px;
+    max-width: 22ch;
+  }
+  .tagline-sub {
+    font-size: 12px;
+    max-width: 40ch; /* two lines on a 390px phone, not three */
+  }
+  /* the full wordmark + cassette runs ~460px at desktop size */
+  .wordmark {
+    font-size: clamp(17px, 5.4vw, 24px);
+    letter-spacing: 1px;
+    gap: 8px;
+    flex-wrap: wrap;
+    justify-content: center;
+  }
+  .logo {
+    width: 30px;
+    height: 23px;
+  }
+}

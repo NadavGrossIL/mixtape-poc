@@ -1,0 +1,59 @@
+/* Loading: the spinning record and the rotating chatter line. The log
+   lines themselves are primitives (the refine flow shares them). Layer:
+   components. */
+
+/* ── loading: spinning record ── */
+.loading {
+  /* equal space above and below the disc: margin-top matches the gap */
+  margin-top: 32px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 32px;
+  width: 100%;
+  max-width: 560px;
+}
+
+/* the black groove colours below are deliberately NOT tokenized: a record
+   is black on any wall. Only the centre label and rim follow --accent. */
+.spinner-disc {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at 50% 16%, rgba(233, 232, 222, 0.55) 0 2px, transparent 3px),
+    radial-gradient(circle, var(--accent) 0 8px, #0a100e 8px 10px, transparent 10px),
+    repeating-radial-gradient(circle, #0a100e 0 2px, #22312c 2px 4px);
+  border: 2px solid var(--accent);
+}
+
+/* the rotating chatter line: sits between disc and log, reads as the
+   disc "saying" something. Pulled up toward the disc so the two read as
+   one object and the log stays its own column. */
+.studio-chatter {
+  margin-top: -18px;
+  font-family: "Space Mono", monospace;
+  font-size: 12.5px;
+  letter-spacing: 0.02em;
+  color: var(--ink);
+  text-align: center;
+  min-height: 1.4em; /* line swaps never shift the log below */
+}
+
+/* inside a log column (the refine flow has no disc): first line of the
+   log, left-aligned, in the log's own type size */
+.studio-chatter.inline {
+  margin-top: 0;
+  margin-bottom: 4px;
+  text-align: left;
+  letter-spacing: 0;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .spinner-disc {
+    animation: spin 1.4s linear infinite;
+  }
+  .studio-chatter {
+    animation: lnfade 0.45s ease;
+  }
+}

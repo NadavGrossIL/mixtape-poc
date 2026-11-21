@@ -1,0 +1,42 @@
+/* ── design tokens ──────────────────────────────────────────────
+   "Clay Wall": a stuccoed terracotta wall in full sun with a record
+   sleeve pinned to it. Unlike the palettes before it the shell is a
+   saturated MID-VALUE colour (luminance 0.135), not near-black.
+   Display: Archivo Black · Data: Space Mono · Notes: Georgia italic
+   Consequence, and the whole point of the palette: nothing dark can
+   sit on the shell at all — dark type would need negative luminance
+   to reach 4.5:1. Every shell-side ink is therefore squeezed into a
+   narrow cream→white band and the type hierarchy is carried by size
+   and weight, not colour. The near-identical --ink / --ink-dim /
+   --ink-faint values are correct and verified; darkening any of them
+   to "improve hierarchy" breaks AA.
+   Two-surface accent system: cream values live on the clay shell,
+   "ink" values (darkened per hue for ≥4.5:1) live on the paper. */
+:root {
+  --shell: #a1502c; /* the clay wall */
+  --shell-raised: #8a3f22; /* recessed: input field, darker than the wall */
+  --ink: #fdfaf6;
+  --ink-dim: #f5eee5; /* input text AND the example chips */
+  --ink-faint: #efe7da; /* dimmest allowed text: 4.63:1 on shell */
+  --line: #e3c298; /* ≥3:1 component boundaries on shell and shell-raised */
+  --accent: #ffedd4; /* sunlit cream — the accent is LIGHT, not a hue */
+  --accent-soft: #ffe8cc; /* accent as text/border on the shell */
+  --accent-label: #20140c; /* stamped label ON the accent button */
+  --accent-press: #6e3418; /* hard offset shadow under the button */
+  /* the sunlit wall. luminance 0.477 — cream ink reads ~1.9:1 on it, so it
+     can only be used where no text sits (the top edge above the header),
+     never as the gradient's top stop behind the wordmark. */
+  --shell-top: #f3a768;
+  /* light pooling where the card sits. The mockup's alpha was 0.20; at that
+     strength the bloom lifts the wall enough to push 12px --ink-faint text
+     to 3.55:1, which breaks the one rule the glow has. 0.10, against the
+     shade layer it sits on, is the strongest value at which no point in the
+     viewport is lighter than a bare --shell — i.e. the light costs nothing. */
+  --glow: rgba(255, 180, 120, 0.1);
+  --paper: #faf1e2;
+  --paper-ink: #241407;
+  --paper-dim: #7d6450; /* ≥4.5:1 on paper — muted print text */
+  --paper-line: #e9dcc4;
+  --paper-hover: #f3e8d2;
+  --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}

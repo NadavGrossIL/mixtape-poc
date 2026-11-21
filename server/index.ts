@@ -20,6 +20,7 @@ import { makePressCaps } from "./pressCaps.ts";
 import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
 import { parseTrackUris } from "./trackUris.ts";
+import { playlistDescription } from "./playlistDescription.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
 import { makeOutageTracker } from "./outage.ts";
@@ -1111,7 +1112,7 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
 // HOST account, public, so it is shareable from birth and anyone can keep
 // it with one tap (+) in Spotify — no login, no allowlist. A caller who IS
 // connected also gets it followed into their own library right here (the
-// 0-tap save). Body: { title, uris }. With Accept: text/event-stream the
+// 0-tap save). Body: { title, uris, vibe? }. With Accept: text/event-stream the
 // two real steps (creating → adding N) stream as SSE; else plain JSON.
 app.post("/api/playlist", sameOriginOnly, async (req, res) => {
   const { title } = req.body || {};
@@ -1143,9 +1144,9 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
     const { id, url } = await spotify.createPlaylist(
       {
         name,
-        // No prompt on the playlist: it sits on a public profile, and a
-        // prompt can be more personal than the person meant to publish.
-        description: "Made with Mixtape.",
+        // The card's vibe line, never the prompt — playlistDescription.ts
+        // says why, and what it strips from a client-sent string.
+        description: playlistDescription(req.body?.vibe),
         uris,
         isPublic: true,
       },

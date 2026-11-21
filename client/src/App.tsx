@@ -358,80 +358,52 @@ function Logo() {
   );
 }
 
+// Leaves the notch, loops once, then runs level under the wordmark and stops
+// under its last letter. Units are the deck's own (84 wide); the end x is the
+// wordmark's right edge at the em sizes set in hero.css.
 const TAPE_SPILL =
-  "M140 120 C118 138 88 146 76 136 C66 127 80 118 90 127 " +
-  "C100 136 118 150 152 152 C196 154 224 144 262 152 C270 153.5 276 156 278 158";
+  "M42 44 C38 49 29 56 22 53.5 C17 51.5 21 47 26 49.5 " +
+  "C33 53 44 55 62 55 C130 55 190 53 287 54";
 
-// The header mark (landing and waiting screens): an idle deck mid-play — spoked reels turning at
-// different speeds (the take-up pack is smaller, so it spins faster) and
-// tape spilling out into a slow shimmer. Pure decoration, aria-hidden;
-// all motion lives in CSS behind the reduced-motion gate.
+// The header mark (landing and waiting screens), set beside the wordmark as
+// one lockup: an idle deck standing on the wordmark's baseline, reels
+// turning at different speeds (the take-up pack is smaller, so it spins
+// faster), and its spilled tape drawn out as the wordmark's underline. Drawn
+// for ~45px tall, so few, heavy strokes: no screws, no window, no label.
+// Pure decoration, aria-hidden; all motion lives in CSS behind the
+// reduced-motion gate.
 function DeckHero() {
   return (
-    <div className="deck-hero" aria-hidden="true">
-      <svg
-        className="deck"
-        // cropped to the drawn content (y 12–160 incl. stroke) so the box has
-        // no invisible padding and the CSS margins around it mean what they
-        // say; x stays 0–280 so the cassette body sits on the column's centre
-        viewBox="0 12 280 148"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="40" y="14" width="200" height="104" rx="8" />
-        <rect
-          x="64"
-          y="28"
-          width="152"
-          height="48"
-          rx="4"
-          strokeWidth="1.5"
-          className="deck-line"
-        />
-        {/* screws */}
-        <g className="deck-line" strokeWidth="1.5">
-          <circle cx="50" cy="24" r="2" />
-          <circle cx="230" cy="24" r="2" />
-          <circle cx="50" cy="108" r="2" />
-          <circle cx="230" cy="108" r="2" />
-        </g>
-        {/* supply reel: fat tape pack, spoked hub */}
-        <circle cx="104" cy="52" r="17" strokeWidth="2" className="deck-accent" />
-        <g className="deck-reel deck-reel-supply">
-          <circle cx="104" cy="52" r="8" />
-          <path
-            strokeWidth="1.5"
-            d="M104 45v14M97.9 48.5l12.2 7M97.9 55.5l12.2-7"
-          />
-        </g>
-        {/* take-up reel: thin pack */}
-        <circle cx="176" cy="52" r="11" strokeWidth="2" className="deck-accent" />
-        <g className="deck-reel deck-reel-takeup">
-          <circle cx="176" cy="52" r="8" />
-          <path
-            strokeWidth="1.5"
-            d="M176 45v14M169.9 48.5l12.2 7M169.9 55.5l12.2-7"
-          />
-        </g>
-        {/* tape running pack-top to pack-top */}
-        <path d="M104 35 L176 41" strokeWidth="2" className="deck-accent" />
-        <text x="140" y="96" textAnchor="middle" className="deck-label">
-          MIXTAPE — SIDE A
-        </text>
-        {/* bottom notch + capstan holes */}
-        <path d="M96 118l6-12h76l6 12" />
-        <g className="deck-line" strokeWidth="1.5">
-          <circle cx="112" cy="112" r="2.5" />
-          <circle cx="168" cy="112" r="2.5" />
-        </g>
-        {/* spilled tape: solid run + a brighter dash sliding along it */}
-        <path className="deck-tape" d={TAPE_SPILL} />
-        <path className="deck-tape-flow" d={TAPE_SPILL} />
-      </svg>
-    </div>
+    <svg
+      className="deck"
+      // the box is the shell only, so flex baseline alignment puts the
+      // shell's bottom edge on the wordmark's baseline; the tape overflows
+      // it on purpose (overflow: visible in hero.css)
+      viewBox="0 0 84 44"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="2.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden="true"
+    >
+      <rect x="1.25" y="1.25" width="81.5" height="41.5" rx="5" />
+      {/* supply reel: fat tape pack */}
+      <circle cx="27" cy="20" r="10.5" strokeWidth="1.75" className="deck-accent" />
+      <circle cx="27" cy="20" r="4.5" strokeWidth="2" className="deck-reel deck-reel-supply" />
+      {/* take-up reel: thin pack */}
+      <circle cx="57" cy="20" r="7.5" strokeWidth="1.75" className="deck-accent" />
+      <circle cx="57" cy="20" r="4.5" strokeWidth="2" className="deck-reel deck-reel-takeup" />
+      {/* tape running pack-top to pack-top */}
+      <path d="M27 9.5 L57 12.5" strokeWidth="1.75" className="deck-accent" />
+      {/* bottom notch */}
+      <path d="M26 42.75l3.5-8h25l3.5 8" strokeWidth="2" />
+      {/* spilled tape: solid run + a brighter dash sliding along it */}
+      <path className="deck-tape" d={TAPE_SPILL} />
+      {/* pathLength = the dash period in keyframes.css, so exactly one
+          highlight travels the tape per cycle whatever its drawn length */}
+      <path className="deck-tape-flow" d={TAPE_SPILL} pathLength={232} />
+    </svg>
   );
 }
 
@@ -440,22 +412,25 @@ function DeckHero() {
 //
 // The content is a real production run (2026-11-21), trimmed to two rows.
 // The notes are the curator's own output, not marketing copy, so the sample
-// cannot promise a voice the product doesn't have.
+// cannot promise a voice the product doesn't have. Picked from three runs
+// for songs a stranger already knows and notes with some wit in them: the
+// first sample (a 2am-drive tape of Kavinsky and Washed Out) was accurate
+// and gave nobody a reason to want one.
 const SAMPLE = {
-  prompt: "songs that sound like driving home at 2am",
-  title: "Taillights at 2AM",
-  vibe: "For the long drive home when city lights blur into memory.",
+  prompt: "cooking dinner for someone you like",
+  title: "Stovetop Slow Burn",
+  vibe: "For nights when the sauce simmers slower than the conversation.",
   total: 8,
   tracks: [
     {
-      artist: "Kavinsky",
-      title: "Nightcall",
-      note: "Vocoder menace that soundtracked Drive — the definitive empty-freeway anthem.",
+      artist: "Stevie Wonder",
+      title: "Signed, Sealed, Delivered (I'm Yours)",
+      note: "Motown handclaps that turn chopping onions into a little dance floor.",
     },
     {
-      artist: "Washed Out",
-      title: "Feel It All Around",
-      note: "The chillwave blueprint — hazy, filtered vocals like headlights through fog.",
+      artist: "Sade",
+      title: "Smooth Operator",
+      note: "Opens 1984's Diamond Life — brass and cool confidence over a simmering pan.",
     },
   ],
 };
@@ -1405,13 +1380,12 @@ export default function LinerNotes() {
       </div>
 
       <header className="header">
-        {/* one cassette, not two: the animated deck is the mark over the
-            wordmark. It used to be garnish at the foot of the page while a
-            small static cassette sat here. Once a card is on the table the
-            compact inline mark takes over and the height goes to the card. */}
-        {!card && <DeckHero />}
-        <h1 className="wordmark">
-          {card && <Logo />}
+        {/* one cassette, not two, and one lockup, not a picture over a
+            title: the animated deck stands beside the wordmark on its
+            baseline and its tape underlines the word. Once a card is on
+            the table the compact static mark takes over. */}
+        <h1 className={card ? "wordmark" : "wordmark wordmark-lockup"}>
+          {card ? <Logo /> : <DeckHero />}
           {BRAND}
         </h1>
         {/* the tagline: one human sentence about the playlist, not a
@@ -1425,8 +1399,7 @@ export default function LinerNotes() {
           <>
             <p className="tagline">Say the mood. We’ll make the playlist.</p>
             <p className="tagline-sub">
-              An AI curator picks eight songs and makes them a Spotify
-              playlist. Free, no sign-up.
+              An AI picks eight songs for a Spotify playlist. Free, no sign-up.
             </p>
           </>
         )}

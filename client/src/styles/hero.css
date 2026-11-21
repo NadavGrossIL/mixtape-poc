@@ -1,37 +1,40 @@
-/* The cassette deck in the header. Layer: components. */
+/* The cassette deck in the header lockup. Layer: components. */
 
-/* ── the deck as the header mark ── */
-/* Sits over the wordmark, so it is sized as a mark, not an illustration:
-   big enough to see the reels turn, small enough that the input under the
-   header still leads. */
-.deck-hero {
-  color: var(--ink-dim);
-  margin-bottom: 10px;
+/* ── the landing lockup: deck + wordmark + tape underline ── */
+/* Everything is in em off the wordmark's size, so the deck, the gap and the
+   tape's length scale together and the tape always ends under the last
+   letter. Baseline alignment stands the shell on the letters' ground line. */
+.wordmark-lockup {
+  font-size: clamp(28px, 8.4vw, 36px);
+  letter-spacing: 0.055em;
+  line-height: 1;
+  align-items: baseline;
+  gap: 0.4em;
+  flex-wrap: nowrap;
+  /* room for the tape, which hangs below the baseline outside the svg box */
+  padding-bottom: 0.42em;
 }
 
 .deck {
   display: block;
-  width: min(156px, 40vw);
-  height: auto;
-  margin: 0 auto;
-}
-
-/* the printed "MIXTAPE — SIDE A" label: illegible at this size, and the
-   wordmark directly under it says the same thing */
-.deck-label {
-  display: none;
-}
-
-.deck-line {
-  stroke: var(--line);
+  height: 1.24em;
+  width: auto;
+  flex-shrink: 0;
+  overflow: visible;
+  color: var(--ink);
+  /* the same stamped edge the wordmark's text-shadow gives the letters */
+  filter: drop-shadow(0 1px 0 rgba(0, 0, 0, 0.45));
 }
 
 .deck-accent {
   stroke: var(--accent-soft);
 }
 
-/* fill-box makes each hub rotate around its own center */
+/* a broken ring, so the turn is visible at this size; fill-box makes each
+   hub rotate around its own center */
 .deck-reel {
+  stroke-dasharray: 6.4 3.02;
+  stroke-linecap: butt;
   transform-box: fill-box;
   transform-origin: center;
 }
@@ -41,7 +44,7 @@
   stroke-width: 2;
   /* the shared brand motif — visible on its own, not only under the
      motion-gated shimmer */
-  opacity: 0.65;
+  opacity: 0.7;
 }
 
 /* the moving highlight — invisible unless motion is allowed */
@@ -53,11 +56,9 @@
 }
 
 @media (prefers-reduced-motion: no-preference) {
-  .deck-hero {
-    /* reels + tape shimmer are the hero's motion; the whole object holding
-       still keeps it garnish rather than a competing attention source */
-    animation: lnfade 0.5s ease;
-  }
+  /* reels + tape shimmer are the mark's only motion. No entry fade: the
+     deck is half of the logo, and a logo whose picture arrives after its
+     word reads as two things again */
   .deck-reel-supply {
     animation: spin 5.2s linear infinite;
   }

@@ -1,5 +1,5 @@
 /* The shared @keyframes: several are used by more than one component
-   (lnfade by six, spin by the disc and both reels). The one exception is
+   (lnfade by five, spin by the loading disc). The one exception is
    mic-pulse, which stays in composer.css inside the mic's own motion
    block. Animations only run inside the prefers-reduced-motion:
    no-preference blocks. Layer: base. */
@@ -65,12 +65,5 @@
   to {
     opacity: 1;
     transform: none;
-  }
-}
-
-/* cycle length = dasharray period (26 + 206) for a seamless loop */
-@keyframes tapeflow {
-  to {
-    stroke-dashoffset: -232;
   }
 }

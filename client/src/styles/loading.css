@@ -27,9 +27,31 @@
   border: 2px solid var(--accent);
 }
 
-/* the rotating chatter line: sits between disc and log, reads as the
-   disc "saying" something. Pulled up toward the disc so the two read as
-   one object and the log stays its own column. */
+/* the step line: where the run is, in plain words, and how long to expect.
+   Pulled up toward the disc so the two read as one object and the list of
+   songs stays its own column. The headline of this screen, so full --ink
+   and the one bold line on it. */
+.loading-step {
+  margin-top: -16px;
+  font-family: "Space Mono", monospace;
+  text-align: center;
+}
+
+.loading-step-now {
+  font-size: 13.5px;
+  font-weight: 700;
+  color: var(--ink);
+}
+
+.loading-step-note {
+  font-size: 12px;
+  color: var(--ink-faint);
+  margin-top: 4px;
+}
+
+/* the rotating chatter line. On the generate screen it is the first line of
+   the song list (the .inline form below); the centred form is kept for a
+   caller that wants it under a disc. */
 .studio-chatter {
   margin-top: -18px;
   font-family: "Space Mono", monospace;

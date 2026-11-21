@@ -242,11 +242,13 @@ const SEEDED_PLACEHOLDER =
 
 // Each example demonstrates a different prompt axis: speed/skill,
 // mood+moment, discovery/language, era+audience.
+// The first chip sets what a stranger thinks the product is for, so the most
+// universal one leads and the niche one closes.
 const EXAMPLES = [
-  "fastest rap verses ever recorded — Rap God energy",
   "songs that sound like driving home at 2am",
   "hebrew indie that deserves a bigger audience",
   "90s hip-hop for a newborn's first road trip",
+  "fastest rap verses ever recorded — Rap God energy",
 ];
 
 // Name decided 2026-08-23.
@@ -357,83 +359,82 @@ function Logo() {
   );
 }
 
-const TAPE_SPILL =
-  "M140 120 C118 138 88 146 76 136 C66 127 80 118 90 127 " +
-  "C100 136 118 150 152 152 C196 154 224 144 262 152 C270 153.5 276 156 278 158";
+// What a stranger gets, shown before they spend a minute finding out. It
+// took the place of the idle cassette deck that used to sit here: the deck
+// was decoration in the one spot where proof belongs.
+//
+// The content is a real run of the first example chip (2026-11-21), trimmed
+// to three rows. The notes are the curator's own output, not marketing copy,
+// so the sample cannot promise a voice the product doesn't have. If the
+// first chip changes, re-run it and replace this.
+const SAMPLE = {
+  prompt: EXAMPLES[0],
+  title: "Taillights at 2AM",
+  vibe: "For the long drive home when city lights blur into memory.",
+  accent: "cobalt",
+  total: 8,
+  tracks: [
+    {
+      artist: "Kavinsky",
+      title: "Nightcall",
+      note: "Vocoder menace that soundtracked Drive — the definitive empty-freeway anthem.",
+    },
+    {
+      artist: "Washed Out",
+      title: "Feel It All Around",
+      note: "The chillwave blueprint — hazy, filtered vocals like headlights through fog.",
+    },
+    {
+      artist: "M83",
+      title: "Midnight City",
+      note: "That saxophone hook turning a dark road into something cinematic.",
+    },
+  ],
+};
 
-// Empty-state hero: an idle deck mid-play — spoked reels turning at
-// different speeds (the take-up pack is smaller, so it spins faster) and
-// tape spilling out into a slow shimmer. Pure decoration, aria-hidden;
-// all motion lives in CSS behind the reduced-motion gate.
-function DeckHero({ gate = false }: { gate?: boolean }) {
+// Static on purpose: no links, no hover, no drag. It is a picture of the
+// result, and a row that reacted to the pointer would read as the result.
+function SampleCard() {
+  const ink = ACCENT_INK[SAMPLE.accent];
   return (
-    <div
-      className={"deck-hero" + (gate ? " deck-hero-gate" : "")}
-      aria-hidden="true"
-    >
-      <svg
-        className="deck"
-        // cropped to the drawn content (y 12–160 incl. stroke) so the box has
-        // no invisible padding and the CSS margins around it mean what they
-        // say; x stays 0–280 so the cassette body sits on the column's centre
-        viewBox="0 12 280 148"
-        fill="none"
-        stroke="currentColor"
-        strokeWidth="2.5"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      >
-        <rect x="40" y="14" width="200" height="104" rx="8" />
-        <rect
-          x="64"
-          y="28"
-          width="152"
-          height="48"
-          rx="4"
-          strokeWidth="1.5"
-          className="deck-line"
-        />
-        {/* screws */}
-        <g className="deck-line" strokeWidth="1.5">
-          <circle cx="50" cy="24" r="2" />
-          <circle cx="230" cy="24" r="2" />
-          <circle cx="50" cy="108" r="2" />
-          <circle cx="230" cy="108" r="2" />
-        </g>
-        {/* supply reel: fat tape pack, spoked hub */}
-        <circle cx="104" cy="52" r="17" strokeWidth="2" className="deck-accent" />
-        <g className="deck-reel deck-reel-supply">
-          <circle cx="104" cy="52" r="8" />
-          <path
-            strokeWidth="1.5"
-            d="M104 45v14M97.9 48.5l12.2 7M97.9 55.5l12.2-7"
-          />
-        </g>
-        {/* take-up reel: thin pack */}
-        <circle cx="176" cy="52" r="11" strokeWidth="2" className="deck-accent" />
-        <g className="deck-reel deck-reel-takeup">
-          <circle cx="176" cy="52" r="8" />
-          <path
-            strokeWidth="1.5"
-            d="M176 45v14M169.9 48.5l12.2 7M169.9 55.5l12.2-7"
-          />
-        </g>
-        {/* tape running pack-top to pack-top */}
-        <path d="M104 35 L176 41" strokeWidth="2" className="deck-accent" />
-        <text x="140" y="96" textAnchor="middle" className="deck-label">
-          MIXTAPE — SIDE A
-        </text>
-        {/* bottom notch + capstan holes */}
-        <path d="M96 118l6-12h76l6 12" />
-        <g className="deck-line" strokeWidth="1.5">
-          <circle cx="112" cy="112" r="2.5" />
-          <circle cx="168" cy="112" r="2.5" />
-        </g>
-        {/* spilled tape: solid run + a brighter dash sliding along it */}
-        <path className="deck-tape" d={TAPE_SPILL} />
-        <path className="deck-tape-flow" d={TAPE_SPILL} />
-      </svg>
-    </div>
+    <section className="sample" aria-labelledby="sample-heading">
+      <div className="section-note" id="sample-heading">
+        what you get
+      </div>
+      <div className="card sample-card">
+        <div className="spine" style={{ background: ink }}>
+          <span className="spine-text">{SAMPLE.title.toUpperCase()}</span>
+        </div>
+        <div className="card-body">
+          <div className="prompt-line">
+            someone typed: <em>{SAMPLE.prompt}</em>
+          </div>
+          <div className="card-title sample-title">{SAMPLE.title}</div>
+          <div className="vibe" style={{ borderColor: ink }}>
+            “{SAMPLE.vibe}”
+          </div>
+          <div className="track-list">
+            {SAMPLE.tracks.map((t, i) => (
+              <div className="sample-row" key={t.title}>
+                <div className="track-num" style={{ color: ink }}>
+                  {String(i + 1).padStart(2, "0")}
+                </div>
+                <div className="track-main">
+                  <div className="track-title">
+                    {t.artist} — {t.title}
+                  </div>
+                  <div className="track-note">{t.note}</div>
+                </div>
+              </div>
+            ))}
+          </div>
+          <div className="sample-more">
+            + {SAMPLE.total - SAMPLE.tracks.length} more songs · saved as a real
+            Spotify playlist
+          </div>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -568,7 +569,8 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
             onSwap();
           }}
         >
-          ↻
+          <span aria-hidden>↻</span>
+          <span className="swap-label">swap</span>
         </button>
       )}
     </a>
@@ -958,7 +960,7 @@ export default function LinerNotes() {
     setStage(null);
     setLogTracks([]);
     setSeedLog(null);
-    setAnnounce("Pressing your mixtape.");
+    setAnnounce("Making your mixtape.");
     const controller = new AbortController();
     abortRef.current = controller;
     try {
@@ -997,7 +999,7 @@ export default function LinerNotes() {
           setAnnounce("Reading your playlist.");
         } else if (event === "curating") {
           setStage("curating");
-          setAnnounce("Digging through the crates.");
+          setAnnounce("Picking the songs.");
         } else if (event === "track") {
           setLogTracks((ts) => {
             const next = [...ts];
@@ -1006,7 +1008,7 @@ export default function LinerNotes() {
           });
         } else if (event === "curated") {
           setStage("resolving");
-          setAnnounce("Resolving tracks on Spotify.");
+          setAnnounce("Checking each song on Spotify.");
         } else if (event === "resolved") {
           setLogTracks((ts) => {
             const next = [...ts];
@@ -1058,7 +1060,7 @@ export default function LinerNotes() {
         setErrorTick((t) => t + 1);
       } else {
         console.error(e);
-        setError("The curator dropped the needle. Try the same prompt again.");
+        setError("Something went wrong on our side. Try the same prompt again.");
         setErrorDetail(e instanceof Error ? e.message : String(e));
         setErrorTick((t) => t + 1);
       }
@@ -1088,7 +1090,7 @@ export default function LinerNotes() {
     setAdjustBooked(false);
     setAdjustStage(null);
     setAdjustLog([]);
-    setAnnounce("Rewinding the tape.");
+    setAnnounce("Changing the mixtape.");
     let changeCount = 0;
     const controller = new AbortController();
     adjustAbortRef.current = controller;
@@ -1122,7 +1124,7 @@ export default function LinerNotes() {
           ]);
         } else if (event === "adjusted") {
           setAdjustStage("resolving");
-          setAnnounce("Resolving the new tracks on Spotify.");
+          setAnnounce("Checking the new songs on Spotify.");
         } else if (event === "resolved") {
           setAdjustLog((ls) =>
             ls.map((l) =>
@@ -1156,13 +1158,13 @@ export default function LinerNotes() {
         setAdjustErrorDetail(e.detail);
         setAnnounce(e.message);
       } else if (e instanceof StreamDroppedError) {
-        setAdjustError("the connection dropped mid-rewind — try it again.");
+        setAdjustError("the connection dropped — try it again.");
       } else if (e instanceof PlainError) {
         setAdjustError(e.message);
         setAdjustErrorDetail(e.detail);
       } else {
         console.error(e);
-        setAdjustError("The curator couldn't rewind that one. Try rewording it.");
+        setAdjustError("Couldn't make that change. Try rewording it.");
         setAdjustErrorDetail(e instanceof Error ? e.message : String(e));
       }
     } finally {
@@ -1225,8 +1227,8 @@ export default function LinerNotes() {
       if (!url) throw new Error("no playlist url");
       setAnnounce(
         saved
-          ? "Pressed. The playlist is in your Spotify library."
-          : "Pressed. Open it in Spotify and tap plus to keep it."
+          ? "Saved. The playlist is in your Spotify library."
+          : "Your playlist is ready. Open it in Spotify and tap plus to add it to your library."
       );
       setPlaylistUrl(url);
       setSavedToLibrary(saved);
@@ -1236,7 +1238,7 @@ export default function LinerNotes() {
       );
     } catch (e) {
       console.error(e);
-      setSaveError("Couldn't press it to Spotify. Try again.");
+      setSaveError("Couldn't save it to Spotify. Try again.");
     } finally {
       setSaving(false);
       setSaveStage(null);
@@ -1248,6 +1250,22 @@ export default function LinerNotes() {
     : ACCENT_INK.ember;
 
   const liveVerified = logTracks.filter((t) => t && t.resolved === true).length;
+  // The waiting screen's step line. A run from a playlist has one more step
+  // (reading it) than a run from a prompt; the armed seed is still set while
+  // loading, so the total is known before the first event arrives.
+  const stepTotal = seedPlaylist ? 3 : 2;
+  const loadingStep =
+    stage === "resolving"
+      ? {
+          n: stepTotal,
+          label: `checking each one on Spotify · ${liveVerified}/${logTracks.length}`,
+        }
+      : stage === "curating" || !seedPlaylist
+        ? { n: stepTotal - 1, label: "picking the songs" }
+        : {
+            n: 1,
+            label: `reading “${seedLog?.name || seedPlaylist.name || "your playlist"}”`,
+          };
   const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;
   const cardUnverified = card ? card.tracks.length - cardVerified : 0;
   const cursor = (
@@ -1313,7 +1331,7 @@ export default function LinerNotes() {
     setSeedPaste("");
     setSeedOpen(false);
     setInputHint(null);
-    setAnnounce("Channeling your pasted playlist. The prompt is now optional.");
+    setAnnounce("Using your pasted playlist. The prompt is now optional.");
     inputRef.current?.focus();
   };
 
@@ -1356,17 +1374,24 @@ export default function LinerNotes() {
           {BRAND}
         </h1>
         {/* the tagline: one human sentence about the playlist, not a
-            process. The facts sit under it in the caption voice so the
-            promise stays concrete. */}
-        <p className="tagline">Say the mood. We’ll make the playlist.</p>
-        <p className="tagline-sub">
-          Eight tracks that belong together, with liner notes — one tap to keep
-          it in your Spotify.
-        </p>
+            process. The line under it answers the three things a stranger
+            needs before typing: who picks the songs, what comes back, and
+            what it costs them (nothing, and no account). Both step aside
+            once a card is on the table — the pitch has done its job, and
+            the height goes to the card and its save button. */}
+        {!card && (
+          <>
+            <p className="tagline">Say the mood. We’ll make the playlist.</p>
+            <p className="tagline-sub">
+              An AI curator picks eight real songs and tells you why each one
+              fits. Free, no sign-up.
+            </p>
+          </>
+        )}
       </header>
 
       <main className="main-col">
-        {loggedIn === null && <div className="checking">checking the deck…</div>}
+        {loggedIn === null && <div className="checking">loading…</div>}
 
         {/* no login gate: anyone past the door can make a mixtape. A
             connected Spotify (the allowlisted few) only adds the shelf picker
@@ -1399,7 +1424,7 @@ export default function LinerNotes() {
                     <button
                       type="button"
                       className="seed-token-clear"
-                      aria-label={`Stop channeling ${seedPlaylist.name}`}
+                      aria-label={`Remove ${seedPlaylist.name || "the pasted playlist"}`}
                       onClick={() => {
                         setSeedId("");
                         setPastedSeed(null);
@@ -1535,7 +1560,7 @@ export default function LinerNotes() {
                 {seedOpen && !seedPlaylist && (
                   <div className="seed-panel">
                       <div className="seed-panel-head">
-                        <span>{loggedIn ? "pick a playlist to channel" : "paste a playlist to channel"}</span>
+                        <span>{loggedIn ? "pick a playlist to base it on" : "paste a playlist to base it on"}</span>
                         <button
                           type="button"
                           className="seed-panel-close"
@@ -1572,8 +1597,8 @@ export default function LinerNotes() {
                           </form>
                           <div className="seed-explainer">
                             in Spotify: the playlist’s ⋯ menu → Share → Copy link. Public
-                            playlists only — the curator reads its tracks, then cuts a new
-                            tape in its spirit
+                            playlists only — we read its tracks, then make a new
+                            mixtape in the same spirit
                           </div>
                         </>
                       ) : Array.isArray(playlists) ? (
@@ -1599,7 +1624,7 @@ export default function LinerNotes() {
                                   setSeedFilter("");
                                   setInputHint(null);
                                   setAnnounce(
-                                    `Channeling ${p.name}. The prompt is now optional.`
+                                    `Using ${p.name}. The prompt is now optional.`
                                   );
                                   inputRef.current?.focus();
                                 }}
@@ -1622,8 +1647,8 @@ export default function LinerNotes() {
                             )}
                           </div>
                           <div className="seed-explainer">
-                            the curator reads its tracks, then cuts a new tape
-                            in its spirit — no songs copied over
+                            we read its tracks, then make a new mixtape in the
+                            same spirit — no songs copied over
                           </div>
                         </>
                       ) : playlists === "unauthorized" ? (
@@ -1644,7 +1669,7 @@ export default function LinerNotes() {
                           </button>
                         </div>
                       ) : (
-                        <span className="seed-note">reading your shelf…</span>
+                        <span className="seed-note">loading your playlists…</span>
                       )}
                     </div>
                 )}
@@ -1653,8 +1678,8 @@ export default function LinerNotes() {
                     prompt-optional contract while a seed is armed */}
                 <div className="scope-line">
                   {seedPlaylist
-                    ? "prompt optional — the tape follows that playlist’s spirit; add words to steer it"
-                    : "takes about a minute — every track is verified on Spotify before you see it"}
+                    ? "prompt optional — the mixtape follows that playlist’s spirit; add words to steer it"
+                    : "takes about a minute — real songs only, each one is checked on Spotify"}
                 </div>
 
                 {/* this browser's presses, so a guest who didn't tap + in
@@ -1713,7 +1738,7 @@ export default function LinerNotes() {
 
                 {/* example chips: populate the prompt, stay editable */}
                 <div className="examples">
-                  <div className="section-note">stuck? steal a prompt</div>
+                  <div className="section-note">or try one of these</div>
                   <div className="chips">
                     {EXAMPLES.map((ex) => (
                       <button
@@ -1749,7 +1774,7 @@ export default function LinerNotes() {
                   </div>
                 )}
 
-                <DeckHero />
+                <SampleCard />
 
                 {/* the credit: the quietest line on the screen, under the
                     garnish. A visitor from the post knows who made it; a
@@ -1770,7 +1795,7 @@ export default function LinerNotes() {
                     to do (LANGSMITH_TRACE_VISITORS, server/curatorLoader.ts).
                     Said once, where the typing happens, as quietly as the
                     credit above it. */}
-                <div className="notice-line">prompts are logged to help improve the curator</div>
+                <div className="notice-line">prompts are logged to help improve Mixtape</div>
               </>
             )}
           </>
@@ -1779,28 +1804,24 @@ export default function LinerNotes() {
         {loading && (
           <div className="loading">
             <div className="spinner-disc" aria-hidden />
-            <StudioChatter pool={stage ?? "reading"} />
-            {/* studio-console progress log — every line is a real backend event.
-                aria-hidden: the live region above narrates the milestones. */}
-            <div className="progress-log" aria-hidden>
-              {/* how long the tunnel is — the log shows progress is real,
-                  this line says how much of it to expect */}
-              <div className="log-caption">
-                cutting your mixtape — usually about a minute
+            {/* the one plain statement of where the run is and how long the
+                tunnel is. It replaced three lines that each said "working"
+                in studio slang (the chatter, a caption, a log line); the
+                stage now has exactly one place on screen. aria-hidden: the
+                live region above narrates the same milestones. */}
+            <div className="loading-step" aria-hidden>
+              <div className="loading-step-now">
+                step {loadingStep.n} of {stepTotal} · {loadingStep.label}
               </div>
-              {!stage && <div className="log-line">reading your prompt…{cursor}</div>}
-              {seedLog && (
-                <div className="log-line">
-                  pulling from “{seedLog.name}”…
-                  {stage === "seeding" ? cursor : <span className="log-ok"> ok</span>}
-                </div>
-              )}
-              {stage && stage !== "seeding" && (
-                <div className="log-line">
-                  digging through the crates…
-                  {stage === "curating" ? cursor : <span className="log-ok"> ok</span>}
-                </div>
-              )}
+              <div className="loading-step-note">usually about a minute</div>
+            </div>
+            {/* the songs as they land — every track line is a real backend
+                event. The chatter above them is the opposite, cosmetic on
+                purpose: between events the list can sit still for 20+
+                seconds, and a line that keeps moving is what stops that
+                reading as hung. */}
+            <div className="progress-log" aria-hidden>
+              <StudioChatter pool={stage ?? "reading"} inline />
               {logTracks.map(
                 (t, i) =>
                   t && (
@@ -1816,12 +1837,6 @@ export default function LinerNotes() {
                       )}
                     </div>
                   )
-              )}
-              {stage === "resolving" && (
-                <div className="log-line">
-                  resolving on spotify… {liveVerified}/{logTracks.length} verified
-                  {cursor}
-                </div>
               )}
             </div>
           </div>
@@ -1852,7 +1867,7 @@ export default function LinerNotes() {
                     )}
                   </span>
                   <span>
-                    CUT{" "}
+                    MADE{" "}
                     {new Date()
                       .toLocaleDateString("en-GB", {
                         day: "2-digit",
@@ -1880,6 +1895,15 @@ export default function LinerNotes() {
                       in the spirit of: <em>{card.seed.name}</em>
                     </>
                   )}
+                </div>
+
+                {/* how the list works, said before the list. It used to be the
+                    card's last line, under eight rows — read after the fact,
+                    if at all. */}
+                <div className="card-legend">
+                  {editable
+                    ? "tap a song to open it in Spotify · drag to reorder · ↻ swaps one"
+                    : "tap a song to open it in Spotify"}
                 </div>
 
                 <DndContext
@@ -1913,16 +1937,6 @@ export default function LinerNotes() {
                 </DndContext>
 
                 <div className="card-footer">
-                  {/* two widths of the same legend — phones used to hide it
-                      entirely, which left drag/swap undiscoverable */}
-                  <span className="card-hint-full">
-                    {editable
-                      ? "tap to open · drag to reorder · ↻ swaps a track"
-                      : "tap a track to open it in Spotify"}
-                  </span>
-                  <span className="card-hint-short">
-                    {editable ? "drag to reorder · ↻ swaps" : "tap to open"}
-                  </span>
                   <span className="footer-brand">{BRAND} · STEREO</span>
                   <div className="barcode" aria-hidden />
                 </div>
@@ -1968,7 +1982,7 @@ export default function LinerNotes() {
                       inline
                     />
                     <div className="log-line">
-                      rewinding the tape…
+                      changing the tracks…
                       {adjustStage === "resolving" ? (
                         <span className="log-ok"> ok</span>
                       ) : (
@@ -1989,7 +2003,7 @@ export default function LinerNotes() {
                       </div>
                     ))}
                     {adjustStage === "resolving" && (
-                      <div className="log-line">resolving on spotify…{cursor}</div>
+                      <div className="log-line">checking on Spotify…{cursor}</div>
                     )}
                   </div>
                 )}
@@ -2013,15 +2027,24 @@ export default function LinerNotes() {
                   className="btn-press press-cta"
                   style={{ marginTop: 24 }}
                 >
-                  {/* the brand verb is spent exactly here — the action that
-                      literally presses the record into Spotify */}
+                  {/* says what the tap does in the visitor's words. It was
+                      "PRESS IT TO SPOTIFY": the brand verb, which a stranger
+                      has to decode at the one button that matters most */}
                   {!saving && <SpotifyMark />}
                   {saving
-                    ? saveStage || "PRESSING TO WAX…"
+                    ? saveStage || "SAVING…"
                     : cardUnverified === 0
-                      ? `PRESS IT TO SPOTIFY · ${card.tracks.length} TRACKS`
-                      : `PRESS ${cardVerified} OF ${card.tracks.length} TRACKS TO SPOTIFY`}
+                      ? "SAVE AS A SPOTIFY PLAYLIST"
+                      : `SAVE ${cardVerified} OF ${card.tracks.length} SONGS TO SPOTIFY`}
                 </button>
+                {/* what a stranger wonders at this button: will it ask for
+                    my login, will it touch my account. Answered here, along
+                    with the honest number of taps left. */}
+                <div className="save-note">
+                  {loggedIn
+                    ? "goes straight into your Spotify library"
+                    : "no login needed — we create the playlist, you open it and tap + in Spotify to keep it"}
+                </div>
                 {cardUnverified > 0 && (
                   <div className="save-note">
                     {cardUnverified} unverified track
@@ -2055,8 +2078,8 @@ export default function LinerNotes() {
                 </a>
                 <div className="save-note pressed-note">
                   {savedToLibrary
-                    ? "pressed — it’s in your library."
-                    : "pressed — then tap + in Spotify to keep it."}
+                    ? "Saved — it’s in your Spotify library."
+                    : "Your playlist is ready. Open it and tap + to add it to your library."}
                 </div>
                 <div className="pressed-actions">
                   <button

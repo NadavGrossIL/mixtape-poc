@@ -151,7 +151,7 @@
   color: var(--ink);
 }
 
-/* the maker credit under the cassette: the connect-note's tier (11px,
+/* the maker credit under the sample card: the connect-note's tier (11px,
    ink-faint), a link only on hover so it reads as a colophon, not a CTA */
 .credit-line {
   font-family: "Space Mono", monospace;

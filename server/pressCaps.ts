@@ -29,11 +29,13 @@ function pressLimits(generate: CapLimits): CapLimits {
   };
 }
 
-// caps.ts phrases its refusals for the generate flow ("that's your 5 tapes for
-// today"), which is the wrong sentence in front of someone trying to KEEP a
-// tape they already have. One honest line covers both tiers here: whether it's
+// caps.ts phrases its refusals for the generate flow ("that's your 5 mixtapes
+// for today"), which is the wrong sentence in front of someone trying to KEEP
+// a mixtape they already have. One honest line covers both tiers here: whether it's
 // their own limit or the app's, the answer is the same and it isn't an error.
-const PRESS_REFUSAL = "the deck has pressed all it can today — come back tomorrow.";
+// Plain words since 2026-11-21: the button says "save", so "pressed" had
+// nothing on screen to refer to.
+const PRESS_REFUSAL = "no more playlists can be saved today — come back tomorrow.";
 
 function makePressCaps(generate: CapLimits) {
   const caps = makeCaps(pressLimits(generate));

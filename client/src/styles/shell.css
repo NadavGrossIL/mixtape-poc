@@ -82,18 +82,6 @@
   gap: 12px;
 }
 
-/* cassette mark — sized to the wordmark's cap height */
-.logo {
-  width: 40px;
-  height: 30px;
-  flex-shrink: 0;
-  color: var(--ink);
-}
-
-.logo-accent {
-  stroke: var(--accent-soft);
-}
-
 /* the tagline: a book-weight serif under the heavy grotesque wordmark — the
    record-sleeve pairing. Upright, not italic; handwriting and italic were
    both tried and read as costume. Full --ink because this line has to be
@@ -151,7 +139,7 @@
   color: var(--ink);
 }
 
-/* the maker credit under the cassette: the connect-note's tier (11px,
+/* the maker credit at the foot of the page: the connect-note's tier (11px,
    ink-faint), a link only on hover so it reads as a colophon, not a CTA */
 .credit-line {
   font-family: "Space Mono", monospace;
@@ -193,9 +181,5 @@
     gap: 8px;
     flex-wrap: wrap;
     justify-content: center;
-  }
-  .logo {
-    width: 30px;
-    height: 23px;
   }
 }

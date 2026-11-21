@@ -4,7 +4,7 @@
 //     allowance shared with track resolution (searchBudget.ts);
 //   - at most two searches leave at once (the model asks for nine in one go);
 //   - a spent daily quota ends the run instead of inviting made-up tracks.
-// These are curator.ts's rules, line for line. LangChain's ready-made
+// These were the hand-written loop's rules, line for line. LangChain's ready-made
 // toolCallLimitMiddleware could not do it: it counts every call, cached or
 // not, and knows nothing about the allowance resolution spends from later.
 //
@@ -51,7 +51,7 @@ function makeSearchStep({
   return (query) =>
     limit(async () => {
       if (!claimSearch(isCached(query), loop, request)) {
-        // Same words as curator.ts. Note what it does NOT say: it never
+        // Note what this does NOT say: it never
         // invites the model to fall back on its own knowledge.
         return (
           `Search budget for this mixtape is used up (${request.spent()} searches). ` +

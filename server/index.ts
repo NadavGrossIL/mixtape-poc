@@ -23,10 +23,11 @@ import { parseTrackUris } from "./trackUris.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
 import { makeOutageTracker } from "./outage.ts";
-// Which agent curates: the hand-written loop (default) or the LangChain one
-// (CURATOR=lc). `fromAnthropic` answers the one question outage.ts cannot on
-// its own — Spotify errors carry a `status` too. See curatorSwitch.ts.
-import { whichCurator, loadCurator, fromAnthropic } from "./curatorSwitch.ts";
+// The curator agent (LangChain, lc/curator-lc.ts) comes in through
+// loadCurator, which guards LangSmith tracing before LangChain is loaded.
+// `fromAnthropic` answers the one question outage.ts cannot on its own —
+// Spotify errors carry a `status` too. See curatorLoader.ts.
+import { loadCurator, fromAnthropic } from "./curatorLoader.ts";
 
 // Tee console.* into the in-app logbook before anything logs, so even the
 // startup config warnings below are readable from the browser.
@@ -208,14 +209,14 @@ if (!spotify.isLoggedIn("host") && spotify.isLoggedIn()) {
       "account before sharing widely; see README → Sharing."
   );
 }
-// `curator` (the static import) stays the source of the shared checks, e.g.
-// anthropicConfigured — both agents read the same key. `agent` is only the
-// two calls that differ: generateCard and adjustCard.
-const CURATOR_NAME = whichCurator(process.env);
-// DEPLOYED goes in so the LangSmith tracing guard (curatorSwitch.ts) uses the
+// `curator` (the static import) is the curator's rules — no model, no
+// LangChain — and the source of shared checks such as anthropicConfigured.
+// `agent` is what runs them: generateCard and adjustCard.
+// DEPLOYED goes in so the LangSmith tracing guard (curatorLoader.ts) uses the
 // same "is this host reachable" rule as everything else here.
-const agent = await loadCurator(CURATOR_NAME, { deployed: DEPLOYED });
-console.log(`[config] curator: ${CURATOR_NAME}`);
+const agent = await loadCurator({ deployed: DEPLOYED });
+// The line to look for in a deploy's log: which agent and model are serving.
+console.log(`[config] curator: LangChain agent, model ${process.env.LC_MODEL || curator.MODEL}`);
 if (!curator.anthropicConfigured()) {
   console.warn(
     "[config] ANTHROPIC_API_KEY is missing or still a placeholder.\n" +

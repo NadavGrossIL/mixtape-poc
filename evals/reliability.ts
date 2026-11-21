@@ -36,21 +36,18 @@ loadServerEnv();
 
 // Dynamic import so server/.env is in process.env before the module evaluates
 // (a static ESM import would hoist above loadServerEnv()).
+// curator.ts holds the rules (MODEL, anthropicConfigured); the agent that runs
+// them is the LangChain curator, the only one since 2026-11-21.
 const base = await import("../server/curator.ts");
-// CURATOR=lc measures the LangChain rebuild (server/lc/curator-lc.ts) through
-// the same front door. Unset, this is the hand-written curator, as always.
-const WHICH = process.env.CURATOR === "lc" ? "lc" : "hand-written";
-const curator =
-  WHICH === "lc"
-    ? { ...base, generateCard: (await import("../server/lc/curator-lc.ts")).generateCard }
-    : base;
-// The model the trials really ran on. The LangChain curator lets LC_MODEL
-// override the shared MODEL (lc/curator-lc.ts, makeAgent — the same rule,
-// repeated here because that module does not export it); the hand-written
-// curator never reads LC_MODEL, so its runs record curator.MODEL as before.
-// Without this and the `curator` field below, a run made with CURATOR=lc sat
-// in evals/runs/ looking exactly like a hand-written one.
-const MODEL_USED = WHICH === "lc" ? process.env.LC_MODEL || base.MODEL : base.MODEL;
+const curator = { ...base, generateCard: (await import("../server/lc/curator-lc.ts")).generateCard };
+// Recorded in every run summary. Runs made before 2026-11-21 say
+// "hand-written" (the Anthropic SDK loop this agent replaced) or "lc"; keeping
+// the same word keeps old and new summaries comparable.
+const WHICH = "lc";
+// The model the trials really ran on: LC_MODEL overrides the shared MODEL
+// (lc/curator-lc.ts, makeAgent — the same rule, repeated here because that
+// module does not export it).
+const MODEL_USED = process.env.LC_MODEL || base.MODEL;
 
 const DEFAULT_TRIALS = 5;
 const DEFAULT_PROMPTS = 3;

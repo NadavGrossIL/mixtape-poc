@@ -1763,6 +1763,13 @@ export default function LinerNotes() {
                 >
                   made by Nadav Gross
                 </a>
+                {/* the notice: what a visitor types is kept. True today (the
+                    server log records each prompt) and it is what makes
+                    turning on LangSmith tracing for visitors an honest thing
+                    to do (LANGSMITH_TRACE_VISITORS, server/curatorLoader.ts).
+                    Said once, where the typing happens, as quietly as the
+                    credit above it. */}
+                <div className="notice-line">prompts are logged to help improve the curator</div>
               </>
             )}
           </>

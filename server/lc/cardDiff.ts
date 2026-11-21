@@ -1,7 +1,7 @@
 // Adjust, the LangChain way: the model writes the WHOLE new card, and code —
 // not the model — works out what changed.
 //
-// The hand-written agent asks the model for a diff (adjust_mixtape). Here the
+// The hand-written loop this replaced asked the model for a diff. Here the
 // model only knows one delivery tool, create_mixtape, so an adjust comes back
 // as eight tracks again. The UI still expects the AdjustDiff shape (only the
 // changed rows, each with its position), so the comparison happens here. A
@@ -36,7 +36,7 @@ function sameTrack(a: Partial<TrackLike> | undefined, b: Partial<TrackLike> | un
 
 // Old card vs new card → only what changed. Positions past the end of the old
 // card are ignored: index.ts writes each change into the listener's card by
-// index, and the hand-written agent drops out-of-range changes the same way.
+// index, so a change it has no row for must not reach it.
 function diffCards(before: CardLike, after: CardLike): AdjustDiff {
   const changes: AdjustDiff["changes"] = [];
   const count = Math.min(before.tracks.length, after.tracks.length);
@@ -73,8 +73,8 @@ function isEmptyDiff(diff: AdjustDiff): boolean {
 // Everything in the card came back from the browser, so every string in it is
 // text a caller chose — it goes inside fences, as in curator.ts.
 //
-// Parity with the hand-written adjust (adjustUserContent + ADJUST_SYSTEM in
-// curator.ts). That one tells the model which rows Spotify could not verify
+// Carried over from the hand-written adjust this replaced (its
+// adjustUserContent and ADJUST_SYSTEM). That one told the model which rows Spotify could not verify
 // and to swap those first; without the flag "replace the ones that aren't
 // real" is a guess, because every row looks the same. `resolved` is forced to
 // a boolean here, so it is the one field in the card that is not caller text.

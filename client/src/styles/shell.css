@@ -168,6 +168,15 @@
   text-decoration: underline;
 }
 
+/* the logging notice: the credit's own type, tucked right under it */
+.notice-line {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  text-align: center;
+  margin-top: 6px;
+}
+
 @media (max-width: 520px) {
   .tagline {
     font-size: 19px;

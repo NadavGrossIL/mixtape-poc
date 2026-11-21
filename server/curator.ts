@@ -1,19 +1,19 @@
-// Claude curator: prompt in → validated mixtape card out.
-// Uses forced tool choice + strict tool schema so the JSON arrives validated —
-// no markdown-fence stripping, no regex.
-// Streaming: fine-grained tool-input streaming (eager_input_streaming, GA — no
-// beta header) lets us emit each track as the model produces it.
+// The curator's own rules: what the model is told and what a card must pass.
+//
+//   - SYSTEM, the prompt
+//   - the two tool definitions the model sees (search_spotify, create_mixtape)
+//   - the fences around untrusted text
+//   - the card check (complete? do the notes' facts match the search results?)
+//   - the limits (searches, concurrency, deadline)
+//
+// The agent that RUNS these lives in lc/curator-lc.ts (LangChain/LangGraph):
+// the loop, the streaming, the memory. Until 2026-11-21 this file also held a
+// hand-written loop on the Anthropic SDK and a diff-style adjust_mixtape tool;
+// both were removed once the LangChain agent matched them (git history has
+// them). Nothing here calls a model.
 
-import Anthropic from "@anthropic-ai/sdk";
-import {
-  searchCatalog,
-  isSearchCached,
-  recallByRef,
-  normalize,
-  stripSuffixes,
-  formatClock,
-} from "./spotify.ts";
-import { makeSearchBudget, type SearchBudget } from "./searchBudget.ts";
+import { normalize, stripSuffixes, formatClock } from "./spotify.ts";
+import type { SearchBudget } from "./searchBudget.ts";
 
 const MODEL = "claude-sonnet-5";
 const TRACK_COUNT = 8;
@@ -63,7 +63,7 @@ interface AdjustDiff {
   threadId?: string;
 }
 
-// One track's shape, shared by create_mixtape and adjust_mixtape.
+// One track's shape inside create_mixtape.
 // NO_REF is the documented escape hatch. `ref` has to be REQUIRED for the
 // grammar to guarantee it is present at all, but a run where Spotify search
 // degraded has no refs to quote — without a sentinel the model would either
@@ -175,51 +175,6 @@ const CURATOR_TOOL = {
   },
 };
 
-// Second-chance refinement: diff-style strict tool. Unchanged tracks are never
-// re-emitted by the model, so they survive byte-for-byte by construction
-// (see docs/research/second-chance-readjustment.md). Declared statically next
-// to CURATOR_TOOL — changing the tool set invalidates the grammar cache.
-const ADJUST_TOOL = {
-  name: "adjust_mixtape",
-  description:
-    "Record the minimal set of changes that satisfies the user's adjustment. " +
-    "Only include tracks that must change; omit every index the adjustment does not require touching. " +
-    "Omit title/vibe/accent unless the adjustment changes the mixtape's identity.",
-  strict: true,
-  eager_input_streaming: true,
-  input_schema: {
-    type: "object",
-    additionalProperties: false,
-    required: ["changes"],
-    properties: {
-      changes: {
-        type: "array",
-        description: "Replacements, fewest possible. Empty if only title/vibe change.",
-        items: {
-          type: "object",
-          additionalProperties: false,
-          required: ["index", "track"],
-          properties: {
-            index: {
-              type: "integer",
-              enum: [0, 1, 2, 3, 4, 5, 6, 7],
-              description: "Position of the track being replaced, from the current mixtape JSON.",
-            },
-            track: TRACK_SCHEMA,
-          },
-        },
-      },
-      // optional — omitted from `required`, so the model may skip them
-      title: { type: "string", description: "New title, only if the adjustment changes the mixtape's identity." },
-      vibe: { type: "string", description: "New vibe line, only if the adjustment changes the mixtape's identity." },
-      accent: {
-        type: "string",
-        enum: ["ember", "rose", "plum", "cobalt", "forest", "rust"],
-      },
-    },
-  },
-};
-
 // The curator's verification tool — executed server-side against Spotify
 // search between model turns. This is what makes "every track exists on
 // Spotify" enforceable instead of aspirational.
@@ -244,22 +199,6 @@ const SEARCH_TOOL = {
     },
   },
 };
-
-// Static tool list for every curator call (generate and adjust alike) —
-// varying it between calls would invalidate the compiled-grammar cache.
-// (Measured: scoping the list per flow, so a generate run never sees
-// adjust_mixtape's legitimately-empty `changes` array, made no difference to
-// the truncated-commit rate — 5/10 vs 6/10. The cause was the array itself.)
-const TOOLS = [SEARCH_TOOL, CURATOR_TOOL, ADJUST_TOOL];
-
-// Turn budget for the search-then-commit loop. Typical run: one or two turns
-// of batched searches, maybe one of replacement searches, then the final tool
-// (plus headroom for an incomplete-card retry — see incompleteReason). The
-// last turn forces the final tool so a run can never end without a card.
-// Raised from 6 after measuring the retry path live: the incomplete-card
-// commit chained up to three retries in one run, which left only two turns
-// for the search work that preceded it.
-const MAX_TOOL_TURNS = 8;
 
 // Spotify searches are a DAILY allowance shared across the whole developer
 // account (a few hundred requests), not a per-request resource — so a run gets
@@ -289,26 +228,6 @@ const RUN_DEADLINE_MS = 6 * 60 * 1000;
 // Ceiling on simultaneous searches. The model happily emits 9 tool_use blocks
 // in one turn; firing all 9 at once is what trips the rolling-window limit.
 const SEARCH_CONCURRENCY = 2;
-
-// Run fn over items with at most `concurrency` in flight, preserving order.
-async function mapPool<T, R>(
-  items: T[],
-  concurrency: number,
-  fn: (item: T, index: number) => Promise<R>
-): Promise<R[]> {
-  const out: R[] = new Array(items.length);
-  let next = 0;
-  async function worker() {
-    while (next < items.length) {
-      const i = next++;
-      out[i] = await fn(items[i]!, i);
-    }
-  }
-  await Promise.all(
-    Array.from({ length: Math.min(concurrency, items.length) }, worker)
-  );
-  return out;
-}
 
 // ── untrusted text goes in a fenced block ──────────────────────
 //
@@ -365,17 +284,6 @@ Rules:
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
 - Writing the card is a separate step from choosing it: once you commit, fill in all eight track slots (track1 through track8) in that single tool call.`;
 
-const ADJUST_SYSTEM = `${SYSTEM}
-
-You are adjusting an existing mixtape, not building a new one:
-- Change ONLY what the user's adjustment asks for. Tracks the adjustment does not touch must NOT appear in changes.
-- Never re-emit an unchanged track — omit its index entirely.
-- Replacement notes follow the same rules as create_mixtape notes: shown facts, staked lore, or a vivid image of the sound — no guessed specifics. Max 18 words.
-- Keep the DJ-set arc sensible: each replacement must sit right between its neighbors.
-- Tracks marked "resolved": false could not be verified on Spotify — prefer them as swap targets when the user says a track isn't real.
-- Every replacement must come from a search_spotify result, with that row's ref copied into its ref field — same rule as new tracks.
-- Only include title/vibe/accent when the adjustment changes the mixtape's identity.`;
-
 // Stubs the model reaches for when it commits a card it hasn't really
 // written. "placeholder" in every field of a lone track was observed live.
 // "none" joined the list 2026-09-02: it is the documented NO_REF sentinel
@@ -429,33 +337,6 @@ function cardIncompleteReason(input: Record<string, unknown>): string | null {
   );
   if (hollow !== -1) {
     return `track ${hollow + 1} had a missing or placeholder artist, title or note`;
-  }
-  return null;
-}
-
-// Same gate for adjust_mixtape. An empty `changes` array is legitimate here
-// (the tool's own description allows it for a title/vibe-only tweak), so the
-// no-op case is what gets rejected: nothing changed at all.
-function diffIncompleteReason(input: Record<string, unknown>): string | null {
-  if (Object.keys(input).length === 0) return "the input object was empty";
-  const changes = (input as any).changes;
-  if (!Array.isArray(changes)) return "changes was not an array";
-  const hollow = changes.findIndex(
-    (c: any) =>
-      !c?.track ||
-      !isFilled(c.track.artist) ||
-      !isFilled(c.track.title) ||
-      !isFilled(c.track.note)
-  );
-  if (hollow !== -1) {
-    return `change ${hollow + 1} had a missing or placeholder artist, title or note`;
-  }
-  const identityChanged =
-    isFilled((input as any).title) ||
-    isFilled((input as any).vibe) ||
-    isFilled((input as any).accent);
-  if (changes.length === 0 && !identityChanged) {
-    return "it changed nothing — no track replacements and no new title, vibe or accent";
   }
   return null;
 }
@@ -947,36 +828,6 @@ function generateUserContent(
   return parts.join("\n\n");
 }
 
-// The user message for an adjust run — the injection-richest surface in the
-// app: the whole card arrives in the request body, so its title, vibe and
-// every artist, title and note are strings a caller chose. The JSON is fenced
-// as one block (JSON escaping hides quotes but not our tags, hence the
-// neutralise inside fence).
-function adjustUserContent(
-  card: { prompt?: string; title: string; vibe: string; accent: string; tracks: Track[] },
-  adjustment: string
-): string {
-  // Strip spotify resolution fields — the model doesn't need them. The
-  // `resolved` flag stays: unverified tracks are the natural swap targets.
-  const minimalCard = {
-    title: card.title,
-    vibe: card.vibe,
-    accent: card.accent,
-    tracks: card.tracks.map((t, index) => ({
-      index,
-      artist: t.artist,
-      title: t.title,
-      note: t.note,
-      resolved: Boolean(t.resolved),
-    })),
-  };
-  return (
-    `Original prompt:\n${fence("listener_prompt", card.prompt || "")}\n` +
-    `Current mixtape (JSON):\n${fence("current_mixtape", JSON.stringify(minimalCard))}\n\n` +
-    `User adjustment:\n${fence("listener_adjustment", adjustment)}`
-  );
-}
-
 // A search's rows on their way back to the model. The label is the whole
 // point: artist, title and album are text uploaded by third parties, and an
 // unlabelled JSON blob is indistinguishable from something the server vouches
@@ -1000,426 +851,9 @@ function claimSearch(free: boolean, loop: SearchBudget, request: SearchBudget): 
   return true;
 }
 
-// The curator agent loop: stream a turn, execute any search_spotify calls
-// against Spotify, feed the results back, repeat until the model commits via
-// its final tool (create_mixtape / adjust_mixtape). Returns that tool's input.
-// onItem(i, item) fires as the model streams each element of the final tool's
-// `arrayKey` array — the same real-event streaming the single-call version had.
-async function runCuratorAgent({
-  system,
-  userContent,
-  finalTool,
-  arrayKey,
-  incompleteReason,
-  onItem,
-  onCommit,
-  signal,
-  budget,
-}: {
-  system: string;
-  userContent: string;
-  finalTool: string;
-  arrayKey: string;
-  // Why this tool call can't be accepted, or null if it can — see
-  // cardIncompleteReason. A strict schema validates types, not substance.
-  // ctx.lastTurn: a rejection on the forced last turn cannot be retried — the
-  // loop below throws instead — so gates with soft rules (grounding) must
-  // accept there rather than kill a paid run over a note nit.
-  incompleteReason: (
-    input: Record<string, unknown>,
-    ctx: { lastTurn: boolean }
-  ) => string | null;
-  onItem?: (index: number, item: any) => void;
-  // Fires once per final-tool call, with the gap that rejected it (null =
-  // accepted). The retry loop below repairs an incomplete commit, which is
-  // right for users but hides how often the model gets it wrong first try —
-  // the exact signal the eight-required-keys schema was meant to fix. Only
-  // evals/reliability.ts passes this; the app leaves it undefined.
-  onCommit?: (attempt: number, gap: string | null) => void;
-  signal?: AbortSignal;
-  // The request's shared Spotify allowance, drawn down by this loop and by
-  // track resolution afterwards (searchBudget.ts). Optional: without one the
-  // loop makes a private budget and behaves exactly as it did before.
-  budget?: SearchBudget;
-}): Promise<Record<string, unknown>> {
-  const client = new Anthropic({
-    apiKey: process.env.ANTHROPIC_API_KEY,
-    // Two levels of bound, and they answer different questions.
-    //
-    // Per REQUEST (here): explicit rather than inherited. Each turn is ONE
-    // request, so 10 minutes is already generous — the bound was never the
-    // problem. What killed the 2026-08-17 baseline was streaming sockets
-    // dropping mid-turn: a stream abort surfaces as undici's opaque
-    // "terminated", not as a clean timeout, and the SDK retried twice in
-    // silence before throwing. Three retries buys one more chance at a drop
-    // that costs a whole paid run; the timeout is pinned so a future SDK
-    // default can't move it under us. Do not shrink either number to bound a
-    // run — that is what the deadline below is for.
-    //
-    // Per RUN (RUN_DEADLINE_MS, composed into runSignal): the product of those
-    // two numbers across MAX_TOOL_TURNS is hours, and cost is capped by
-    // max_tokens but the held SSE connection and resolver pool are not.
-    timeout: 10 * 60 * 1000,
-    maxRetries: 3,
-  });
-  // The deadline is ours; the caller's signal is the client disconnect. They
-  // are composed for the model stream but kept separate as facts, because the
-  // routes read `abort.signal.aborted` to tell "client went away — stop
-  // quietly" from a real failure. Aborting the caller's controller, or letting
-  // a timeout surface as its opaque abort error, would make a hang look like a
-  // disconnect and end the run silently — so a deadline abort is translated
-  // into a plain Error below and only when the caller's own signal is clear.
-  const deadline = AbortSignal.timeout(RUN_DEADLINE_MS);
-  const runSignal = signal ? AbortSignal.any([signal, deadline]) : deadline;
-  const messages: Anthropic.MessageParam[] = [
-    { role: "user", content: userContent },
-  ];
-  // Quota-costing searches — cache hits are free. Two budgets, both binding:
-  // the loop's own cap, and the request-wide allowance it shares with track
-  // resolution. See claimSearch.
-  const loopBudget = makeSearchBudget(SEARCH_BUDGET);
-  const requestBudget = budget ?? makeSearchBudget(SEARCH_BUDGET);
-  let commits = 0; // final-tool calls seen, accepted or not
-
-  for (let turn = 1; turn <= MAX_TOOL_TURNS; turn++) {
-    const lastTurn = turn === MAX_TOOL_TURNS;
-    const stream = client.messages.stream(
-      {
-        model: MODEL,
-        // headroom for search turns' reasoning on top of the card itself
-        max_tokens: 4000,
-        system,
-        tools: TOOLS as any,
-        tool_choice: lastTurn
-          ? { type: "tool", name: finalTool }
-          : { type: "auto" },
-        messages,
-      },
-      { signal: runSignal }
-    );
-
-    // Stream the final tool's array items as they're written. Search calls
-    // and prose stream through the same events, so key the buffer to the
-    // final tool's content block, not to deltas in general.
-    let finalBlockIndex = -1;
-    let buf = "";
-    let emitted = 0;
-    let response: Anthropic.Message;
-    try {
-      for await (const event of stream) {
-        if (event.type === "content_block_start") {
-          if (
-            event.content_block.type === "tool_use" &&
-            event.content_block.name === finalTool
-          ) {
-            finalBlockIndex = event.index;
-            buf = "";
-            emitted = 0;
-          }
-        } else if (
-          event.type === "content_block_delta" &&
-          event.index === finalBlockIndex &&
-          event.delta.type === "input_json_delta"
-        ) {
-          buf += event.delta.partial_json;
-          if (!onItem) continue;
-          const items = extractCompleteTracks(buf, arrayKey);
-          while (emitted < items.length) {
-            onItem(emitted, items[emitted]);
-            emitted++;
-          }
-        }
-      }
-      response = await stream.finalMessage();
-    } catch (err) {
-      // A client disconnect wins if both fired: the caller recognises its own
-      // signal and stops quietly. Only a deadline with the caller's signal
-      // clear becomes an error, and a named one — the SDK's abort error would
-      // read as "request aborted" and be filed as a disconnect.
-      if (deadline.aborted && !signal?.aborted) {
-        throw new Error(
-          `Curator run exceeded its ${RUN_DEADLINE_MS / 60000}-minute deadline on turn ${turn}`
-        );
-      }
-      throw err;
-    }
-    console.log(
-      `[curator] turn ${turn}: stop=${response.stop_reason} blocks=` +
-        response.content
-          .map((b) => (b.type === "tool_use" ? `tool:${b.name}` : b.type))
-          .join(",")
-    );
-    const done = response.content.find(
-      (b): b is Anthropic.ToolUseBlock =>
-        b.type === "tool_use" && b.name === finalTool
-    );
-    // A final tool call is not automatically the answer — see
-    // incompleteReason. A complete one returns; an incomplete one is
-    // answered below with an error result so the model calls again.
-    const gap = done
-      ? incompleteReason(done.input as Record<string, unknown>, { lastTurn })
-      : null;
-    if (done) onCommit?.(++commits, gap);
-    if (done && !gap) {
-      return done.input as Record<string, unknown>;
-    }
-
-    messages.push({ role: "assistant", content: response.content });
-    const searches = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock =>
-        b.type === "tool_use" && b.name === SEARCH_TOOL.name
-    );
-    if (searches.length === 0 && !done) {
-      // text-only turn — nudge it to commit instead of narrating
-      messages.push({
-        role: "user",
-        content: `Record the final result now with ${finalTool}.`,
-      });
-      continue;
-    }
-    if (searches.length > 0) {
-      console.log(`[curator] turn ${turn}: ${searches.length} spotify searches`);
-    }
-    // All results go back in ONE user message — splitting them across
-    // messages trains the model out of batching its searches. Batching is still
-    // what we want; the pool below just stops all of them leaving at once.
-    const results: Anthropic.ToolResultBlockParam[] = await mapPool(
-      searches,
-      SEARCH_CONCURRENCY,
-      async (s) => {
-        const query = String((s.input as any)?.query ?? "");
-        // Cache hits stay free — claimSearch charges nothing for them, so a
-        // re-run prompt still costs no quota.
-        const free = isSearchCached(query);
-        if (!claimSearch(free, loopBudget, requestBudget)) {
-          // Out of budget — the loop's own cap, or the request allowance it
-          // shares with resolution; either way there is nothing left to spend,
-          // so the message reads the same. Note what this does NOT say: it
-          // never invites the model to fall back on its own knowledge.
-          // Verified-only is the whole point of the search loop.
-          return {
-            type: "tool_result" as const,
-            tool_use_id: s.id,
-            content:
-              `Search budget for this mixtape is used up (${requestBudget.spent()} searches). ` +
-              `Commit now using only tracks that already came back in earlier ` +
-              `search results — do not add a track you have not seen verified.`,
-            is_error: true,
-          };
-        }
-        try {
-          const found = await searchCatalog(query);
-          return {
-            type: "tool_result" as const,
-            tool_use_id: s.id,
-            content: catalogResultContent(found),
-          };
-        } catch (err: any) {
-          // Exhausted daily quota is NOT a degradable condition: resolution is
-          // about to fail on every track too, so "rely on your own knowledge"
-          // would just produce an unverifiable card full of plausible
-          // inventions. Fail the run and say why.
-          if (err.quotaExceeded) throw err;
-          // A transient outage still degrades to the old behavior (model's own
-          // judgment + the resolution gate), rather than killing the run.
-          console.warn(`[curator] search_spotify failed: ${err.message}`);
-          return {
-            type: "tool_result" as const,
-            tool_use_id: s.id,
-            content:
-              "Spotify search is unavailable right now — rely on your own knowledge and prefer well-known recordings.",
-            is_error: true,
-          };
-        }
-      }
-    );
-    if (done) {
-      console.warn(
-        `[curator] turn ${turn}: incomplete ${finalTool} (${gap}) — retrying`
-      );
-      results.push({
-        type: "tool_result",
-        tool_use_id: done.id,
-        content:
-          `Your ${finalTool} call was not usable: ${gap}. ` +
-          `Nothing was recorded. Call ${finalTool} again now, in a single ` +
-          `call, with every field filled in — you already have the search ` +
-          `results you need, so do not search again.`,
-        is_error: true,
-      });
-    }
-    messages.push({ role: "user", content: results });
-  }
-  // The last turn forces the final tool, so we only land here when even that
-  // forced call came back incomplete.
-  throw new Error(`Curator never produced a complete ${finalTool} call`);
-}
-
-// Generate a card. onTrack(index, {artist, title}) fires as the model streams
-// each track — real events, straight from the tool-input stream.
-// seed (optional): an existing playlist to channel — see seedContext. With a
-// seed the prompt may be empty ("just like this playlist" is a valid ask).
-// signal (optional): aborting kills the model stream mid-flight (client
-// disconnect must stop the paid request); iteration then throws an abort error.
-// budget (optional): the request's shared Spotify allowance — the same object
-// index.ts hands to resolveTracks, so the two halves cannot overspend it
-// between them. Without one the loop uses a private SEARCH_BUDGET.
-async function generateCard(
-  prompt: string,
-  {
-    seed,
-    onTrack,
-    onCommit,
-    signal,
-    budget,
-  }: {
-    seed?: { name: string; tracks: { artist: string; title: string }[]; total: number } | null;
-    onTrack?: (index: number, t: { artist: string; title: string }) => void;
-    onCommit?: (attempt: number, gap: string | null) => void;
-    signal?: AbortSignal;
-    budget?: SearchBudget;
-  } = {}
-): Promise<MixtapeCard> {
-  const input = await runCuratorAgent({
-    system: SYSTEM,
-    userContent: generateUserContent(prompt, seed),
-    finalTool: "create_mixtape",
-    arrayKey: "tracks",
-    // fresh gate per call — the bounce counter is per-run state
-    incompleteReason: makeGroundingGate({
-      hard: cardIncompleteReason,
-      lookup: recallByRef,
-    }),
-    onCommit,
-    signal,
-    budget,
-    onItem: onTrack
-      ? (i, t) => {
-          // never emit past TRACK_COUNT — the post-stream clamp drops the
-          // excess, so the client must not see rows that won't be on the card
-          if (i < TRACK_COUNT && t && t.artist && t.title) onTrack(i, t);
-        }
-      : undefined,
-  });
-
-  // track1…track8 back into the array the rest of the app speaks.
-  const card = { ...input, tracks: toTrackList((input as any).tracks) } as unknown as MixtapeCard;
-  if (card.tracks.length === 0) {
-    throw new Error("Curator returned no tracks");
-  }
-  // Belt-and-braces: eight required keys and additionalProperties:false make
-  // a wrong-length card ungrammatical, so this should now be unreachable —
-  // but toTrackList still accepts a plain array, and a silent "10 tracks" is
-  // exactly the class of bug that hid here before. Log loudly if it ever fires.
-  if (card.tracks.length !== TRACK_COUNT) {
-    console.warn(
-      `[curator] model returned ${card.tracks.length} tracks, expected ${TRACK_COUNT} — clamping`
-    );
-    card.tracks = card.tracks.slice(0, TRACK_COUNT);
-  }
-  // How many tracks carry a real ref is the single best signal for whether the
-  // search loop is doing its job: every ref is a resolution request not spent,
-  // and a card of all-NO_REF means the model committed without verifying.
-  const withRef = card.tracks.filter((t) => t.ref && t.ref !== NO_REF).length;
-  console.log(`[curator] ${withRef}/${card.tracks.length} tracks committed with a search ref`);
-  return card;
-}
-
-// Adjust an existing card — stateless single-turn (the card travels as JSON in
-// the user message, no replayed transcript). Returns a validated diff:
-//   { changes: [{index, track: {artist, title, note}}], title?, vibe?, accent? }
-// onChange(i, {index, track}) fires as the model streams each complete change.
-// signal, budget: same contracts as generateCard.
-async function adjustCard(
-  card: MixtapeCard,
-  adjustment: string,
-  {
-    onChange,
-    signal,
-    budget,
-  }: {
-    onChange?: (i: number, c: { index: number; track: { artist: string; title: string } }) => void;
-    signal?: AbortSignal;
-    budget?: SearchBudget;
-  } = {}
-): Promise<AdjustDiff> {
-  const result = (await runCuratorAgent({
-    system: ADJUST_SYSTEM,
-    userContent: adjustUserContent(card, adjustment),
-    finalTool: "adjust_mixtape",
-    arrayKey: "changes",
-    incompleteReason: diffIncompleteReason,
-    signal,
-    budget,
-    onItem: onChange
-      ? (i, c) => {
-          if (
-            c &&
-            Number.isInteger(c.index) &&
-            c.track &&
-            c.track.artist &&
-            c.track.title
-          ) {
-            onChange(i, c);
-          }
-        }
-      : undefined,
-  })) as any;
-  const rawChanges = Array.isArray(result.changes) ? result.changes : [];
-  // Strict schemas can't enforce array length, index range against THIS card,
-  // or duplicate indices — clamp/validate here, like the 8-track clamp above.
-  const seen = new Set<number>();
-  const changes: AdjustDiff["changes"] = [];
-  for (const c of rawChanges) {
-    const valid =
-      c &&
-      Number.isInteger(c.index) &&
-      c.index >= 0 &&
-      c.index < card.tracks.length &&
-      c.track &&
-      typeof c.track.artist === "string" &&
-      c.track.artist &&
-      typeof c.track.title === "string" &&
-      c.track.title &&
-      typeof c.track.note === "string";
-    if (!valid) {
-      console.warn(
-        `[curator] dropping malformed/out-of-range change: ${JSON.stringify(c)}`
-      );
-      continue;
-    }
-    if (seen.has(c.index)) {
-      console.warn(`[curator] dropping duplicate change for index ${c.index}`);
-      continue;
-    }
-    seen.add(c.index);
-    changes.push({
-      index: c.index,
-      track: {
-        // ref flows through to resolveTrack's exact-lookup path, same as a
-        // created track's — dropping it here would silently demote every
-        // replacement to fuzzy search.
-        ...(typeof c.track.ref === "string" && c.track.ref
-          ? { ref: c.track.ref }
-          : {}),
-        artist: c.track.artist,
-        title: c.track.title,
-        note: c.track.note,
-      },
-    });
-  }
-  const diff: AdjustDiff = { changes };
-  if (typeof result.title === "string" && result.title) diff.title = result.title;
-  if (typeof result.vibe === "string" && result.vibe) diff.vibe = result.vibe;
-  if (typeof result.accent === "string" && result.accent) diff.accent = result.accent;
-  return diff;
-}
-
 export type { Track, MixtapeCard, AdjustDiff };
 export {
   anthropicConfigured,
-  generateCard,
-  adjustCard,
   MODEL,
   TRACK_COUNT,
   // canonical shared logic — evals/grounding.ts imports extractYears from here
@@ -1428,7 +862,6 @@ export {
   makeGroundingGate,
   // exported for tests only
   SYSTEM,
-  ADJUST_SYSTEM,
   extractCompleteTracks,
   toTrackList,
   seedContext,
@@ -1438,16 +871,15 @@ export {
   neutraliseTags,
   fence,
   generateUserContent,
-  adjustUserContent,
   catalogResultContent,
   claimSearch,
   RUN_DEADLINE_MS,
   cardIncompleteReason,
-  diffIncompleteReason,
   TRACK_SCHEMA,
-  ADJUST_TOOL,
+  // the two tool definitions the agent (lc/curator-lc.ts) hands to the model
+  CURATOR_TOOL,
+  SEARCH_TOOL,
   NO_REF,
-  mapPool,
   SEARCH_BUDGET,
   SEARCH_CONCURRENCY,
 };

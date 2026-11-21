@@ -15,7 +15,10 @@ loadServerEnv();
 
 // Dynamic imports so server/.env is in process.env before the server modules
 // evaluate (static ESM imports would hoist above loadServerEnv()).
-const curator = await import("../server/curator.ts");
+// curator.ts holds the rules (MODEL, anthropicConfigured); the agent that runs
+// them is the LangChain curator (server/lc/curator-lc.ts).
+const base = await import("../server/curator.ts");
+const curator = { ...base, generateCard: (await import("../server/lc/curator-lc.ts")).generateCard };
 const spotify = await import("../server/spotify.ts");
 
 const DELAY_MS = 1500;

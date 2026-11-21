@@ -3,7 +3,7 @@
 
 // ── 1. the last round ──────────────────────────────────────────
 //
-// The run has a round limit. The hand-written agent FORCES the delivery tool
+// The run has a round limit. The hand-written loop this replaced FORCED the delivery tool
 // on its last round (tool_choice), so a run cannot end without a card. Newer
 // Claude models reject forced tool choice, so here the last round does the
 // next best thing: every other tool is taken away, and the model is told why.
@@ -64,9 +64,9 @@ function modelFailure(err: unknown): (Error & { status: number; fromAnthropic: t
 // would not end the run: only the LAST tool message is looked at.)
 //
 // So a delivery is always handled alone: the first delivery call is kept,
-// every other call in that message is dropped before any tool runs. curator.ts
+// every other call in that message is dropped before any tool runs. The hand-written loop
 // does the same on an accepted card (it returns without running the
-// searches). On a rejected card it differs a little: curator.ts still runs
+// searches). On a rejected card it differs a little: that loop still ran
 // the searches, here the model has to ask for them again.
 //
 // Returns the trimmed `tool_calls` and `content` (Anthropic repeats each tool
@@ -94,7 +94,7 @@ function deliveryAlone<C extends ToolCallLike>(
 
 // ── 4. an answer in plain words ────────────────────────────────
 //
-// A turn with no tool call would end the run without a card. curator.ts
+// A turn with no tool call would end the run without a card. The hand-written loop
 // answers it with one line and carries on; these are its words, plus the
 // "by calling" a model that has just narrated instead of acting needs.
 function deliverNudge(toolName: string): string {

@@ -1,13 +1,17 @@
-// The LangChain curator: the same front door as the hand-written one in
-// ../curator.ts — generateCard(prompt, opts) → MixtapeCard and
-// adjustCard(card, adjustment, opts) → AdjustDiff — so index.ts (behind the
-// CURATOR=lc switch, see ../curatorSwitch.ts) and the evals can call either
-// without knowing which it is.
+// The curator agent, built on LangChain/LangGraph. Its front door is two
+// calls — generateCard(prompt, opts) → MixtapeCard and
+// adjustCard(card, adjustment, opts) → AdjustDiff — used by index.ts (through
+// ../curatorLoader.ts) and by the evals.
 //
 // What LangChain does here: the loop (model → tools → model …), the memory
 // (a checkpointer and a thread id), the middleware hooks, the streaming.
-// What stays ours, reused from ../curator.ts unchanged: the real SYSTEM
-// prompt, the fences around untrusted text, the card check, the search rules.
+// What stays ours, in ../curator.ts: the SYSTEM prompt, the two tool
+// definitions the model sees, the fences around untrusted text, the card
+// check, the search rules.
+//
+// This replaced a hand-written loop on the Anthropic SDK (removed 2026-11-21,
+// in git history). Comments below that say "the hand-written loop" mean that
+// one; they are kept where they explain why something here is the way it is.
 //
 // The small decisions live in pure files next to this one, each with a unit
 // test in ../test/:
@@ -17,6 +21,7 @@
 //   modelCall.ts   the last round, marking Anthropic failures, a delivery
 //                  mixed with searches, an answer in plain words
 //   threads.ts     who owns which memory thread, and how many are kept
+//   runLog.ts      the one log line per run: rounds, searches, tokens, time
 //
 // Try it from server/:  node lc/curator-lc.ts
 
@@ -27,13 +32,14 @@ import type { BaseChatModel } from "@langchain/core/language_models/chat_models"
 import { ChatAnthropic } from "@langchain/anthropic";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
-import { toJsonSchema } from "@langchain/core/utils/json_schema";
 import { MemorySaver } from "@langchain/langgraph";
 import { isSearchCached, recallByRef, searchCatalog } from "../spotify.ts";
 import {
+  CURATOR_TOOL,
   MODEL,
   RUN_DEADLINE_MS,
   SEARCH_BUDGET,
+  SEARCH_TOOL,
   SEARCH_CONCURRENCY,
   SYSTEM,
   TRACK_COUNT,
@@ -50,10 +56,23 @@ import { adjustMessage, diffCards, isEmptyDiff, sameTrack } from "./cardDiff.ts"
 import { makeSearchStep } from "./searchStep.ts";
 import { deliverNudge, deliveryAlone, lastRoundRequest, modelFailure } from "./modelCall.ts";
 import { makeThreadBook } from "./threads.ts";
+import { runSummary, tokensOf } from "./runLog.ts";
 
-const DELIVER = "create_mixtape";
-const DELIVER_DESCRIPTION =
-  "Deliver the finished mixtape card. Call this once, when all eight tracks are chosen from search results.";
+// The two tools, as the model sees them, are defined ONCE, in curator.ts
+// (SEARCH_TOOL, CURATOR_TOOL): name, description and JSON schema, in
+// Anthropic's own format. Each LangChain tool below hands that definition to
+// the model untouched through `extras.providerToolDefinition` — LangChain's
+// "send the provider exactly this" option. Two things ride along that
+// LangChain has no option of its own for:
+//   - strict: the card cannot close before all eight track slots exist
+//     (ADR 0001);
+//   - eager_input_streaming on create_mixtape: without it Anthropic sends a
+//     tool call's arguments one whole top-level value at a time — and
+//     "tracks" is one value, so all eight would arrive in the same instant
+//     (measured).
+// The zod schemas next to each tool are for LangChain's own use: it checks
+// the arguments against them before running the tool.
+const DELIVER = CURATOR_TOOL.name;
 
 // The practice knobs (LC_SEARCH_LIMIT, LC_ROUND_LIMIT, LC_TEST_BOUNCE) are
 // read only when this file is run directly. Imported — by the server, by the
@@ -61,7 +80,9 @@ const DELIVER_DESCRIPTION =
 // shrink the limits or bounce every visitor's first card.
 const LESSON: NodeJS.ProcessEnv = import.meta.main ? process.env : {};
 
-// The limits, same numbers as curator.ts (SEARCH_BUDGET, MAX_TOOL_TURNS).
+// The limits. SEARCH_BUDGET is curator.ts's; 8 rounds is what the hand-written
+// loop used (raised from 6 after a card sent back three times in one run left
+// only two rounds for searching).
 // LC_SEARCH_LIMIT=2 / LC_ROUND_LIMIT=2 node lc/curator-lc.ts show what
 // hitting each wall looks like.
 const SEARCH_LIMIT = Number(LESSON.LC_SEARCH_LIMIT) || SEARCH_BUDGET;
@@ -88,7 +109,8 @@ const threads = makeThreadBook({
   onEvict: (id) => void memory.deleteThread(id).catch(() => {}),
 });
 
-// The card. Field descriptions follow TRACK_SCHEMA / CURATOR_TOOL in curator.ts.
+// The card, for LangChain's argument check. The model does not read these
+// descriptions — it reads CURATOR_TOOL's (see above) — so they stay short.
 const Track = z.object({
   ref: z
     .string()
@@ -136,6 +158,10 @@ type Run = {
   budget: SearchBudget; // the request-wide search allowance
   onCommit?: (attempt: number, gap: string | null) => void;
   rounds: number; // model calls so far in THIS run (the thread may hold older ones)
+  // For the run's log line (runLog.ts).
+  tokensIn: number;
+  tokensOut: number;
+  liveSearches: SearchBudget; // this run's own search cap; spent() = quota used
   card?: CardInput; // set only when the check accepted a card
   // A failure that must end the run. LangChain turns what a tool throws into
   // a message for the model, so "stop everything" is said two ways: remember
@@ -152,7 +178,7 @@ function searchTool(run: Run) {
     // A test's stand-in search has no cache: every call counts.
     isCached: run.seams.search ? () => false : isSearchCached,
     search: run.seams.search ?? searchCatalog,
-    loop: makeSearchBudget(SEARCH_LIMIT),
+    loop: run.liveSearches,
     request: run.budget,
     concurrency: SEARCH_CONCURRENCY,
     onFatal: (err) => {
@@ -161,14 +187,14 @@ function searchTool(run: Run) {
     },
   });
   return tool(({ query }) => step(query), {
-    name: "search_spotify",
-    description:
-      "Search Spotify's track catalog. Returns up to 10 real records, each with a ref.",
+    name: SEARCH_TOOL.name,
+    description: SEARCH_TOOL.description,
     schema: z.object({ query: z.string().describe("Free-text search") }),
+    extras: { providerToolDefinition: SEARCH_TOOL },
   });
 }
 
-// Tool 2: delivering the card is a TOOL, as in curator.ts — not the model's
+// Tool 2: delivering the card is a TOOL, as in the hand-written loop — not the model's
 // final answer in a fixed shape (responseFormat: providerStrategy). That was
 // tried first and measured: 3 of 6 eval runs, twice, spent all 8 rounds on
 // searches like "placeholder" and never delivered (evals/runs 2026-11-20,
@@ -203,24 +229,10 @@ function deliverTool(run: Run) {
     },
     {
       name: DELIVER,
-      description: DELIVER_DESCRIPTION,
+      description: CURATOR_TOOL.description,
       schema: Card,
       returnDirect: true,
-      // Tracks one by one needs one Anthropic setting LangChain has no option
-      // for: eager_input_streaming. Without it Anthropic sends a tool call's
-      // arguments one whole top-level value at a time — and "tracks" is one
-      // value, so all eight arrive in the same instant (measured). curator.ts
-      // sets the same flag. providerToolDefinition is LangChain's escape
-      // hatch: "send the provider exactly this" — the same name, description
-      // and schema LangChain would have built, plus the flag.
-      extras: {
-        providerToolDefinition: {
-          name: DELIVER,
-          description: DELIVER_DESCRIPTION,
-          input_schema: toJsonSchema(Card),
-          eager_input_streaming: true,
-        },
-      },
+      extras: { providerToolDefinition: CURATOR_TOOL },
     }
   );
 }
@@ -228,7 +240,7 @@ function deliverTool(run: Run) {
 // One agent per run, because both tools hold per-run state.
 const makeAgent = (run: Run) =>
   createAgent({
-    // Same request settings as curator.ts: 4000 tokens of room, three retries.
+    // Same request settings as the hand-written loop: 4000 tokens of room, three retries.
     // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
     // (LC_MODEL is honoured everywhere, not only in practice runs: the evals
     // use it to measure another model.)
@@ -286,13 +298,16 @@ const makeAgent = (run: Run) =>
           canJumpTo: ["model"],
           hook: (state) => {
             run.rounds++;
+            const used = tokensOf(state.messages.at(-1));
+            run.tokensIn += used.in;
+            run.tokensOut += used.out;
             const calls = ((state.messages.at(-1) as any)?.tool_calls ?? []) as { name: string }[];
             console.log(
               `[curator-lc] round ${run.rounds}: ` +
                 (calls.map((c) => `tool:${c.name}`).join(",") || "text only")
             );
             // Plain words instead of a tool call would end the run with no
-            // card. As in curator.ts: say "deliver now" and go on. Not after
+            // card. As the hand-written loop did: say "deliver now" and go on. Not after
             // the last round — there is no round left to answer in, and the
             // run ends with its error.
             if (calls.length === 0 && run.rounds < ROUND_LIMIT) {
@@ -338,7 +353,9 @@ async function runOnThread(
   content: string,
   check: Check,
   onItem: ((index: number, track: any) => void) | undefined,
-  { onCommit, signal, budget, model, search }: RunOpts
+  { onCommit, signal, budget, model, search }: RunOpts,
+  // What kind of run this is, for its log line.
+  about: { kind: "generate" | "adjust"; remembered?: boolean }
 ): Promise<MixtapeCard> {
   const run: Run = {
     seams: { model, search },
@@ -348,8 +365,25 @@ async function runOnThread(
     budget: budget ?? makeSearchBudget(SEARCH_LIMIT),
     onCommit,
     rounds: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+    liveSearches: makeSearchBudget(SEARCH_LIMIT),
     stop: new AbortController(),
   };
+  const started = Date.now();
+  // The run's one log line, whatever way it ends (runLog.ts).
+  const logRun = (outcome: "card" | "no card" | "stopped") =>
+    console.log(
+      runSummary({
+        ...about,
+        outcome,
+        rounds: run.rounds,
+        liveSearches: run.liveSearches.spent(),
+        tokensIn: run.tokensIn,
+        tokensOut: run.tokensOut,
+        ms: Date.now() - started,
+      })
+    );
   // Three ways a run is stopped: our deadline, the caller (the visitor left),
   // or a fatal failure inside a tool. Kept apart as facts — see the catch.
   const deadline = AbortSignal.timeout(RUN_DEADLINE_MS);
@@ -376,6 +410,7 @@ async function runOnThread(
       reader.push((piece as any)?.tool_call_chunks);
     }
   } catch (err) {
+    logRun(signal?.aborted || deadline.aborted ? "stopped" : "no card");
     // The real reason first: Spotify's quota or an Anthropic failure, not the
     // abort or the wrapper it surfaced as.
     if (run.fatal) throw run.fatal;
@@ -388,10 +423,14 @@ async function runOnThread(
   }
   // A fatal failure does not always surface as a throw: the abort can land
   // after the stream has already ended. The real reason still wins.
-  if (run.fatal) throw run.fatal;
+  if (run.fatal) {
+    logRun("no card");
+    throw run.fatal;
+  }
 
   // Only a card the check accepted counts.
   const card = run.card;
+  logRun(card ? "card" : "no card");
   if (!card) {
     throw new Error(
       run.rounds >= ROUND_LIMIT
@@ -405,8 +444,8 @@ async function runOnThread(
   return { ...card, tracks, threadId } as MixtapeCard;
 }
 
-// Same signature as generateCard in ../curator.ts, plus `owner`: the visitor
-// this card's memory thread belongs to (index.ts passes the session identity).
+// Make a card. `owner` is the visitor this card's memory thread belongs to
+// (index.ts passes the session identity).
 // The returned card carries its `threadId`.
 async function generateCard(
   prompt: string,
@@ -432,7 +471,8 @@ async function generateCard(
       // Fresh per run: the gate counts its own send-backs.
       makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef }),
       onTrack && ((i, t) => i < TRACK_COUNT && t?.artist && t?.title && onTrack(i, t)),
-      opts
+      opts,
+      { kind: "generate" }
     );
   } catch (err) {
     // A failed run is never continued, so its pages are thrown away now.
@@ -444,9 +484,8 @@ async function generateCard(
   return card;
 }
 
-// Same signature and result as adjustCard in ../curator.ts — only the changed
-// rows come back — but made differently: the model delivers the whole card
-// again and cardDiff.ts compares. With memory when there is some: if the
+// Adjust a card. Only the changed rows come back: the model delivers the
+// whole card again and cardDiff.ts compares. With memory when there is some: if the
 // card's thread is known and belongs to this visitor, the run continues it
 // (the model still has every search result); otherwise — an unknown id,
 // someone else's thread, or a thread that has had its MAX_ADJUSTS_PER_THREAD —
@@ -475,7 +514,7 @@ async function adjustCard(
     next = await runOnThread(
       threadId,
       adjustMessage(card, adjustment),
-      // As in curator.ts, an adjust gets the completeness check but not the
+      // As in the hand-written loop, an adjust gets the completeness check but not the
       // note-facts check — and a card that changes nothing is sent back.
       (input) =>
         cardIncompleteReason(input) ??
@@ -488,7 +527,8 @@ async function adjustCard(
           if (i >= card.tracks.length || !t?.artist || !t?.title || sameTrack(card.tracks[i], t)) return;
           onChange(changeCount++, { index: i, track: t });
         }),
-      opts
+      opts,
+      { kind: "adjust", remembered }
     );
   } catch (err) {
     // A run that died halfway can leave the thread unusable (a tool call with

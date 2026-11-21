@@ -9,7 +9,15 @@ file is a map. The reasoning lives next to the code as comments; read those.
 
 - `server/` — Express on 8888, plain `.ts` run by Node 24 (no build step).
   `index.ts` all routes + gate/identity/caps wiring · `curator.ts` the
-  Claude agent, prompts and tool schemas · `spotify.ts` OAuth, search cache,
+  curator's rules: prompt, the two tool schemas, the card check (no model
+  call in it) · `lc/curator-lc.ts` the LangChain/LangGraph agent that runs
+  them — the only curator since 2026-11-21; its small decisions are pure
+  files beside it (`cardStream.ts` `cardDiff.ts` `searchStep.ts`
+  `modelCall.ts` `threads.ts` `runLog.ts`), and `lc/first-agent.ts`
+  `card-agent.ts` `press-agent.ts` are lesson files, never wired in ·
+  `curatorLoader.ts` loads the agent behind the LangSmith tracing guard
+  (tracing is forced off on a deployed host unless
+  `LANGSMITH_TRACE_VISITORS=1`) · `spotify.ts` OAuth, search cache,
   quota breaker, playlist writes · `caps.ts` `pressCaps.ts` `session.ts`
   `usage.ts` `metrics.ts` `health.ts` `logbook.ts` `searchBudget.ts`
   `httpOrigin.ts` `trackUris.ts` `gateThrottle.ts` `drain.ts` `outage.ts` pure helpers · `test/`
@@ -108,7 +116,8 @@ are not in CI — they cost money (`docs/playbooks/change-the-curator-prompt.md`
 
 - Any route → `docs/playbooks/add-a-server-route.md`
 - `evals/prompts.json` → `docs/playbooks/add-an-eval-case.md`
-- `server/curator.ts` → `docs/playbooks/change-the-curator-prompt.md`
+- `server/curator.ts`, `server/lc/curator-lc.ts`, `server/lc/cardDiff.ts`
+  (anything the model is sent) → `docs/playbooks/change-the-curator-prompt.md`
 - Why it is shaped this way → `docs/decisions/` (three ADRs), `README.md`
 - Path-scoped gotchas load on their own from `.claude/rules/`
   (`curator.md`, `spotify.md`, `evals.md`).

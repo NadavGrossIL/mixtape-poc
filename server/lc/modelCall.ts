@@ -1,4 +1,4 @@
-// Two small decisions made around every model call of the LangChain curator.
+// The small decisions made around every model call of the LangChain curator.
 // Pure, so they are tested without a model.
 
 // ── 1. the last round ──────────────────────────────────────────
@@ -7,8 +7,8 @@
 // on its last round (tool_choice), so a run cannot end without a card. Newer
 // Claude models reject forced tool choice, so here the last round does the
 // next best thing: every other tool is taken away, and the model is told why.
-// It can still answer in plain words — then the run ends with an error, as
-// before — but it can no longer spend its last round on one more search.
+// It can still answer in plain words — on the last round that ends the run
+// with an error — but it can no longer spend its last round on one more search.
 
 function lastRoundNote(toolName: string): string {
   return (
@@ -53,4 +53,52 @@ function modelFailure(err: unknown): (Error & { status: number; fromAnthropic: t
   });
 }
 
-export { lastRoundNote, lastRoundRequest, modelFailure };
+// ── 3. a delivery mixed with other tool calls ──────────────────
+//
+// The model sometimes writes create_mixtape AND a search in one message.
+// LangChain runs each tool call as its own task and decides where to go next
+// once PER TASK: the accepted delivery says "finish", the search says "back
+// to the model". Both happen in the same step, both write the round counter,
+// and the run dies with InvalidUpdateError — the thread unreadable after it.
+// (Even without the crash, an accepted card followed by a search result
+// would not end the run: only the LAST tool message is looked at.)
+//
+// So a delivery is always handled alone: the first delivery call is kept,
+// every other call in that message is dropped before any tool runs. curator.ts
+// does the same on an accepted card (it returns without running the
+// searches). On a rejected card it differs a little: curator.ts still runs
+// the searches, here the model has to ask for them again.
+//
+// Returns the trimmed `tool_calls` and `content` (Anthropic repeats each tool
+// call as a block inside content, and a block without its call would be sent
+// back to Anthropic on the next adjust), or null when there is nothing to trim.
+type ToolCallLike = { name: string; id?: string };
+
+function deliveryAlone<C extends ToolCallLike>(
+  message: { tool_calls?: C[]; content: unknown },
+  toolName: string
+): { tool_calls: C[]; content: unknown; dropped: string[] } | null {
+  const calls = message.tool_calls ?? [];
+  const delivery = calls.find((c) => c.name === toolName);
+  if (!delivery || calls.length === 1) return null;
+  const isCallBlock = (b: any) =>
+    b && typeof b === "object" && ["tool_use", "tool_call", "tool_call_chunk"].includes(b.type);
+  return {
+    tool_calls: [delivery],
+    content: Array.isArray(message.content)
+      ? message.content.filter((b) => !isCallBlock(b) || b.id === delivery.id)
+      : message.content,
+    dropped: calls.filter((c) => c !== delivery).map((c) => c.name),
+  };
+}
+
+// ── 4. an answer in plain words ────────────────────────────────
+//
+// A turn with no tool call would end the run without a card. curator.ts
+// answers it with one line and carries on; these are its words, plus the
+// "by calling" a model that has just narrated instead of acting needs.
+function deliverNudge(toolName: string): string {
+  return `Record the final result now by calling ${toolName}.`;
+}
+
+export { deliverNudge, deliveryAlone, lastRoundNote, lastRoundRequest, modelFailure };

@@ -4,7 +4,13 @@
 
 import test from "node:test";
 import assert from "node:assert";
-import { lastRoundNote, lastRoundRequest, modelFailure } from "../lc/modelCall.ts";
+import {
+  deliverNudge,
+  deliveryAlone,
+  lastRoundNote,
+  lastRoundRequest,
+  modelFailure,
+} from "../lc/modelCall.ts";
 import { classifyUpstream } from "../outage.ts";
 import { fromAnthropic } from "../curatorSwitch.ts";
 
@@ -75,4 +81,57 @@ test("a failure with no status — an abort, a dropped socket — is left alone"
   assert.equal(modelFailure(Object.assign(new Error("aborted"), { name: "AbortError" })), null);
   assert.equal(modelFailure(null), null);
   assert.equal(modelFailure("oops"), null);
+});
+
+const call = (name: string, id: string) => ({ name, id, args: {}, type: "tool_call" as const });
+
+test("a delivery mixed with searches is kept alone, wherever it sits", () => {
+  for (const calls of [
+    [call("create_mixtape", "d"), call("search_spotify", "s")],
+    [call("search_spotify", "s"), call("create_mixtape", "d"), call("search_spotify", "s2")],
+  ]) {
+    const alone = deliveryAlone({ tool_calls: calls, content: "" }, "create_mixtape")!;
+    assert.deepEqual(alone.tool_calls.map((c) => c.id), ["d"]);
+    assert.ok(alone.dropped.every((n) => n === "search_spotify"));
+    assert.equal(alone.dropped.length, calls.length - 1);
+  }
+});
+
+test("two deliveries in one message: only the first is kept", () => {
+  const alone = deliveryAlone(
+    { tool_calls: [call("create_mixtape", "d1"), call("create_mixtape", "d2")], content: "" },
+    "create_mixtape"
+  )!;
+  assert.deepEqual(alone.tool_calls.map((c) => c.id), ["d1"]);
+});
+
+test("the dropped calls' blocks leave the content too; text stays", () => {
+  const alone = deliveryAlone(
+    {
+      tool_calls: [call("search_spotify", "s"), call("create_mixtape", "d")],
+      content: [
+        { type: "text", text: "here it is" },
+        { type: "tool_use", id: "s", name: "search_spotify", input: {} },
+        { type: "tool_use", id: "d", name: "create_mixtape", input: {} },
+      ],
+    },
+    "create_mixtape"
+  )!;
+  assert.deepEqual(
+    (alone.content as any[]).map((b) => b.id ?? b.type),
+    ["text", "d"]
+  );
+});
+
+test("nothing to trim: a delivery on its own, searches only, or plain text", () => {
+  assert.equal(deliveryAlone({ tool_calls: [call("create_mixtape", "d")], content: "" }, "create_mixtape"), null);
+  assert.equal(
+    deliveryAlone({ tool_calls: [call("search_spotify", "a"), call("search_spotify", "b")], content: "" }, "create_mixtape"),
+    null
+  );
+  assert.equal(deliveryAlone({ content: "just words" }, "create_mixtape"), null);
+});
+
+test("the nudge names the delivery tool", () => {
+  assert.match(deliverNudge("create_mixtape"), /calling create_mixtape/);
 });

@@ -9,35 +9,57 @@
 //   2. only the newest `max` threads are kept. The checkpointer holds every
 //      message of every thread in memory, so without a cap a busy server
 //      grows until it dies.
+//   3. a thread is continued for at most `maxAdjusts` adjusts. Every adjust
+//      replays the whole thread to the model — every search result of every
+//      round before it — so a card adjusted again and again would cost more
+//      each time, without end. After the limit the thread is `spent`: the
+//      caller starts a fresh thread from the card alone and drops this one.
 // In-memory, like the checkpointer it guards: a restart forgets both together.
 
 function makeThreadBook({
   max,
+  maxAdjusts = Infinity,
   onEvict,
 }: {
   max: number;
+  maxAdjusts?: number;
   onEvict?: (threadId: string) => void;
 }) {
   // A Map remembers insertion order, so the first key is the oldest thread.
-  const owners = new Map<string, string>();
+  const book = new Map<string, { owner: string; adjusts: number }>();
+  // Put a thread at the newest end, then let go of the oldest over `max`.
+  const keep = (threadId: string, entry: { owner: string; adjusts: number }) => {
+    book.delete(threadId);
+    book.set(threadId, entry);
+    while (book.size > max) {
+      const oldest = book.keys().next().value as string;
+      book.delete(oldest);
+      onEvict?.(oldest);
+    }
+  };
   return {
-    // Record a thread for its owner (re-adding makes it the newest).
+    // Record a thread for its owner (re-adding makes it the newest, and keeps
+    // its adjust count — re-adding must not be a way around rule 3).
     add(threadId: string, owner: string) {
-      owners.delete(threadId);
-      owners.set(threadId, owner);
-      while (owners.size > max) {
-        const oldest = owners.keys().next().value as string;
-        owners.delete(oldest);
-        onEvict?.(oldest);
-      }
+      keep(threadId, { owner, adjusts: book.get(threadId)?.adjusts ?? 0 });
     },
     owns(threadId: unknown, owner: string): threadId is string {
-      return typeof threadId === "string" && owners.has(threadId) && owners.get(threadId) === owner;
+      return typeof threadId === "string" && book.get(threadId)?.owner === owner;
+    },
+    // One more adjust was made on this thread (it also becomes the newest).
+    // An unknown id is ignored: it may have been evicted while the run ran.
+    adjusted(threadId: string) {
+      const entry = book.get(threadId);
+      if (entry) keep(threadId, { ...entry, adjusts: entry.adjusts + 1 });
+    },
+    // True when the thread has had all the adjusts it is allowed.
+    spent(threadId: string): boolean {
+      return (book.get(threadId)?.adjusts ?? 0) >= maxAdjusts;
     },
     drop(threadId: string) {
-      if (owners.delete(threadId)) onEvict?.(threadId);
+      if (book.delete(threadId)) onEvict?.(threadId);
     },
-    size: () => owners.size,
+    size: () => book.size,
   };
 }
 

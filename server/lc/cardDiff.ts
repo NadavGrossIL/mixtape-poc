@@ -10,7 +10,14 @@
 import { fence } from "../curator.ts";
 import type { AdjustDiff } from "../curator.ts";
 
-type TrackLike = { ref?: string; artist: string; title: string; note: string };
+type TrackLike = {
+  ref?: string;
+  artist: string;
+  title: string;
+  note: string;
+  // Set by track resolution: false means Spotify could not confirm the record.
+  resolved?: boolean | null;
+};
 type CardLike = { title: string; vibe: string; accent: string; tracks: TrackLike[]; prompt?: string };
 
 const norm = (s: unknown) => String(s ?? "").trim().toLowerCase();
@@ -65,6 +72,19 @@ function isEmptyDiff(diff: AdjustDiff): boolean {
 //
 // Everything in the card came back from the browser, so every string in it is
 // text a caller chose — it goes inside fences, as in curator.ts.
+//
+// Parity with the hand-written adjust (adjustUserContent + ADJUST_SYSTEM in
+// curator.ts). That one tells the model which rows Spotify could not verify
+// and to swap those first; without the flag "replace the ones that aren't
+// real" is a guess, because every row looks the same. `resolved` is forced to
+// a boolean here, so it is the one field in the card that is not caller text.
+//
+// The rules below are ADJUST_SYSTEM's, reworded for a model that hands back
+// the whole card instead of a list of changes. Two of them have no meaning
+// here and are left out: "never re-emit an unchanged track" and "omit its
+// index" — this model MUST re-emit them, and diffCards drops the unchanged
+// ones. Their purpose survives as "copy exactly": a kept row that comes back
+// reworded is reported as a change and loses its Spotify match.
 function adjustMessage(card: CardLike, adjustment: string): string {
   const current = {
     title: card.title,
@@ -76,15 +96,24 @@ function adjustMessage(card: CardLike, adjustment: string): string {
       artist: t.artist,
       title: t.title,
       note: t.note,
+      resolved: Boolean(t.resolved),
     })),
   };
   return (
     `Original prompt:\n${fence("listener_prompt", card.prompt || "")}\n` +
     `The mixtape as the listener has it now (JSON):\n${fence("current_mixtape", JSON.stringify(current))}\n\n` +
     `The listener asks for this change:\n${fence("listener_adjustment", adjustment)}\n\n` +
-    "Change only what the request touches. Every other track stays in its slot, " +
-    "with its ref, artist, title and note copied exactly — do not search for those again. " +
-    "New tracks must come from search results, as always. " +
+    "You are adjusting an existing mixtape, not building a new one:\n" +
+    "- Change only what the request touches. Every other track stays in its slot, " +
+    "with its ref, artist, title and note copied exactly — do not search for those again.\n" +
+    '- Tracks marked "resolved": false could not be verified on Spotify — prefer them ' +
+    "as the ones to swap out when the listener says a track isn't real.\n" +
+    "- Every replacement must come from a search result, as always, with that row's ref " +
+    "copied into its ref field.\n" +
+    "- Replacement notes follow the same rules as any note: shown facts, staked lore, or " +
+    "a vivid image of the sound — no guessed specifics. Max 18 words.\n" +
+    "- Keep the DJ-set arc sensible: each replacement must sit right between its neighbors.\n" +
+    "- Copy the title, vibe and accent exactly unless the request changes the mixtape's identity.\n" +
     "Then call create_mixtape with the full card: all eight tracks."
   );
 }

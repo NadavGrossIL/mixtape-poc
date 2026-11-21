@@ -52,3 +52,42 @@ test("a dropped thread is forgotten and its memory released once", () => {
   assert.equal(book.owns("t1", "a"), false);
   assert.deepEqual(evicted, ["t1"]);
 });
+
+test("a thread is spent after `maxAdjusts` adjusts, not before", () => {
+  const book = makeThreadBook({ max: 5, maxAdjusts: 2 });
+  book.add("t1", "a");
+  assert.equal(book.spent("t1"), false);
+  book.adjusted("t1");
+  assert.equal(book.spent("t1"), false);
+  book.adjusted("t1");
+  assert.equal(book.spent("t1"), true);
+  assert.equal(book.owns("t1", "a"), true, "spent is not the same as forgotten");
+});
+
+test("re-adding a thread does not give it its adjusts back", () => {
+  const book = makeThreadBook({ max: 5, maxAdjusts: 1 });
+  book.add("t1", "a");
+  book.adjusted("t1");
+  book.add("t1", "a");
+  assert.equal(book.spent("t1"), true);
+});
+
+test("an adjust makes the thread the newest; on an unknown thread it does nothing", () => {
+  const evicted: string[] = [];
+  const book = makeThreadBook({ max: 2, maxAdjusts: 9, onEvict: (id) => evicted.push(id) });
+  book.add("t1", "a");
+  book.add("t2", "a");
+  book.adjusted("t1");
+  book.adjusted("gone");
+  book.add("t3", "a");
+  assert.deepEqual(evicted, ["t2"]);
+  assert.equal(book.size(), 2);
+  assert.equal(book.spent("gone"), false);
+});
+
+test("without `maxAdjusts` a thread is never spent", () => {
+  const book = makeThreadBook({ max: 5 });
+  book.add("t1", "a");
+  for (let i = 0; i < 50; i++) book.adjusted("t1");
+  assert.equal(book.spent("t1"), false);
+});

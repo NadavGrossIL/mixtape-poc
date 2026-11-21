@@ -212,7 +212,9 @@ if (!spotify.isLoggedIn("host") && spotify.isLoggedIn()) {
 // anthropicConfigured — both agents read the same key. `agent` is only the
 // two calls that differ: generateCard and adjustCard.
 const CURATOR_NAME = whichCurator(process.env);
-const agent = await loadCurator(CURATOR_NAME);
+// DEPLOYED goes in so the LangSmith tracing guard (curatorSwitch.ts) uses the
+// same "is this host reachable" rule as everything else here.
+const agent = await loadCurator(CURATOR_NAME, { deployed: DEPLOYED });
 console.log(`[config] curator: ${CURATOR_NAME}`);
 if (!curator.anthropicConfigured()) {
   console.warn(

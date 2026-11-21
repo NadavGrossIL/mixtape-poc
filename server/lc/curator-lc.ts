@@ -14,14 +14,16 @@
 //   cardStream.ts  tracks one by one, read from the tool call as it is written
 //   cardDiff.ts    adjust: old card vs new card → only the changed rows
 //   searchStep.ts  one search: cache is free, two budgets, two at a time
-//   modelCall.ts   the last round, and marking Anthropic failures
+//   modelCall.ts   the last round, marking Anthropic failures, a delivery
+//                  mixed with searches, an answer in plain words
 //   threads.ts     who owns which memory thread, and how many are kept
 //
 // Try it from server/:  node lc/curator-lc.ts
 
 // Must come first: spotify.ts reads process.env when it is evaluated.
 import "../env.ts";
-import { createAgent, createMiddleware, modelCallLimitMiddleware, tool } from "langchain";
+import { AIMessage, HumanMessage, createAgent, createMiddleware, modelCallLimitMiddleware, tool } from "langchain";
+import type { BaseChatModel } from "@langchain/core/language_models/chat_models";
 import { ChatAnthropic } from "@langchain/anthropic";
 import * as z from "zod";
 import { awaitAllCallbacks } from "@langchain/core/callbacks/promises";
@@ -46,18 +48,31 @@ import type { SearchBudget } from "../searchBudget.ts";
 import { makeCardStream } from "./cardStream.ts";
 import { adjustMessage, diffCards, isEmptyDiff, sameTrack } from "./cardDiff.ts";
 import { makeSearchStep } from "./searchStep.ts";
-import { lastRoundRequest, modelFailure } from "./modelCall.ts";
+import { deliverNudge, deliveryAlone, lastRoundRequest, modelFailure } from "./modelCall.ts";
 import { makeThreadBook } from "./threads.ts";
 
 const DELIVER = "create_mixtape";
 const DELIVER_DESCRIPTION =
   "Deliver the finished mixtape card. Call this once, when all eight tracks are chosen from search results.";
 
+// The practice knobs (LC_SEARCH_LIMIT, LC_ROUND_LIMIT, LC_TEST_BOUNCE) are
+// read only when this file is run directly. Imported — by the server, by the
+// evals — they do nothing: a stray variable on the host must not be able to
+// shrink the limits or bounce every visitor's first card.
+const LESSON: NodeJS.ProcessEnv = import.meta.main ? process.env : {};
+
 // The limits, same numbers as curator.ts (SEARCH_BUDGET, MAX_TOOL_TURNS).
 // LC_SEARCH_LIMIT=2 / LC_ROUND_LIMIT=2 node lc/curator-lc.ts show what
 // hitting each wall looks like.
-const SEARCH_LIMIT = Number(process.env.LC_SEARCH_LIMIT) || SEARCH_BUDGET;
-const ROUND_LIMIT = Number(process.env.LC_ROUND_LIMIT) || 8;
+const SEARCH_LIMIT = Number(LESSON.LC_SEARCH_LIMIT) || SEARCH_BUDGET;
+const ROUND_LIMIT = Number(LESSON.LC_ROUND_LIMIT) || 8;
+
+// How many adjusts one thread is continued for. Each adjust replays the whole
+// thread — every search result since the card was made — so the bill for an
+// adjust grows with every one before it. After this many, the next adjust
+// starts a fresh thread from the card alone (the same path a shared card or a
+// restart takes) and the old thread is deleted.
+const MAX_ADJUSTS_PER_THREAD = 5;
 
 // Memory. The checkpointer is the notebook — after every step the whole
 // conversation is saved in it, under a thread id. Run again with the same
@@ -65,9 +80,11 @@ const ROUND_LIMIT = Number(process.env.LC_ROUND_LIMIT) || 8;
 // in this process only (gone on restart).
 const memory = new MemorySaver();
 // The guard on the notebook: only a card's own visitor continues its thread,
-// and only the newest 200 threads are kept (threads.ts).
+// only the newest 200 threads are kept, and a thread is continued for a
+// limited number of adjusts (threads.ts).
 const threads = makeThreadBook({
   max: 200,
+  maxAdjusts: MAX_ADJUSTS_PER_THREAD,
   onEvict: (id) => void memory.deleteThread(id).catch(() => {}),
 });
 
@@ -114,6 +131,7 @@ type Check = (card: Record<string, unknown>, ctx: { lastTurn: boolean }) => stri
 
 // What one run shares between its parts.
 type Run = {
+  seams: Seams;
   check: Check;
   budget: SearchBudget; // the request-wide search allowance
   onCommit?: (attempt: number, gap: string | null) => void;
@@ -131,8 +149,9 @@ type Run = {
 // cache, budgets, two at a time, quota — are in searchStep.ts.
 function searchTool(run: Run) {
   const step = makeSearchStep({
-    isCached: isSearchCached,
-    search: searchCatalog,
+    // A test's stand-in search has no cache: every call counts.
+    isCached: run.seams.search ? () => false : isSearchCached,
+    search: run.seams.search ?? searchCatalog,
     loop: makeSearchBudget(SEARCH_LIMIT),
     request: run.budget,
     concurrency: SEARCH_CONCURRENCY,
@@ -169,7 +188,7 @@ function deliverTool(run: Run) {
       // is accepted instead of bounced into the round limit.
       let problem = run.check(card, { lastTurn: run.rounds >= ROUND_LIMIT });
       // Test switch: reject the first card once, to watch a send-back.
-      if (process.env.LC_TEST_BOUNCE && attempt === 1 && !problem) {
+      if (LESSON.LC_TEST_BOUNCE && attempt === 1 && !problem) {
         problem = "test: this is a practice rejection, the card is fine";
       }
       run.onCommit?.(attempt, problem);
@@ -211,51 +230,106 @@ const makeAgent = (run: Run) =>
   createAgent({
     // Same request settings as curator.ts: 4000 tokens of room, three retries.
     // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
-    model: new ChatAnthropic({
-      model: process.env.LC_MODEL || MODEL,
-      maxTokens: 4000,
-      maxRetries: 3,
-    }),
+    // (LC_MODEL is honoured everywhere, not only in practice runs: the evals
+    // use it to measure another model.)
+    model:
+      run.seams.model ??
+      new ChatAnthropic({
+        model: process.env.LC_MODEL || MODEL,
+        maxTokens: 4000,
+        maxRetries: 3,
+      }),
     tools: [searchTool(run), deliverTool(run)],
     systemPrompt: SYSTEM,
     checkpointer: memory,
+    // Order matters. LangChain runs the after-model hooks last-to-first, and
+    // only the FIRST middleware's hook may send the run back to the model
+    // (jumpTo) without skipping the hooks before it. Ours is first so that
+    // the nudge below still passes through the round counter.
     middleware: [
-      // Rounds: the hard safety net. It ends the run without a card.
-      modelCallLimitMiddleware({ runLimit: ROUND_LIMIT, exitBehavior: "end" }),
       // Our own part, around every model call.
       createMiddleware({
         name: "CuratorRounds",
         wrapModelCall: async (request, handler) => {
           // The call about to be made is round number run.rounds + 1.
           const last = run.rounds + 1 >= ROUND_LIMIT;
+          let response;
           try {
             // Last round: only the delivery tool is left, and the model is
             // told so (modelCall.ts). Not forced.
-            return await handler(last ? lastRoundRequest(request, DELIVER) : request);
+            response = await handler(last ? lastRoundRequest(request, DELIVER) : request);
           } catch (err) {
             // An Anthropic failure (dead key, no credit, overloaded) is marked
             // here so index.ts can tell the visitor "our side, not yours".
             run.fatal ??= modelFailure(err) ?? undefined;
             throw err;
           }
-        },
-        afterModel: (state) => {
-          run.rounds++;
-          const calls = ((state.messages.at(-1) as any)?.tool_calls ?? []) as { name: string }[];
-          console.log(
-            `[curator-lc] round ${run.rounds}: ` +
-              (calls.map((c) => `tool:${c.name}`).join(",") || "text only")
+          // A delivery written next to other tool calls is handled alone —
+          // otherwise the run crashes (modelCall.ts, part 3).
+          if (!AIMessage.isInstance(response)) return response;
+          const alone = deliveryAlone(response, DELIVER);
+          if (!alone) return response;
+          console.warn(
+            `[curator-lc] ${DELIVER} came with ${alone.dropped.join(",")} — handling the delivery alone`
           );
+          return new AIMessage({
+            id: response.id,
+            name: response.name,
+            content: alone.content as any,
+            tool_calls: alone.tool_calls,
+            additional_kwargs: response.additional_kwargs,
+            response_metadata: response.response_metadata,
+            usage_metadata: response.usage_metadata,
+          });
+        },
+        afterModel: {
+          canJumpTo: ["model"],
+          hook: (state) => {
+            run.rounds++;
+            const calls = ((state.messages.at(-1) as any)?.tool_calls ?? []) as { name: string }[];
+            console.log(
+              `[curator-lc] round ${run.rounds}: ` +
+                (calls.map((c) => `tool:${c.name}`).join(",") || "text only")
+            );
+            // Plain words instead of a tool call would end the run with no
+            // card. As in curator.ts: say "deliver now" and go on. Not after
+            // the last round — there is no round left to answer in, and the
+            // run ends with its error.
+            if (calls.length === 0 && run.rounds < ROUND_LIMIT) {
+              return {
+                messages: [new HumanMessage(deliverNudge(DELIVER))],
+                jumpTo: "model" as const,
+              };
+            }
+          },
         },
       }),
+      // Rounds: the hard safety net. It ends the run without a card.
+      modelCallLimitMiddleware({ runLimit: ROUND_LIMIT, exitBehavior: "end" }),
     ],
   });
+
+// Stand-ins for the two outside services, for ../test/lcCurator.test.ts only.
+// The server and the evals never pass them.
+type Seams = {
+  model?: BaseChatModel;
+  search?: (query: string) => Promise<unknown>;
+};
 
 type RunOpts = {
   onCommit?: (attempt: number, gap: string | null) => void;
   signal?: AbortSignal;
   budget?: SearchBudget;
-};
+} & Seams;
+
+// Throw away everything the notebook holds for a thread — the book's entry
+// (if it has one) and the checkpoints. Used when a run fails: MemorySaver
+// saves after every step, so a failed run has already written pages that
+// nothing would ever continue or evict.
+async function forget(threadId: string) {
+  threads.drop(threadId);
+  await memory.deleteThread(threadId).catch(() => {});
+}
 
 // One run on one thread: send a message, get back an accepted card.
 // onItem(i, track) fires for each track as the model finishes writing it.
@@ -264,9 +338,10 @@ async function runOnThread(
   content: string,
   check: Check,
   onItem: ((index: number, track: any) => void) | undefined,
-  { onCommit, signal, budget }: RunOpts
+  { onCommit, signal, budget, model, search }: RunOpts
 ): Promise<MixtapeCard> {
   const run: Run = {
+    seams: { model, search },
     check,
     // Called without a budget — evals, the demo below — the run makes a
     // private one of its own size and behaves as if it were alone.
@@ -311,6 +386,9 @@ async function runOnThread(
     }
     throw err;
   }
+  // A fatal failure does not always surface as a throw: the abort can land
+  // after the stream has already ended. The real reason still wins.
+  if (run.fatal) throw run.fatal;
 
   // Only a card the check accepted counts.
   const card = run.card;
@@ -344,16 +422,23 @@ async function generateCard(
   } = {}
 ): Promise<MixtapeCard> {
   const threadId = crypto.randomUUID();
-  const card = await runOnThread(
-    threadId,
-    generateUserContent(prompt, seed),
-    // The rules are curator.ts's, unchanged: 8 filled slots, nothing hollow,
-    // note facts that match the search results, at most 2 send-backs.
-    // Fresh per run: the gate counts its own send-backs.
-    makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef }),
-    onTrack && ((i, t) => i < TRACK_COUNT && t?.artist && t?.title && onTrack(i, t)),
-    opts
-  );
+  let card: MixtapeCard;
+  try {
+    card = await runOnThread(
+      threadId,
+      generateUserContent(prompt, seed),
+      // The rules are curator.ts's, unchanged: 8 filled slots, nothing hollow,
+      // note facts that match the search results, at most 2 send-backs.
+      // Fresh per run: the gate counts its own send-backs.
+      makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef }),
+      onTrack && ((i, t) => i < TRACK_COUNT && t?.artist && t?.title && onTrack(i, t)),
+      opts
+    );
+  } catch (err) {
+    // A failed run is never continued, so its pages are thrown away now.
+    await forget(threadId);
+    throw err;
+  }
   // Recorded only now: a thread whose run failed is never continued.
   threads.add(threadId, owner);
   return card;
@@ -363,8 +448,9 @@ async function generateCard(
 // rows come back — but made differently: the model delivers the whole card
 // again and cardDiff.ts compares. With memory when there is some: if the
 // card's thread is known and belongs to this visitor, the run continues it
-// (the model still has every search result); otherwise it starts a new thread
-// from the card alone.
+// (the model still has every search result); otherwise — an unknown id,
+// someone else's thread, or a thread that has had its MAX_ADJUSTS_PER_THREAD —
+// it starts a new thread from the card alone.
 async function adjustCard(
   card: MixtapeCard,
   adjustment: string,
@@ -377,8 +463,12 @@ async function adjustCard(
     owner?: string;
   } = {}
 ): Promise<AdjustDiff> {
-  const remembered = threads.owns(card.threadId, owner);
-  const threadId = remembered ? card.threadId! : crypto.randomUUID();
+  const mine = threads.owns(card.threadId, owner) ? card.threadId : null;
+  const remembered = mine !== null && !threads.spent(mine);
+  // A spent thread is let go before the run: whatever happens next, nothing
+  // will continue it.
+  if (mine !== null && !remembered) await forget(mine);
+  const threadId = remembered ? mine : crypto.randomUUID();
   let changeCount = 0;
   let next: MixtapeCard;
   try {
@@ -402,17 +492,23 @@ async function adjustCard(
     );
   } catch (err) {
     // A run that died halfway can leave the thread unusable (a tool call with
-    // no answer). Forget it; the next adjust starts fresh from the card.
-    if (remembered) threads.drop(threadId);
+    // no answer). Forget it — a remembered thread and a brand-new one alike;
+    // the next adjust starts fresh from the card.
+    await forget(threadId);
     throw err;
   }
-  threads.add(threadId, owner);
+  // A continued thread has one adjust more behind it; a new one starts at 0.
+  if (remembered) threads.adjusted(threadId);
+  else threads.add(threadId, owner);
   const diff = diffCards(card, next);
   if (threadId !== card.threadId) diff.threadId = threadId;
   return diff;
 }
 
 export { generateCard, adjustCard };
+// For ../test/lcCurator.test.ts only: the notebook, to check what a run left
+// in it, and the adjust limit.
+export { memory as _memory, MAX_ADJUSTS_PER_THREAD };
 
 // Run directly: make a card, then adjust it on the same thread.
 if (import.meta.main) {

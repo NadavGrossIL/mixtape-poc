@@ -14,11 +14,9 @@
 // Must come first: spotify.ts reads process.env when it is evaluated.
 import "../env.ts";
 import {
-  HumanMessage,
   createAgent,
   createMiddleware,
   modelCallLimitMiddleware,
-  providerStrategy,
   tool,
   toolCallLimitMiddleware,
 } from "langchain";
@@ -101,94 +99,90 @@ const ROUND_LIMIT = 8;
 // checkpointer would be a one-line swap.
 const memory = new MemorySaver();
 
-// The check, as our own middleware. The rules are curator.ts's, unchanged:
+// What one run shares between its parts.
+type Run = {
+  onCommit?: (attempt: number, gap: string | null) => void;
+  rounds: number; // model calls so far in THIS run (the thread may hold older ones)
+  card?: z.infer<typeof Card>; // set only when the check accepted a card
+};
+
+// Delivering the card is a TOOL, as in curator.ts — not the model's final
+// answer in a fixed shape (responseFormat: providerStrategy). That was tried
+// first and measured: 3 of 6 eval runs, twice, spent all 8 rounds on searches
+// like "placeholder" and never delivered (evals/runs 2026-11-20, 2026-11-21).
+// With a fixed-shape answer the model can write nothing but the finished card,
+// and SYSTEM tells it to commit "in that single tool call". Nothing is forced:
+// tool choice stays "auto", so this also works on models that reject forcing.
+//
+// The check runs inside the tool. The rules are curator.ts's, unchanged:
 // makeGroundingGate(cardIncompleteReason) — 8 filled slots, nothing hollow,
-// and note facts that match the search results, with at most 2 send-backs.
-// This part only supplies the place to run them: right after each model
-// answer. A problem goes back to the model as a message and the loop takes one
-// more round (jumpTo "model"); no problem lets the run end.
-function checkMiddleware(
-  onCommit: ((attempt: number, gap: string | null) => void) | undefined,
-  verdict: { accepted: boolean }
-) {
+// note facts that match the search results, at most 2 send-backs.
+//   - problem → the tool throws; LangChain hands the message back to the model
+//     as a failed tool result, and the loop goes on (curator.ts:1234 does the same)
+//   - no problem → returnDirect ends the run
+function deliverTool(run: Run) {
   // Fresh per run: the gate counts its own send-backs.
   const check = makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef });
   let attempt = 0;
-  // Rounds of THIS run. Counted here, not from state.messages: with memory,
-  // the thread also holds the rounds of earlier runs.
-  let rounds = 0;
 
-  return createMiddleware({
-    name: "CardCheck",
-    afterModel: {
-      canJumpTo: ["model"],
-      hook: (state) => {
-        rounds++;
-        const last = state.messages.at(-1) as any;
-        if (!last || last.tool_calls?.length) return; // still searching
-
-        let card: Record<string, unknown>;
-        try {
-          card = JSON.parse(typeof last.content === "string" ? last.content : last.text);
-        } catch {
-          return; // not a card; the run ends and generateCard reports it
-        }
-
-        attempt++;
-        // No round left to fix anything in: tell the gate, so a soft problem
-        // is accepted instead of bounced into the round limit.
-        let problem = check(card, { lastTurn: rounds >= ROUND_LIMIT });
-        // Test switch: reject the first card once, to watch a send-back.
-        if (process.env.LC_TEST_BOUNCE && attempt === 1 && !problem) {
-          problem = "test: this is a practice rejection, the card is fine";
-        }
-        onCommit?.(attempt, problem);
-        verdict.accepted = !problem;
-        if (!problem) return;
-
-        return {
-          messages: [
-            new HumanMessage(
-              `The card was not accepted: ${problem}. Fix it and deliver the full card again.`
-            ),
-          ],
-          jumpTo: "model" as const,
-        };
-      },
+  return tool(
+    async (card) => {
+      attempt++;
+      // No round left to fix anything in: tell the gate, so a soft problem
+      // is accepted instead of bounced into the round limit.
+      let problem = check(card, { lastTurn: run.rounds >= ROUND_LIMIT });
+      // Test switch: reject the first card once, to watch a send-back.
+      if (process.env.LC_TEST_BOUNCE && attempt === 1 && !problem) {
+        problem = "test: this is a practice rejection, the card is fine";
+      }
+      run.onCommit?.(attempt, problem);
+      if (problem) {
+        throw new Error(
+          `The card was not accepted: ${problem}. Fix it and call create_mixtape again with the full card.`
+        );
+      }
+      run.card = card;
+      return "Card accepted.";
     },
-  });
+    {
+      name: "create_mixtape",
+      description:
+        "Deliver the finished mixtape card. Call this once, when all eight tracks are chosen from search results.",
+      schema: Card,
+      returnDirect: true,
+    }
+  );
 }
 
-// One agent per run, because the check middleware holds per-run state.
-const makeAgent = (
-  onCommit: ((attempt: number, gap: string | null) => void) | undefined,
-  verdict: { accepted: boolean }
-) =>
+// One agent per run, because the delivery tool holds per-run state.
+const makeAgent = (run: Run) =>
   createAgent({
-  // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
-  model: `anthropic:${process.env.LC_MODEL || MODEL}`,
-  tools: [searchSpotify],
-  systemPrompt: SYSTEM,
-  // The model's own structured output: the final answer must fit Card.
-  // Not toolStrategy — that forces a tool call every round, and the newer
-  // models (Opus 5.5, Sonnet 5.5, Fable) reject forced tool calls with a 400.
-  responseFormat: providerStrategy(Card),
-  checkpointer: memory,
-  middleware: [
-    // Searches: past the limit the search is not run; the model is told
-    // "limit reached" and carries on, so it finishes the card with what it has.
-    // Unlike curator.ts this counts cache hits too — every call is one.
-    toolCallLimitMiddleware({
-      toolName: "search_spotify",
-      runLimit: SEARCH_LIMIT,
-      exitBehavior: "continue",
-    }),
-    // Rounds: the hard safety net. It stops the run WITHOUT a card (curator.ts
-    // forces one on its last round), so generateCard turns that into an error.
-    modelCallLimitMiddleware({ runLimit: ROUND_LIMIT, exitBehavior: "end" }),
-    checkMiddleware(onCommit, verdict),
-  ],
-});
+    // LC_MODEL=claude-opus-5-5 node lc/curator-lc.ts tries another model.
+    model: `anthropic:${process.env.LC_MODEL || MODEL}`,
+    tools: [searchSpotify, deliverTool(run)],
+    systemPrompt: SYSTEM,
+    checkpointer: memory,
+    middleware: [
+      // Searches: past the limit the search is not run; the model is told
+      // "limit reached" and carries on, so it finishes the card with what it has.
+      // Unlike curator.ts this counts cache hits too — every call is one.
+      toolCallLimitMiddleware({
+        toolName: "search_spotify",
+        runLimit: SEARCH_LIMIT,
+        exitBehavior: "continue",
+      }),
+      // Rounds: the hard safety net. It stops the run WITHOUT a card (curator.ts
+      // forces one on its last round), so runOnThread turns that into an error.
+      modelCallLimitMiddleware({ runLimit: ROUND_LIMIT, exitBehavior: "end" }),
+      // Our own small part: count this run's rounds for the delivery tool.
+      createMiddleware({
+        name: "RoundCounter",
+        afterModel: () => {
+          run.rounds++;
+        },
+      }),
+    ],
+  });
 
 type RunOpts = {
   onTrack?: (index: number, t: { artist: string; title: string }) => void;
@@ -202,8 +196,8 @@ async function runOnThread(
   content: string,
   { onTrack, onCommit, signal }: RunOpts
 ): Promise<MixtapeCard> {
-  const verdict = { accepted: false };
-  const result = await makeAgent(onCommit, verdict).invoke(
+  const run: Run = { onCommit, rounds: 0 };
+  await makeAgent(run).invoke(
     { messages: [{ role: "user", content }] },
     {
       // Which page of the notebook this run reads and writes.
@@ -221,10 +215,10 @@ async function runOnThread(
     }
   );
 
-  const card = result.structuredResponse as z.infer<typeof Card> | undefined;
-  // `accepted` matters: after a send-back that ran out of rounds — or an
-  // adjust that never delivered — the state still holds an older card.
-  if (!card || !verdict.accepted) {
+  // Only a card the check accepted counts. A run that ran out of rounds, or
+  // ended in plain text, has none.
+  const card = run.card;
+  if (!card) {
     throw new Error(`The curator used all ${ROUND_LIMIT} rounds without finishing a card.`);
   }
   const tracks = toTrackList(card.tracks);
@@ -261,7 +255,7 @@ async function adjustCard(
   return runOnThread(
     threadId,
     `Adjust the mixtape you delivered:\n${fence("listener_adjustment", adjustment)}\n\n` +
-      "Keep every track the adjustment does not touch. Deliver the full card again.",
+      "Keep every track the adjustment does not touch. Call create_mixtape again with the full card.",
     opts
   );
 }

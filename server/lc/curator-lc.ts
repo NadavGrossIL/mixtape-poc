@@ -21,6 +21,7 @@
 //   modelCall.ts   the last round, marking Anthropic failures, a delivery
 //                  mixed with searches, an answer in plain words
 //   threads.ts     who owns which memory thread, and how many are kept
+//   runLog.ts      the one log line per run: rounds, searches, tokens, time
 //
 // Try it from server/:  node lc/curator-lc.ts
 
@@ -55,6 +56,7 @@ import { adjustMessage, diffCards, isEmptyDiff, sameTrack } from "./cardDiff.ts"
 import { makeSearchStep } from "./searchStep.ts";
 import { deliverNudge, deliveryAlone, lastRoundRequest, modelFailure } from "./modelCall.ts";
 import { makeThreadBook } from "./threads.ts";
+import { runSummary, tokensOf } from "./runLog.ts";
 
 // The two tools, as the model sees them, are defined ONCE, in curator.ts
 // (SEARCH_TOOL, CURATOR_TOOL): name, description and JSON schema, in
@@ -156,6 +158,10 @@ type Run = {
   budget: SearchBudget; // the request-wide search allowance
   onCommit?: (attempt: number, gap: string | null) => void;
   rounds: number; // model calls so far in THIS run (the thread may hold older ones)
+  // For the run's log line (runLog.ts).
+  tokensIn: number;
+  tokensOut: number;
+  liveSearches: SearchBudget; // this run's own search cap; spent() = quota used
   card?: CardInput; // set only when the check accepted a card
   // A failure that must end the run. LangChain turns what a tool throws into
   // a message for the model, so "stop everything" is said two ways: remember
@@ -172,7 +178,7 @@ function searchTool(run: Run) {
     // A test's stand-in search has no cache: every call counts.
     isCached: run.seams.search ? () => false : isSearchCached,
     search: run.seams.search ?? searchCatalog,
-    loop: makeSearchBudget(SEARCH_LIMIT),
+    loop: run.liveSearches,
     request: run.budget,
     concurrency: SEARCH_CONCURRENCY,
     onFatal: (err) => {
@@ -292,6 +298,9 @@ const makeAgent = (run: Run) =>
           canJumpTo: ["model"],
           hook: (state) => {
             run.rounds++;
+            const used = tokensOf(state.messages.at(-1));
+            run.tokensIn += used.in;
+            run.tokensOut += used.out;
             const calls = ((state.messages.at(-1) as any)?.tool_calls ?? []) as { name: string }[];
             console.log(
               `[curator-lc] round ${run.rounds}: ` +
@@ -344,7 +353,9 @@ async function runOnThread(
   content: string,
   check: Check,
   onItem: ((index: number, track: any) => void) | undefined,
-  { onCommit, signal, budget, model, search }: RunOpts
+  { onCommit, signal, budget, model, search }: RunOpts,
+  // What kind of run this is, for its log line.
+  about: { kind: "generate" | "adjust"; remembered?: boolean }
 ): Promise<MixtapeCard> {
   const run: Run = {
     seams: { model, search },
@@ -354,8 +365,25 @@ async function runOnThread(
     budget: budget ?? makeSearchBudget(SEARCH_LIMIT),
     onCommit,
     rounds: 0,
+    tokensIn: 0,
+    tokensOut: 0,
+    liveSearches: makeSearchBudget(SEARCH_LIMIT),
     stop: new AbortController(),
   };
+  const started = Date.now();
+  // The run's one log line, whatever way it ends (runLog.ts).
+  const logRun = (outcome: "card" | "no card" | "stopped") =>
+    console.log(
+      runSummary({
+        ...about,
+        outcome,
+        rounds: run.rounds,
+        liveSearches: run.liveSearches.spent(),
+        tokensIn: run.tokensIn,
+        tokensOut: run.tokensOut,
+        ms: Date.now() - started,
+      })
+    );
   // Three ways a run is stopped: our deadline, the caller (the visitor left),
   // or a fatal failure inside a tool. Kept apart as facts — see the catch.
   const deadline = AbortSignal.timeout(RUN_DEADLINE_MS);
@@ -382,6 +410,7 @@ async function runOnThread(
       reader.push((piece as any)?.tool_call_chunks);
     }
   } catch (err) {
+    logRun(signal?.aborted || deadline.aborted ? "stopped" : "no card");
     // The real reason first: Spotify's quota or an Anthropic failure, not the
     // abort or the wrapper it surfaced as.
     if (run.fatal) throw run.fatal;
@@ -394,10 +423,14 @@ async function runOnThread(
   }
   // A fatal failure does not always surface as a throw: the abort can land
   // after the stream has already ended. The real reason still wins.
-  if (run.fatal) throw run.fatal;
+  if (run.fatal) {
+    logRun("no card");
+    throw run.fatal;
+  }
 
   // Only a card the check accepted counts.
   const card = run.card;
+  logRun(card ? "card" : "no card");
   if (!card) {
     throw new Error(
       run.rounds >= ROUND_LIMIT
@@ -438,7 +471,8 @@ async function generateCard(
       // Fresh per run: the gate counts its own send-backs.
       makeGroundingGate({ hard: cardIncompleteReason, lookup: recallByRef }),
       onTrack && ((i, t) => i < TRACK_COUNT && t?.artist && t?.title && onTrack(i, t)),
-      opts
+      opts,
+      { kind: "generate" }
     );
   } catch (err) {
     // A failed run is never continued, so its pages are thrown away now.
@@ -493,7 +527,8 @@ async function adjustCard(
           if (i >= card.tracks.length || !t?.artist || !t?.title || sameTrack(card.tracks[i], t)) return;
           onChange(changeCount++, { index: i, track: t });
         }),
-      opts
+      opts,
+      { kind: "adjust", remembered }
     );
   } catch (err) {
     // A run that died halfway can leave the thread unusable (a tool call with

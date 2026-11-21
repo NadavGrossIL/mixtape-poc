@@ -215,6 +215,8 @@ if (!spotify.isLoggedIn("host") && spotify.isLoggedIn()) {
 // DEPLOYED goes in so the LangSmith tracing guard (curatorLoader.ts) uses the
 // same "is this host reachable" rule as everything else here.
 const agent = await loadCurator({ deployed: DEPLOYED });
+// The line to look for in a deploy's log: which agent and model are serving.
+console.log(`[config] curator: LangChain agent, model ${process.env.LC_MODEL || curator.MODEL}`);
 if (!curator.anthropicConfigured()) {
   console.warn(
     "[config] ANTHROPIC_API_KEY is missing or still a placeholder.\n" +

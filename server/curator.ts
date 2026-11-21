@@ -135,7 +135,7 @@ const CURATOR_TOOL = {
       vibe: {
         type: "string",
         description:
-          "One-line dedication, like the note on the back of a record sleeve. Max 14 words.",
+          "One-line dedication, like the note on the back of a record sleeve. Max 14 words. Public: no names or personal details from the prompt.",
       },
       accent: {
         type: "string",
@@ -363,6 +363,7 @@ Rules:
 - Never put a number in a note that no search result showed you: no unseen track lengths, no timestamps, no BPMs, no take counts. Never quote a lyric from memory. Never name a producer, label, sample, or side-project unless that connection is what the song is famous for.
 - When you have no fact, describe the sound instead — what the track does to the room, the road, the hour. A vivid image beats a shaky stat, and both beat a generic compliment.
 - The title is max 5 words; the vibe line is max 14 words, written like a dedication.
+- The vibe line is published as the playlist's description on a public Spotify profile. Dedicate it to a moment, a mood or a kind of listener, never to a person: no names, no relationships (my sister, my ex), no health, places or other details the prompt gives about someone's own life — even when the prompt says who it is for.
 - Writing the card is a separate step from choosing it: once you commit, fill in all eight track slots (track1 through track8) in that single tool call.`;
 
 const ADJUST_SYSTEM = `${SYSTEM}

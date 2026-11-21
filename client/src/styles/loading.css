@@ -49,26 +49,14 @@
   margin-top: 4px;
 }
 
-/* the rotating chatter line. On the generate screen it is the first line of
-   the song list (the .inline form below); the centred form is kept for a
-   caller that wants it under a disc. */
+/* the rotating chatter line: the first line of the refine log, in the
+   log's own type */
 .studio-chatter {
-  margin-top: -18px;
   font-family: "Space Mono", monospace;
   font-size: 12.5px;
-  letter-spacing: 0.02em;
   color: var(--ink);
-  text-align: center;
-  min-height: 1.4em; /* line swaps never shift the log below */
-}
-
-/* inside a log column (the refine flow has no disc): first line of the
-   log, left-aligned, in the log's own type size */
-.studio-chatter.inline {
-  margin-top: 0;
   margin-bottom: 4px;
-  text-align: left;
-  letter-spacing: 0;
+  min-height: 1.4em; /* line swaps never shift the log below */
 }
 
 @media (prefers-reduced-motion: no-preference) {

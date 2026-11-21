@@ -93,11 +93,6 @@
   color: var(--ink-dim);
 }
 
-.log-caption {
-  color: var(--ink-faint);
-  margin-bottom: 2px;
-}
-
 .log-track {
   color: var(--ink);
 }

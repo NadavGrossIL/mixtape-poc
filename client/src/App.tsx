@@ -242,10 +242,9 @@ const SEEDED_PLACEHOLDER =
 
 // Each example demonstrates a different prompt axis: speed/skill,
 // mood+moment, discovery/language, era+audience.
-// The first chip sets what a stranger thinks the product is for, so the most
-// universal one leads and the niche one closes.
+// Three, not four: the 2am-drive prompt that used to lead is the sample card
+// below, and the same sentence twice on one screen read as noise.
 const EXAMPLES = [
-  "songs that sound like driving home at 2am",
   "hebrew indie that deserves a bigger audience",
   "90s hip-hop for a newborn's first road trip",
   "fastest rap verses ever recorded — Rap God energy",
@@ -359,16 +358,95 @@ function Logo() {
   );
 }
 
-// What a stranger gets, shown before they spend a minute finding out. It
-// took the place of the idle cassette deck that used to sit here: the deck
-// was decoration in the one spot where proof belongs.
+const TAPE_SPILL =
+  "M140 120 C118 138 88 146 76 136 C66 127 80 118 90 127 " +
+  "C100 136 118 150 152 152 C196 154 224 144 262 152 C270 153.5 276 156 278 158";
+
+// Empty-state hero: an idle deck mid-play — spoked reels turning at
+// different speeds (the take-up pack is smaller, so it spins faster) and
+// tape spilling out into a slow shimmer. Pure decoration, aria-hidden;
+// all motion lives in CSS behind the reduced-motion gate.
+function DeckHero({ gate = false }: { gate?: boolean }) {
+  return (
+    <div
+      className={"deck-hero" + (gate ? " deck-hero-gate" : "")}
+      aria-hidden="true"
+    >
+      <svg
+        className="deck"
+        // cropped to the drawn content (y 12–160 incl. stroke) so the box has
+        // no invisible padding and the CSS margins around it mean what they
+        // say; x stays 0–280 so the cassette body sits on the column's centre
+        viewBox="0 12 280 148"
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="2.5"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      >
+        <rect x="40" y="14" width="200" height="104" rx="8" />
+        <rect
+          x="64"
+          y="28"
+          width="152"
+          height="48"
+          rx="4"
+          strokeWidth="1.5"
+          className="deck-line"
+        />
+        {/* screws */}
+        <g className="deck-line" strokeWidth="1.5">
+          <circle cx="50" cy="24" r="2" />
+          <circle cx="230" cy="24" r="2" />
+          <circle cx="50" cy="108" r="2" />
+          <circle cx="230" cy="108" r="2" />
+        </g>
+        {/* supply reel: fat tape pack, spoked hub */}
+        <circle cx="104" cy="52" r="17" strokeWidth="2" className="deck-accent" />
+        <g className="deck-reel deck-reel-supply">
+          <circle cx="104" cy="52" r="8" />
+          <path
+            strokeWidth="1.5"
+            d="M104 45v14M97.9 48.5l12.2 7M97.9 55.5l12.2-7"
+          />
+        </g>
+        {/* take-up reel: thin pack */}
+        <circle cx="176" cy="52" r="11" strokeWidth="2" className="deck-accent" />
+        <g className="deck-reel deck-reel-takeup">
+          <circle cx="176" cy="52" r="8" />
+          <path
+            strokeWidth="1.5"
+            d="M176 45v14M169.9 48.5l12.2 7M169.9 55.5l12.2-7"
+          />
+        </g>
+        {/* tape running pack-top to pack-top */}
+        <path d="M104 35 L176 41" strokeWidth="2" className="deck-accent" />
+        <text x="140" y="96" textAnchor="middle" className="deck-label">
+          MIXTAPE — SIDE A
+        </text>
+        {/* bottom notch + capstan holes */}
+        <path d="M96 118l6-12h76l6 12" />
+        <g className="deck-line" strokeWidth="1.5">
+          <circle cx="112" cy="112" r="2.5" />
+          <circle cx="168" cy="112" r="2.5" />
+        </g>
+        {/* spilled tape: solid run + a brighter dash sliding along it */}
+        <path className="deck-tape" d={TAPE_SPILL} />
+        <path className="deck-tape-flow" d={TAPE_SPILL} />
+      </svg>
+    </div>
+  );
+}
+
+// What a stranger gets, shown before they spend a minute finding out: the
+// proof, placed right under the composer. The cassette deck above stays as
+// the page's closing garnish.
 //
-// The content is a real run of the first example chip (2026-11-21), trimmed
-// to three rows. The notes are the curator's own output, not marketing copy,
-// so the sample cannot promise a voice the product doesn't have. If the
-// first chip changes, re-run it and replace this.
+// The content is a real production run (2026-11-21), trimmed to two rows.
+// The notes are the curator's own output, not marketing copy, so the sample
+// cannot promise a voice the product doesn't have.
 const SAMPLE = {
-  prompt: EXAMPLES[0],
+  prompt: "songs that sound like driving home at 2am",
   title: "Taillights at 2AM",
   vibe: "For the long drive home when city lights blur into memory.",
   accent: "cobalt",
@@ -383,11 +461,6 @@ const SAMPLE = {
       artist: "Washed Out",
       title: "Feel It All Around",
       note: "The chillwave blueprint — hazy, filtered vocals like headlights through fog.",
-    },
-    {
-      artist: "M83",
-      title: "Midnight City",
-      note: "That saxophone hook turning a dark road into something cinematic.",
     },
   ],
 };
@@ -429,8 +502,7 @@ function SampleCard() {
             ))}
           </div>
           <div className="sample-more">
-            + {SAMPLE.total - SAMPLE.tracks.length} more songs · saved as a real
-            Spotify playlist
+            + {SAMPLE.total - SAMPLE.tracks.length} more songs
           </div>
         </div>
       </div>
@@ -545,11 +617,6 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
           </div>
         )}
       </div>
-      {t.resolved && (
-        <div className="play-hint" aria-hidden>
-          ▸
-        </div>
-      )}
       {editable && (
         <button
           type="button"
@@ -579,42 +646,12 @@ function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDrag
 
 type Stage = "seeding" | "curating" | "resolving" | null;
 
-// Studio chatter: the rotating "calculating… blablaating…" line under the
-// spinning disc. The progress log next to it only prints real backend
-// events, and between events it can sit still for 20+ seconds — long
-// enough to read as hung. This line is the opposite: cosmetic on purpose,
-// keeps moving, and is keyed to the stage so it never claims a step that
-// isn't happening. aria-hidden: the live region narrates the milestones.
+// Studio chatter: a rotating flavour line, cosmetic on purpose. Refine only
+// since 2026-11-21 — the generate screen now states its stage once, in
+// plain words, and a second moving line under that was noise. Refine has no
+// disc and no step line, so this is still its only sign of life between
+// events. aria-hidden: the live region narrates the milestones.
 const CHATTER = {
-  reading: [
-    "reading your liner notes…",
-    "decoding the vibe…",
-    "warming up the tubes…",
-    "tuning the dial…",
-    "checking the levels…",
-    "sharpening the pencil…",
-  ],
-  seeding: [
-    "dropping the needle on your playlist…",
-    "reading the grooves…",
-    "taking notes from your crate…",
-    "rewinding to track one…",
-    "listening for the through-line…",
-  ],
-  // no "digging through the crates…" here: the progress log prints that
-  // exact line at the same instant, and two of it reads as a stutter
-  curating: [
-    "thumbing the dividers…",
-    "flipping past the B-sides…",
-    "dusting off a deep cut…",
-    "asking the record-store guy…",
-    "arguing about the opener…",
-    "sequencing side A…",
-    "pulling a few sleeves…",
-    "checking the bpm…",
-    "holding out for the closer…",
-    "cutting one that didn't earn it…",
-  ],
   resolving: [
     "matching wax to Spotify…",
     "checking the barcodes…",
@@ -1060,7 +1097,7 @@ export default function LinerNotes() {
         setErrorTick((t) => t + 1);
       } else {
         console.error(e);
-        setError("Something went wrong on our side. Try the same prompt again.");
+        setError("The curator dropped the needle — that’s on us. Try the same prompt again.");
         setErrorDetail(e instanceof Error ? e.message : String(e));
         setErrorTick((t) => t + 1);
       }
@@ -1189,7 +1226,7 @@ export default function LinerNotes() {
     if (!card || saving) return;
     const uris = card.tracks.filter((t) => t.resolved).map((t) => t.spotifyUri);
     if (!uris.length) {
-      setSaveError("No verified tracks to save.");
+      setSaveError("No verified songs to save.");
       return;
     }
     setSaving(true);
@@ -1217,7 +1254,7 @@ export default function LinerNotes() {
       let streamError = null as string | null;
       await readSSE<SaveStreamEvent>(response, (event, data) => {
         if (event === "creating") setSaveStage("CREATING PLAYLIST…");
-        else if (event === "adding") setSaveStage(`ADDING ${data?.count} TRACKS…`);
+        else if (event === "adding") setSaveStage(`ADDING ${data?.count} SONGS…`);
         else if (event === "done") {
           url = data?.playlistUrl ?? null;
           saved = Boolean(data?.saved);
@@ -1249,7 +1286,9 @@ export default function LinerNotes() {
     ? ACCENT_INK[card.accent] || ACCENT_INK.ember
     : ACCENT_INK.ember;
 
-  const liveVerified = logTracks.filter((t) => t && t.resolved === true).length;
+  // checked, not confirmed: a run with two songs Spotify couldn't find must
+  // still end on "8 of 8", or the last thing on screen reads as stuck
+  const liveChecked = logTracks.filter((t) => t && t.resolved !== undefined).length;
   // The waiting screen's step line. A run from a playlist has one more step
   // (reading it) than a run from a prompt; the armed seed is still set while
   // loading, so the total is known before the first event arrives.
@@ -1258,7 +1297,7 @@ export default function LinerNotes() {
     stage === "resolving"
       ? {
           n: stepTotal,
-          label: `checking each one on Spotify · ${liveVerified}/${logTracks.length}`,
+          label: `checking each one on Spotify · ${liveChecked} of ${logTracks.length}`,
         }
       : stage === "curating" || !seedPlaylist
         ? { n: stepTotal - 1, label: "picking the songs" }
@@ -1375,23 +1414,24 @@ export default function LinerNotes() {
         </h1>
         {/* the tagline: one human sentence about the playlist, not a
             process. The line under it answers the three things a stranger
-            needs before typing: who picks the songs, what comes back, and
-            what it costs them (nothing, and no account). Both step aside
+            needs before typing: who picks the songs, what comes back (a
+            Spotify playlist — the one thing it does ask of them), and what
+            it costs (nothing, and no account here). Both step aside
             once a card is on the table — the pitch has done its job, and
             the height goes to the card and its save button. */}
         {!card && (
           <>
             <p className="tagline">Say the mood. We’ll make the playlist.</p>
             <p className="tagline-sub">
-              An AI curator picks eight real songs and tells you why each one
-              fits. Free, no sign-up.
+              An AI curator picks eight songs and makes them a Spotify
+              playlist. Free, no sign-up.
             </p>
           </>
         )}
       </header>
 
       <main className="main-col">
-        {loggedIn === null && <div className="checking">loading…</div>}
+        {loggedIn === null && <div className="checking">checking the deck…</div>}
 
         {/* no login gate: anyone past the door can make a mixtape. A
             connected Spotify (the allowlisted few) only adds the shelf picker
@@ -1674,13 +1714,17 @@ export default function LinerNotes() {
                     </div>
                 )}
 
-                {/* one caption under the action — expectation-setting, or the
-                    prompt-optional contract while a seed is armed */}
-                <div className="scope-line">
-                  {seedPlaylist
-                    ? "prompt optional — the mixtape follows that playlist’s spirit; add words to steer it"
-                    : "takes about a minute — real songs only, each one is checked on Spotify"}
-                </div>
+                {/* the prompt-optional contract while a seed is armed. The
+                    unseeded caption ("takes about a minute — every track is
+                    checked on Spotify") is gone: the header says what comes
+                    back and the waiting screen says how long, so here it was
+                    a third telling. */}
+                {seedPlaylist && (
+                  <div className="scope-line">
+                    prompt optional — the mixtape follows that playlist’s
+                    spirit; add words to steer it
+                  </div>
+                )}
 
                 {/* this browser's presses, so a guest who didn't tap + in
                     Spotify can get back to one. Right under the composer,
@@ -1736,9 +1780,13 @@ export default function LinerNotes() {
                   </section>
                 )}
 
+                {/* proof before more ways in: on a phone this was under the
+                    chips and two gaps, off the first screen entirely */}
+                <SampleCard />
+
                 {/* example chips: populate the prompt, stay editable */}
                 <div className="examples">
-                  <div className="section-note">or try one of these</div>
+                  <div className="section-note">stuck? steal a prompt</div>
                   <div className="chips">
                     {EXAMPLES.map((ex) => (
                       <button
@@ -1774,13 +1822,14 @@ export default function LinerNotes() {
                   </div>
                 )}
 
-                <SampleCard />
 
                 {/* the credit: the quietest line on the screen, under the
                     garnish. A visitor from the post knows who made it; a
                     visitor from a shared link doesn't, and this is the one
                     backlink to the maker. One name, one link, nothing that
                     competes with the composer above it. */}
+                <DeckHero />
+
                 <a
                   className="credit-line"
                   href="https://www.linkedin.com/in/nadavgr/"
@@ -1815,13 +1864,10 @@ export default function LinerNotes() {
               </div>
               <div className="loading-step-note">usually about a minute</div>
             </div>
-            {/* the songs as they land — every track line is a real backend
-                event. The chatter above them is the opposite, cosmetic on
-                purpose: between events the list can sit still for 20+
-                seconds, and a line that keeps moving is what stops that
-                reading as hung. */}
-            <div className="progress-log" aria-hidden>
-              <StudioChatter pool={stage ?? "reading"} inline />
+            {/* the songs as they land — every line is a real backend event.
+                Nothing renders until the first one: an empty rule down the
+                page said nothing. */}
+            <div className="progress-log" aria-hidden hidden={logTracks.length === 0}>
               {logTracks.map(
                 (t, i) =>
                   t && (
@@ -1867,7 +1913,7 @@ export default function LinerNotes() {
                     )}
                   </span>
                   <span>
-                    MADE{" "}
+                    CUT{" "}
                     {new Date()
                       .toLocaleDateString("en-GB", {
                         day: "2-digit",
@@ -1901,7 +1947,10 @@ export default function LinerNotes() {
                     card's last line, under eight rows — read after the fact,
                     if at all. */}
                 <div className="card-legend">
-                  {editable
+                  {/* keyed to "not saved yet", not to `editable`: that goes
+                      false the moment save is tapped, and the shorter text
+                      shifted the whole list up a line on a phone */}
+                  {!playlistUrl
                     ? "tap a song to open it in Spotify · drag to reorder · ↻ swaps one"
                     : "tap a song to open it in Spotify"}
                 </div>
@@ -1982,7 +2031,7 @@ export default function LinerNotes() {
                       inline
                     />
                     <div className="log-line">
-                      changing the tracks…
+                      changing the songs…
                       {adjustStage === "resolving" ? (
                         <span className="log-ok"> ok</span>
                       ) : (
@@ -2021,11 +2070,13 @@ export default function LinerNotes() {
             {/* save to spotify — primary action; everything else stays quiet */}
             {!playlistUrl && (
               <>
+                {/* the dock: a strip the button rides in, so rows scroll under
+                    a bar instead of a button floating over a song title */}
+                <div className="save-dock">
                 <button
                   onClick={saveToSpotify}
                   disabled={saving || adjusting}
                   className="btn-press press-cta"
-                  style={{ marginTop: 24 }}
                 >
                   {/* says what the tap does in the visitor's words. It was
                       "PRESS IT TO SPOTIFY": the brand verb, which a stranger
@@ -2037,17 +2088,19 @@ export default function LinerNotes() {
                       ? "SAVE AS A SPOTIFY PLAYLIST"
                       : `SAVE ${cardVerified} OF ${card.tracks.length} SONGS TO SPOTIFY`}
                 </button>
+                </div>
                 {/* what a stranger wonders at this button: will it ask for
                     my login, will it touch my account. Answered here, along
                     with the honest number of taps left. */}
-                <div className="save-note">
-                  {loggedIn
-                    ? "goes straight into your Spotify library"
-                    : "no login needed — we create the playlist, you open it and tap + in Spotify to keep it"}
-                </div>
+                {!loggedIn && (
+                  <div className="save-note">
+                    no login needed — we make the playlist, you tap + in
+                    Spotify to keep it
+                  </div>
+                )}
                 {cardUnverified > 0 && (
                   <div className="save-note">
-                    {cardUnverified} unverified track
+                    {cardUnverified} unverified song
                     {cardUnverified === 1 ? "" : "s"} — Spotify couldn’t
                     confirm {cardUnverified === 1 ? "it exists" : "they exist"},
                     so {cardUnverified === 1 ? "it’ll" : "they’ll"} be left off
@@ -2106,7 +2159,7 @@ export default function LinerNotes() {
                 <details className="pressed-mine">
                   <summary>want your own editable copy?</summary>
                   <p>
-                    Keeping it follows Mixtape’s playlist. To make one you can edit:
+                    Tapping + follows Mixtape’s playlist. To make one you can edit:
                     in Spotify, open it → ⋯ → <b>Add to other playlist</b> →{" "}
                     <b>New playlist</b>. Or copy the tracks and build it anywhere.
                   </p>
@@ -2115,7 +2168,7 @@ export default function LinerNotes() {
                     className="btn-ghost"
                     onClick={() => copyText(trackListText(), "tracks")}
                   >
-                    {copied === "tracks" ? "copied ✓" : "copy track list"}
+                    {copied === "tracks" ? "copied ✓" : "copy song list"}
                   </button>
                 </details>
               </div>

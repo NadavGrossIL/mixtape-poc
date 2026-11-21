@@ -14,8 +14,9 @@ on the result screen; if they don't tap + in Spotify right then, "make another
 one" or a reload loses it. The playlist still exists on the host "Mixtape"
 account (ADR 0002) — Mixtape just offers no way back to it. After this, every
 successful press is remembered in the browser's `localStorage`, and the
-landing screen shows a quiet **your mixtapes** list — newest first, each title
-opening its Spotify playlist — plus one line pointing at the Mixtape profile
+landing screen shows a **your mixtapes** panel right under the composer —
+newest three first (the rest behind a "+ N more" toggle), each row opening
+its Spotify playlist — plus one line pointing at the Mixtape profile
 on Spotify, where every press lives regardless.
 
 ## Non-goals
@@ -65,8 +66,9 @@ on Spotify, where every press lives regardless.
     `../../client/src/recent.ts`.
   - `client/src/App.tsx` — `recent` state seeded from `loadRecent`; the press
     handler records `{ title: card.title, url, pressedAt: Date.now() }` via
-    `recordRecent` right after `setPlaylistUrl(url)`; the landing screen renders the list after
-    the example chips, only when non-empty.
+    `recordRecent` right after `setPlaylistUrl(url)`; the landing screen renders the panel
+    between the composer's caption and the example chips, only when
+    non-empty, newest `RECENT_SHOWN` (3) rows plus a "+ N more" toggle.
   - `client/src/styles.css` — `.recent` list styles on existing tokens.
   - `specs/0003-your-mixtapes-recent-presses.md` — this file.
 - ask: none
@@ -95,7 +97,9 @@ Checked by hand in the browser at `http://127.0.0.1:5173` (never
 (each press creates a public playlist and spends shared quota):
 
 - empty storage → no "your mixtapes" block on the landing screen;
-- seeded entry → the block lists its title, linking to its URL;
+- seeded entries → the panel sits above the fold under the composer and
+  lists the newest three, each linking to its URL; more than three adds a
+  "+ N more" toggle;
 - reload → the list is still there;
 - a garbage value under the key → no block, no console error.
 
@@ -105,6 +109,11 @@ Checked by hand in the browser at `http://127.0.0.1:5173` (never
   guest's library) and why the profile fallback is always true.
 - Every press is recorded, including an allowlisted user's library save —
   the list is "what I pressed here", which is true for them too.
+- Placement (revised after a look at the first version, which read as
+  hidden below the example prompts): a returning visitor's own tapes outrank
+  strangers' example prompts, so the panel sits right under the composer,
+  bordered like it but flat on the wall rather than recessed, so the
+  composer stays the one field to type into.
 - The profile fallback line renders inside the block only: a first-time
   visitor with nothing pressed has no use for it, and the owner dislikes
   noisy landing screens. Its URL is the host account's Spotify user id

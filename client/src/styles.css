@@ -1648,48 +1648,81 @@
   text-decoration: underline;
 }
 
-/* "your mixtapes": a step less air than the examples (32px vs 40px), the
-   same type, titles as quiet
-   links. The fallback line sits at the credit's tier — a colophon, not a CTA */
+/* "your mixtapes": the composer's width and border language, but flat on
+   the wall (not the recessed --shell-raised) — the composer stays the one
+   field you type into; this is a shelf of links under it */
 .recent {
   display: flex;
   flex-direction: column;
   align-items: center;
   width: 100%;
+  max-width: 560px;
   margin-top: 32px;
 }
 .recent-list {
   list-style: none;
-  margin: 10px 0 0;
+  margin: 12px 0 0;
   padding: 0;
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  overflow: hidden;
+}
+.recent-list li + li {
+  border-top: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
+}
+.recent-row {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 0;
-  max-width: 100%;
-}
-.recent-list li {
-  max-width: 100%;
-}
-.recent-link {
-  display: block;
-  font-family: "Space Grotesk", system-ui, sans-serif;
-  font-size: 14px;
-  color: var(--ink-dim);
+  gap: 12px;
+  min-height: 48px;
+  padding: 10px 16px;
+  color: var(--ink);
   text-decoration: none;
-  text-underline-offset: 3px;
+  transition: background-color 0.15s ease;
+}
+.recent-row:hover {
+  background: color-mix(in srgb, var(--shell-raised) 55%, transparent);
+}
+.recent-row:focus-visible {
+  outline-offset: -2px;
+}
+.recent-row .spotify-mark {
+  flex: none;
+  color: var(--accent-soft);
+}
+.recent-title {
+  flex: 1;
+  min-width: 0;
+  font-family: "Space Grotesk", sans-serif;
+  font-size: 15px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
-  /* 20 + 2×12 = 44px: a real touch target, like every other control on the
-     page; the padding is the spacing, so the list has no gap */
-  line-height: 20px;
-  padding: 12px 4px;
 }
-.recent-link:hover,
-.recent-link:focus-visible {
+.recent-open {
+  flex: none;
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+}
+.recent-row:hover .recent-open {
+  color: var(--ink);
+}
+.recent-more {
+  font-family: "Space Mono", monospace;
+  font-size: 12px;
+  background: transparent;
+  border: 0;
+  color: var(--ink-dim);
+  min-height: 44px;
+  padding: 0 12px;
+  cursor: pointer;
+}
+.recent-more:hover {
   color: var(--ink);
   text-decoration: underline;
+  text-underline-offset: 3px;
 }
 .recent-fallback {
   font-family: "Space Mono", monospace;

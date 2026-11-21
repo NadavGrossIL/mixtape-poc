@@ -49,7 +49,7 @@
   margin-top: 4px;
 }
 
-/* the rotating chatter line: the first line of the refine log, in the
+/* the rotating chatter line: the first line of the generate and refine logs, in the
    log's own type */
 .studio-chatter {
   font-family: "Space Mono", monospace;

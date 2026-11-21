@@ -25,6 +25,7 @@ import {
 import { CSS } from "@dnd-kit/utilities";
 import { openInSpotify } from "./spotifyLink";
 import { shareOrCopy } from "./share";
+import { addRecent, loadRecent, saveRecent, type RecentMixtape } from "./recent";
 import LogConsole from "./LogConsole";
 
 // The card/track shapes the server streams back. Unresolved tracks keep only
@@ -665,6 +666,14 @@ function StudioChatter({ pool: name, inline }: { pool: ChatterPool; inline?: boo
 // see the /api/view effect below — survives a hot-reload remount
 let viewCounted = false;
 
+// a getter, not a value: in some browsers reading `window.localStorage`
+// itself throws (blocked storage); recent.ts catches that as well
+const browserStorage = () => window.localStorage;
+
+// the host account every mixtape is pressed to (ADR 0002) — the fallback for
+// anything this browser's list doesn't hold
+const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
+
 export default function LinerNotes() {
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
@@ -683,6 +692,8 @@ export default function LinerNotes() {
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [copied, setCopied] = useState<"link" | "tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  // "your mixtapes": this browser's presses, newest first (see recent.ts)
+  const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
@@ -1212,6 +1223,10 @@ export default function LinerNotes() {
       );
       setPlaylistUrl(url);
       setSavedToLibrary(saved);
+      // remembered here so a guest who didn't tap + can find it again
+      const next = addRecent(recent, { title: card.title, url, pressedAt: Date.now() });
+      setRecent(next);
+      saveRecent(browserStorage, next);
     } catch (e) {
       console.error(e);
       setSaveError("Couldn't press it to Spotify. Try again.");
@@ -1654,6 +1669,42 @@ export default function LinerNotes() {
                     ))}
                   </div>
                 </div>
+
+                {/* this browser's presses, so a guest who didn't tap + in
+                    Spotify can get back to one. Titles only — no dates, no
+                    art: the composer stays the loudest thing here. */}
+                {recent.length > 0 && (
+                  <div className="recent">
+                    <div className="section-note">your mixtapes</div>
+                    <ul className="recent-list">
+                      {recent.map((m) => (
+                        <li key={m.url}>
+                          <a
+                            href={m.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="recent-link"
+                            aria-label={`${m.title} (opens Spotify)`}
+                            onClick={(e) => {
+                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+                              if (openInSpotify(m.url)) e.preventDefault();
+                            }}
+                          >
+                            {m.title}
+                          </a>
+                        </li>
+                      ))}
+                    </ul>
+                    <a
+                      className="recent-fallback"
+                      href={MIXTAPE_PROFILE_URL}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      every mixtape lives on Mixtape’s Spotify profile
+                    </a>
+                  </div>
+                )}
 
                 {/* the allowlisted few connect here. It cannot be offered to
                     everyone (Spotify caps dev-mode apps at 5 accounts), and

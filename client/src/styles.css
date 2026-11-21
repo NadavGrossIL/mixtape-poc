@@ -1648,6 +1648,58 @@
   text-decoration: underline;
 }
 
+/* "your mixtapes": the examples' tier of air and type, titles as quiet
+   links. The fallback line sits at the credit's tier — a colophon, not a CTA */
+.recent {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 100%;
+  margin-top: 32px;
+}
+.recent-list {
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  max-width: 100%;
+}
+.recent-list li {
+  max-width: 100%;
+}
+.recent-link {
+  display: block;
+  font-family: "Space Grotesk", system-ui, sans-serif;
+  font-size: 14px;
+  color: var(--ink-dim);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  padding: 2px 4px;
+}
+.recent-link:hover,
+.recent-link:focus-visible {
+  color: var(--ink);
+  text-decoration: underline;
+}
+.recent-fallback {
+  font-family: "Space Mono", monospace;
+  font-size: 11px;
+  color: var(--ink-faint);
+  margin-top: 10px;
+  text-decoration: none;
+  text-underline-offset: 3px;
+}
+.recent-fallback:hover {
+  color: var(--ink);
+  text-decoration: underline;
+}
+
 /* pasted-link seed: the same field as the picker's filter, plus a submit */
 .seed-paste {
   display: flex;

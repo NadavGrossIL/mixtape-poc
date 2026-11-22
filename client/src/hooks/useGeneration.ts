@@ -15,8 +15,8 @@ import { generationIdle, generationRun } from "../generationRun";
 // read, error and failure tick; generationRun.ts) and its abort
 // controller. The prompt, the hint, the armed seed and the card stay App's.
 // The run reads this render's prompt and seed; `onStart` is called after
-// the guards and before the request (App ends a dictation take and clears
-// the last card, save and refine there), `onSeedNamed` when the `seeding`
+// the guards and before the request (App clears the last card, save and
+// refine there), `onSeedNamed` when the `seeding`
 // event names the playlist, and `onCard` with the finished card. A failed
 // or stopped run calls neither of the last two, so the seed stays armed.
 // The "not while refining" half of the guard is App's (onGenerate).

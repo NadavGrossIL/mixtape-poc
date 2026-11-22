@@ -1,13 +1,10 @@
 import { useRef, useState } from "react";
 import LogConsole from "./LogConsole";
 import {
-  type AdjustLogLine,
-  type AdjustStreamEvent,
   type GenerateStreamEvent,
   type LogTrack,
   type MixCard,
   type SaveStreamEvent,
-  type Track,
 } from "./types";
 import { CapError, StreamDroppedError, readSSE } from "./sse";
 import { saveRefusal } from "./failures";
@@ -40,6 +37,7 @@ import usePageView from "./hooks/usePageView";
 import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
 import useDictation from "./hooks/useDictation";
 import useSeedPicker from "./hooks/useSeedPicker";
+import useRefine from "./hooks/useRefine";
 
 // The server-log console is a learning-project debugging aid, not product UI.
 //
@@ -95,19 +93,9 @@ export default function App() {
   const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
-  // second-chance refine — same real-SSE discipline as generate
-  const [adjustText, setAdjustText] = useState("");
-  const [adjusting, setAdjusting] = useState(false);
-  const [adjustError, setAdjustError] = useState<string | null>(null);
-  const [adjustErrorDetail, setAdjustErrorDetail] = useState<string | null>(null);
-  const [adjustBooked, setAdjustBooked] = useState(false); // same cap-not-fault split as `booked`
-  const [adjustStage, setAdjustStage] = useState<"adjusting" | "resolving" | null>(null);
-  const [adjustLog, setAdjustLog] = useState<AdjustLogLine[]>([]);
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const refineRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const adjustAbortRef = useRef<AbortController | null>(null);
 
   const focusPrompt = () => inputRef.current?.focus();
 
@@ -126,6 +114,14 @@ export default function App() {
     focusPrompt,
   });
 
+  // refine and swap; blocked while a mixtape is being made or saved
+  const refine = useRefine({
+    card,
+    blocked: loading || saving,
+    announce: setAnnounce,
+    onCard: setCard,
+  });
+
   // a card on screen that no playlist was pressed from: leaving asks first
   // (useUnsavedCardGuard), and so does "make another one"
   const unsavedCard = Boolean(card) && !playlistUrl;
@@ -133,7 +129,7 @@ export default function App() {
 
   const generate = async (p?: string) => {
     const thePrompt = (p ?? prompt).trim();
-    if (loading || adjusting) return;
+    if (loading || refine.adjusting) return;
     // a seed playlist alone is a valid ask ("just like this one")
     if (!thePrompt && !seed.armed) {
       setInputHint(
@@ -151,9 +147,7 @@ export default function App() {
     setPlaylistUrl(null);
     setSavedToLibrary(false);
     setSaveError(null);
-    setAdjustError(null);
-    setAdjustErrorDetail(null);
-    setAdjustText("");
+    refine.reset();
     setStage(null);
     setLogTracks([]);
     setSeedLog(null);
@@ -272,119 +266,6 @@ export default function App() {
   const stopGenerating = () => {
     abortRef.current?.abort();
   };
-
-  // Second-chance refine: send the current card + an adjustment instruction,
-  // stream the diff, swap in the merged card. One pipeline serves both the
-  // refine box and the per-track ↻ swap buttons.
-  const refine = async (instruction?: string) => {
-    const theInstruction = (instruction ?? adjustText).trim();
-    if (!card || adjusting || saving || loading) return;
-    if (!theInstruction) {
-      refineRef.current?.focus();
-      return;
-    }
-    setAdjusting(true);
-    setAdjustError(null);
-    setAdjustErrorDetail(null);
-    setAdjustBooked(false);
-    setAdjustStage(null);
-    setAdjustLog([]);
-    setAnnounce("Changing the mixtape.");
-    let changeCount = 0;
-    const controller = new AbortController();
-    adjustAbortRef.current = controller;
-    try {
-      const response = await fetch("/api/adjust/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card, adjustment: theInstruction }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const data: { error?: string } = await response.json().catch(() => ({}));
-        throw responseFailure(response.status, data, "adjust failed");
-      }
-      // widened initializer, same reason as in generate
-      let doneCard = null as MixCard | null;
-      const streamErrors = noStreamErrors();
-      await readSSE<AdjustStreamEvent>(response, (event, data) => {
-        if (event === "adjusting") {
-          setAdjustStage("adjusting");
-        } else if (event === "change") {
-          changeCount++;
-          setAdjustLog((ls) => [
-            ...ls,
-            { index: data.index, artist: data.artist, title: data.title },
-          ]);
-        } else if (event === "adjusted") {
-          setAdjustStage("resolving");
-          setAnnounce("Checking the new songs on Spotify.");
-        } else if (event === "resolved") {
-          setAdjustLog((ls) =>
-            ls.map((l) =>
-              l.index === data.index ? { ...l, resolved: data.resolved } : l
-            )
-          );
-        } else if (event === "done") {
-          doneCard = data?.card ?? null;
-        } else if (event === "error") {
-          noteStreamError(streamErrors, data, "adjust failed");
-        }
-      });
-      const streamError = streamFailure(streamErrors);
-      if (streamError) throw streamError;
-      if (!doneCard?.tracks?.length) throw new StreamDroppedError();
-      setAnnounce(
-        `Mixtape adjusted: ${changeCount} track${changeCount === 1 ? "" : "s"} changed.`
-      );
-      setCard(doneCard);
-      setAdjustText("");
-    } catch (e) {
-      const failure = classifyRunFailure(e, navigator.onLine);
-      switch (failure.kind) {
-        case "aborted":
-          setAnnounce("Stopped.");
-          break;
-        case "cap":
-          setAdjustBooked(true);
-          setAdjustError(failure.error.message);
-          setAdjustErrorDetail(failure.error.detail);
-          setAnnounce(failure.error.message);
-          break;
-        case "offline":
-          // same split as in generate
-          setAdjustError("you look offline — check your connection and try it again.");
-          break;
-        case "dropped":
-          setAdjustError("the connection dropped — try it again.");
-          break;
-        case "plain":
-          setAdjustError(failure.error.message);
-          setAdjustErrorDetail(failure.error.detail);
-          break;
-        case "fault":
-          console.error(e);
-          setAdjustError("Couldn't make that change. Try rewording it.");
-          setAdjustErrorDetail(e instanceof Error ? e.message : String(e));
-          break;
-      }
-    } finally {
-      adjustAbortRef.current = null;
-      setAdjusting(false);
-      setAdjustStage(null);
-      setAdjustLog([]);
-    }
-  };
-
-  const stopAdjusting = () => {
-    adjustAbortRef.current?.abort();
-  };
-
-  // Per-track swap: a canned instruction through the same refine pipeline.
-  const swapTrack = (i: number, t: Track) =>
-    refine(
-      `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`
-    );
 
   const saveToSpotify = async () => {
     if (!card || saving) return;
@@ -628,28 +509,16 @@ export default function App() {
             <MixtapeCard
               card={card}
               editable={editable}
-              adjusting={adjusting}
+              adjusting={refine.adjusting}
               saved={Boolean(playlistUrl)}
               onReorder={reorderCard}
-              onSwap={swapTrack}
+              onSwap={refine.swap}
             />
 
             {/* second chance: refine the card in place — only in the editable
                 window, same gating as drag-to-reorder */}
             {editable && (
-              <RefinePanel
-                text={adjustText}
-                onTextChange={setAdjustText}
-                onRefine={() => refine()}
-                onStop={stopAdjusting}
-                adjusting={adjusting}
-                stage={adjustStage}
-                log={adjustLog}
-                error={adjustError}
-                errorDetail={adjustErrorDetail}
-                booked={adjustBooked}
-                inputRef={refineRef}
-              />
+              <RefinePanel refine={refine} />
             )}
 
             {/* save to spotify — primary action; everything else stays quiet */}
@@ -659,7 +528,7 @@ export default function App() {
                 stage={saveStage}
                 verified={verifiedCount(card.tracks)}
                 total={card.tracks.length}
-                disabled={saving || adjusting}
+                disabled={saving || refine.adjusting}
                 loggedIn={loggedIn}
                 onSave={saveToSpotify}
               />
@@ -688,14 +557,12 @@ export default function App() {
                 setPlaylistUrl(null);
                 setSavedToLibrary(false);
                 setSaveError(null);
-                setAdjustError(null);
-                setAdjustErrorDetail(null);
-                setAdjustText("");
+                refine.reset();
                 inputRef.current?.focus();
               }}
               // disabled while adjusting or saving: the in-flight refine or
               // press would land its result right back on the cleared state
-              disabled={adjusting || saving}
+              disabled={refine.adjusting || saving}
               className="btn-ghost"
               style={{ marginTop: 20 }}
             >

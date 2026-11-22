@@ -1,12 +1,11 @@
-import { type RefObject } from "react";
 import StudioChatter from "./StudioChatter";
 import LogLine from "./LogLine";
 import ErrorAlert from "./ErrorAlert";
-import { type AdjustLogLine } from "../types";
+import { type Refine } from "../hooks/useRefine";
 
 // The refine box under the card: the input and REFINE / STOP, the refine
-// run's progress log, and its error. Presentational: the refine run lives
-// in App and arrives as props.
+// run's progress log, and its error. The only UI for useRefine, so it takes
+// that hook's whole return value as one prop.
 
 const cursor = (
   <span className="cursor" aria-hidden>
@@ -14,31 +13,8 @@ const cursor = (
   </span>
 );
 
-export default function RefinePanel({
-  text,
-  onTextChange,
-  onRefine,
-  onStop,
-  adjusting,
-  stage,
-  log,
-  error,
-  errorDetail,
-  booked,
-  inputRef,
-}: {
-  text: string;
-  onTextChange: (value: string) => void;
-  onRefine: () => void;
-  onStop: () => void;
-  adjusting: boolean;
-  stage: "adjusting" | "resolving" | null;
-  log: AdjustLogLine[];
-  error: string | null;
-  errorDetail: string | null;
-  booked: boolean;
-  inputRef: RefObject<HTMLInputElement>;
-}) {
+export default function RefinePanel({ refine }: { refine: Refine }) {
+  const { stage, log, error } = refine;
   return (
     <div className="refine-area">
       {/* frames refine as the optional branch, so the accent save
@@ -46,29 +22,29 @@ export default function RefinePanel({
       <div className="refine-caption">not quite right?</div>
       <div className="refine-row">
         <input
-          ref={inputRef}
-          value={text}
-          onChange={(e) => onTextChange(e.target.value)}
+          ref={refine.inputRef}
+          value={refine.text}
+          onChange={(e) => refine.setText(e.target.value)}
           onKeyDown={(e) => {
             // same IME guard as the prompt box
             if (e.key === "Enter" && !e.nativeEvent.isComposing) {
               e.preventDefault();
-              onRefine();
+              refine.refine();
             }
           }}
           placeholder="tweak it — less 80s, more instrumental…"
           className="refine-input"
-          disabled={adjusting}
+          disabled={refine.adjusting}
           aria-label="Refine the mixtape"
         />
         <button
-          onClick={adjusting ? onStop : () => onRefine()}
+          onClick={refine.adjusting ? refine.stop : () => refine.refine()}
           className="btn-ghost refine-btn"
         >
-          {adjusting ? "STOP" : "REFINE"}
+          {refine.adjusting ? "STOP" : "REFINE"}
         </button>
       </div>
-      {adjusting && (
+      {refine.adjusting && (
         /* same console-log aesthetic as generate — every line is a
            real SSE event; the live region above narrates milestones */
         <div className="progress-log refine-log" aria-hidden>
@@ -93,7 +69,7 @@ export default function RefinePanel({
         </div>
       )}
       {error && (
-        <ErrorAlert message={error} detail={errorDetail} booked={booked} />
+        <ErrorAlert message={error.message} detail={error.detail} booked={error.booked} />
       )}
     </div>
   );

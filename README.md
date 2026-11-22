@@ -25,9 +25,10 @@ resolved/unverified split is the measurement, not a bug to hide.
 - **The card is eight required keys, `track1`…`track8`, not an array.** With
   an array the model closed the list after one track 6 runs in 10; the
   reliability eval below is what caught it.
-- **Two evals**: an LLM judge with web search checks whether the liner notes
-  are true, and a pass^k run checks the agent commits a complete card every
-  time (*Evals*, below).
+- **Three evals**: a year-fit check asks whether each track comes from the
+  era the listener asked for, an LLM judge with web search checks whether
+  the liner notes are true, and a pass^k run checks the agent commits a
+  complete card every time (*Evals*, below).
 - **Built for strangers**: no login, daily caps on every paid route, one
   shared Spotify search allowance per request, and a `/healthz` that fails
   when the model's key or credit does (*Monitoring*, below).
@@ -318,9 +319,30 @@ headline rates (invented / verified-true / unverifiable, split by whether
 the track resolved on Spotify).
 
 ```sh
-node evals/generate.ts --limit 3   # pilot; drop --limit for all 18 prompts
+node evals/generate.ts --limit 3   # pilot; drop --limit for all 19 prompts
 node evals/judge.ts                # judges the latest run
 node evals/aggregate.ts            # rates + threshold gate -> summary.json
+```
+
+It grades the liner notes, not the playlist, and a full run costs $13–24
+and a day's Spotify quota, so it is an occasional check rather than a
+routine one. The last judged run is 2026-08-31 (5.7% of checkable notes
+invented), on the hand-written curator; the LangChain curator that replaced
+it has not had one.
+
+**Year fit** — is each track from the era the listener asked for?
+`fit-prompts.json` holds 26 prompts that name a year or a range, each with
+its answer key, and 12 of them are traps where Spotify's date is expected
+to mislead (reissues, singles dated by a later album). `fit.ts` passes a
+track in plain code when Spotify's album date and MusicBrainz's earliest
+release both fall inside the range; the rest need a web check, read back
+with `--checks`. First run on the current curator (2026-11-22, 10 prompts):
+74 of 80 tracks fit, 4 missed, 2 undecided — every miss a single that
+Spotify dates by its later album. About 10 cents a card, no judge.
+
+```sh
+node evals/generate.ts --prompts fit-prompts.json --only recent-2025-best
+node evals/fit.ts                  # scores the latest run -> fit.json
 ```
 
 **Reliability** — does the agent obey its own output contract?
@@ -338,13 +360,16 @@ node evals/reliability.ts --only app-fastest-rap --trials 10
 ```
 
 **Thresholds** — `evals/thresholds.json` turns a run into a gate: breaching
-one exits non-zero. It ships empty on purpose. Anthropic publishes no
-recommended numbers (they're task- and risk-specific), so these get set from
-a baseline run, never from a guess. Unset = report-only; a metric with an
-empty denominator reports "no data — skipped" rather than failing a build on
-an absence.
+one exits non-zero. Anthropic publishes no recommended numbers (they're
+task- and risk-specific), so these get set from a baseline run, never from
+a guess. The truthfulness gates were set on 2026-08-18 from a measured run
+and sit deliberately loose of it, so they catch a collapse, not a drift.
+Reliability and year fit have none yet. Unset = report-only; a metric with
+an empty denominator reports "no data — skipped" rather than failing a build
+on an absence.
 
-Generation, judging and reliability cost real API money; the selftest doesn't.
+Generation, judging and reliability cost real API money; the selftest and
+the year-fit scorer don't.
 
 ## Docs
 

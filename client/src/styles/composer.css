@@ -41,7 +41,7 @@
    live (the +) instead of floating as a sibling of the example chips */
 .seed-entry {
   font-family: "Space Mono", monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   background: transparent;
   color: var(--ink-dim);
   border: none;
@@ -63,7 +63,7 @@
   border: none;
   color: var(--ink);
   font-family: "Space Grotesk", sans-serif;
-  font-size: 16px; /* <16px triggers iOS focus zoom */
+  font-size: var(--fs-input); /* <16px triggers iOS focus zoom */
   line-height: 1.4;
   padding: 12px 14px;
   resize: none;
@@ -94,7 +94,7 @@
   border-bottom: 1px solid color-mix(in srgb, var(--line) 45%, transparent);
   padding: 8px 6px 8px 12px;
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--ink-dim);
 }
 
@@ -119,7 +119,7 @@
   border: none;
   color: var(--accent-soft);
   font-family: "Space Mono", monospace;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   padding: 0 6px;
   flex-shrink: 0;
@@ -157,7 +157,7 @@
   justify-content: space-between;
   gap: 8px;
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   letter-spacing: 1px;
   color: var(--ink-dim);
 }
@@ -167,7 +167,7 @@
   border: none;
   color: var(--ink-faint);
   font-family: "Space Mono", monospace;
-  font-size: 13px;
+  font-size: var(--fs-sm);
   cursor: pointer;
   padding: 0 4px;
   position: relative;
@@ -186,7 +186,7 @@
 
 .seed-explainer {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   line-height: 1.5;
   color: var(--ink-faint);
 }
@@ -199,7 +199,7 @@
 
 .seed-retry {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   background: transparent;
   color: var(--ink-dim);
   border: 1px solid var(--line);
@@ -266,7 +266,7 @@
 
 .input-hint {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--accent-soft);
   margin-top: 10px;
   max-width: 560px;
@@ -274,7 +274,7 @@
 
 .scope-line {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--ink-faint);
   margin-top: 10px;
   text-align: center;
@@ -284,7 +284,7 @@
    One tier above the faint captions: headings must outrank what they organize */
 .section-note {
   font-family: "Space Mono", monospace;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   letter-spacing: 2px;
   color: var(--ink-dim);
   text-align: center;
@@ -317,7 +317,7 @@
   border-radius: 4px;
   color: var(--ink);
   font-family: "Space Grotesk", sans-serif;
-  font-size: 16px; /* <16px triggers iOS focus zoom */
+  font-size: var(--fs-input); /* <16px triggers iOS focus zoom */
   padding: 8px 12px;
   min-height: 44px;
   transition: border-color 0.15s ease;
@@ -373,7 +373,7 @@
 
 .seed-item-name {
   font-family: "Space Grotesk", sans-serif;
-  font-size: 14px;
+  font-size: var(--fs-md);
   font-weight: 700;
   color: var(--ink);
   min-width: 0;
@@ -382,7 +382,7 @@
 
 .seed-item-meta {
   font-family: "Space Mono", monospace;
-  font-size: 11px;
+  font-size: var(--fs-2xs);
   color: var(--ink-faint);
   flex-shrink: 0;
   white-space: nowrap;
@@ -390,13 +390,13 @@
 
 .seed-note {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--ink-faint);
 }
 
 .seed-reauth {
   font-family: "Space Mono", monospace;
-  font-size: 12px;
+  font-size: var(--fs-xs);
   color: var(--accent-soft);
   /* a real touch target, like every other control on the page */
   min-height: 44px;
@@ -416,7 +416,7 @@
 
 .chip {
   font-family: "Space Mono", monospace;
-  font-size: 13px; /* control tier: chips must out-size the labels around them */
+  font-size: var(--fs-sm); /* control tier: chips must out-size the labels around them */
   background: transparent;
   color: var(--ink-dim);
   border: 1px dashed var(--line);

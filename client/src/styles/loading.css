@@ -31,7 +31,7 @@
    log's own type */
 .studio-chatter {
   font-family: "Space Mono", monospace;
-  font-size: 12.5px;
+  font-size: var(--fs-xs);
   color: var(--ink);
   margin-bottom: 4px;
   min-height: 1.4em; /* line swaps never shift the log below */

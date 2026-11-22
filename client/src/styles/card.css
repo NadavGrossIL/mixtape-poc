@@ -392,6 +392,12 @@
   text-wrap: balance; /* no one-word last line under the button */
 }
 
+/* the draft status: the one phrase in the note that must not be skimmed */
+.save-note b {
+  color: var(--ink);
+  font-weight: 700;
+}
+
 .playlist-link {
   margin-top: 20px;
   font-family: "Space Mono", monospace;

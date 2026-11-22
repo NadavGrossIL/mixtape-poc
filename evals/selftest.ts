@@ -15,6 +15,8 @@ import { aggregateRun, renderSummary, noDataReason } from "./aggregate.ts";
 import { passAtK, passHatK, checkThresholds, renderChecks } from "./metrics.ts";
 import { summarizeTrials, renderReliability } from "./reliability.ts";
 import { extractYears, groundNote, groundRun } from "./grounding.ts";
+import { readJson } from "./util.ts";
+import { inRange, classifyTrack, earliestYear, summarizeFit, renderFit, yearOf } from "./fit.ts";
 
 // --- Finding 9: enforceVerdict -----------------------------------------------
 
@@ -336,6 +338,87 @@ assert.deepStrictEqual(
   ["grounded", "mismatch", "no-year-in-note"]
 );
 assert.deepStrictEqual(g.counts, { grounded: 1, mismatch: 1, "no-year-in-note": 1 });
+
+// --- fit-prompts.json: the year-and-era case file is well-formed --------------
+
+// Each case carries its own answer key: the inclusive range of ORIGINAL
+// release years a track must fall in (null = open on that side). A typo here
+// would silently mis-score every track on the card, so the shape is checked.
+const fitCases = readJson(path.join(import.meta.dirname, "fit-prompts.json"));
+assert.ok(Array.isArray(fitCases) && fitCases.length >= 20, "fit-prompts: at least 20 cases");
+assert.strictEqual(new Set(fitCases.map((c: any) => c.id)).size, fitCases.length, "fit-prompts: ids are unique");
+for (const c of fitCases) {
+  assert.ok(c.id && c.category && typeof c.prompt === "string" && c.prompt.trim(), `fit-prompts: ${c.id} is incomplete`);
+  const { from, to } = c.era ?? {};
+  for (const y of [from, to]) {
+    assert.ok(y === null || (Number.isInteger(y) && y >= 1900 && y <= 2100), `fit-prompts: ${c.id} has a bad year`);
+  }
+  assert.ok(from !== null || to !== null, `fit-prompts: ${c.id} has no era at all`);
+  assert.ok(from === null || to === null || from <= to, `fit-prompts: ${c.id} era runs backwards`);
+  assert.ok(c.trap === null || (typeof c.trap === "string" && c.trap.trim()), `fit-prompts: ${c.id} trap must be null or a reason`);
+}
+
+// --- Year fit: code may pass a track, never fail one ---------------------------
+
+const nineties = { from: 1990, to: 1999 };
+assert.strictEqual(inRange(1989, nineties), false);
+assert.strictEqual(inRange(1990, nineties), true);
+assert.strictEqual(inRange(1999, nineties), true);
+assert.strictEqual(inRange(2000, nineties), false);
+assert.strictEqual(inRange(1975, { from: null, to: 1999 }), true, "open start");
+assert.strictEqual(inRange(2024, { from: 2020, to: null }), true, "open end");
+assert.strictEqual(inRange(null, nineties), null, "no year is no data, not a miss");
+assert.strictEqual(yearOf("2004-01-27"), 2004);
+assert.strictEqual(yearOf(null), null);
+
+assert.strictEqual(classifyTrack(1994, 1994, nineties).status, "fit");
+// The "Disease" shape: Spotify's album date is in range, the true date is not.
+assert.deepStrictEqual(classifyTrack(2025, 2024, { from: 2025, to: 2025 }), {
+  status: "check", why: "MusicBrainz's date is outside the range",
+});
+// Both sources outside is still only a "check": both can be reissue dates.
+assert.strictEqual(classifyTrack(2001, 1998, { from: 1980, to: 1989 }).status, "check");
+assert.strictEqual(classifyTrack(1994, null, nineties).why, "not found in MusicBrainz");
+
+// Earliest exact-title match; a different song and a low-score hit are ignored.
+assert.strictEqual(
+  earliestYear(
+    [
+      { score: 100, title: "Henry", "first-release-date": "2026-08-14" },
+      { score: 100, title: "Henry (Demo)", "first-release-date": "2016-06-24" },
+      { score: 100, title: "Henry Lee", "first-release-date": "1996-02-05" },
+      { score: 40, title: "Henry", "first-release-date": "1950-01-01" },
+      { score: 100, title: "Henry" },
+    ],
+    "Henry - 2026 Remaster"
+  ),
+  2016
+);
+assert.strictEqual(earliestYear([], "Henry"), null);
+
+const fitRow = (n: number, spotifyYear: number, mbYear: number | null, trap = true) => ({
+  id: "recent-2025-best", n, trap, era: { from: 2025, to: 2025 }, artist: "A", title: `T${n}`,
+  spotifyYear, mbYear, ...classifyTrack(spotifyYear, mbYear, { from: 2025, to: 2025 }),
+});
+const fitRows = [fitRow(1, 2025, 2025), fitRow(2, 2025, 2024), fitRow(3, 2024, 2024), fitRow(4, 2025, null), fitRow(5, 2025, null)];
+const fitPending = summarizeFit(fitRows);
+assert.strictEqual(fitPending.all.pending, 4);
+assert.strictEqual(fitPending.all.fitRate, 1, "provisional: only the code-passed track is decided");
+const fitDone = summarizeFit(fitRows, {
+  "recent-2025-best#2": { verdict: "miss", fact: "single released October 2024" },
+  "recent-2025-best#3": { verdict: "miss" },
+  "recent-2025-best#4": { verdict: "fit" },
+  "recent-2025-best#5": { verdict: "unsure" },
+});
+assert.deepStrictEqual(
+  { fit: fitDone.all.fit, miss: fitDone.all.miss, unsure: fitDone.all.unsure, pending: fitDone.all.pending, byCode: fitDone.all.byCode },
+  { fit: 2, miss: 2, unsure: 1, pending: 0, byCode: 1 }
+);
+assert.strictEqual(fitDone.all.fitRate, 0.5, "unsure is left out of the rate");
+assert.strictEqual(fitDone.all.misled, 1, "Spotify showed 2025 for a 2024 single");
+assert.strictEqual(fitDone.all.ignored, 1, "Spotify showed 2024 and it was picked anyway");
+assert.strictEqual(fitDone.plain.fitRate, null, "no plain tracks is no data, never 0%");
+assert.match(renderFit("run", fitDone), /1 misled by Spotify's date · 1 picked despite it/);
 
 console.log(renderReliability(rel) + "\n");
 console.log("[selftest] all assertions passed");

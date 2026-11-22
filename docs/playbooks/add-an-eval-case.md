@@ -21,6 +21,25 @@ Deterministic checks are not eval cases: a fixture + assert in
 3. Read `evals/runs/<ts>/verdicts.json` for the card by hand. The judge is
    non-deterministic; one card proves the prompt *works*, not a rate.
 
+## The other case file: `evals/fit-prompts.json`
+
+A separate set (2026-11-22) for a different question: did every track obey
+the year or era the listener asked for. Each case carries its answer key,
+`era: { from, to }` — the inclusive range of ORIGINAL release years, `null`
+for an open side — and `trap`: `null`, or one line on why Spotify's date is
+expected to mislead there. It is kept out of `prompts.json` on purpose, so
+the truthfulness rates and their cost do not move.
+
+- Only asks with one right answer per track belong: a year, a decade, a
+  range. "Fastest", "longest", "biggest" and "one-hit wonder" were tried in
+  the 2026-11-22 pilot and two blind checkers could not agree on them.
+- `node evals/generate.ts --prompts fit-prompts.json` generates its cards
+  (about 10 cents a card, no judge); `node evals/fit.ts` scores them. Code
+  passes a track when Spotify and MusicBrainz both date it inside the range;
+  the rest need a web check, read back with `--checks <file>`. The header of
+  `evals/fit.ts` has the first result and the fix that was tried and dropped.
+- `selftest.ts` checks the file's shape; a backwards or missing era fails CI.
+
 ## What it costs
 
 - Judge ≈ **$1.18/card** (max $1.66), ~2.9 min wall clock, ~10 web searches

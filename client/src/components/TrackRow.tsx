@@ -108,6 +108,9 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
+          // and out of the keyboard sensor's: Space on the button is a swap,
+          // but bubbling to the row it would pick the row up instead
+          onKeyDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             // a plain click must neither open the track nor start a drag
             e.preventDefault();

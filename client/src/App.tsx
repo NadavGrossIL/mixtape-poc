@@ -9,6 +9,8 @@ import {
 import {
   DndContext,
   closestCenter,
+  KeyboardCode,
+  KeyboardSensor,
   MouseSensor,
   TouchSensor,
   useSensor,
@@ -18,6 +20,7 @@ import {
 import {
   SortableContext,
   arrayMove,
+  sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { isHandingOff, openInSpotify } from "./spotifyLink";
@@ -44,6 +47,7 @@ import {
   isQuotaEvent,
   readSSE,
 } from "./sse";
+import { isNetworkFailure, saveRefusal } from "./failures";
 import DeckHero from "./components/DeckHero";
 import SampleCard from "./components/SampleCard";
 import SpotifyMark from "./components/SpotifyMark";
@@ -169,6 +173,17 @@ const RECENT_SHOWN = 3;
 
 const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
 
+// Scroll something that just mounted into view and move focus onto it, so
+// eye and screen reader land in the same place. Smooth unless the visitor
+// asked for less motion; focus without a second, instant scroll.
+function bringIntoView(scrollTo: HTMLElement, focusOn: HTMLElement = scrollTo) {
+  const reduce =
+    typeof window.matchMedia === "function" &&
+    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  scrollTo.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
+  focusOn.focus({ preventScroll: true });
+}
+
 export default function LinerNotes() {
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
@@ -188,6 +203,8 @@ export default function LinerNotes() {
   const [savedToLibrary, setSavedToLibrary] = useState(false);
   const [copied, setCopied] = useState<"tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveBooked, setSaveBooked] = useState(false); // same cap-not-fault split as `booked`
+  const [saveErrorTick, setSaveErrorTick] = useState(0); // same job as errorTick
   // "your mixtapes": this browser's presses, newest first (see recent.ts)
   const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
   const [showAllRecent, setShowAllRecent] = useState(false);
@@ -239,6 +256,9 @@ export default function LinerNotes() {
   const refineRef = useRef<HTMLInputElement | null>(null);
   const cardTitleRef = useRef<HTMLHeadingElement | null>(null);
   const errorRef = useRef<HTMLDivElement | null>(null);
+  const saveErrorRef = useRef<HTMLDivElement | null>(null);
+  const pressedRef = useRef<HTMLDivElement | null>(null);
+  const pressedOpenRef = useRef<HTMLAnchorElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const adjustAbortRef = useRef<AbortController | null>(null);
 
@@ -251,21 +271,54 @@ export default function LinerNotes() {
   useEffect(() => {
     const el = errorRef.current;
     if (!errorTick || !el) return;
-    const reduce =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
-    el.focus({ preventScroll: true });
+    bringIntoView(el);
   }, [errorTick]);
+
+  // A save that worked unmounts the sticky save button and mounts the
+  // OPEN IN SPOTIFY block in the page's flow, under the card — on a phone,
+  // below the fold, so the button just vanished and nothing said it worked.
+  // Bring the block up and put focus on its one action. playlistUrl only
+  // ever turns non-null in saveToSpotify, so this is "a save just landed".
+  useEffect(() => {
+    if (playlistUrl && pressedRef.current && pressedOpenRef.current) {
+      bringIntoView(pressedRef.current, pressedOpenRef.current);
+    }
+  }, [playlistUrl]);
+
+  // A failed save renders its line under the save notes, which a phone
+  // scrolled up to the sticky button can't see — same fix as errorTick.
+  useEffect(() => {
+    const el = saveErrorRef.current;
+    if (!saveErrorTick || !el) return;
+    bringIntoView(el);
+  }, [saveErrorTick]);
 
   // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
   // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
   // finger can still scroll the list — moving during the hold cancels the drag.
+  // Keyboard: the row already announces itself as sortable ("press space bar
+  // to pick up"), so Space picks up, arrows move, Space drops, Escape
+  // cancels. Enter is taken out of the start keys — on a row Enter opens the
+  // song, and dnd-kit's default would have made it pick the row up instead.
+  // It stays an end key: mid-drag it drops (and dnd-kit swallows the key)
+  // rather than opening the link with the row still in the air.
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+      keyboardCodes: {
+        start: [KeyboardCode.Space],
+        cancel: [KeyboardCode.Esc],
+        end: [KeyboardCode.Space, KeyboardCode.Enter, KeyboardCode.Tab],
+      },
+    })
   );
   const justDragged = useRef(false);
+  // a keyboard drop's new position, focused once the reordered card renders
+  // (see onDragEnd)
+  const refocusRowRef = useRef<number | null>(null);
+  const trackListRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     fetch("/auth/status")
@@ -349,9 +402,21 @@ export default function LinerNotes() {
   }, [loggedIn]);
 
   // Move focus to the result when it lands, so keyboard and
-  // screen-reader users aren't stranded back at the prompt.
+  // screen-reader users aren't stranded back at the prompt. Only when a card
+  // arrives where there was none: a reorder, a swap or a refine is a new
+  // card object too, and focusing the title on those jumped the page away
+  // from the row the visitor was working on.
+  const hadCardRef = useRef(false);
   useEffect(() => {
-    if (card) cardTitleRef.current?.focus();
+    if (card && !hadCardRef.current) cardTitleRef.current?.focus();
+    hadCardRef.current = Boolean(card);
+  }, [card]);
+
+  useEffect(() => {
+    const i = refocusRowRef.current;
+    if (i === null) return;
+    refocusRowRef.current = null;
+    (trackListRef.current?.children[i] as HTMLElement | undefined)?.focus();
   }, [card]);
 
   const seedPlaylist =
@@ -585,6 +650,8 @@ export default function LinerNotes() {
       // armed seed must not silently ride along into the next generation.
       // A failed run keeps it, so "try the same prompt again" stays true.
       setSeedId("");
+      // a pasted seed too: seedPlaylist falls back to it once seedId is empty
+      setPastedSeed(null);
       setSeedOpen(false);
     } catch (e) {
       if (e instanceof Error && e.name === "AbortError") {
@@ -594,6 +661,11 @@ export default function LinerNotes() {
         setError(e.message);
         setErrorDetail(e.detail);
         setAnnounce(e.message);
+        setErrorTick((t) => t + 1);
+      } else if (isNetworkFailure(e, navigator.onLine)) {
+        // the visitor's connection, not the curator: no "that's on us", and
+        // no detail line — the browser's "Failed to fetch" helps nobody
+        setError("you look offline — check your connection and try the same prompt again.");
         setErrorTick((t) => t + 1);
       } else if (e instanceof StreamDroppedError) {
         setError("the connection dropped mid-run — try the same prompt again.");
@@ -702,6 +774,9 @@ export default function LinerNotes() {
         setAdjustError(e.message);
         setAdjustErrorDetail(e.detail);
         setAnnounce(e.message);
+      } else if (isNetworkFailure(e, navigator.onLine)) {
+        // same split as in generate
+        setAdjustError("you look offline — check your connection and try it again.");
       } else if (e instanceof StreamDroppedError) {
         setAdjustError("the connection dropped — try it again.");
       } else if (e instanceof PlainError) {
@@ -735,6 +810,8 @@ export default function LinerNotes() {
     const uris = card.tracks.filter((t) => t.resolved).map((t) => t.spotifyUri);
     if (!uris.length) {
       setSaveError("No verified songs to save.");
+      setSaveBooked(false);
+      setSaveErrorTick((t) => t + 1);
       return;
     }
     setSaving(true);
@@ -754,6 +831,8 @@ export default function LinerNotes() {
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
+        const refusal = saveRefusal(response.status, data.error);
+        if (refusal) throw new CapError(refusal);
         throw new Error(data.error || "save failed");
       }
       // widened initializers, same reason as in generate
@@ -768,7 +847,11 @@ export default function LinerNotes() {
           saved = Boolean(data?.saved);
         } else if (event === "error") streamError = data?.message || "save failed";
       });
-      if (streamError) throw new Error(streamError);
+      if (streamError) {
+        const refusal = saveRefusal(null, streamError);
+        if (refusal) throw new CapError(refusal);
+        throw new Error(streamError);
+      }
       if (!url) throw new Error("no playlist url");
       setAnnounce(
         saved
@@ -783,8 +866,19 @@ export default function LinerNotes() {
       );
       loadLatest();
     } catch (e) {
-      console.error(e);
-      setSaveError("Couldn't save it to Spotify. Try again.");
+      // a cap (today's saves, Spotify's daily quota) is the server's own
+      // line: "try again" is wrong advice until tomorrow. Anything else is a
+      // fault, and its text is for the log, not the visitor (failures.ts).
+      if (e instanceof CapError) {
+        setSaveError(e.message);
+        setSaveBooked(true);
+        setAnnounce(e.message);
+      } else {
+        console.error(e);
+        setSaveError("Couldn't save it to Spotify. Try again.");
+        setSaveBooked(false);
+      }
+      setSaveErrorTick((t) => t + 1);
     } finally {
       setSaving(false);
       setSaveStage(null);
@@ -887,11 +981,18 @@ export default function LinerNotes() {
   // order, so the pressed playlist follows whatever order is on the card
   const editable = Boolean(card) && !playlistUrl && !saving;
 
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
+  const onDragEnd = ({ active, over, activatorEvent }: DragEndEvent) => {
     // the click that follows a drop must not open the track
     justDragged.current = true;
     setTimeout(() => (justDragged.current = false), 0);
     if (over && active.id !== over.id) {
+      // A keyboard drop must leave focus on the row that moved. Row keys are
+      // positional (sortableId), so the moved row remounts and focus falls to
+      // the page — dnd-kit's own focus restore looks the row up by its old,
+      // now-gone id. arrayMove puts it at `over`'s index.
+      if (activatorEvent instanceof KeyboardEvent && card) {
+        refocusRowRef.current = card.tracks.map(sortableId).indexOf(over.id as string);
+      }
       setCard((c) => {
         if (!c) return c; // unreachable: a drag can only start on a rendered card
         const ids = c.tracks.map(sortableId);
@@ -1001,7 +1102,10 @@ export default function LinerNotes() {
                       if (inputHint) setInputHint(null);
                     }}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
+                      // not while an IME is composing: that Enter confirms
+                      // the composition, and Safari reports it as a plain
+                      // Enter — it spent a generation on a half-typed prompt
+                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         generate();
                       }
@@ -1522,7 +1626,7 @@ export default function LinerNotes() {
                     items={card.tracks.map(sortableId)}
                     strategy={verticalListSortingStrategy}
                   >
-                    <div className="track-list">
+                    <div className="track-list" ref={trackListRef}>
                       {card.tracks.map((t, i) => (
                         <TrackRow
                           key={sortableId(t, i)}
@@ -1563,7 +1667,8 @@ export default function LinerNotes() {
                     value={adjustText}
                     onChange={(e) => setAdjustText(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") {
+                      // same IME guard as the prompt box
+                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
                         e.preventDefault();
                         refine();
                       }
@@ -1668,12 +1773,13 @@ export default function LinerNotes() {
               </>
             )}
             {playlistUrl && (
-              <div className="pressed">
+              <div className="pressed" ref={pressedRef}>
                 {/* the one primary action after pressing: open it. The https
                     href stays in the DOM (copy, middle-click, no-app fallback);
                     a desktop click hands off to the installed app, a phone
                     tap lets the anchor navigate (see spotifyLink.ts). */}
                 <a
+                  ref={pressedOpenRef}
                   href={playlistUrl}
                   target="_blank"
                   rel="noopener noreferrer"
@@ -1728,7 +1834,12 @@ export default function LinerNotes() {
               </div>
             )}
             {saveError && (
-              <div className="error" role="alert">
+              <div
+                className={"error" + (saveBooked ? " booked" : "")}
+                role="alert"
+                tabIndex={-1}
+                ref={saveErrorRef}
+              >
                 {saveError}
               </div>
             )}

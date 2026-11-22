@@ -369,6 +369,13 @@
   inset: -8px;
 }
 
+/* the global ring is --accent-soft, which disappears on the paper card —
+   the same dark ring .track-row uses, outside the button's own border */
+.swap-btn:focus-visible {
+  outline: 2px solid var(--paper-ink);
+  outline-offset: 2px;
+}
+
 .swap-btn:hover {
   color: var(--paper-ink);
   border-color: var(--paper-dim);
@@ -455,6 +462,10 @@
   color: var(--ink-dim);
   text-align: center;
   padding: 8px;
+  /* a 44px touch target: 8 + 28 + 8. The taller line box is handed back
+     with negative margins, so the text sits where it did */
+  line-height: 28px;
+  margin: -5px 0;
 }
 
 .pressed-mine summary:hover {

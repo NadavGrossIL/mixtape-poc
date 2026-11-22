@@ -303,9 +303,9 @@
   flex-direction: column;
   align-items: center;
   width: 100%;
-  /* a full tier of air above the examples: last-priority footnote, and the
-     only dashed pills left on the page — clearly not the composer's kin */
-  margin-top: 40px;
+  /* close under the composer they fill: the first way in, not a footnote.
+     Still dashed, so they never read as the composer's own controls */
+  margin-top: 20px;
 }
 
 /* ── seed picker controls (inside .seed-panel) ── */

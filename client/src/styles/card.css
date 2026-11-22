@@ -660,6 +660,28 @@
   color: var(--sample-dim);
   border-top: 1px solid var(--sample-line);
   padding-top: 10px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+/* the sample's one control: hands its prompt to the composer */
+.sample-use {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-xs);
+  color: var(--shell-raised);
+  background: transparent;
+  border: 1px solid var(--shell-raised);
+  border-radius: 999px;
+  padding: 6px 12px;
+  min-height: 36px;
+  cursor: pointer;
+}
+
+.sample-use:hover {
+  background: var(--shell-raised);
+  color: var(--sample-paper);
 }
 
 @media (max-width: 520px) {

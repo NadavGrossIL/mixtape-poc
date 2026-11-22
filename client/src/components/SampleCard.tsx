@@ -26,16 +26,19 @@ const SAMPLE = {
   ],
 };
 
-// Static on purpose: no links, no hover, no drag. It is a picture of the
-// result, and a row that reacted to the pointer would read as the result.
+// The rows are static on purpose: no links, no hover, no drag. It is a
+// picture of the result, and a row that reacted to the pointer would read
+// as the result. Its one control says what the sample is for: it hands its
+// prompt to the composer (`onPick`), so a card that looked like it should
+// do something does the one honest thing — "make me one like this".
 // No accent hue either: it is drawn in the wall's own cream line, like the
 // cassette in the header, so the one bright paper object on the site is the
 // real card.
-export default function SampleCard() {
+export default function SampleCard({ onPick }: { onPick: (prompt: string) => void }) {
   return (
     <section className="sample" aria-labelledby="sample-heading">
       <div className="section-note" id="sample-heading">
-        what you get
+        example mixtape
       </div>
       <div className="card sample-card">
         <div className="spine">
@@ -65,7 +68,14 @@ export default function SampleCard() {
             ))}
           </div>
           <div className="sample-more">
-            + {SAMPLE.total - SAMPLE.tracks.length} more songs
+            <span>+ {SAMPLE.total - SAMPLE.tracks.length} more songs</span>
+            <button
+              type="button"
+              className="sample-use"
+              onClick={() => onPick(SAMPLE.prompt)}
+            >
+              use this prompt ↑
+            </button>
           </div>
         </div>
       </div>

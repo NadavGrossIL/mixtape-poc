@@ -93,6 +93,15 @@ function openWeb(webUrl: string) {
   window.open(url.href, "_blank", "noopener,noreferrer");
 }
 
+// True only while openInSpotify is pointing the page at a spotify: URI.
+// Chromium runs beforeunload for any navigation the page starts, before it
+// knows the target is an external app — so App.tsx's unsaved-card guard
+// checks this and stays quiet for a hand-off that never leaves the page.
+let handingOff = false;
+export function isHandingOff(): boolean {
+  return handingOff;
+}
+
 // Call from a click handler BEFORE preventDefault(). Returns true when it took
 // the click (desktop: the URI hand-off is running, the caller must
 // preventDefault); false when the caller should let the native https anchor
@@ -116,7 +125,13 @@ export function openInSpotify(webUrl: string): boolean {
   window.addEventListener("pagehide", noteHandoff);
   document.addEventListener("visibilitychange", noteHandoff);
 
+  handingOff = true;
   window.location.href = uri;
+  // beforeunload, if it fires, fires inside the assignment above; clear the
+  // flag on the next task so a real reload a moment later is still guarded
+  window.setTimeout(() => {
+    handingOff = false;
+  }, 0);
 
   window.setTimeout(() => {
     window.removeEventListener("blur", noteHandoff);

@@ -23,7 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { openInSpotify } from "./spotifyLink";
+import { isHandingOff, openInSpotify } from "./spotifyLink";
 import { shareOrCopy } from "./share";
 import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
 import { parseLatestResponse, pressedAgo, shelfFor, type LatestMixtape } from "./latest";
@@ -852,6 +852,7 @@ export default function LinerNotes() {
   useEffect(() => {
     if (!unsavedCard) return;
     const warn = (e: BeforeUnloadEvent) => {
+      if (isHandingOff()) return; // a song opening in the Spotify app, not leaving
       e.preventDefault();
       e.returnValue = ""; // older Chrome/Safari need it set to show the prompt
     };
@@ -2190,10 +2191,9 @@ export default function LinerNotes() {
                     the person who built the app), will it ask for my login.
                     Answered here, with the honest number of taps left. */}
                 <div className="save-note">
-                  <b>not on Spotify yet</b> —{" "}
-                  {loggedIn
-                    ? "saving adds it to your library"
-                    : "no login needed: we make the playlist, you tap + in Spotify to keep it"}
+                  <b>not on Spotify yet</b>
+                  {!loggedIn &&
+                    " — no login needed: we make the playlist, you tap + in Spotify to keep it"}
                 </div>
                 {cardUnverified > 0 && (
                   <div className="save-note">
@@ -2290,9 +2290,9 @@ export default function LinerNotes() {
                 setAdjustText("");
                 inputRef.current?.focus();
               }}
-              // disabled while adjusting: the in-flight refine would land its
-              // merged card right back on the cleared state
-              disabled={adjusting}
+              // disabled while adjusting or saving: the in-flight refine or
+              // press would land its result right back on the cleared state
+              disabled={adjusting || saving}
               className="btn-ghost"
               style={{ marginTop: 20 }}
             >

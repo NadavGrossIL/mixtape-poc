@@ -138,6 +138,9 @@
 .track-list {
   display: flex;
   flex-direction: column;
+  list-style: none;
+  margin: 0;
+  padding: 0;
 }
 
 /* A song row, laid out like a podcast app's episode list (Apple Podcasts,
@@ -159,6 +162,7 @@
   text-decoration: none;
   color: var(--paper-ink);
   transition: background 0.15s ease, transform 0.15s ease;
+  position: relative; /* holds the title link's overlay */
 }
 
 .track-row:hover {
@@ -170,7 +174,25 @@
   filter: saturate(1.1);
 }
 
-.track-row:focus-visible {
+/* The row is an <li>; its link is the title, stretched over the whole row
+   by this ::after so a click anywhere opens the song (TrackRow says why).
+   The grip, the replace button and the unverified tag sit above it
+   (position: relative; z-index: 1). The focus ring is drawn on the overlay,
+   so a focused link still rings the whole row as it did. */
+.track-title a {
+  color: inherit;
+  text-decoration: none;
+  cursor: inherit; /* the row's grab / pointer */
+}
+.track-title a::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+}
+.track-title a:focus-visible {
+  outline: none;
+}
+.track-title a:focus-visible::after {
   outline: 2px solid var(--paper-ink);
   outline-offset: -2px;
 }
@@ -189,6 +211,7 @@
    the ::after widens the touch target without widening the row */
 .grip {
   position: relative;
+  z-index: 1; /* above the title link's overlay */
   flex-shrink: 0;
   display: flex;
   align-items: center;
@@ -281,6 +304,8 @@
    the chrome column beside the swap button, where on a phone it squeezed
    the title to ~110px and had to shrink to 9.5px to fit at all */
 .unverified {
+  position: relative;
+  z-index: 1; /* above the title link's overlay, so its tooltip shows */
   display: inline-block;
   margin-top: 4px;
   font-family: "Space Mono", monospace;
@@ -414,6 +439,7 @@
   justify-content: center;
   transition: color 0.15s ease, border-color 0.15s ease;
   position: relative;
+  z-index: 1; /* above the title link's overlay */
 }
 
 .swap-label {

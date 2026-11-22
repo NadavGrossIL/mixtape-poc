@@ -106,35 +106,37 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
             unverified
           </div>
         )}
+        {/* under the note, as podcast apps put an episode's actions: beside
+            the title it squeezed a phone's song name onto three lines */}
+        {editable && (
+          <button
+            type="button"
+            className="swap-btn"
+            disabled={adjusting}
+            title="Replace this song with a different one that fits the mixtape"
+            aria-label={`Replace track ${index + 1}, ${t.artist} — ${t.title}, with a different song`}
+            // keep the button out of the row's drag-activation path —
+            // each sensor listens on its own start event
+            onPointerDown={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            onTouchStart={(e) => e.stopPropagation()}
+            // and out of the keyboard sensor's: Space on the button is a replace,
+            // but bubbling to the row it would pick the row up instead
+            onKeyDown={(e) => e.stopPropagation()}
+            onClick={(e) => {
+              // a plain click must neither open the track nor start a drag
+              e.preventDefault();
+              e.stopPropagation();
+              onSwap();
+            }}
+          >
+            {/* "↻ swap" read as reload or as "swap places"; the verb says
+                what happens to this song, and phones keep the word too */}
+            <span aria-hidden className="swap-icon">↻</span>
+            <span className="swap-label">replace</span>
+          </button>
+        )}
       </div>
-      {editable && (
-        <button
-          type="button"
-          className="swap-btn"
-          disabled={adjusting}
-          title="Replace this song with a different one that fits the mixtape"
-          aria-label={`Replace track ${index + 1}, ${t.artist} — ${t.title}, with a different song`}
-          // keep the button out of the row's drag-activation path —
-          // each sensor listens on its own start event
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          // and out of the keyboard sensor's: Space on the button is a replace,
-          // but bubbling to the row it would pick the row up instead
-          onKeyDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            // a plain click must neither open the track nor start a drag
-            e.preventDefault();
-            e.stopPropagation();
-            onSwap();
-          }}
-        >
-          {/* "↻ swap" read as reload or as "swap places"; the verb says
-              what happens to this song, and phones keep the word too */}
-          <span aria-hidden className="swap-icon">↻</span>
-          <span className="swap-label">replace</span>
-        </button>
-      )}
     </a>
   );
 }

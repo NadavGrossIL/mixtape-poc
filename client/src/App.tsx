@@ -1,5 +1,4 @@
-import { useEffect, useRef, useState } from "react";
-import { shareOrCopy } from "./share";
+import { useRef, useState } from "react";
 import LogConsole from "./LogConsole";
 import {
   type AdjustLogLine,
@@ -12,7 +11,7 @@ import {
 } from "./types";
 import { CapError, StreamDroppedError, readSSE } from "./sse";
 import { saveRefusal } from "./failures";
-import { reorderTracks, trackListText, verifiedCount } from "./card";
+import { reorderTracks, verifiedCount } from "./card";
 import {
   classifyRunFailure,
   noStreamErrors,
@@ -65,17 +64,6 @@ function debugRequested(): boolean {
 
 const SHOW_LOGS = import.meta.env.DEV || debugRequested();
 
-// Scroll something that just mounted into view and move focus onto it, so
-// eye and screen reader land in the same place. Smooth unless the visitor
-// asked for less motion; focus without a second, instant scroll.
-function bringIntoView(scrollTo: HTMLElement, focusOn: HTMLElement = scrollTo) {
-  const reduce =
-    typeof window.matchMedia === "function" &&
-    window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  scrollTo.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
-  focusOn.focus({ preventScroll: true });
-}
-
 export default function App() {
   // first, in this order: their mount requests go auth, then latest, then view
   const { loggedIn, isOwner } = useSession();
@@ -97,7 +85,6 @@ export default function App() {
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
-  const [copied, setCopied] = useState<"tracks" | "share" | null>(null);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveBooked, setSaveBooked] = useState(false); // same cap-not-fault split as `booked`
   const [saveErrorTick, setSaveErrorTick] = useState(0); // same job as errorTick
@@ -119,11 +106,6 @@ export default function App() {
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const refineRef = useRef<HTMLInputElement | null>(null);
-  const cardTitleRef = useRef<HTMLHeadingElement | null>(null);
-  const errorRef = useRef<HTMLDivElement | null>(null);
-  const saveErrorRef = useRef<HTMLDivElement | null>(null);
-  const pressedRef = useRef<HTMLDivElement | null>(null);
-  const pressedOpenRef = useRef<HTMLAnchorElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const adjustAbortRef = useRef<AbortController | null>(null);
 
@@ -144,52 +126,10 @@ export default function App() {
     focusPrompt,
   });
 
-  // The error renders inside the composer, but a phone that scrolled down to
-  // the progress log is still looking below it — the button just snapped
-  // from STOP back to MAKE THE MIXTAPE and looked like it did nothing. Pull
-  // the alert into view and focus it, so eye and screen reader both land on
-  // it. An effect, not a rAF in the catch: it runs after the commit that
-  // mounts the element, whichever way React schedules that.
-  useEffect(() => {
-    const el = errorRef.current;
-    if (!errorTick || !el) return;
-    bringIntoView(el);
-  }, [errorTick]);
-
-  // A save that worked unmounts the sticky save button and mounts the
-  // OPEN IN SPOTIFY block in the page's flow, under the card — on a phone,
-  // below the fold, so the button just vanished and nothing said it worked.
-  // Bring the block up and put focus on its one action. playlistUrl only
-  // ever turns non-null in saveToSpotify, so this is "a save just landed".
-  useEffect(() => {
-    if (playlistUrl && pressedRef.current && pressedOpenRef.current) {
-      bringIntoView(pressedRef.current, pressedOpenRef.current);
-    }
-  }, [playlistUrl]);
-
-  // A failed save renders its line under the save notes, which a phone
-  // scrolled up to the sticky button can't see — same fix as errorTick.
-  useEffect(() => {
-    const el = saveErrorRef.current;
-    if (!saveErrorTick || !el) return;
-    bringIntoView(el);
-  }, [saveErrorTick]);
-
   // a card on screen that no playlist was pressed from: leaving asks first
   // (useUnsavedCardGuard), and so does "make another one"
   const unsavedCard = Boolean(card) && !playlistUrl;
   useUnsavedCardGuard(unsavedCard);
-
-  // Move focus to the result when it lands, so keyboard and
-  // screen-reader users aren't stranded back at the prompt. Only when a card
-  // arrives where there was none: a reorder, a swap or a refine is a new
-  // card object too, and focusing the title on those jumped the page away
-  // from the row the visitor was working on.
-  const hadCardRef = useRef(false);
-  useEffect(() => {
-    if (card && !hadCardRef.current) cardTitleRef.current?.focus();
-    hadCardRef.current = Boolean(card);
-  }, [card]);
 
   const generate = async (p?: string) => {
     const thePrompt = (p ?? prompt).trim();
@@ -210,7 +150,6 @@ export default function App() {
     setCard(null);
     setPlaylistUrl(null);
     setSavedToLibrary(false);
-    setCopied(null);
     setSaveError(null);
     setAdjustError(null);
     setAdjustErrorDetail(null);
@@ -546,40 +485,6 @@ export default function App() {
             label: `reading “${seedLog?.name || seed.armed.name || "your playlist"}”`,
           };
 
-  // Clipboard feedback is the button's own label for a beat, not a toast.
-  const copyText = async (text: string, what: "tracks") => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(what);
-      setAnnounce("Song list copied.");
-      setTimeout(() => setCopied((c) => (c === what ? null : c)), 1800);
-    } catch {
-      setAnnounce("Couldn't copy — select it by hand.");
-    }
-  };
-
-  // Native share sheet where there is one; otherwise the same clipboard path
-  // "copy link" uses. The decision (and the "dismissed is not a copy" rule)
-  // lives in share.ts so it is unit-tested; this is only the DOM edge.
-  const shareMixtape = async () => {
-    if (!playlistUrl || !card) return;
-    const outcome = await shareOrCopy(
-      { title: card.title, url: playlistUrl },
-      {
-        share: navigator.share ? navigator.share.bind(navigator) : undefined,
-        copy: (t) => navigator.clipboard.writeText(t),
-      },
-    );
-    if (outcome === "copied") {
-      setCopied("share");
-      setAnnounce("Link copied.");
-      setTimeout(() => setCopied((c) => (c === "share" ? null : c)), 1800);
-    } else if (outcome === "failed") {
-      setAnnounce("Couldn't copy — select it by hand.");
-    }
-    // "shared" / "dismissed": the sheet was the feedback — nothing to report
-  };
-
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
   const editable = Boolean(card) && !playlistUrl && !saving;
@@ -640,10 +545,10 @@ export default function App() {
             {/* failures and the daily cap live right under the button that
                 caused them. They used to render after the whole empty state,
                 which on a phone put them below the fold — the button snapped
-                from STOP back to MAKE THE MIXTAPE and looked inert. tabIndex
-                -1 so the effect above can focus it. */}
+                from STOP back to MAKE THE MIXTAPE and looked inert. With
+                focusKey it scrolls itself into view and takes focus. */}
             {error && (
-              <ErrorAlert message={error} detail={errorDetail} booked={booked} alertRef={errorRef} />
+              <ErrorAlert message={error} detail={errorDetail} booked={booked} focusKey={errorTick} />
             )}
 
             {!loading && (
@@ -725,7 +630,6 @@ export default function App() {
               editable={editable}
               adjusting={adjusting}
               saved={Boolean(playlistUrl)}
-              titleRef={cardTitleRef}
               onReorder={reorderCard}
               onSwap={swapTrack}
             />
@@ -764,15 +668,12 @@ export default function App() {
               <PressedPanel
                 playlistUrl={playlistUrl}
                 savedToLibrary={savedToLibrary}
-                copied={copied}
-                onShare={shareMixtape}
-                onCopyTracks={() => copyText(trackListText(card.tracks), "tracks")}
-                panelRef={pressedRef}
-                openRef={pressedOpenRef}
+                card={card}
+                announce={setAnnounce}
               />
             )}
             {saveError && (
-              <ErrorAlert message={saveError} booked={saveBooked} alertRef={saveErrorRef} />
+              <ErrorAlert message={saveError} booked={saveBooked} focusKey={saveErrorTick} />
             )}
 
             <button
@@ -786,7 +687,6 @@ export default function App() {
                 setCard(null);
                 setPlaylistUrl(null);
                 setSavedToLibrary(false);
-                setCopied(null);
                 setSaveError(null);
                 setAdjustError(null);
                 setAdjustErrorDetail(null);

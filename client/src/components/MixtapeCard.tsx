@@ -1,4 +1,4 @@
-import { Fragment, type RefObject } from "react";
+import { Fragment, useEffect, useRef } from "react";
 import TrackList from "./TrackList";
 import { BRAND } from "../brand";
 import { accentInkFor } from "../card";
@@ -6,14 +6,13 @@ import { cardFacts, type MixCard, type Track } from "../types";
 
 // The mixtape card itself: spine, eyebrow, title, vibe, prompt line, the
 // legend, the sortable track list and the footer. `saved` is "a playlist
-// was pressed from it" (the legend's wording); `titleRef` is how App's
-// first-card effect focuses the title.
+// was pressed from it" (the legend's wording). It focuses its own title
+// when it mounts, which is when a card arrives.
 export default function MixtapeCard({
   card,
   editable,
   adjusting,
   saved,
-  titleRef,
   onReorder,
   onSwap,
 }: {
@@ -21,11 +20,31 @@ export default function MixtapeCard({
   editable: boolean;
   adjusting: boolean;
   saved: boolean;
-  titleRef: RefObject<HTMLHeadingElement>;
   onReorder: (activeId: string, overId: string) => void;
   onSwap: (i: number, t: Track) => void;
 }) {
   const accentInk = accentInkFor(card);
+  const titleRef = useRef<HTMLHeadingElement | null>(null);
+
+  // Move focus to the result when it lands, so keyboard and
+  // screen-reader users aren't stranded back at the prompt. Only when a card
+  // arrives where there was none: a reorder, a swap or a refine is a new
+  // card object too, and focusing the title on those jumped the page away
+  // from the row the visitor was working on.
+  //
+  // A mount effect, replacing App's hadCardRef and its effect on [card].
+  // Same trigger: App renders this exactly while `card` is non-null, at a
+  // fixed place in the tree, so it mounts exactly when a card arrives where
+  // there was none, and a reorder, swap or refine re-renders this same
+  // instance. Never give it (or TrackList) a `key` such as the title: a
+  // refine would then remount it, steal focus to the title and drop
+  // TrackList's pending keyboard-drop refocus. On the arrival commit
+  // TrackList's [tracks] effect runs first (child before parent) but has no
+  // pending row, so only this one moves focus. Mount-only is safe because
+  // there is no StrictMode (main.tsx); under it this would run twice.
+  useEffect(() => {
+    titleRef.current?.focus();
+  }, []);
   return (
     <div className="card">
       {/* spine */}

@@ -1,36 +1,94 @@
-import { type RefObject } from "react";
+import { useEffect, useRef, useState } from "react";
 import SpotifyMark from "./SpotifyMark";
 import { followSpotifyLink } from "../spotifyLink";
+import { shareOrCopy } from "../share";
+import { trackListText } from "../card";
+import { bringIntoView } from "../bringIntoView";
+import { type MixCard } from "../types";
 
 // What replaces the save button once the playlist exists: OPEN IN SPOTIFY,
 // the share button, and the editable-copy details with "copy song list".
-// The copy state and both handlers live in App for now; `panelRef` and
-// `openRef` are how App's save-landed effect scrolls and focuses it.
+// It owns the "copied ✓" label state and both clipboard handlers, and on
+// mount brings itself into view with focus on OPEN IN SPOTIFY.
+//
+// `copied` is local because every reset it used to get in App ("make
+// another one", a new run) also cleared the playlist URL, which unmounts
+// this panel: unmounting is the reset.
 export default function PressedPanel({
   playlistUrl,
   savedToLibrary,
-  copied,
-  onShare,
-  onCopyTracks,
-  panelRef,
-  openRef,
+  card,
+  announce,
 }: {
   playlistUrl: string;
   savedToLibrary: boolean;
-  copied: "tracks" | "share" | null;
-  onShare: () => void;
-  onCopyTracks: () => void;
-  panelRef: RefObject<HTMLDivElement>;
-  openRef: RefObject<HTMLAnchorElement>;
+  card: MixCard;
+  announce: (line: string) => void;
 }) {
+  const [copied, setCopied] = useState<"tracks" | "share" | null>(null);
+  const pressedRef = useRef<HTMLDivElement | null>(null);
+  const pressedOpenRef = useRef<HTMLAnchorElement | null>(null);
+
+  // A save that worked unmounts the sticky save button and mounts the
+  // OPEN IN SPOTIFY block in the page's flow, under the card — on a phone,
+  // below the fold, so the button just vanished and nothing said it worked.
+  // Bring the block up and put focus on its one action.
+  //
+  // A mount effect, replacing App's effect on [playlistUrl]. Same trigger:
+  // this panel renders exactly while a card is up and playlistUrl is set,
+  // playlistUrl only ever turns non-null in saveToSpotify (from the save
+  // button, which only exists while it is null, and with a card up that
+  // can't be cleared mid-save), and it never changes from one URL to
+  // another. So this mounts exactly when a save just landed, which is when
+  // the old effect found its refs set. Mount-only is safe because there is
+  // no StrictMode (main.tsx); under it this would run twice.
+  useEffect(() => {
+    if (pressedRef.current && pressedOpenRef.current) {
+      bringIntoView(pressedRef.current, pressedOpenRef.current);
+    }
+  }, []);
+
+  // Clipboard feedback is the button's own label for a beat, not a toast.
+  const copyText = async (text: string, what: "tracks") => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(what);
+      announce("Song list copied.");
+      setTimeout(() => setCopied((c) => (c === what ? null : c)), 1800);
+    } catch {
+      announce("Couldn't copy — select it by hand.");
+    }
+  };
+
+  // Native share sheet where there is one; otherwise the same clipboard path
+  // "copy link" uses. The decision (and the "dismissed is not a copy" rule)
+  // lives in share.ts so it is unit-tested; this is only the DOM edge.
+  const shareMixtape = async () => {
+    const outcome = await shareOrCopy(
+      { title: card.title, url: playlistUrl },
+      {
+        share: navigator.share ? navigator.share.bind(navigator) : undefined,
+        copy: (t) => navigator.clipboard.writeText(t),
+      },
+    );
+    if (outcome === "copied") {
+      setCopied("share");
+      announce("Link copied.");
+      setTimeout(() => setCopied((c) => (c === "share" ? null : c)), 1800);
+    } else if (outcome === "failed") {
+      announce("Couldn't copy — select it by hand.");
+    }
+    // "shared" / "dismissed": the sheet was the feedback — nothing to report
+  };
+
   return (
-    <div className="pressed" ref={panelRef}>
+    <div className="pressed" ref={pressedRef}>
       {/* the one primary action after pressing: open it. The https
           href stays in the DOM (copy, middle-click, no-app fallback);
           a desktop click hands off to the installed app, a phone
           tap lets the anchor navigate (see spotifyLink.ts). */}
       <a
-        ref={openRef}
+        ref={pressedOpenRef}
         href={playlistUrl}
         target="_blank"
         rel="noopener noreferrer"
@@ -54,7 +112,7 @@ export default function PressedPanel({
           type="button"
           className="btn-ghost"
           aria-label="Share this mixtape"
-          onClick={onShare}
+          onClick={shareMixtape}
         >
           {copied === "share" ? "copied ✓" : "share"}
         </button>
@@ -74,7 +132,7 @@ export default function PressedPanel({
         <button
           type="button"
           className="btn-ghost"
-          onClick={onCopyTracks}
+          onClick={() => copyText(trackListText(card.tracks), "tracks")}
         >
           {copied === "tracks" ? "copied ✓" : "copy song list"}
         </button>

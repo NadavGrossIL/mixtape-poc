@@ -119,11 +119,13 @@ app.use(express.json({ limit: "32kb" }));
 // A body over the limit makes body-parser throw, and an unhandled parser error
 // is a 500 with a stack trace. Registered right after the parser so it catches
 // the parser's errors and nothing else's.
-app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-  if (err?.type === "entity.too.large") {
+// Four parameters, always: Express tells an error handler apart by its arity.
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  const type = typeof err === "object" && err !== null && "type" in err ? err.type : undefined;
+  if (type === "entity.too.large") {
     return res.status(400).json({ error: "That request is too large." });
   }
-  if (err?.type === "entity.parse.failed") {
+  if (type === "entity.parse.failed") {
     return res.status(400).json({ error: "Malformed JSON body." });
   }
   next(err);
@@ -191,7 +193,7 @@ const EXTRA_ALLOWED_ORIGINS = allowedOriginsFromUrls([CLIENT_URL]);
 function sameOriginOnly(req: Request, res: Response, next: NextFunction) {
   const ok = originAllowed({
     origin: req.headers.origin,
-    secFetchSite: req.headers["sec-fetch-site"] as string | undefined,
+    secFetchSite: req.get("sec-fetch-site"),
     host: req.headers.host,
     // req.protocol honours X-Forwarded-Proto because `trust proxy` is on
     proto: req.protocol,
@@ -743,7 +745,7 @@ app.get("/auth/status", async (req, res) => {
   // `owner` lets the client show owner-only surfaces (the log console's
   // usage strip) to the right person; the server still enforces it per route
   const owner = loggedIn && user === (await spotify.getOwnerId());
-  res.json({ loggedIn, owner, name: loggedIn ? spotify.getDisplayName(user!) : null });
+  res.json({ loggedIn, owner, name: loggedIn && user ? spotify.getDisplayName(user) : null });
 });
 
 // ── api ──────────────────────────────────────────────────────

@@ -244,14 +244,35 @@
 /* a song can wrap to four lines (title, note, unverified tag), so the row's
    content reads from the top: the art and the number sit level with the
    title's first line instead of floating at the middle of the block, where
-   "01" drifted down beside the note. The grip and the replace button stay
-   centred — they act on the whole row. The number's line box is the
-   title's, so the two share a baseline. */
+   "01" drifted down beside the note. The number's line box is the
+   title's, so the two share a baseline. The grip and the replace button
+   are centred on the art, not on the row: centred on the row they sank
+   16-20px below the art on every row with a two-line note, so one row had
+   two top lines. --row-art is the art's size (smaller on a phone). */
+.track-row {
+  --row-art: 40px;
+}
+
 .track-row > .album-art,
 .track-row > .album-art-placeholder,
 .track-row > .track-num,
-.track-row > .track-main {
+.track-row > .track-main,
+.track-row > .swap-btn {
   align-self: flex-start;
+}
+
+/* the grip keeps the row's full height as its touch target; only the dots
+   move up, to the art's middle (the svg is 14px tall) */
+.track-row > .grip {
+  align-items: flex-start;
+}
+.track-row > .grip svg {
+  margin-top: calc((var(--row-art) - 14px) / 2);
+}
+
+/* the button is 30px tall on a pointer screen */
+.track-row > .swap-btn {
+  margin-top: calc((var(--row-art) - 30px) / 2);
 }
 
 .track-row > .track-num {
@@ -747,6 +768,7 @@
   /* denser rows: keep title space ahead of chrome on a ~270px body */
   .track-row {
     gap: 8px;
+    --row-art: 36px;
   }
   .album-art,
   .album-art-placeholder {
@@ -770,6 +792,11 @@
        under the arrow so the column grows 14px, not the length of a word */
     flex-direction: column;
     gap: 1px;
+  }
+  /* the 44px box centred on the 36px art (pulled up 4px, not the 7px
+     that centred it on a one-line row) */
+  .track-row > .swap-btn {
+    margin-top: calc((var(--row-art) - 44px) / 2);
   }
   .swap-btn::before {
     content: "";

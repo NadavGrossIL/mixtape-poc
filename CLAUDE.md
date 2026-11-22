@@ -52,7 +52,7 @@ file is a map. The reasoning lives next to the code as comments; read those.
 - `client/` — Vite + React 18, one screen. `src/App.tsx` is the composition
   root: the prompt, the card, the hint and the live region, one hook per
   concern, and the screen's layout · `src/hooks/` one hook per concern
-  (session, shelf, recent, page view, dictation, seed picker, generation,
+  (session, shelf, recent, page view, seed picker, generation,
   refine, save, unsaved-card guard) · `src/components/` one component per
   surface, the log console included · pure modules flat in `src/`,
   unit-tested from `server/test/` (so no `react`, no DOM, `.ts` on internal

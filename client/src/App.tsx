@@ -6,7 +6,6 @@ import useSession from "./hooks/useSession";
 import useLatestShelf from "./hooks/useLatestShelf";
 import useRecentMixtapes from "./hooks/useRecentMixtapes";
 import usePageView from "./hooks/usePageView";
-import useDictation from "./hooks/useDictation";
 import useSeedPicker from "./hooks/useSeedPicker";
 import useSave from "./hooks/useSave";
 import useGeneration from "./hooks/useGeneration";
@@ -46,8 +45,8 @@ export default function App() {
   const recent = useRecentMixtapes();
   usePageView();
 
-  // shared by several concerns below, so owned here: the prompt is typed,
-  // dictated and picked from the chips; the card is made, refined,
+  // shared by several concerns below, so owned here: the prompt is typed
+  // or picked from the chips; the card is made, refined,
   // reordered and cleared; the hint and the live region are written by
   // almost everything
   const [prompt, setPrompt] = useState("");
@@ -55,18 +54,10 @@ export default function App() {
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
 
-  // the prompt box, focused by dictation, the seed picker, the chips, an
+  // the prompt box, focused by the seed picker, the chips, an
   // empty generate and "make another one"
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const focusPrompt = () => inputRef.current?.focus();
-
-  const dictation = useDictation({
-    prompt,
-    setPrompt,
-    setHint: setInputHint,
-    announce: setAnnounce,
-    focusPrompt,
-  });
 
   const seed = useSeedPicker({
     loggedIn,
@@ -96,10 +87,7 @@ export default function App() {
     announce: setAnnounce,
     setHint: setInputHint,
     focusPrompt,
-    onStart: () => {
-      dictation.stop(); // pressing it while dictating ends the take
-      clearDraft();
-    },
+    onStart: () => clearDraft(),
     onCard: (doneCard) => {
       setCard(doneCard);
       // The card records the seed (card.seed, printed on the sleeve); the
@@ -200,9 +188,6 @@ export default function App() {
               seedOpen={seed.open}
               onToggleSeed={seed.toggle}
               inputRef={inputRef}
-              micSupported={dictation.supported}
-              listening={dictation.listening}
-              micHandlers={dictation.micHandlers}
             />
             {inputHint && (
               <div className="input-hint" role="alert">

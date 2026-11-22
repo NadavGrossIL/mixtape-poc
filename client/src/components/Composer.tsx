@@ -1,9 +1,8 @@
 import { type RefObject } from "react";
 import SeedToken from "./SeedToken";
-import MicButton, { type MicHandlers } from "./MicButton";
 import { type Playlist } from "../types";
 
-// The composer card: the armed-seed token, the prompt box with its mic, and
+// The composer card: the armed-seed token, the prompt box, and
 // the control row (seed trigger, MAKE THE MIXTAPE / STOP). Presentational:
 // the prompt, the seed and the run all live in App and arrive as props.
 
@@ -34,9 +33,6 @@ interface ComposerProps {
   seedOpen: boolean;
   onToggleSeed: () => void;
   inputRef: RefObject<HTMLTextAreaElement>;
-  micSupported: boolean;
-  listening: boolean;
-  micHandlers: MicHandlers;
 }
 
 export default function Composer({
@@ -51,9 +47,6 @@ export default function Composer({
   seedOpen,
   onToggleSeed,
   inputRef,
-  micSupported,
-  listening,
-  micHandlers,
 }: ComposerProps) {
   return (
     <div className="composer">
@@ -61,11 +54,7 @@ export default function Composer({
           The box visibly "contains something", which is also what
           makes an empty textarea read as legitimate. */}
       {seed && <SeedToken seed={seed} onClear={onClearSeed} />}
-      <div
-        className={
-          "prompt-wrap" + (micSupported ? " has-mic" : "")
-        }
-      >
+      <div className="prompt-wrap">
         <textarea
           ref={inputRef}
           autoFocus={AUTOFOCUS_PROMPT}
@@ -85,7 +74,6 @@ export default function Composer({
           className="prompt-input"
           aria-label="Playlist prompt"
         />
-        {micSupported && <MicButton listening={listening} handlers={micHandlers} />}
       </div>
       {/* the card's control row: attached-context trigger on the
           left, the one primary action on the right */}

@@ -20,7 +20,11 @@ file is a map. The reasoning lives next to the code as comments; read those.
   `LANGSMITH_TRACE_VISITORS=1`) · `spotify.ts` OAuth, search cache,
   quota breaker, playlist writes · `caps.ts` `pressCaps.ts` `session.ts`
   `usage.ts` `metrics.ts` `health.ts` `logbook.ts` `searchBudget.ts`
-  `httpOrigin.ts` `trackUris.ts` `gateThrottle.ts` `drain.ts` `outage.ts` pure helpers · `test/`
+  `httpOrigin.ts` `trackUris.ts` `gateThrottle.ts` `drain.ts` `outage.ts`
+  `errors.ts` pure helpers (`errors.ts` reads `status` / `message` /
+  `quotaExceeded` off a caught value, so no route needs `catch (err: any)`) ·
+  `wire.ts` the zod schema of the card on the wire and the one accent list;
+  `/api/adjust/stream` parses the card it is sent with it · `test/`
   unit tests (`node:test`). `pressCaps.ts` caps `/api/playlist`, the one paid
   route reachable without the curator; `metrics.ts` is the per-day funnel
   (`makeMetrics({ dir, today })`, `DATA_DIR` or beside the code — an
@@ -45,10 +49,23 @@ file is a map. The reasoning lives next to the code as comments; read those.
   and `SESSION_SECRET` is the signing key; unset, it still falls back to
   `APP_SECRET` then `SPOTIFY_CLIENT_SECRET` (one credential doing two jobs),
   which a deployed host now warns about at boot.
-- `client/` — Vite + React 18, one screen: `src/App.tsx`, tokens in
-  `src/styles/tokens.css` (all CSS under `src/styles/`, one file per
-  surface, layered via `index.css`). Dev proxy in `vite.config.ts`; served
-  from Express when built.
+- `client/` — Vite + React 18, one screen. `src/App.tsx` is the composition
+  root: the prompt, the card, the hint and the live region, one hook per
+  concern, and the screen's layout · `src/hooks/` one hook per concern
+  (session, shelf, recent, page view, dictation, seed picker, generation,
+  refine, save, unsaved-card guard) · `src/components/` one component per
+  surface, the log console included · pure modules flat in `src/`,
+  unit-tested from `server/test/` (so no `react`, no DOM, `.ts` on internal
+  imports): `card.ts` `seed.ts` `runFailure.ts` `failures.ts` `recent.ts`
+  `latest.ts` `share.ts` and the run reducers `generationRun.ts`
+  `refineRun.ts` `saveRun.ts` · `debug.ts` is the `?debug` switch for the
+  log console. `src/types.ts` declares the card on its own instead of
+  importing `server/wire.ts`: the production build compiles the client
+  before `server/node_modules` exists, so even a type-only import of a file
+  that imports zod fails the deploy; `server/test/wire.test.ts` fails the
+  typecheck if the two ever differ. Tokens in `src/styles/tokens.css` (all
+  CSS under `src/styles/`, one file per surface, layered via `index.css`).
+  Dev proxy in `vite.config.ts`; served from Express when built.
 - `evals/` — truthfulness (`generate` → `judge` → `aggregate`, plus
   `grounding`) grades the liner notes, `reliability` (pass^k), year fit
   (`fit.ts` over `fit-prompts.json`, 2026-11-22: is each track from the era

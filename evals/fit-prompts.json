@@ -1,0 +1,33 @@
+[
+  { "id": "decade-80s-synthpop", "category": "decade", "prompt": "80s synth-pop for a late night drive", "era": { "from": 1980, "to": 1989 }, "trap": null },
+  { "id": "decade-90s-britpop", "category": "decade", "prompt": "90s britpop, the big singalong ones", "era": { "from": 1990, "to": 1999 }, "trap": null },
+  { "id": "decade-70s-disco", "category": "decade", "prompt": "70s disco that still fills a dance floor", "era": { "from": 1970, "to": 1979 }, "trap": null },
+  { "id": "decade-2000s-rnb", "category": "decade", "prompt": "2000s r&b slow jams", "era": { "from": 2000, "to": 2009 }, "trap": null },
+  { "id": "decade-2010s-indie", "category": "decade", "prompt": "indie rock from the 2010s for a road trip", "era": { "from": 2010, "to": 2019 }, "trap": null },
+  { "id": "decade-90s-altrock-women", "category": "decade", "prompt": "female-fronted alt rock from the 90s", "era": { "from": 1990, "to": 1999 }, "trap": null },
+  { "id": "decade-80s-wedding", "category": "decade", "prompt": "80s songs for a wedding dance floor", "era": { "from": 1980, "to": 1989 }, "trap": null },
+
+  { "id": "year-1991", "category": "single-year", "prompt": "the best songs of 1991", "era": { "from": 1991, "to": 1991 }, "trap": null },
+  { "id": "year-1977", "category": "single-year", "prompt": "songs released in 1977, punk and disco side by side", "era": { "from": 1977, "to": 1977 }, "trap": null },
+  { "id": "year-2016", "category": "single-year", "prompt": "what was everyone listening to in 2016", "era": { "from": 2016, "to": 2016 }, "trap": null },
+
+  { "id": "boundary-pre2000-triphop", "category": "boundary", "prompt": "trip-hop, strictly before 2000", "era": { "from": null, "to": 1999 }, "trap": "The genre's best-known acts kept releasing into the 2000s; a famous later track is the easy wrong pick." },
+  { "id": "boundary-2005-2009-nostalgia", "category": "boundary", "prompt": "pop hits from 2005 to 2009 for a millennial nostalgia night", "era": { "from": 2005, "to": 2009 }, "trap": null },
+  { "id": "boundary-90s-hiphop-early", "category": "boundary", "prompt": "golden age hip-hop from 1990 to 1994 only", "era": { "from": 1990, "to": 1994 }, "trap": "Late-80s classics (1988-89) sit next to these in every search; the 2026-08-31 run put a 1989 single on a 90s card." },
+  { "id": "boundary-early80s-citypop", "category": "boundary", "prompt": "japanese city pop from 1980 to 1983", "era": { "from": 1980, "to": 1983 }, "trap": "Spotify lists much of this catalogue under reissue dates, and 1984-86 releases are the genre's most streamed." },
+  { "id": "boundary-post2020-jazz", "category": "boundary", "prompt": "new jazz released since 2020", "era": { "from": 2020, "to": null }, "trap": null },
+
+  { "id": "recent-2025-best", "category": "recent", "prompt": "the best songs released in 2025", "era": { "from": 2025, "to": 2025 }, "trap": "Singles from late 2024 carry their 2025 album's date on Spotify; the 2026-08-31 run included two." },
+  { "id": "recent-2026-indie", "category": "recent", "prompt": "new indie releases from 2026 I should know about", "era": { "from": 2026, "to": 2026 }, "trap": "Anniversary reissues and deluxe editions carry a 2026 date; the 2026-08-31 run included a 2016 song and a 2025 version." },
+  { "id": "recent-2026-pop", "category": "recent", "prompt": "the biggest pop songs of 2026 so far", "era": { "from": 2026, "to": 2026 }, "trap": "Hits that charted through 2026 but came out in 2025, and 2025 singles on 2026 albums." },
+  { "id": "recent-2024-hiphop", "category": "recent", "prompt": "hip-hop that came out in 2024", "era": { "from": 2024, "to": 2024 }, "trap": "Deluxe editions released in 2025 re-date 2024 albums, and late-2023 singles sit on 2024 albums." },
+
+  { "id": "reissue-beatles-early", "category": "reissue-trap", "prompt": "Beatles songs from 1963 to 1965", "era": { "from": 1963, "to": 1965 }, "trap": "Spotify shows remaster and compilation dates for the catalogue; the famous later songs are one search away." },
+  { "id": "reissue-taylor-pre2015", "category": "reissue-trap", "prompt": "Taylor Swift songs from before 2015, the original recordings", "era": { "from": null, "to": 2014 }, "trap": "The 2021-2023 Taylor's Version re-recordings rank first in search; a re-recording counts by its own date." },
+  { "id": "reissue-60s-soul", "category": "reissue-trap", "prompt": "60s soul classics, Stax and Motown", "era": { "from": 1960, "to": 1969 }, "trap": "Most of these tracks surface on later compilations with compilation dates; early-70s hits by the same artists are close by." },
+  { "id": "reissue-50s-jazz", "category": "reissue-trap", "prompt": "cool jazz recorded in the 1950s", "era": { "from": 1950, "to": 1959 }, "trap": "Jazz catalogue is almost entirely reissues on Spotify; early-60s sessions by the same players are the easy wrong pick." },
+
+  { "id": "nonenglish-french-60s", "category": "non-english", "prompt": "french pop from the 60s, the yé-yé years", "era": { "from": 1960, "to": 1969 }, "trap": "Compilation and remaster dates; the 2026-08-31 chanson card showed Spotify years decades after the originals." },
+  { "id": "nonenglish-israeli-90s", "category": "non-english", "prompt": "israeli rock classics from the 90s", "era": { "from": 1990, "to": 1999 }, "trap": null },
+  { "id": "nonenglish-tropicalia", "category": "non-english", "prompt": "brazilian tropicália from 1967 to 1972", "era": { "from": 1967, "to": 1972 }, "trap": null }
+]

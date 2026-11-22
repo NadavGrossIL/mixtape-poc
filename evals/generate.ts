@@ -5,6 +5,7 @@
 //   node evals/generate.ts                 # all prompts
 //   node evals/generate.ts --limit 2       # pilot: first N prompts
 //   node evals/generate.ts --only id1,id2  # specific prompt ids
+//   node evals/generate.ts --prompts fit-prompts.json   # another case file
 //
 // Writes evals/runs/<timestamp>/cards.json.
 
@@ -24,7 +25,11 @@ const spotify = await import("../server/spotify.ts");
 const DELAY_MS = 1500;
 
 function selectPrompts(argv: string[]): any[] {
-  let prompts = readJson(path.join(import.meta.dirname, "prompts.json"));
+  // --prompts picks another case file beside this one (fit-prompts.json: the
+  // year-and-era set). A bare file name only — never a path out of evals/.
+  const fileIdx = argv.indexOf("--prompts");
+  const file = fileIdx !== -1 ? path.basename(argv[fileIdx + 1] || "") : "prompts.json";
+  let prompts = readJson(path.join(import.meta.dirname, file));
   const onlyIdx = argv.indexOf("--only");
   if (onlyIdx !== -1) {
     const ids = new Set((argv[onlyIdx + 1] || "").split(","));

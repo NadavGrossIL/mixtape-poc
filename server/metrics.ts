@@ -35,27 +35,20 @@ const RETAIN_DAYS = 60;
 // last second of counters to a hard kill costs nothing worth a fsync.
 const FLUSH_MS = 1000;
 
-// The funnel, in order, plus the two things that explain a drop in it.
-type Metric =
-  | "views" // a page load, from a browser that ran the app
-  | "newVisitors" // ...that had never been here (no session cookie yet)
-  | "prompts" // a generation accepted — someone typed and pressed
-  | "generated" // ...that finished as a card
-  | "adjusts" // a refine accepted
-  | "pressed" // a playlist created on Spotify
-  | "errors" // a route failed on someone
-  | "capped"; // refused by a daily cap — a drop that isn't a bug
+// The funnel, in order, plus the two things that explain a drop in it. The
+// type is read off this list, so a metric cannot exist without its counter.
+const METRICS = [
+  "views", // a page load, from a browser that ran the app
+  "newVisitors", // ...that had never been here (no session cookie yet)
+  "prompts", // a generation accepted — someone typed and pressed
+  "generated", // ...that finished as a card
+  "adjusts", // a refine accepted
+  "pressed", // a playlist created on Spotify
+  "errors", // a route failed on someone
+  "capped", // refused by a daily cap — a drop that isn't a bug
+] as const;
 
-const METRICS: Metric[] = [
-  "views",
-  "newVisitors",
-  "prompts",
-  "generated",
-  "adjusts",
-  "pressed",
-  "errors",
-  "capped",
-];
+type Metric = (typeof METRICS)[number];
 
 type Day = Record<Metric, number>;
 

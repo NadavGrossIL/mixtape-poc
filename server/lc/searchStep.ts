@@ -1,5 +1,9 @@
 // One Spotify search inside a LangChain run, with the app's own rules:
-//   - a cached search is free;
+//   - a cached search costs no Spotify quota, but a run may make at most
+//     MAX_CACHED_SEARCHES of them: each result is fed back into the model's
+//     context and replayed every later round, so a prompt that talks the
+//     model into repeating cached queries would otherwise grow one run's
+//     Anthropic bill without bound (security pass 2026-11-22);
 //   - a live search must fit the run's own cap (20) AND the request-wide
 //     allowance shared with track resolution (searchBudget.ts);
 //   - at most two searches leave at once (the model asks for nine in one go);
@@ -30,6 +34,10 @@ function makeLimiter(max: number) {
   };
 }
 
+// Well above an honest run's repeats (the model re-asks a handful of queries
+// at most) and far below the ~context-window cost an abusive loop reaches.
+const MAX_CACHED_SEARCHES = 40;
+
 function makeSearchStep({
   isCached,
   search,
@@ -37,6 +45,7 @@ function makeSearchStep({
   request,
   concurrency,
   onFatal,
+  maxCached = MAX_CACHED_SEARCHES,
 }: {
   isCached: (query: string) => boolean;
   search: (query: string) => Promise<unknown>;
@@ -47,11 +56,21 @@ function makeSearchStep({
   // stop. (LangChain turns anything a tool throws into a message for the
   // model, so throwing alone would not stop it.)
   onFatal: (err: unknown) => void;
+  maxCached?: number; // this run's cap on cache hits
 }): (query: string) => Promise<string> {
   const limit = makeLimiter(concurrency);
+  let cachedHits = 0;
   return (query) =>
     limit(async () => {
-      if (!claimSearch(isCached(query), loop, request)) {
+      const cached = isCached(query);
+      if (cached && ++cachedHits > maxCached) {
+        return (
+          `You have already searched this mixtape's queries ${maxCached} times. ` +
+          `Commit now using only tracks that already came back in earlier ` +
+          `search results — do not add a track you have not seen verified.`
+        );
+      }
+      if (!claimSearch(cached, loop, request)) {
         // Note what this does NOT say: it never
         // invites the model to fall back on its own knowledge.
         return (
@@ -73,4 +92,4 @@ function makeSearchStep({
     });
 }
 
-export { makeLimiter, makeSearchStep };
+export { makeLimiter, makeSearchStep, MAX_CACHED_SEARCHES };

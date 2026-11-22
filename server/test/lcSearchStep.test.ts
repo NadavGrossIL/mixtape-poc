@@ -7,7 +7,7 @@ import assert from "node:assert";
 import { makeLimiter, makeSearchStep } from "../lc/searchStep.ts";
 import { makeSearchBudget } from "../searchBudget.ts";
 
-function setup({ cached = [] as string[], loop = 20, request = 30, search = async (q: string) => [{ ref: q }] } = {}) {
+function setup({ cached = [] as string[], loop = 20, request = 30, maxCached = undefined as number | undefined, search = async (q: string) => [{ ref: q }] } = {}) {
   const calls: string[] = [];
   const fatal: unknown[] = [];
   const budgets = { loop: makeSearchBudget(loop), request: makeSearchBudget(request) };
@@ -20,6 +20,7 @@ function setup({ cached = [] as string[], loop = 20, request = 30, search = asyn
     ...budgets,
     concurrency: 2,
     onFatal: (err) => fatal.push(err),
+    maxCached,
   });
   return { step, calls, fatal, ...budgets };
 }
@@ -103,4 +104,16 @@ test("makeLimiter: a failed job frees its place", async () => {
   const limit = makeLimiter(1);
   await assert.rejects(limit(async () => Promise.reject(new Error("boom"))), /boom/);
   assert.equal(await limit(async () => "next"), "next");
+});
+
+test("cached searches are capped per run, so a prompt can't loop the model on free repeats", async () => {
+  const s = setup({ cached: ["again"], maxCached: 3 });
+  for (let i = 0; i < 3; i++) assert.match(await s.step("again"), /<catalog_results>/);
+  const out = await s.step("again");
+  assert.doesNotMatch(out, /<catalog_results>/, "the 4th repeat gets no results fed back");
+  assert.match(out, /Commit now/);
+  assert.doesNotMatch(out, /own knowledge/, "a refusal must never invite made-up tracks");
+  assert.equal(s.loop.spent(), 0, "the cap on repeats never touches the Spotify budgets");
+  // a live search still goes through
+  assert.match(await s.step("fresh"), /<catalog_results>/);
 });

@@ -668,6 +668,8 @@ function countPress(user: string, req: Request) {
 // state valid forever (or grow the map unboundedly).
 const pendingStates = new Map<string, number>();
 const STATE_TTL_MS = 10 * 60 * 1000;
+// Far above the logins a real launch day starts in 10 minutes; ~100 bytes each.
+const MAX_PENDING_STATES = 5000;
 
 function evictStaleStates() {
   const cutoff = Date.now() - STATE_TTL_MS;
@@ -688,6 +690,17 @@ app.get("/auth/login", (req, res) => {
       );
   }
   evictStaleStates();
+  // Expiry alone doesn't bound the map: anyone can hit this route in a loop
+  // and add thousands of states inside one 10-minute window until the process
+  // runs out of memory (and a crash resets the in-memory daily caps). A Map
+  // iterates in insertion order, so the first key is the oldest login —
+  // dropping it only fails a login abandoned long ago, or one buried under a
+  // flood (security pass 2026-11-22).
+  while (pendingStates.size >= MAX_PENDING_STATES) {
+    const oldest = pendingStates.keys().next().value;
+    if (oldest === undefined) break;
+    pendingStates.delete(oldest);
+  }
   const state = spotify.makeState();
   pendingStates.set(state, Date.now());
   // The state also rides a short-lived cookie so /callback can check that it
@@ -1131,7 +1144,15 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
       // LangChain curator only: the card may have moved to a new memory thread
       ...(diff.threadId ? { threadId: diff.threadId } : {}),
     };
-    curatedCards.add(shelfKey(merged.title, merged.vibe));
+    // Vouch for the result only if its words are the server's: either the
+    // card that came in was one this server curated, or the curator wrote
+    // both the title and the vibe just now. The card arrives from the
+    // browser, and the curator is told to keep an unchanged title and vibe —
+    // vouching unconditionally let anyone put their own text on the public
+    // shelf for the price of one adjust (security pass 2026-11-22).
+    if (curatedCards.has(shelfKey(card.title, card.vibe)) || (diff.title != null && diff.vibe != null)) {
+      curatedCards.add(shelfKey(merged.title, merged.vibe));
+    }
     sseSend(res, "done", {
       card: merged,
       verified: tracks.filter((t) => t.resolved).length,

@@ -1,34 +1,16 @@
 import {
-  Fragment,
   useEffect,
   useRef,
   useState,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import {
-  DndContext,
-  closestCenter,
-  KeyboardCode,
-  KeyboardSensor,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  sortableKeyboardCoordinates,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { followSpotifyLink, isHandingOff } from "./spotifyLink";
+import { isHandingOff } from "./spotifyLink";
 import { shareOrCopy } from "./share";
 import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
 import { parseLatestResponse, type LatestMixtape } from "./latest";
 import LogConsole from "./LogConsole";
 import {
-  cardFacts,
   type AdjustLogLine,
   type AdjustStreamEvent,
   type GenerateStreamEvent,
@@ -41,14 +23,7 @@ import {
 import { CapError, StreamDroppedError, readSSE } from "./sse";
 import { saveRefusal } from "./failures";
 import { parsePlaylistLink, seedPlaylistFor, visibleSeedPlaylists, type SeedPlaylists } from "./seed";
-import {
-  accentInkFor,
-  reorderTracks,
-  sortableId,
-  spotifySearchUrl,
-  trackListText,
-  verifiedCount,
-} from "./card";
+import { reorderTracks, trackListText, verifiedCount } from "./card";
 import {
   classifyRunFailure,
   noStreamErrors,
@@ -57,18 +32,18 @@ import {
   streamFailure,
 } from "./runFailure";
 import SampleCard from "./components/SampleCard";
-import SpotifyMark from "./components/SpotifyMark";
-import TrackRow from "./components/TrackRow";
-import StudioChatter from "./components/StudioChatter";
 import SiteHeader from "./components/SiteHeader";
 import Composer from "./components/Composer";
 import RecentMixtapes from "./components/RecentMixtapes";
 import LatestShelf from "./components/LatestShelf";
 import ExamplePrompts from "./components/ExamplePrompts";
 import HomeNotes from "./components/HomeNotes";
-import LogLine from "./components/LogLine";
 import GeneratingProgress, { type Stage } from "./components/GeneratingProgress";
-import { BRAND } from "./brand";
+import ErrorAlert from "./components/ErrorAlert";
+import MixtapeCard from "./components/MixtapeCard";
+import RefinePanel from "./components/RefinePanel";
+import SaveDock from "./components/SaveDock";
+import PressedPanel from "./components/PressedPanel";
 
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
 // The mic button only renders when the browser can actually transcribe.
@@ -246,33 +221,6 @@ export default function App() {
     bringIntoView(el);
   }, [saveErrorTick]);
 
-  // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
-  // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
-  // finger can still scroll the list — moving during the hold cancels the drag.
-  // Keyboard: the row already announces itself as sortable ("press space bar
-  // to pick up"), so Space picks up, arrows move, Space drops, Escape
-  // cancels. Enter is taken out of the start keys — on a row Enter opens the
-  // song, and dnd-kit's default would have made it pick the row up instead.
-  // It stays an end key: mid-drag it drops (and dnd-kit swallows the key)
-  // rather than opening the link with the row still in the air.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
-    useSensor(KeyboardSensor, {
-      coordinateGetter: sortableKeyboardCoordinates,
-      keyboardCodes: {
-        start: [KeyboardCode.Space],
-        cancel: [KeyboardCode.Esc],
-        end: [KeyboardCode.Space, KeyboardCode.Enter, KeyboardCode.Tab],
-      },
-    })
-  );
-  const justDragged = useRef(false);
-  // a keyboard drop's new position, focused once the reordered card renders
-  // (see onDragEnd)
-  const refocusRowRef = useRef<number | null>(null);
-  const trackListRef = useRef<HTMLDivElement | null>(null);
-
   useEffect(() => {
     fetch("/auth/status")
       .then((r) => r.json())
@@ -363,13 +311,6 @@ export default function App() {
   useEffect(() => {
     if (card && !hadCardRef.current) cardTitleRef.current?.focus();
     hadCardRef.current = Boolean(card);
-  }, [card]);
-
-  useEffect(() => {
-    const i = refocusRowRef.current;
-    if (i === null) return;
-    refocusRowRef.current = null;
-    (trackListRef.current?.children[i] as HTMLElement | undefined)?.focus();
   }, [card]);
 
   const seedPlaylist = seedPlaylistFor(playlists, seedId, pastedSeed);
@@ -826,7 +767,6 @@ export default function App() {
     }
   };
 
-  const accentInk = accentInkFor(card);
 
   // checked, not confirmed: a run with two songs Spotify couldn't find must
   // still end on "8 of 8", or the last thing on screen reads as stuck
@@ -847,13 +787,6 @@ export default function App() {
             n: 1,
             label: `reading “${seedLog?.name || seedPlaylist.name || "your playlist"}”`,
           };
-  const cardVerified = card ? verifiedCount(card.tracks) : 0;
-  const cardUnverified = card ? card.tracks.length - cardVerified : 0;
-  const cursor = (
-    <span className="cursor" aria-hidden>
-      ▮
-    </span>
-  );
 
   // Clipboard feedback is the button's own label for a beat, not a toast.
   const copyText = async (text: string, what: "tracks") => {
@@ -908,26 +841,12 @@ export default function App() {
   // order, so the pressed playlist follows whatever order is on the card
   const editable = Boolean(card) && !playlistUrl && !saving;
 
-  const onDragEnd = ({ active, over, activatorEvent }: DragEndEvent) => {
-    // the click that follows a drop must not open the track
-    justDragged.current = true;
-    setTimeout(() => (justDragged.current = false), 0);
-    if (over && active.id !== over.id) {
-      // A keyboard drop must leave focus on the row that moved. Row keys are
-      // positional (sortableId), so the moved row remounts and focus falls to
-      // the page — dnd-kit's own focus restore looks the row up by its old,
-      // now-gone id. arrayMove puts it at `over`'s index.
-      if (activatorEvent instanceof KeyboardEvent && card) {
-        refocusRowRef.current = card.tracks.map(sortableId).indexOf(over.id as string);
-      }
-      setCard((c) => {
-        if (!c) return c; // unreachable: a drag can only start on a rendered card
-        // dnd-kit's UniqueIdentifier is string | number; ours are always the
-        // sortableId strings handed to SortableContext above
-        return reorderTracks(c, active.id as string, over.id as string);
-      });
-    }
-  };
+  // the card with a dragged row dropped somewhere else (TrackList's ids)
+  const reorderCard = (activeId: string, overId: string) =>
+    setCard((c) => {
+      if (!c) return c; // unreachable: a drag can only start on a rendered card
+      return reorderTracks(c, activeId, overId);
+    });
 
   return (
     <div className="app">
@@ -989,15 +908,7 @@ export default function App() {
                 from STOP back to MAKE THE MIXTAPE and looked inert. tabIndex
                 -1 so the effect above can focus it. */}
             {error && (
-              <div
-                className={"error" + (booked ? " booked" : "")}
-                role="alert"
-                tabIndex={-1}
-                ref={errorRef}
-              >
-                {error}
-                {errorDetail && <span className="error-detail">{errorDetail}</span>}
-              </div>
+              <ErrorAlert message={error} detail={errorDetail} booked={booked} alertRef={errorRef} />
             )}
 
             {!loading && (
@@ -1187,282 +1098,59 @@ export default function App() {
         {/* the card */}
         {card && (
           <div className="card-wrap">
-            <div className="card">
-              {/* spine */}
-              <div className="spine" style={{ background: accentInk }}>
-                <span className="spine-text">{card.title.toUpperCase()}</span>
-              </div>
-
-              <div className="card-body">
-                {/* facts and date in two spans so a narrow card wraps at the
-                    date; each fact is its own no-wrap span so a line never
-                    breaks inside "1984–2018" */}
-                <div className="eyebrow">
-                  <span>
-                    {["SIDE A", `${card.tracks.length} TRACKS`, ...cardFacts(card.tracks)].map(
-                      (fact, i) => (
-                        <Fragment key={fact}>
-                          {i > 0 && " · "}
-                          <span className="fact">{fact}</span>
-                        </Fragment>
-                      )
-                    )}
-                  </span>
-                  <span>
-                    CUT{" "}
-                    {new Date()
-                      .toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "2-digit",
-                      })
-                      .toUpperCase()}
-                  </span>
-                </div>
-                <h2 className="card-title" tabIndex={-1} ref={cardTitleRef}>
-                  {card.title}
-                </h2>
-                <div className="vibe" style={{ borderColor: accentInk }}>
-                  “{card.vibe}”
-                </div>
-                <div className="prompt-line">
-                  {card.prompt && (
-                    <>
-                      prompted: <em>{card.prompt}</em>
-                    </>
-                  )}
-                  {card.prompt && card.seed && " · "}
-                  {card.seed && (
-                    <>
-                      in the spirit of: <em>{card.seed.name}</em>
-                    </>
-                  )}
-                </div>
-
-                {/* how the list works, said before the list. It used to be the
-                    card's last line, under eight rows — read after the fact,
-                    if at all. */}
-                <div className="card-legend">
-                  {/* keyed to "not saved yet", not to `editable`: that goes
-                      false the moment save is tapped, and the shorter text
-                      shifted the whole list up a line on a phone */}
-                  {!playlistUrl
-                    ? "tap a song to open it in Spotify · drag to reorder · ↻ swaps one"
-                    : "tap a song to open it in Spotify"}
-                </div>
-
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={onDragEnd}
-                >
-                  <SortableContext
-                    items={card.tracks.map(sortableId)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="track-list" ref={trackListRef}>
-                      {card.tracks.map((t, i) => (
-                        <TrackRow
-                          key={sortableId(t, i)}
-                          id={sortableId(t, i)}
-                          t={t}
-                          index={i}
-                          accentInk={accentInk}
-                          editable={editable}
-                          adjusting={adjusting}
-                          href={
-                            t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearchUrl(t)
-                          }
-                          justDragged={justDragged}
-                          onSwap={() => swapTrack(i, t)}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-
-                <div className="card-footer">
-                  <span className="footer-brand">{BRAND} · STEREO</span>
-                  <div className="barcode" aria-hidden />
-                </div>
-              </div>
-            </div>
+            <MixtapeCard
+              card={card}
+              editable={editable}
+              adjusting={adjusting}
+              saved={Boolean(playlistUrl)}
+              titleRef={cardTitleRef}
+              onReorder={reorderCard}
+              onSwap={swapTrack}
+            />
 
             {/* second chance: refine the card in place — only in the editable
                 window, same gating as drag-to-reorder */}
             {editable && (
-              <div className="refine-area">
-                {/* frames refine as the optional branch, so the accent save
-                    button below reads as the finish line */}
-                <div className="refine-caption">not quite right?</div>
-                <div className="refine-row">
-                  <input
-                    ref={refineRef}
-                    value={adjustText}
-                    onChange={(e) => setAdjustText(e.target.value)}
-                    onKeyDown={(e) => {
-                      // same IME guard as the prompt box
-                      if (e.key === "Enter" && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        refine();
-                      }
-                    }}
-                    placeholder="tweak it — less 80s, more instrumental…"
-                    className="refine-input"
-                    disabled={adjusting}
-                    aria-label="Refine the mixtape"
-                  />
-                  <button
-                    onClick={adjusting ? stopAdjusting : () => refine()}
-                    className="btn-ghost refine-btn"
-                  >
-                    {adjusting ? "STOP" : "REFINE"}
-                  </button>
-                </div>
-                {adjusting && (
-                  /* same console-log aesthetic as generate — every line is a
-                     real SSE event; the live region above narrates milestones */
-                  <div className="progress-log refine-log" aria-hidden>
-                    <StudioChatter
-                      pool={adjustStage === "resolving" ? "resolving" : "rewinding"}
-                      inline
-                    />
-                    <div className="log-line">
-                      changing the songs…
-                      {adjustStage === "resolving" ? (
-                        <span className="log-ok"> ok</span>
-                      ) : (
-                        cursor
-                      )}
-                    </div>
-                    {adjustLog.map((l, i) => (
-                      <LogLine key={i} index={l.index} track={l} />
-                    ))}
-                    {adjustStage === "resolving" && (
-                      <div className="log-line">checking on Spotify…{cursor}</div>
-                    )}
-                  </div>
-                )}
-                {adjustError && (
-                  <div className={"error" + (adjustBooked ? " booked" : "")} role="alert">
-                    {adjustError}
-                    {adjustErrorDetail && (
-                      <span className="error-detail">{adjustErrorDetail}</span>
-                    )}
-                  </div>
-                )}
-              </div>
+              <RefinePanel
+                text={adjustText}
+                onTextChange={setAdjustText}
+                onRefine={() => refine()}
+                onStop={stopAdjusting}
+                adjusting={adjusting}
+                stage={adjustStage}
+                log={adjustLog}
+                error={adjustError}
+                errorDetail={adjustErrorDetail}
+                booked={adjustBooked}
+                inputRef={refineRef}
+              />
             )}
 
             {/* save to spotify — primary action; everything else stays quiet */}
             {!playlistUrl && (
-              <>
-                {/* the dock: a strip the button rides in, so rows scroll under
-                    a bar instead of a button floating over a song title */}
-                <div className="save-dock">
-                <button
-                  onClick={saveToSpotify}
-                  disabled={saving || adjusting}
-                  className="btn-press press-cta"
-                >
-                  {/* says what the tap does in the visitor's words. It was
-                      "PRESS IT TO SPOTIFY": the brand verb, which a stranger
-                      has to decode at the one button that matters most */}
-                  {!saving && <SpotifyMark />}
-                  {saving
-                    ? saveStage || "SAVING…"
-                    : cardUnverified === 0
-                      ? "SAVE AS A SPOTIFY PLAYLIST"
-                      : `SAVE ${cardVerified} OF ${card.tracks.length} SONGS TO SPOTIFY`}
-                </button>
-                </div>
-                {/* what a stranger wonders at this button: is it on Spotify
-                    already (no — a card looked like a finished playlist to
-                    the person who built the app), will it ask for my login.
-                    Answered here, with the honest number of taps left. */}
-                <div className="save-note">
-                  <b>not on Spotify yet</b>
-                  {!loggedIn &&
-                    " — no login needed: we make the playlist, you tap + in Spotify to keep it"}
-                </div>
-                {cardUnverified > 0 && (
-                  <div className="save-note">
-                    {cardUnverified} unverified song
-                    {cardUnverified === 1 ? "" : "s"} — Spotify couldn’t
-                    confirm {cardUnverified === 1 ? "it exists" : "they exist"},
-                    so {cardUnverified === 1 ? "it’ll" : "they’ll"} be left off
-                    the playlist
-                  </div>
-                )}
-              </>
+              <SaveDock
+                saving={saving}
+                stage={saveStage}
+                verified={verifiedCount(card.tracks)}
+                total={card.tracks.length}
+                disabled={saving || adjusting}
+                loggedIn={loggedIn}
+                onSave={saveToSpotify}
+              />
             )}
             {playlistUrl && (
-              <div className="pressed" ref={pressedRef}>
-                {/* the one primary action after pressing: open it. The https
-                    href stays in the DOM (copy, middle-click, no-app fallback);
-                    a desktop click hands off to the installed app, a phone
-                    tap lets the anchor navigate (see spotifyLink.ts). */}
-                <a
-                  ref={pressedOpenRef}
-                  href={playlistUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-press pressed-open"
-                  aria-label="Open this mixtape in Spotify"
-                  onClick={(e) => followSpotifyLink(e, playlistUrl)}
-                >
-                  <SpotifyMark />
-                  OPEN IN SPOTIFY
-                </a>
-                <div className="save-note pressed-note">
-                  {savedToLibrary
-                    ? "Saved — it’s in your Spotify library."
-                    : "Your playlist is ready. Open it and tap + to add it to your library."}
-                </div>
-                <div className="pressed-actions">
-                  {/* one button, not "copy link" + "share": with no share
-                      sheet (a desktop) share IS a copy, so the pair was the
-                      same action twice */}
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    aria-label="Share this mixtape"
-                    onClick={shareMixtape}
-                  >
-                    {copied === "share" ? "copied ✓" : "share"}
-                  </button>
-                </div>
-                {/* no embedded player here (removed 2026-09-08): it repeated
-                    the track list above, ran 352px tall on a phone, and its
-                    one unique control — the save heart — needs a Spotify
-                    cookie inside a cross-site iframe, which Safari and iOS
-                    block. OPEN IN SPOTIFY is the listen action. */}
-                <details className="pressed-mine">
-                  <summary>want your own editable copy?</summary>
-                  <p>
-                    Tapping + follows Mixtape’s playlist. To make one you can edit:
-                    in Spotify, open it → ⋯ → <b>Add to other playlist</b> →{" "}
-                    <b>New playlist</b>. Or copy the tracks and build it anywhere.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => copyText(trackListText(card.tracks), "tracks")}
-                  >
-                    {copied === "tracks" ? "copied ✓" : "copy song list"}
-                  </button>
-                </details>
-              </div>
+              <PressedPanel
+                playlistUrl={playlistUrl}
+                savedToLibrary={savedToLibrary}
+                copied={copied}
+                onShare={shareMixtape}
+                onCopyTracks={() => copyText(trackListText(card.tracks), "tracks")}
+                panelRef={pressedRef}
+                openRef={pressedOpenRef}
+              />
             )}
             {saveError && (
-              <div
-                className={"error" + (saveBooked ? " booked" : "")}
-                role="alert"
-                tabIndex={-1}
-                ref={saveErrorRef}
-              >
-                {saveError}
-              </div>
+              <ErrorAlert message={saveError} booked={saveBooked} alertRef={saveErrorRef} />
             )}
 
             <button

@@ -19,7 +19,6 @@ import {
 } from "@dnd-kit/core";
 import {
   SortableContext,
-  arrayMove,
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
@@ -39,19 +38,28 @@ import {
   type SaveStreamEvent,
   type Track,
 } from "./types";
+import { CapError, StreamDroppedError, readSSE } from "./sse";
+import { saveRefusal } from "./failures";
+import { parsePlaylistLink, seedPlaylistFor, visibleSeedPlaylists, type SeedPlaylists } from "./seed";
 import {
-  CapError,
-  PlainError,
-  QUOTA_COPY,
-  StreamDroppedError,
-  isQuotaEvent,
-  readSSE,
-} from "./sse";
-import { isNetworkFailure, saveRefusal } from "./failures";
+  accentInkFor,
+  reorderTracks,
+  sortableId,
+  spotifySearchUrl,
+  trackListText,
+  verifiedCount,
+} from "./card";
+import {
+  classifyRunFailure,
+  noStreamErrors,
+  noteStreamError,
+  responseFailure,
+  streamFailure,
+} from "./runFailure";
 import DeckHero from "./components/DeckHero";
 import SampleCard from "./components/SampleCard";
 import SpotifyMark from "./components/SpotifyMark";
-import TrackRow, { sortableId } from "./components/TrackRow";
+import TrackRow from "./components/TrackRow";
 import StudioChatter from "./components/StudioChatter";
 
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
@@ -88,21 +96,6 @@ const MIC_UNBLOCK_STEPS = (() => {
     "Microphone → Allow, then reload."
   );
 })();
-
-// Color tokens live in styles/tokens.css. This map is the per-mixtape accent,
-// darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
-// Record<string, string>: the accent name arrives from the server, and the
-// lookup below already falls back to ember for anything unknown — including
-// cards curated before the Clay Wall palette, whose accent names no longer exist.
-// Keep these names in sync with the `accent` enums in server/curator.ts.
-const ACCENT_INK: Record<string, string> = {
-  ember: "#a83a0a",
-  rose: "#a92e5c",
-  plum: "#6a3a86",
-  cobalt: "#2f5aa8",
-  forest: "#237a4a",
-  rust: "#7a5518",
-};
 
 // One static placeholder that names the three prompt axes and stops there:
 // the example chips carry the "what can I type" teaching, so the box itself
@@ -222,9 +215,7 @@ export default function App() {
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
   const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
   // "in the spirit of" seed picker
-  const [playlists, setPlaylists] = useState<
-    Playlist[] | "unauthorized" | "error" | null
-  >(null); // null=loading
+  const [playlists, setPlaylists] = useState<SeedPlaylists>(null); // null=loading
   const [seedId, setSeedId] = useState("");
   const [seedOpen, setSeedOpen] = useState(false); // the inline picker panel
   const [seedFilter, setSeedFilter] = useState("");
@@ -419,20 +410,10 @@ export default function App() {
     (trackListRef.current?.children[i] as HTMLElement | undefined)?.focus();
   }, [card]);
 
-  const seedPlaylist =
-    (Array.isArray(playlists) ? playlists.find((p) => p.id === seedId) || null : null) ??
-    pastedSeed;
+  const seedPlaylist = seedPlaylistFor(playlists, seedId, pastedSeed);
 
-  // the picker's rows: filtered by the search box, the caller's own playlists
-  // first (followed ones can be unreadable for dev-mode apps — see server).
-  // `mine ?? true`: rows from a server without the flag stay unlabeled.
-  const seedShown = Array.isArray(playlists)
-    ? playlists
-        .filter((p) =>
-          p.name.toLowerCase().includes(seedFilter.trim().toLowerCase())
-        )
-        .sort((a, b) => Number(b.mine ?? true) - Number(a.mine ?? true))
-    : [];
+  // the picker's rows (seed.ts)
+  const seedShown = visibleSeedPlaylists(playlists, seedFilter);
 
   // a page-leave mid-dictation must not leave the mic hot
   useEffect(
@@ -587,17 +568,12 @@ export default function App() {
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
-        if (response.status === 429) throw new CapError(data.error);
-        if (response.status === 400 && data.error) throw new PlainError(data.error);
-        throw new Error(data.error || "generate failed");
+        throw responseFailure(response.status, data, "generate failed");
       }
-      // widened initializers: the assignments happen inside the readSSE
+      // widened initializer: the assignment happens inside the readSSE
       // callback, which TS's control-flow analysis can't see
       let doneCard = null as MixCard | null;
-      let streamError = null as string | null;
-      let streamQuota = false;
-      let streamOutage = null as string | null;
-      let streamDetail = null as string | null;
+      const streamErrors = noStreamErrors();
       await readSSE<GenerateStreamEvent>(response, (event, data) => {
         if (event === "seeding") {
           setStage("seeding");
@@ -631,17 +607,13 @@ export default function App() {
         } else if (event === "done") {
           doneCard = data?.card ?? null;
         } else if (event === "error") {
-          if (isQuotaEvent(data)) streamQuota = true;
-          if (data?.outage && data.message) streamOutage = data.message;
-          streamDetail = data?.detail ?? null;
-          streamError = data?.detail || data?.message || "generate failed";
+          noteStreamError(streamErrors, data, "generate failed");
         }
       });
-      if (streamQuota) throw new CapError(QUOTA_COPY, streamDetail);
-      if (streamOutage) throw new PlainError(streamOutage, streamDetail);
-      if (streamError) throw new Error(streamError);
+      const streamError = streamFailure(streamErrors);
+      if (streamError) throw streamError;
       if (!doneCard?.tracks?.length) throw new StreamDroppedError();
-      const verified = doneCard.tracks.filter((t) => t.resolved).length;
+      const verified = verifiedCount(doneCard.tracks);
       setAnnounce(
         `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
       );
@@ -654,32 +626,40 @@ export default function App() {
       setPastedSeed(null);
       setSeedOpen(false);
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        setAnnounce("Stopped.");
-      } else if (e instanceof CapError) {
-        setBooked(true);
-        setError(e.message);
-        setErrorDetail(e.detail);
-        setAnnounce(e.message);
-        setErrorTick((t) => t + 1);
-      } else if (isNetworkFailure(e, navigator.onLine)) {
-        // the visitor's connection, not the curator: no "that's on us", and
-        // no detail line — the browser's "Failed to fetch" helps nobody
-        setError("you look offline — check your connection and try the same prompt again.");
-        setErrorTick((t) => t + 1);
-      } else if (e instanceof StreamDroppedError) {
-        setError("the connection dropped mid-run — try the same prompt again.");
-        setErrorTick((t) => t + 1);
-      } else if (e instanceof PlainError) {
-        setError(e.message);
-        setErrorDetail(e.detail);
-        setAnnounce(e.message);
-        setErrorTick((t) => t + 1);
-      } else {
-        console.error(e);
-        setError("The curator dropped the needle — that’s on us. Try the same prompt again.");
-        setErrorDetail(e instanceof Error ? e.message : String(e));
-        setErrorTick((t) => t + 1);
+      const failure = classifyRunFailure(e, navigator.onLine);
+      switch (failure.kind) {
+        case "aborted":
+          setAnnounce("Stopped.");
+          break;
+        case "cap":
+          setBooked(true);
+          setError(failure.error.message);
+          setErrorDetail(failure.error.detail);
+          setAnnounce(failure.error.message);
+          setErrorTick((t) => t + 1);
+          break;
+        case "offline":
+          // the visitor's connection, not the curator: no "that's on us", and
+          // no detail line — the browser's "Failed to fetch" helps nobody
+          setError("you look offline — check your connection and try the same prompt again.");
+          setErrorTick((t) => t + 1);
+          break;
+        case "dropped":
+          setError("the connection dropped mid-run — try the same prompt again.");
+          setErrorTick((t) => t + 1);
+          break;
+        case "plain":
+          setError(failure.error.message);
+          setErrorDetail(failure.error.detail);
+          setAnnounce(failure.error.message);
+          setErrorTick((t) => t + 1);
+          break;
+        case "fault":
+          console.error(e);
+          setError("The curator dropped the needle — that’s on us. Try the same prompt again.");
+          setErrorDetail(e instanceof Error ? e.message : String(e));
+          setErrorTick((t) => t + 1);
+          break;
       }
     } finally {
       abortRef.current = null;
@@ -720,16 +700,11 @@ export default function App() {
       });
       if (!response.ok) {
         const data: { error?: string } = await response.json().catch(() => ({}));
-        if (response.status === 429) throw new CapError(data.error);
-        if (response.status === 400 && data.error) throw new PlainError(data.error);
-        throw new Error(data.error || "adjust failed");
+        throw responseFailure(response.status, data, "adjust failed");
       }
-      // widened initializers, same reason as in generate
+      // widened initializer, same reason as in generate
       let doneCard = null as MixCard | null;
-      let streamError = null as string | null;
-      let streamQuota = false;
-      let streamOutage = null as string | null;
-      let streamDetail = null as string | null;
+      const streamErrors = noStreamErrors();
       await readSSE<AdjustStreamEvent>(response, (event, data) => {
         if (event === "adjusting") {
           setAdjustStage("adjusting");
@@ -751,15 +726,11 @@ export default function App() {
         } else if (event === "done") {
           doneCard = data?.card ?? null;
         } else if (event === "error") {
-          if (isQuotaEvent(data)) streamQuota = true;
-          if (data?.outage && data.message) streamOutage = data.message;
-          streamDetail = data?.detail ?? null;
-          streamError = data?.detail || data?.message || "adjust failed";
+          noteStreamError(streamErrors, data, "adjust failed");
         }
       });
-      if (streamQuota) throw new CapError(QUOTA_COPY, streamDetail);
-      if (streamOutage) throw new PlainError(streamOutage, streamDetail);
-      if (streamError) throw new Error(streamError);
+      const streamError = streamFailure(streamErrors);
+      if (streamError) throw streamError;
       if (!doneCard?.tracks?.length) throw new StreamDroppedError();
       setAnnounce(
         `Mixtape adjusted: ${changeCount} track${changeCount === 1 ? "" : "s"} changed.`
@@ -767,25 +738,33 @@ export default function App() {
       setCard(doneCard);
       setAdjustText("");
     } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        setAnnounce("Stopped.");
-      } else if (e instanceof CapError) {
-        setAdjustBooked(true);
-        setAdjustError(e.message);
-        setAdjustErrorDetail(e.detail);
-        setAnnounce(e.message);
-      } else if (isNetworkFailure(e, navigator.onLine)) {
-        // same split as in generate
-        setAdjustError("you look offline — check your connection and try it again.");
-      } else if (e instanceof StreamDroppedError) {
-        setAdjustError("the connection dropped — try it again.");
-      } else if (e instanceof PlainError) {
-        setAdjustError(e.message);
-        setAdjustErrorDetail(e.detail);
-      } else {
-        console.error(e);
-        setAdjustError("Couldn't make that change. Try rewording it.");
-        setAdjustErrorDetail(e instanceof Error ? e.message : String(e));
+      const failure = classifyRunFailure(e, navigator.onLine);
+      switch (failure.kind) {
+        case "aborted":
+          setAnnounce("Stopped.");
+          break;
+        case "cap":
+          setAdjustBooked(true);
+          setAdjustError(failure.error.message);
+          setAdjustErrorDetail(failure.error.detail);
+          setAnnounce(failure.error.message);
+          break;
+        case "offline":
+          // same split as in generate
+          setAdjustError("you look offline — check your connection and try it again.");
+          break;
+        case "dropped":
+          setAdjustError("the connection dropped — try it again.");
+          break;
+        case "plain":
+          setAdjustError(failure.error.message);
+          setAdjustErrorDetail(failure.error.detail);
+          break;
+        case "fault":
+          console.error(e);
+          setAdjustError("Couldn't make that change. Try rewording it.");
+          setAdjustErrorDetail(e instanceof Error ? e.message : String(e));
+          break;
       }
     } finally {
       adjustAbortRef.current = null;
@@ -885,9 +864,7 @@ export default function App() {
     }
   };
 
-  const accentInk = card
-    ? ACCENT_INK[card.accent] || ACCENT_INK.ember
-    : ACCENT_INK.ember;
+  const accentInk = accentInkFor(card);
 
   // checked, not confirmed: a run with two songs Spotify couldn't find must
   // still end on "8 of 8", or the last thing on screen reads as stuck
@@ -908,16 +885,13 @@ export default function App() {
             n: 1,
             label: `reading “${seedLog?.name || seedPlaylist.name || "your playlist"}”`,
           };
-  const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;
+  const cardVerified = card ? verifiedCount(card.tracks) : 0;
   const cardUnverified = card ? card.tracks.length - cardVerified : 0;
   const cursor = (
     <span className="cursor" aria-hidden>
       ▮
     </span>
   );
-
-  const spotifySearch = (t: Track) =>
-    `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
 
   // Clipboard feedback is the button's own label for a beat, not a toast.
   const copyText = async (text: string, what: "tracks") => {
@@ -930,14 +904,6 @@ export default function App() {
       setAnnounce("Couldn't copy — select it by hand.");
     }
   };
-
-  // The card's tracks as plain lines — for anyone who wants to own a copy
-  // (paste into a new playlist, or search them on another service).
-  const trackListText = () =>
-    (card?.tracks || [])
-      .filter((t) => t.resolved)
-      .map((t) => `${t.artist} — ${t.title}`)
-      .join("\n");
 
   // Native share sheet where there is one; otherwise the same clipboard path
   // "copy link" uses. The decision (and the "dismissed is not a copy" rule)
@@ -963,13 +929,12 @@ export default function App() {
 
   // arm a pasted playlist link as the seed; the server names it while seeding
   const applyPastedSeed = () => {
-    const m = /playlist[/:]([A-Za-z0-9]{22})/.exec(seedPaste) ||
-      /^\s*([A-Za-z0-9]{22})\s*$/.exec(seedPaste);
-    if (!m) {
+    const id = parsePlaylistLink(seedPaste);
+    if (!id) {
       setInputHint("That doesn't look like a Spotify playlist link — copy it from Share → Copy link in Spotify.");
       return;
     }
-    setPastedSeed({ id: m[1]!, name: "", total: null, mine: false });
+    setPastedSeed({ id, name: "", total: null, mine: false });
     setSeedPaste("");
     setSeedOpen(false);
     setInputHint(null);
@@ -995,17 +960,9 @@ export default function App() {
       }
       setCard((c) => {
         if (!c) return c; // unreachable: a drag can only start on a rendered card
-        const ids = c.tracks.map(sortableId);
-        return {
-          ...c,
-          // dnd-kit's UniqueIdentifier is string | number; ours are always the
-          // sortableId strings handed to SortableContext above
-          tracks: arrayMove(
-            c.tracks,
-            ids.indexOf(active.id as string),
-            ids.indexOf(over.id as string)
-          ),
-        };
+        // dnd-kit's UniqueIdentifier is string | number; ours are always the
+        // sortableId strings handed to SortableContext above
+        return reorderTracks(c, active.id as string, over.id as string);
       });
     }
   };
@@ -1631,7 +1588,7 @@ export default function App() {
                           editable={editable}
                           adjusting={adjusting}
                           href={
-                            t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearch(t)
+                            t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearchUrl(t)
                           }
                           justDragged={justDragged}
                           onSwap={() => swapTrack(i, t)}
@@ -1817,7 +1774,7 @@ export default function App() {
                   <button
                     type="button"
                     className="btn-ghost"
-                    onClick={() => copyText(trackListText(), "tracks")}
+                    onClick={() => copyText(trackListText(card.tracks), "tracks")}
                   >
                     {copied === "tracks" ? "copied ✓" : "copy song list"}
                   </button>

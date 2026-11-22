@@ -8,16 +8,6 @@ const UNVERIFIED_TITLE =
   "Spotify couldn't confirm this track exists — the curator may have " +
   "misremembered it. Tap to search Spotify yourself.";
 
-// Identity for a track. Not guaranteed unique: a repeated curated track, or
-// two entries resolving to the same URI, would collide.
-const trackId = (t: Track) => t.spotifyUri || `${t.artist}—${t.title}`;
-
-// Sortable/key id, made unique by position. Computed from the card's current
-// order at render time — dnd-kit snapshots items at drag start, so ids stay
-// stable for the duration of a drag, and the positional suffix makes the
-// drag-end indexOf lookup exact even with duplicate tracks.
-export const sortableId = (t: Track, i: number) => `${trackId(t)}#${i}`;
-
 // One row on the sleeve. The entire row is the drag surface (dnd-kit sortable);
 // while not editable it degrades to the plain link row it always was.
 // While a refine is in flight, drag and the swap button are disabled — the

@@ -1,12 +1,11 @@
 import StudioChatter from "./StudioChatter";
 import LogLine from "./LogLine";
 import { type LogTrack } from "../types";
+import { type Stage } from "../generationRun";
 
 // The waiting screen while a mixtape is made: the step line, the studio
-// chatter, and each song as its event lands. App works out the step.
-
-// the generate stream's stage, as its events report it
-export type Stage = "seeding" | "curating" | "resolving" | null;
+// chatter, and each song as its event lands. The step comes from
+// loadingStep (generationRun.ts).
 
 export default function GeneratingProgress({
   stage,

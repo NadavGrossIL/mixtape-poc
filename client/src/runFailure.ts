@@ -1,8 +1,8 @@
-// How a generate or refine run failed, kept out of the component so it is
+// How a generate or refine run failed, kept out of the hooks so it is
 // unit-tested under Node (server/test/runFailure.test.ts): the refused HTTP
 // response, the stream's `error` events, and which kind of failure a caught
-// error is. What each kind says to the visitor stays in App.tsx — generate
-// and refine word and announce them differently on purpose.
+// error is. What each kind says to the visitor stays in the run's hook —
+// useGeneration and useRefine word and announce them differently on purpose.
 
 import { CapError, PlainError, QUOTA_COPY, StreamDroppedError, isQuotaEvent } from "./sse.ts";
 import { isNetworkFailure } from "./failures.ts";

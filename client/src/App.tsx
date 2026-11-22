@@ -1,19 +1,8 @@
 import { useRef, useState } from "react";
 import LogConsole from "./LogConsole";
-import {
-  type GenerateStreamEvent,
-  type LogTrack,
-  type MixCard,
-} from "./types";
-import { StreamDroppedError, readSSE } from "./sse";
+import { type MixCard } from "./types";
 import { reorderTracks, verifiedCount } from "./card";
-import {
-  classifyRunFailure,
-  noStreamErrors,
-  noteStreamError,
-  responseFailure,
-  streamFailure,
-} from "./runFailure";
+import { loadingStep } from "./generationRun";
 import SampleCard from "./components/SampleCard";
 import SiteHeader from "./components/SiteHeader";
 import Composer from "./components/Composer";
@@ -21,7 +10,7 @@ import RecentMixtapes from "./components/RecentMixtapes";
 import LatestShelf from "./components/LatestShelf";
 import ExamplePrompts from "./components/ExamplePrompts";
 import HomeNotes from "./components/HomeNotes";
-import GeneratingProgress, { type Stage } from "./components/GeneratingProgress";
+import GeneratingProgress from "./components/GeneratingProgress";
 import ErrorAlert from "./components/ErrorAlert";
 import MixtapeCard from "./components/MixtapeCard";
 import RefinePanel from "./components/RefinePanel";
@@ -36,6 +25,7 @@ import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
 import useDictation from "./hooks/useDictation";
 import useSeedPicker from "./hooks/useSeedPicker";
 import useSave from "./hooks/useSave";
+import useGeneration from "./hooks/useGeneration";
 import useRefine from "./hooks/useRefine";
 
 // The server-log console is a learning-project debugging aid, not product UI.
@@ -70,24 +60,10 @@ export default function App() {
 
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // The server's own words for what went wrong, shown under the friendly
-  // line — the log panel has the rest of the run.
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
-  const [booked, setBooked] = useState(false); // the error is a cap, not a fault
-  // bumps on every failure so the alert is scrolled into view even when the
-  // same line lands twice in a row (a capped visitor pressing again)
-  const [errorTick, setErrorTick] = useState(0);
-  // real progress, driven only by SSE events from the backend
-  const [stage, setStage] = useState<Stage>(null);
-  const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
-  const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
 
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
 
   const focusPrompt = () => inputRef.current?.focus();
 
@@ -117,10 +93,34 @@ export default function App() {
     },
   });
 
+  // making a mixtape. Called before useRefine, whose guard needs
+  // gen.loading; onStart reaches clearDraft (below), which needs refine.
+  // That is safe: onStart only runs on a click, after this render has
+  // declared both.
+  const gen = useGeneration({
+    prompt,
+    seed: seed.armed,
+    announce: setAnnounce,
+    setHint: setInputHint,
+    focusPrompt,
+    onStart: () => {
+      dictation.stop(); // pressing it while dictating ends the take
+      clearDraft();
+    },
+    onCard: (doneCard) => {
+      setCard(doneCard);
+      // The card records the seed (card.seed, printed on the sleeve); the
+      // armed seed must not silently ride along into the next generation.
+      // A failed run keeps it, so "try the same prompt again" stays true.
+      seed.clearAfterRun();
+    },
+    onSeedNamed: (name) => seed.nameFromServer(name),
+  });
+
   // refine and swap; blocked while a mixtape is being made or saved
   const refine = useRefine({
     card,
-    blocked: loading || save.saving,
+    blocked: gen.loading || save.saving,
     announce: setAnnounce,
     onCard: setCard,
   });
@@ -130,163 +130,36 @@ export default function App() {
   const unsavedCard = Boolean(card) && !save.playlistUrl;
   useUnsavedCardGuard(unsavedCard);
 
-  const generate = async (p?: string) => {
-    const thePrompt = (p ?? prompt).trim();
-    if (loading || refine.adjusting) return;
-    // a seed playlist alone is a valid ask ("just like this one")
-    if (!thePrompt && !seed.armed) {
-      setInputHint(
-        "Type a vibe first — a mood, a moment, an era — or start from a playlist."
-      );
-      inputRef.current?.focus();
-      return;
-    }
-    dictation.stop(); // pressing it while dictating ends the take
-    setLoading(true);
-    setError(null);
-    setErrorDetail(null);
-    setBooked(false);
+  // The last card and everything hanging off it: its save and its refine.
+  // A new run's start and "make another one" both clear it. Nulling the
+  // card in the same batch as a run's start is what keeps `loading ⇒ !card`
+  // (and a refine needs a card, so `adjusting ⇒ card`).
+  const clearDraft = () => {
     setCard(null);
     save.reset();
     refine.reset();
-    setStage(null);
-    setLogTracks([]);
-    setSeedLog(null);
-    setAnnounce("Making your mixtape.");
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      const response = await fetch("/api/generate/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: thePrompt,
-          ...(seed.armed
-            ? { seed: { id: seed.armed.id, name: seed.armed.name } }
-            : {}),
-        }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const data: { error?: string } = await response.json().catch(() => ({}));
-        throw responseFailure(response.status, data, "generate failed");
-      }
-      // widened initializer: the assignment happens inside the readSSE
-      // callback, which TS's control-flow analysis can't see
-      let doneCard = null as MixCard | null;
-      const streamErrors = noStreamErrors();
-      await readSSE<GenerateStreamEvent>(response, (event, data) => {
-        if (event === "seeding") {
-          setStage("seeding");
-          setSeedLog({ name: data?.name || "your playlist" });
-          // a pasted seed learns its real name from the server
-          const name = data?.name;
-          if (name) seed.nameFromServer(name);
-          setAnnounce("Reading your playlist.");
-        } else if (event === "curating") {
-          setStage("curating");
-          setAnnounce("Picking the songs.");
-        } else if (event === "track") {
-          setLogTracks((ts) => {
-            const next = [...ts];
-            next[data.index] = { artist: data.artist, title: data.title };
-            return next;
-          });
-        } else if (event === "curated") {
-          setStage("resolving");
-          setAnnounce("Checking each song on Spotify.");
-        } else if (event === "resolved") {
-          setLogTracks((ts) => {
-            const next = [...ts];
-            const cur = next[data.index]; // local so TS narrows the sparse slot
-            if (cur) {
-              next[data.index] = { ...cur, resolved: data.resolved };
-            }
-            return next;
-          });
-        } else if (event === "done") {
-          doneCard = data?.card ?? null;
-        } else if (event === "error") {
-          noteStreamError(streamErrors, data, "generate failed");
-        }
-      });
-      const streamError = streamFailure(streamErrors);
-      if (streamError) throw streamError;
-      if (!doneCard?.tracks?.length) throw new StreamDroppedError();
-      const verified = verifiedCount(doneCard.tracks);
-      setAnnounce(
-        `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
-      );
-      setCard(doneCard);
-      // The card records the seed (card.seed, printed on the sleeve); the
-      // armed seed must not silently ride along into the next generation.
-      // A failed run keeps it, so "try the same prompt again" stays true.
-      seed.clearAfterRun();
-    } catch (e) {
-      const failure = classifyRunFailure(e, navigator.onLine);
-      switch (failure.kind) {
-        case "aborted":
-          setAnnounce("Stopped.");
-          break;
-        case "cap":
-          setBooked(true);
-          setError(failure.error.message);
-          setErrorDetail(failure.error.detail);
-          setAnnounce(failure.error.message);
-          setErrorTick((t) => t + 1);
-          break;
-        case "offline":
-          // the visitor's connection, not the curator: no "that's on us", and
-          // no detail line — the browser's "Failed to fetch" helps nobody
-          setError("you look offline — check your connection and try the same prompt again.");
-          setErrorTick((t) => t + 1);
-          break;
-        case "dropped":
-          setError("the connection dropped mid-run — try the same prompt again.");
-          setErrorTick((t) => t + 1);
-          break;
-        case "plain":
-          setError(failure.error.message);
-          setErrorDetail(failure.error.detail);
-          setAnnounce(failure.error.message);
-          setErrorTick((t) => t + 1);
-          break;
-        case "fault":
-          console.error(e);
-          setError("The curator dropped the needle — that’s on us. Try the same prompt again.");
-          setErrorDetail(e instanceof Error ? e.message : String(e));
-          setErrorTick((t) => t + 1);
-          break;
-      }
-    } finally {
-      abortRef.current = null;
-      setLoading(false);
+  };
+
+  // the composer's MAKE THE MIXTAPE; not while a refine is in flight (the
+  // run's own "already loading" guard is in useGeneration)
+  const onGenerate = (p?: string) => {
+    if (refine.adjusting) return;
+    gen.generate(p);
+  };
+
+  // "make another one": asks first if the card was never pressed
+  const startOver = () => {
+    if (
+      unsavedCard &&
+      !window.confirm("This mixtape isn’t on Spotify yet. Start over and lose it?")
+    ) {
+      return;
     }
+    clearDraft();
+    focusPrompt();
   };
 
-  const stopGenerating = () => {
-    abortRef.current?.abort();
-  };
-
-  // checked, not confirmed: a run with two songs Spotify couldn't find must
-  // still end on "8 of 8", or the last thing on screen reads as stuck
-  const liveChecked = logTracks.filter((t) => t && t.resolved !== undefined).length;
-  // The waiting screen's step line. A run from a playlist has one more step
-  // (reading it) than a run from a prompt; the armed seed is still set while
-  // loading, so the total is known before the first event arrives.
-  const stepTotal = seed.armed ? 3 : 2;
-  const loadingStep =
-    stage === "resolving"
-      ? {
-          n: stepTotal,
-          label: `checking each one on Spotify · ${liveChecked} of ${logTracks.length}`,
-        }
-      : stage === "curating" || !seed.armed
-        ? { n: stepTotal - 1, label: "picking the songs" }
-        : {
-            n: 1,
-            label: `reading “${seedLog?.name || seed.armed.name || "your playlist"}”`,
-          };
+  const step = loadingStep(gen.stage, gen.logTracks, gen.seedLog, seed.armed);
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
@@ -327,12 +200,12 @@ export default function App() {
                 setPrompt(value);
                 if (inputHint) setInputHint(null);
               }}
-              onSubmit={() => generate()}
-              onStop={stopGenerating}
-              loading={loading}
+              onSubmit={() => onGenerate()}
+              onStop={gen.stop}
+              loading={gen.loading}
               seed={seed.armed}
               onClearSeed={seed.clear}
-              showSeedEntry={!loading && seed.canOffer}
+              showSeedEntry={!gen.loading && seed.canOffer}
               seedOpen={seed.open}
               onToggleSeed={seed.toggle}
               inputRef={inputRef}
@@ -350,11 +223,16 @@ export default function App() {
                 which on a phone put them below the fold — the button snapped
                 from STOP back to MAKE THE MIXTAPE and looked inert. With
                 focusKey it scrolls itself into view and takes focus. */}
-            {error && (
-              <ErrorAlert message={error} detail={errorDetail} booked={booked} focusKey={errorTick} />
+            {gen.error && (
+              <ErrorAlert
+                message={gen.error.message}
+                detail={gen.error.detail}
+                booked={gen.error.booked}
+                focusKey={gen.errorTick}
+              />
             )}
 
-            {!loading && (
+            {!gen.loading && (
               <>
                 {/* the seed picker, opened from the composer-bar trigger; a
                     chosen playlist collapses into the token docked on the
@@ -416,12 +294,12 @@ export default function App() {
           </>
         )}
 
-        {loading && (
+        {gen.loading && (
           <GeneratingProgress
-            stage={stage}
-            logTracks={logTracks}
-            step={loadingStep}
-            stepTotal={stepTotal}
+            stage={gen.stage}
+            logTracks={gen.logTracks}
+            step={step}
+            stepTotal={step.total}
           />
         )}
 
@@ -472,18 +350,7 @@ export default function App() {
             )}
 
             <button
-              onClick={() => {
-                if (
-                  unsavedCard &&
-                  !window.confirm("This mixtape isn’t on Spotify yet. Start over and lose it?")
-                ) {
-                  return;
-                }
-                setCard(null);
-                save.reset();
-                refine.reset();
-                inputRef.current?.focus();
-              }}
+              onClick={startOver}
               // disabled while adjusting or saving: the in-flight refine or
               // press would land its result right back on the cleared state
               disabled={refine.adjusting || save.saving}

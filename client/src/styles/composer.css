@@ -67,6 +67,10 @@
   line-height: 1.4;
   padding: 12px 14px;
   resize: none;
+  /* grows with its text (Composer's fitToContent) up to here, then scrolls:
+     a share of the screen so the button below always stays on it */
+  max-height: min(40dvh, 320px);
+  overflow-y: auto;
 }
 
 .prompt-input:focus-visible {

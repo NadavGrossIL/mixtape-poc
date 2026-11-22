@@ -50,8 +50,12 @@ file is a map. The reasoning lives next to the code as comments; read those.
   surface, layered via `index.css`). Dev proxy in `vite.config.ts`; served
   from Express when built.
 - `evals/` — truthfulness (`generate` → `judge` → `aggregate`, plus
-  `grounding`), `reliability` (pass^k), `selftest` (offline), `prompts.json`
-  (the cases), `thresholds.json` (the gates), `runs/` (evidence).
+  `grounding`) grades the liner notes, `reliability` (pass^k), year fit
+  (`fit.ts` over `fit-prompts.json`, 2026-11-22: is each track from the era
+  the listener asked for — the one eval that grades the playlist; code
+  passes a track when Spotify and MusicBrainz agree, the rest need a web
+  check), `selftest` (offline), `prompts.json` (the truthfulness cases),
+  `thresholds.json` (the gates), `runs/` (evidence).
 - `docs/` — `reviews/` (2026-08-14 audit) · `research/` · `decisions/`
   (ADRs) · `playbooks/` (how we do X) · `factory/plan.md` (this workflow).
 - `specs/` — feature tickets, from `specs/_template.md`.

@@ -1,4 +1,4 @@
-// The example-prompt chips under the composer. A chip hands its prompt to
+// The example-prompt chips, right under the composer and ahead of the sample. A chip hands its prompt to
 // `onPick`; the composer stays editable.
 
 // Each example demonstrates a different prompt axis: speed/skill,
@@ -14,7 +14,7 @@ const EXAMPLES = [
 export default function ExamplePrompts({ onPick }: { onPick: (prompt: string) => void }) {
   return (
     <div className="examples">
-      <div className="section-note">stuck? steal a prompt</div>
+      <div className="section-note">or start from one of these</div>
       <div className="chips">
         {EXAMPLES.map((ex) => (
           <button

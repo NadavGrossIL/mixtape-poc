@@ -152,6 +152,13 @@ export default function App() {
     focusPrompt();
   };
 
+  // a chip or the sample's "use this prompt": fills the box, stays editable
+  const pickPrompt = (p: string) => {
+    setPrompt(p);
+    setInputHint(null);
+    focusPrompt();
+  };
+
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
   const editable = Boolean(card) && !save.playlistUrl && !save.saving;
@@ -244,10 +251,16 @@ export default function App() {
                   </div>
                 )}
 
+                {/* example chips: populate the prompt, stay editable. Right
+                    under the composer they feed, ahead of the sample: a
+                    stranger who reads "what you get" first and only then
+                    finds the ways in, below the fold, scrolled past them */}
+                <ExamplePrompts onPick={pickPrompt} />
+
                 {/* this browser's presses, so a guest who didn't tap + in
-                    Spotify can get back to one. Right under the composer,
-                    above the example prompts: for a returning visitor their
-                    own tapes outrank strangers' prompts. Newest three, the
+                    Spotify can get back to one. Under the example prompts,
+                    above the sample: for a returning visitor their own tapes
+                    outrank a stranger's. Newest three, the
                     rest behind one toggle, so it never outgrows the composer. */}
                 <RecentMixtapes
                   recent={recent.recent}
@@ -257,7 +270,7 @@ export default function App() {
 
                 {/* proof before more ways in: on a phone this was under the
                     chips and two gaps, off the first screen entirely */}
-                <SampleCard />
+                <SampleCard onPick={pickPrompt} />
 
                 {/* everyone's newest presses: real results a stranger can
                     open before typing anything. Under the sample (what you
@@ -268,15 +281,6 @@ export default function App() {
                   ownUrls={recent.recent.map((m) => m.url)}
                   isOwner={isOwner}
                   onHide={latest.hide}
-                />
-
-                {/* example chips: populate the prompt, stay editable */}
-                <ExamplePrompts
-                  onPick={(ex) => {
-                    setPrompt(ex);
-                    setInputHint(null);
-                    focusPrompt();
-                  }}
                 />
 
                 <HomeNotes showConnect={loggedIn === false && SHOW_LOGS} />

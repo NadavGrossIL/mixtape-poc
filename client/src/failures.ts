@@ -1,5 +1,5 @@
-// Two decisions the catch blocks in App.tsx make about a failure, kept out of
-// the component so they are unit-tested under Node (server/test/failures.test.ts).
+// Two decisions the save and run catch blocks make about a failure, kept out
+// of React so they are unit-tested under Node (server/test/failures.test.ts).
 
 // ── saving ──
 //

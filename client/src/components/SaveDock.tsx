@@ -2,7 +2,7 @@ import SpotifyMark from "./SpotifyMark";
 
 // The save button in its sticky dock, and the notes under it: not on
 // Spotify yet, no login needed, and how many unverified songs stay off.
-// Presentational: the save run lives in App.
+// Presentational: the save run lives in useSave.
 export default function SaveDock({
   saving,
   stage,

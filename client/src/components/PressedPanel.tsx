@@ -36,7 +36,7 @@ export default function PressedPanel({
   //
   // A mount effect, replacing App's effect on [playlistUrl]. Same trigger:
   // this panel renders exactly while a card is up and playlistUrl is set,
-  // playlistUrl only ever turns non-null in saveToSpotify (from the save
+  // playlistUrl only ever turns non-null in useSave's save (from the save
   // button, which only exists while it is null, and with a card up that
   // can't be cleared mid-save), and it never changes from one URL to
   // another. So this mounts exactly when a save just landed, which is when

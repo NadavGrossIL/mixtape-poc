@@ -4,10 +4,8 @@ import {
   type GenerateStreamEvent,
   type LogTrack,
   type MixCard,
-  type SaveStreamEvent,
 } from "./types";
-import { CapError, StreamDroppedError, readSSE } from "./sse";
-import { saveRefusal } from "./failures";
+import { StreamDroppedError, readSSE } from "./sse";
 import { reorderTracks, verifiedCount } from "./card";
 import {
   classifyRunFailure,
@@ -37,6 +35,7 @@ import usePageView from "./hooks/usePageView";
 import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
 import useDictation from "./hooks/useDictation";
 import useSeedPicker from "./hooks/useSeedPicker";
+import useSave from "./hooks/useSave";
 import useRefine from "./hooks/useRefine";
 
 // The server-log console is a learning-project debugging aid, not product UI.
@@ -80,17 +79,10 @@ export default function App() {
   // bumps on every failure so the alert is scrolled into view even when the
   // same line lands twice in a row (a capped visitor pressing again)
   const [errorTick, setErrorTick] = useState(0);
-  const [saving, setSaving] = useState(false);
-  const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
-  const [savedToLibrary, setSavedToLibrary] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveBooked, setSaveBooked] = useState(false); // same cap-not-fault split as `booked`
-  const [saveErrorTick, setSaveErrorTick] = useState(0); // same job as errorTick
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
   const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
-  const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
 
@@ -114,17 +106,28 @@ export default function App() {
     focusPrompt,
   });
 
+  // pressing the card to Spotify; a press is remembered on this browser
+  // ("your mixtapes") and the shelf is re-read
+  const save = useSave({
+    card,
+    announce: setAnnounce,
+    onSaved: ({ title, url }) => {
+      recent.record({ title, url, pressedAt: Date.now() });
+      latest.reload();
+    },
+  });
+
   // refine and swap; blocked while a mixtape is being made or saved
   const refine = useRefine({
     card,
-    blocked: loading || saving,
+    blocked: loading || save.saving,
     announce: setAnnounce,
     onCard: setCard,
   });
 
   // a card on screen that no playlist was pressed from: leaving asks first
   // (useUnsavedCardGuard), and so does "make another one"
-  const unsavedCard = Boolean(card) && !playlistUrl;
+  const unsavedCard = Boolean(card) && !save.playlistUrl;
   useUnsavedCardGuard(unsavedCard);
 
   const generate = async (p?: string) => {
@@ -144,9 +147,7 @@ export default function App() {
     setErrorDetail(null);
     setBooked(false);
     setCard(null);
-    setPlaylistUrl(null);
-    setSavedToLibrary(false);
-    setSaveError(null);
+    save.reset();
     refine.reset();
     setStage(null);
     setLogTracks([]);
@@ -267,85 +268,6 @@ export default function App() {
     abortRef.current?.abort();
   };
 
-  const saveToSpotify = async () => {
-    if (!card || saving) return;
-    const uris = card.tracks.filter((t) => t.resolved).map((t) => t.spotifyUri);
-    if (!uris.length) {
-      setSaveError("No verified songs to save.");
-      setSaveBooked(false);
-      setSaveErrorTick((t) => t + 1);
-      return;
-    }
-    setSaving(true);
-    setSaveError(null);
-    setSaveStage(null);
-    try {
-      const response = await fetch("/api/playlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        // the vibe line becomes the playlist description; the prompt stays
-        // off on purpose: it lands on a public profile, and a prompt can be
-        // more personal than intended
-        body: JSON.stringify({ title: card.title, vibe: card.vibe, uris }),
-      });
-      if (!response.ok) {
-        const data: { error?: string } = await response.json().catch(() => ({}));
-        const refusal = saveRefusal(response.status, data.error);
-        if (refusal) throw new CapError(refusal);
-        throw new Error(data.error || "save failed");
-      }
-      // widened initializers, same reason as in generate
-      let url = null as string | null;
-      let saved = false;
-      let streamError = null as string | null;
-      await readSSE<SaveStreamEvent>(response, (event, data) => {
-        if (event === "creating") setSaveStage("CREATING PLAYLIST…");
-        else if (event === "adding") setSaveStage(`ADDING ${data?.count} SONGS…`);
-        else if (event === "done") {
-          url = data?.playlistUrl ?? null;
-          saved = Boolean(data?.saved);
-        } else if (event === "error") streamError = data?.message || "save failed";
-      });
-      if (streamError) {
-        const refusal = saveRefusal(null, streamError);
-        if (refusal) throw new CapError(refusal);
-        throw new Error(streamError);
-      }
-      if (!url) throw new Error("no playlist url");
-      setAnnounce(
-        saved
-          ? "Saved. The playlist is in your Spotify library."
-          : "Your playlist is ready. Open it in Spotify and tap plus to add it to your library."
-      );
-      setPlaylistUrl(url);
-      setSavedToLibrary(saved);
-      // remembered here so a guest who didn't tap + can find it again
-      recent.record({ title: card.title, url, pressedAt: Date.now() });
-      latest.reload();
-    } catch (e) {
-      // a cap (today's saves, Spotify's daily quota) is the server's own
-      // line: "try again" is wrong advice until tomorrow. Anything else is a
-      // fault, and its text is for the log, not the visitor (failures.ts).
-      if (e instanceof CapError) {
-        setSaveError(e.message);
-        setSaveBooked(true);
-        setAnnounce(e.message);
-      } else {
-        console.error(e);
-        setSaveError("Couldn't save it to Spotify. Try again.");
-        setSaveBooked(false);
-      }
-      setSaveErrorTick((t) => t + 1);
-    } finally {
-      setSaving(false);
-      setSaveStage(null);
-    }
-  };
-
-
   // checked, not confirmed: a run with two songs Spotify couldn't find must
   // still end on "8 of 8", or the last thing on screen reads as stuck
   const liveChecked = logTracks.filter((t) => t && t.resolved !== undefined).length;
@@ -368,7 +290,7 @@ export default function App() {
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
-  const editable = Boolean(card) && !playlistUrl && !saving;
+  const editable = Boolean(card) && !save.playlistUrl && !save.saving;
 
   // the card with a dragged row dropped somewhere else (TrackList's ids)
   const reorderCard = (activeId: string, overId: string) =>
@@ -510,7 +432,7 @@ export default function App() {
               card={card}
               editable={editable}
               adjusting={refine.adjusting}
-              saved={Boolean(playlistUrl)}
+              saved={Boolean(save.playlistUrl)}
               onReorder={reorderCard}
               onSwap={refine.swap}
             />
@@ -522,27 +444,31 @@ export default function App() {
             )}
 
             {/* save to spotify — primary action; everything else stays quiet */}
-            {!playlistUrl && (
+            {!save.playlistUrl && (
               <SaveDock
-                saving={saving}
-                stage={saveStage}
+                saving={save.saving}
+                stage={save.stage}
                 verified={verifiedCount(card.tracks)}
                 total={card.tracks.length}
-                disabled={saving || refine.adjusting}
+                disabled={save.saving || refine.adjusting}
                 loggedIn={loggedIn}
-                onSave={saveToSpotify}
+                onSave={save.save}
               />
             )}
-            {playlistUrl && (
+            {save.playlistUrl && (
               <PressedPanel
-                playlistUrl={playlistUrl}
-                savedToLibrary={savedToLibrary}
+                playlistUrl={save.playlistUrl}
+                savedToLibrary={save.savedToLibrary}
                 card={card}
                 announce={setAnnounce}
               />
             )}
-            {saveError && (
-              <ErrorAlert message={saveError} booked={saveBooked} focusKey={saveErrorTick} />
+            {save.error && (
+              <ErrorAlert
+                message={save.error.message}
+                booked={save.error.booked}
+                focusKey={save.errorTick}
+              />
             )}
 
             <button
@@ -554,15 +480,13 @@ export default function App() {
                   return;
                 }
                 setCard(null);
-                setPlaylistUrl(null);
-                setSavedToLibrary(false);
-                setSaveError(null);
+                save.reset();
                 refine.reset();
                 inputRef.current?.focus();
               }}
               // disabled while adjusting or saving: the in-flight refine or
               // press would land its result right back on the cleared state
-              disabled={refine.adjusting || saving}
+              disabled={refine.adjusting || save.saving}
               className="btn-ghost"
               style={{ marginTop: 20 }}
             >

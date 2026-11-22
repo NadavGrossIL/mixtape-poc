@@ -28,6 +28,7 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { errorMessage } from "./errors.ts";
 
 export type LatestMixtape = {
   id: string; // Spotify playlist id — the key hide() takes
@@ -93,10 +94,10 @@ export function makeLatest({ dir, now = Date.now }: { dir: string; now?: () => n
       fs.writeFileSync(tmp, JSON.stringify(list), { mode: 0o600 });
       fs.chmodSync(tmp, 0o600);
       fs.renameSync(tmp, file);
-    } catch (err: any) {
+    } catch (err) {
       if (!warned) {
         warned = true;
-        console.warn(`[latest] can't write ${file}: ${err.message} — keeping it in memory only`);
+        console.warn(`[latest] can't write ${file}: ${errorMessage(err)} — keeping it in memory only`);
       }
     }
   }

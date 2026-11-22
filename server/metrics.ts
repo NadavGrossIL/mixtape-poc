@@ -25,6 +25,7 @@ import path from "node:path";
 // day" in the app. A second copy here would drift from the cap reset and the
 // graph would disagree with the caps about where the day broke.
 import { today as capsToday } from "./caps.ts";
+import { errorMessage } from "./errors.ts";
 
 // Days kept. Two months is longer than anyone will look back on a POC and
 // still a file measured in kilobytes.
@@ -110,12 +111,12 @@ function makeMetrics({ dir, today = capsToday }: MetricsOptions) {
       // .tmp left by a crash under a wider umask is reused at its old mode.
       fs.chmodSync(tmp, 0o600);
       fs.renameSync(tmp, metricsPath);
-    } catch (err: any) {
+    } catch (err) {
       // A read-only or missing directory must not take the app down over
       // analytics. Say it once per instance and keep counting in memory.
       if (!warnedWriteFailure) {
         warnedWriteFailure = true;
-        console.warn(`[metrics] can't write ${metricsPath}: ${err.message} — counting in memory only`);
+        console.warn(`[metrics] can't write ${metricsPath}: ${errorMessage(err)} — counting in memory only`);
       }
     }
   }

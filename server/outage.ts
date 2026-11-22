@@ -18,6 +18,8 @@
 // the error came from the Anthropic client; Spotify errors carry `status`
 // too and must not be mistaken for it). ADR 0003: thin route, pure module.
 
+import { errorStatus, messageOf } from "./errors.ts";
+
 type UpstreamKind =
   | "anthropic-auth" // 401/403: the key is wrong or revoked — persistent
   | "anthropic-billing" // 400 "credit balance" — persistent until someone pays
@@ -33,18 +35,13 @@ interface Classified {
   persistent: boolean;
 }
 
-interface ErrorShape {
-  status?: number;
-  message?: string;
-}
-
 const OFFLINE_COPY = "the curator is offline right now — our side, not yours. try again later.";
 const BUSY_COPY = "the curator is busy right now — try again in a minute.";
 
-function classifyUpstream(err: ErrorShape | null | undefined, fromAnthropic: boolean): Classified {
+function classifyUpstream(err: unknown, fromAnthropic: boolean): Classified {
   if (!fromAnthropic || !err) return { kind: null, message: null, persistent: false };
-  const status = err.status ?? 0;
-  const text = err.message ?? "";
+  const status = errorStatus(err) ?? 0;
+  const text = messageOf(err) ?? "";
   if (status === 401 || status === 403) {
     return { kind: "anthropic-auth", message: OFFLINE_COPY, persistent: true };
   }
@@ -65,9 +62,9 @@ function makeOutageTracker() {
   return {
     // Call from every upstream catch. Returns the classification so the route
     // can pick the visitor's copy from the same verdict.
-    note(err: ErrorShape | null | undefined, fromAnthropic: boolean, now = Date.now()): Classified {
+    note(err: unknown, fromAnthropic: boolean, now = Date.now()): Classified {
       const c = classifyUpstream(err, fromAnthropic);
-      if (c.persistent && c.kind) current = { kind: c.kind, since: now, message: err?.message ?? "" };
+      if (c.persistent && c.kind) current = { kind: c.kind, since: now, message: messageOf(err) ?? "" };
       return c;
     },
     // Call after a run that reached the model and came back — the key works.
@@ -81,5 +78,5 @@ function makeOutageTracker() {
   };
 }
 
-export type { UpstreamKind, Classified, ErrorShape };
+export type { UpstreamKind, Classified };
 export { classifyUpstream, makeOutageTracker, OFFLINE_COPY, BUSY_COPY };

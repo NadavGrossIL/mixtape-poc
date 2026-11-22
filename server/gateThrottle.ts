@@ -101,7 +101,8 @@ function makeGateThrottle({ maxAttempts, windowMs, baseDelayMs }: GateThrottleLi
     // The right key. Forget everything about this IP — the person who just
     // proved they know the secret must not inherit a block from whoever else
     // shares their NAT.
-    succeed(ip: string, now: number) {
+    // `_now` keeps the same call shape as check and fail.
+    succeed(ip: string, _now: number) {
       entries.delete(ip);
     },
 

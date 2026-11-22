@@ -151,7 +151,7 @@ async function loadCurator(host: Host): Promise<Curator> {
 // inside the model call, the one place a failure with a status can only be
 // Anthropic's (lc/modelCall.ts).
 function fromAnthropic(err: unknown): boolean {
-  return typeof err === "object" && err !== null && (err as any).fromAnthropic === true;
+  return typeof err === "object" && err !== null && "fromAnthropic" in err && err.fromAnthropic === true;
 }
 
 export type { Curator, Host, TracingDecision };

@@ -12,6 +12,7 @@
 
 import { claimSearch, catalogResultContent } from "../curator.ts";
 import type { SearchBudget } from "../searchBudget.ts";
+import { errorMessage, isQuotaError } from "../errors.ts";
 
 // Let at most `max` jobs run at once; the rest wait their turn, in order.
 function makeLimiter(max: number) {
@@ -61,12 +62,12 @@ function makeSearchStep({
       }
       try {
         return catalogResultContent(await search(query));
-      } catch (err: any) {
-        if (err?.quotaExceeded) {
+      } catch (err) {
+        if (isQuotaError(err)) {
           onFatal(err);
           throw err;
         }
-        console.warn(`[curator-lc] search_spotify failed: ${err?.message}`);
+        console.warn(`[curator-lc] search_spotify failed: ${errorMessage(err)}`);
         return "Spotify search is unavailable right now — rely on your own knowledge and prefer well-known recordings.";
       }
     });

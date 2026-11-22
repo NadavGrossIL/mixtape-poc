@@ -24,11 +24,13 @@ const TRACK_URI = /^spotify:track:[A-Za-z0-9]{22}$/;
 // malformed URI — because the caller's answer to all of them is the same 400.
 function parseTrackUris(input: unknown): string[] | null {
   if (!Array.isArray(input)) return null;
-  if (input.length === 0 || input.length > MAX_TRACK_URIS) return null;
-  for (const uri of input) {
-    if (typeof uri !== "string" || !TRACK_URI.test(uri)) return null;
-  }
-  return input as string[];
+  // Array.isArray hands back any[]; unknown[] makes the check below the only
+  // thing that can turn the elements into strings.
+  const list: unknown[] = input;
+  if (list.length === 0 || list.length > MAX_TRACK_URIS) return null;
+  return list.every((uri): uri is string => typeof uri === "string" && TRACK_URI.test(uri))
+    ? list
+    : null;
 }
 
 export { parseTrackUris, MAX_TRACK_URIS };

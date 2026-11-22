@@ -62,8 +62,9 @@ async function run(label: string, decision: HITLResponse["decisions"][number]) {
   const request = paused.__interrupt__?.[0]?.value as HITLRequest | undefined;
   if (!request) throw new Error("Expected the run to pause, but it finished.");
   const action = request.actionRequests[0];
+  if (!action) throw new Error("Expected one action request.");
   console.log(`1. Paused. The agent wants: ${action.name}(${JSON.stringify(action.args)})`);
-  console.log(`   Allowed answers: ${request.reviewConfigs[0].allowedDecisions.join(", ")}`);
+  console.log(`   Allowed answers: ${request.reviewConfigs[0]?.allowedDecisions.join(", ")}`);
 
   // Second call: same thread, with the human's answer. The run continues
   // from the exact spot where it stopped.

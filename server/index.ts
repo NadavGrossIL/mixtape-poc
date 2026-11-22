@@ -25,6 +25,7 @@ import { makeLatest, makeVouches } from "./latest.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
 import { makeOutageTracker } from "./outage.ts";
+import { errorMessage, errorStatus, isQuotaError, messageOf } from "./errors.ts";
 // The curator agent (LangChain, lc/curator-lc.ts) comes in through
 // loadCurator, which guards LangSmith tracing before LangChain is loaded.
 // `fromAnthropic` answers the one question outage.ts cannot on its own —
@@ -118,11 +119,13 @@ app.use(express.json({ limit: "32kb" }));
 // A body over the limit makes body-parser throw, and an unhandled parser error
 // is a 500 with a stack trace. Registered right after the parser so it catches
 // the parser's errors and nothing else's.
-app.use((err: any, _req: Request, res: Response, next: NextFunction) => {
-  if (err?.type === "entity.too.large") {
+// Four parameters, always: Express tells an error handler apart by its arity.
+app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
+  const type = typeof err === "object" && err !== null && "type" in err ? err.type : undefined;
+  if (type === "entity.too.large") {
     return res.status(400).json({ error: "That request is too large." });
   }
-  if (err?.type === "entity.parse.failed") {
+  if (type === "entity.parse.failed") {
     return res.status(400).json({ error: "Malformed JSON body." });
   }
   next(err);
@@ -190,7 +193,7 @@ const EXTRA_ALLOWED_ORIGINS = allowedOriginsFromUrls([CLIENT_URL]);
 function sameOriginOnly(req: Request, res: Response, next: NextFunction) {
   const ok = originAllowed({
     origin: req.headers.origin,
-    secFetchSite: req.headers["sec-fetch-site"] as string | undefined,
+    secFetchSite: req.get("sec-fetch-site"),
     host: req.headers.host,
     // req.protocol honours X-Forwarded-Proto because `trust proxy` is on
     proto: req.protocol,
@@ -726,12 +729,12 @@ app.get("/callback", async (req, res) => {
     ]);
     console.log(`[auth] ${displayName || userId} connected their Spotify`);
     res.redirect(CLIENT_URL);
-  } catch (err: any) {
+  } catch (err) {
     // The state checks above 400 on a forged or stale link; reaching here
     // means Spotify accepted the round trip and the exchange still failed —
     // ours, and the visitor is stuck on a plain-text page.
     metrics.count("errors");
-    console.error("[auth] token exchange failed:", err.message);
+    console.error("[auth] token exchange failed:", errorMessage(err));
     res.status(500).send("Token exchange with Spotify failed. Check the server logs.");
   }
 });
@@ -742,7 +745,7 @@ app.get("/auth/status", async (req, res) => {
   // `owner` lets the client show owner-only surfaces (the log console's
   // usage strip) to the right person; the server still enforces it per route
   const owner = loggedIn && user === (await spotify.getOwnerId());
-  res.json({ loggedIn, owner, name: loggedIn ? spotify.getDisplayName(user!) : null });
+  res.json({ loggedIn, owner, name: loggedIn && user ? spotify.getDisplayName(user) : null });
 });
 
 // ── api ──────────────────────────────────────────────────────
@@ -826,7 +829,7 @@ app.get("/api/usage", async (req, res) => {
 // can hear what comes out before typing. Public on purpose — every entry is
 // already a public playlist on the host profile, and latest.ts keeps only
 // what that playlist shows (name, vibe line, link). Costs no Spotify call.
-app.get("/api/latest", (req, res) => {
+app.get("/api/latest", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({ mixtapes: latest.list() });
 });
@@ -848,12 +851,12 @@ app.get("/api/playlists", async (req, res) => {
   if (!user) return;
   try {
     res.json({ playlists: await spotify.listPlaylists(user) });
-  } catch (err: any) {
-    console.error("[playlists] failed:", err.message);
-    if (err.status === 401) {
+  } catch (err) {
+    console.error("[playlists] failed:", errorMessage(err));
+    if (errorStatus(err) === 401) {
       return res.status(401).json({ error: "Not logged in to Spotify." });
     }
-    if (err.status === 403) {
+    if (errorStatus(err) === 403) {
       // token predates the playlist-read scopes — one re-login fixes it
       return res.status(403).json({ error: "insufficient_scope" });
     }
@@ -983,13 +986,13 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
     metrics.count("generated");
     curatedCards.add(shelfKey(card.title, card.vibe));
     sseSend(res, "done", { card, verified });
-  } catch (err: any) {
+  } catch (err) {
     if (abort.signal.aborted) {
       console.log("[generate/stream] client disconnected — stopped");
       return res.end();
     }
     metrics.count("errors");
-    console.error("[generate/stream] failed:", err.message);
+    console.error("[generate/stream] failed:", errorMessage(err));
     // Classify before choosing copy: an Anthropic auth/billing failure is
     // remembered for /healthz and told to the visitor as "our side, not yours";
     // a rate limit or overload as "busy". Neither is "try the same prompt".
@@ -1008,14 +1011,14 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
       // `quota` flag is the same verdict as a boolean (spotify.ts sets
       // `quotaExceeded` on the error when the breaker opens) so the client can
       // render a sold-out state instead of a crash without matching on prose.
-      message: err.quotaExceeded
+      message: isQuotaError(err)
         ? "Spotify's daily limit for this app is used up."
         : (upstream.message ?? "Generation failed."),
-      ...(err.quotaExceeded ? { quota: true } : {}),
+      ...(isQuotaError(err) ? { quota: true } : {}),
       // `outage`: the message IS the whole story — the client shows it as the
       // headline instead of the generic "dropped the needle" line.
       ...(upstream.message ? { outage: true } : {}),
-      ...((await isOwner(req)) ? { detail: err.message } : {}),
+      ...((await isOwner(req)) ? { detail: messageOf(err) } : {}),
     });
   }
   res.end();
@@ -1119,23 +1122,23 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
       card: merged,
       verified: tracks.filter((t: any) => t.resolved).length,
     });
-  } catch (err: any) {
+  } catch (err) {
     if (abort.signal.aborted) {
       console.log("[adjust/stream] client disconnected — stopped");
       return res.end();
     }
     metrics.count("errors");
-    console.error("[adjust/stream] failed:", err.message);
+    console.error("[adjust/stream] failed:", errorMessage(err));
     // detail is owner-only, `quota` is the breaker verdict as a boolean and
     // `outage` is the Anthropic verdict — same reasoning as /api/generate/stream
     const upstream = outages.note(err, fromAnthropic(err));
     sseSend(res, "error", {
-      message: err.quotaExceeded
+      message: isQuotaError(err)
         ? "Spotify's daily limit for this app is used up."
         : (upstream.message ?? "Adjustment failed."),
-      ...(err.quotaExceeded ? { quota: true } : {}),
+      ...(isQuotaError(err) ? { quota: true } : {}),
       ...(upstream.message ? { outage: true } : {}),
-      ...((await isOwner(req)) ? { detail: err.message } : {}),
+      ...((await isOwner(req)) ? { detail: messageOf(err) } : {}),
     });
   }
   res.end();
@@ -1194,8 +1197,8 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
       try {
         await spotify.followPlaylist(id, user);
         saved = true;
-      } catch (err: any) {
-        console.warn(`[playlist] follow into ${whoLabel(user)}'s library failed: ${err.message}`);
+      } catch (err) {
+        console.warn(`[playlist] follow into ${whoLabel(user)}'s library failed: ${errorMessage(err)}`);
       }
     } else if (user === host) {
       saved = true; // it's their own library
@@ -1211,8 +1214,8 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
       } else {
         console.log(`[latest] ${id} not listed — not a card this server curated`);
       }
-    } catch (err: any) {
-      console.warn(`[latest] couldn't record ${id}: ${err.message}`);
+    } catch (err) {
+      console.warn(`[latest] couldn't record ${id}: ${errorMessage(err)}`);
     }
     console.log(
       `[playlist] (${whoLabel(user)}) pressed ${JSON.stringify(name)} → ${id}` +
@@ -1223,13 +1226,13 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
       return res.end();
     }
     res.json({ playlistUrl: url, playlistId: id, saved });
-  } catch (err: any) {
+  } catch (err) {
     metrics.count("errors");
-    console.error("[playlist] failed:", err.message);
+    console.error("[playlist] failed:", errorMessage(err));
     // detail stays in the server log — clients get a generic line
-    const message = err.quotaExceeded
+    const message = isQuotaError(err)
       ? "Spotify's daily limit for this app is used up — try again tomorrow."
-      : err.status === 401
+      : errorStatus(err) === 401
         ? "The Mixtape account isn't connected on the server."
         : "Pressing the playlist failed — check the server logs.";
     if (wantsStream) {
@@ -1248,7 +1251,7 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
 const CLIENT_DIST = path.join(import.meta.dirname, "..", "client", "dist");
 if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
   app.use(express.static(CLIENT_DIST));
-  app.get("*", (req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
+  app.get("*", (_req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
 }
 
 if (DEPLOYED && !spotify.isLoggedIn()) {

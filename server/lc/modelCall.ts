@@ -44,9 +44,10 @@ function lastRoundRequest<T extends { tools: readonly any[]; systemMessage: any 
 // Returns null for anything without a status (an abort, a dropped socket):
 // those pass through untouched.
 function modelFailure(err: unknown): (Error & { status: number; fromAnthropic: true }) | null {
-  const status = (err as any)?.status;
+  if (typeof err !== "object" || err === null) return null;
+  const status = "status" in err ? err.status : undefined;
   if (typeof status !== "number") return null;
-  const message = String((err as any)?.message ?? "").split("\n\nTroubleshooting URL:")[0]!;
+  const message = String(("message" in err ? err.message : undefined) ?? "").split("\n\nTroubleshooting URL:")[0]!;
   return Object.assign(new Error(message, { cause: err }), {
     status,
     fromAnthropic: true as const,
@@ -81,8 +82,12 @@ function deliveryAlone<C extends ToolCallLike>(
   const calls = message.tool_calls ?? [];
   const delivery = calls.find((c) => c.name === toolName);
   if (!delivery || calls.length === 1) return null;
-  const isCallBlock = (b: any) =>
-    b && typeof b === "object" && ["tool_use", "tool_call", "tool_call_chunk"].includes(b.type);
+  const isCallBlock = (b: unknown): b is { type: string; id?: unknown } =>
+    typeof b === "object" &&
+    b !== null &&
+    "type" in b &&
+    typeof b.type === "string" &&
+    ["tool_use", "tool_call", "tool_call_chunk"].includes(b.type);
   return {
     tool_calls: [delivery],
     content: Array.isArray(message.content)

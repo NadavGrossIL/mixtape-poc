@@ -25,6 +25,7 @@ import path from "node:path";
 // day" in the app. A second copy here would drift from the cap reset and the
 // graph would disagree with the caps about where the day broke.
 import { today as capsToday } from "./caps.ts";
+import { errorMessage } from "./errors.ts";
 
 // Days kept. Two months is longer than anyone will look back on a POC and
 // still a file measured in kilobytes.
@@ -34,27 +35,20 @@ const RETAIN_DAYS = 60;
 // last second of counters to a hard kill costs nothing worth a fsync.
 const FLUSH_MS = 1000;
 
-// The funnel, in order, plus the two things that explain a drop in it.
-type Metric =
-  | "views" // a page load, from a browser that ran the app
-  | "newVisitors" // ...that had never been here (no session cookie yet)
-  | "prompts" // a generation accepted — someone typed and pressed
-  | "generated" // ...that finished as a card
-  | "adjusts" // a refine accepted
-  | "pressed" // a playlist created on Spotify
-  | "errors" // a route failed on someone
-  | "capped"; // refused by a daily cap — a drop that isn't a bug
+// The funnel, in order, plus the two things that explain a drop in it. The
+// type is read off this list, so a metric cannot exist without its counter.
+const METRICS = [
+  "views", // a page load, from a browser that ran the app
+  "newVisitors", // ...that had never been here (no session cookie yet)
+  "prompts", // a generation accepted — someone typed and pressed
+  "generated", // ...that finished as a card
+  "adjusts", // a refine accepted
+  "pressed", // a playlist created on Spotify
+  "errors", // a route failed on someone
+  "capped", // refused by a daily cap — a drop that isn't a bug
+] as const;
 
-const METRICS: Metric[] = [
-  "views",
-  "newVisitors",
-  "prompts",
-  "generated",
-  "adjusts",
-  "pressed",
-  "errors",
-  "capped",
-];
+type Metric = (typeof METRICS)[number];
 
 type Day = Record<Metric, number>;
 
@@ -110,12 +104,12 @@ function makeMetrics({ dir, today = capsToday }: MetricsOptions) {
       // .tmp left by a crash under a wider umask is reused at its old mode.
       fs.chmodSync(tmp, 0o600);
       fs.renameSync(tmp, metricsPath);
-    } catch (err: any) {
+    } catch (err) {
       // A read-only or missing directory must not take the app down over
       // analytics. Say it once per instance and keep counting in memory.
       if (!warnedWriteFailure) {
         warnedWriteFailure = true;
-        console.warn(`[metrics] can't write ${metricsPath}: ${err.message} — counting in memory only`);
+        console.warn(`[metrics] can't write ${metricsPath}: ${errorMessage(err)} — counting in memory only`);
       }
     }
   }

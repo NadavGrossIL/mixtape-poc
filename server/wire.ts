@@ -25,6 +25,14 @@ import { z } from "zod";
 const ACCENTS = ["ember", "rose", "plum", "cobalt", "forest", "rust"] as const;
 type Accent = (typeof ACCENTS)[number];
 
+// A card comes back from the browser, so its links are the sender's word, and
+// they land in a real <a href> / <img src>. Only Spotify's own hosts pass: a
+// `javascript:` link would otherwise ride a crafted card through a refine and
+// back into the page (security pass 2026-11-22). The art host matches the
+// CSP's img-src in index.ts.
+const spotifyLink = z.string().regex(/^https:\/\/open\.spotify\.com\//, "not a Spotify link");
+const spotifyArt = z.string().regex(/^https:\/\/[a-z0-9-]+\.scdn\.co\//, "not Spotify album art");
+
 const WireTrackSchema = z.object({
   // the search result the curator picked this track from; a refine sends it
   // back so resolution can look the record up directly. Absent on cards made
@@ -37,9 +45,9 @@ const WireTrackSchema = z.object({
   resolved: z.boolean(),
   // The rest exist only on a resolved track (spotify.ts ResolvedFields), and
   // durationMs/year only on cards made since they were added.
-  spotifyUrl: z.string().nullable().optional(),
+  spotifyUrl: spotifyLink.nullable().optional(),
   spotifyUri: z.string().nullable().optional(),
-  albumArt: z.string().nullable().optional(),
+  albumArt: spotifyArt.nullable().optional(),
   matchedName: z.string().optional(),
   durationMs: z.number().nullable().optional(),
   year: z.number().nullable().optional(),

@@ -5,7 +5,7 @@
 
 import test from "node:test";
 import assert from "node:assert";
-import { ACCENTS, WireCardSchema } from "../wire.ts";
+import { ACCENTS, WireCardSchema, WireTrackSchema } from "../wire.ts";
 import type { Accent, WireCard, WireTrack } from "../wire.ts";
 import { CURATOR_TOOL } from "../curator.ts";
 import type { Track as CuratorTrack } from "../curator.ts";
@@ -151,7 +151,7 @@ test("older cards parse: no ref, no threadId, no prompt, no runtime or year, a r
     vibe: "from before",
     accent: "teal",
     tracks: [
-      { artist: "A", title: "T", note: "n", resolved: true, spotifyUrl: "u", spotifyUri: "spotify:track:1", albumArt: null, matchedName: "A — T" },
+      { artist: "A", title: "T", note: "n", resolved: true, spotifyUrl: "https://open.spotify.com/track/1", spotifyUri: "spotify:track:1", albumArt: null, matchedName: "A — T" },
       { artist: "B", title: "U", note: "n", resolved: false },
     ],
   });
@@ -237,4 +237,25 @@ test("adjustMessage and diffCards see the same card parsed as raw", () => {
   // a refine relies on these two surviving the parse
   assert.equal(parsed.threadId, raw.threadId);
   assert.equal(parsed.tracks[0]?.ref, raw.tracks[0]?.ref);
+});
+
+test("refuses a track whose link or art is not Spotify's own (a javascript: link would reach an <a href>)", () => {
+  const track = { artist: "a", title: "t", note: "n", resolved: true };
+  for (const bad of [
+    { spotifyUrl: "javascript:alert(1)" },
+    { spotifyUrl: "https://evil.example/track/1" },
+    { spotifyUrl: "https://open.spotify.com.evil.example/track/1" },
+    { albumArt: "javascript:alert(1)" },
+    { albumArt: "https://evil.example/a.jpg" },
+  ]) {
+    assert.equal(WireTrackSchema.safeParse({ ...track, ...bad }).success, false, JSON.stringify(bad));
+  }
+  assert.equal(
+    WireTrackSchema.safeParse({
+      ...track,
+      spotifyUrl: "https://open.spotify.com/track/0bRXwKfigvpKZUurwqAlEh",
+      albumArt: "https://i.scdn.co/image/ab67616d00004851f64b9ea8a",
+    }).success,
+    true,
+  );
 });

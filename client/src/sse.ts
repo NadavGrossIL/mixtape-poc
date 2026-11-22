@@ -56,9 +56,11 @@ export async function readSSE<E extends [string, unknown]>(
   response: Response,
   onEvent: (...args: E) => void
 ) {
-  // these endpoints always stream a body; a bodyless response would have
-  // thrown here before the migration too
-  const reader = response.body!.getReader();
+  // every route read here streams a body; a bodyless 200 would be a server
+  // bug, and it throws here rather than further down
+  const body = response.body;
+  if (!body) throw new Error("stream has no body");
+  const reader = body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
   for (;;) {

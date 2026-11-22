@@ -23,7 +23,7 @@ import {
   sortableKeyboardCoordinates,
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
-import { isHandingOff, openInSpotify } from "./spotifyLink";
+import { followSpotifyLink, isHandingOff } from "./spotifyLink";
 import { shareOrCopy } from "./share";
 import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
 import { parseLatestResponse, pressedAgo, shelfFor, type LatestMixtape } from "./latest";
@@ -164,13 +164,13 @@ let viewCounted = false;
 // itself throws (blocked storage); recent.ts catches that as well
 const browserStorage = () => window.localStorage;
 
+// how many of "your mixtapes" show before the "+ N more" toggle
+const RECENT_SHOWN = 3;
+
 // the host account every mixtape is pressed to (ADR 0002) — the fallback for
 // anything this browser's list doesn't hold. Must be the account
 // SPOTIFY_HOST_REFRESH_TOKEN holds — or the owner's, which spotify.ts falls
 // back to when that is unset — or this link points at the wrong shelf.
-// how many of "your mixtapes" show before the "+ N more" toggle
-const RECENT_SHOWN = 3;
-
 const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
 
 // Scroll something that just mounted into view and move focus onto it, so
@@ -184,7 +184,7 @@ function bringIntoView(scrollTo: HTMLElement, focusOn: HTMLElement = scrollTo) {
   focusOn.focus({ preventScroll: true });
 }
 
-export default function LinerNotes() {
+export default function App() {
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
   const [loading, setLoading] = useState(false);
@@ -962,7 +962,7 @@ export default function LinerNotes() {
   };
 
   // arm a pasted playlist link as the seed; the server names it while seeding
-  const usePastedSeed = () => {
+  const applyPastedSeed = () => {
     const m = /playlist[/:]([A-Za-z0-9]{22})/.exec(seedPaste) ||
       /^\s*([A-Za-z0-9]{22})\s*$/.exec(seedPaste);
     if (!m) {
@@ -1235,7 +1235,7 @@ export default function LinerNotes() {
                             className="seed-paste"
                             onSubmit={(e) => {
                               e.preventDefault();
-                              usePastedSeed();
+                              applyPastedSeed();
                             }}
                           >
                             <input
@@ -1361,10 +1361,7 @@ export default function LinerNotes() {
                             rel="noopener noreferrer"
                             className="recent-row"
                             aria-label={`${m.title} (opens Spotify)`}
-                            onClick={(e) => {
-                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                              if (openInSpotify(m.url)) e.preventDefault();
-                            }}
+                            onClick={(e) => followSpotifyLink(e, m.url)}
                           >
                             <SpotifyMark size={14} />
                             <span className="recent-title">{m.title}</span>
@@ -1418,10 +1415,7 @@ export default function LinerNotes() {
                             rel="noopener noreferrer"
                             className="recent-row latest-row"
                             aria-label={`${m.title}, pressed ${pressedAgo(m.pressedAt, shelfNow)} (opens Spotify)`}
-                            onClick={(e) => {
-                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                              if (openInSpotify(m.url)) e.preventDefault();
-                            }}
+                            onClick={(e) => followSpotifyLink(e, m.url)}
                           >
                             <SpotifyMark size={14} />
                             <span className="latest-text">
@@ -1785,10 +1779,7 @@ export default function LinerNotes() {
                   rel="noopener noreferrer"
                   className="btn-press pressed-open"
                   aria-label="Open this mixtape in Spotify"
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                    if (openInSpotify(playlistUrl)) e.preventDefault();
-                  }}
+                  onClick={(e) => followSpotifyLink(e, playlistUrl)}
                 >
                   <SpotifyMark />
                   OPEN IN SPOTIFY

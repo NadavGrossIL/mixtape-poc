@@ -1,7 +1,7 @@
 import { type MutableRefObject } from "react";
 import { useSortable } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { openInSpotify } from "../spotifyLink";
+import { followSpotifyLink } from "../spotifyLink";
 import { type Track } from "../types";
 
 const UNVERIFIED_TITLE =
@@ -56,11 +56,7 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
           e.preventDefault();
           return;
         }
-        // cmd/ctrl/shift-click keeps its native "open the web URL" meaning;
-        // so does a phone tap — the anchor's own navigation is the one
-        // hand-off that works inside an in-app webview (see spotifyLink.ts)
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        if (openInSpotify(href)) e.preventDefault();
+        followSpotifyLink(e, href);
       }}
       className={"track-row" + (isDragging ? " dragging" : "")}
       style={{

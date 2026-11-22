@@ -826,7 +826,7 @@ app.get("/api/usage", async (req, res) => {
 // can hear what comes out before typing. Public on purpose — every entry is
 // already a public playlist on the host profile, and latest.ts keeps only
 // what that playlist shows (name, vibe line, link). Costs no Spotify call.
-app.get("/api/latest", (req, res) => {
+app.get("/api/latest", (_req, res) => {
   res.setHeader("Cache-Control", "no-store");
   res.json({ mixtapes: latest.list() });
 });
@@ -1248,7 +1248,7 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
 const CLIENT_DIST = path.join(import.meta.dirname, "..", "client", "dist");
 if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
   app.use(express.static(CLIENT_DIST));
-  app.get("*", (req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
+  app.get("*", (_req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
 }
 
 if (DEPLOYED && !spotify.isLoggedIn()) {

@@ -53,8 +53,8 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
         transform: CSS.Transform.toString(transform),
         transition,
         cursor: editable ? "grab" : "pointer",
-        // manipulation (not none): the TouchSensor hold-delay owns dragging,
-        // so plain swipes over the row must still scroll the page
+        // manipulation (not none): only the grip drags on touch, so swipes
+        // over the rest of the row must still scroll the page
         touchAction: editable ? "manipulation" : "auto",
       }}
       aria-label={`${t.artist} — ${t.title}${
@@ -62,9 +62,9 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
       } (opens Spotify)`}
     >
       {editable && (
-        // the "this row moves" sign. Desktop drags from anywhere on the row
-        // (this is just the hint, with the grab cursor); a touch here drags
-        // at once instead of waiting out the row's hold (GripTouchSensor).
+        // the "this row moves" sign. A mouse drags from anywhere on the row
+        // (here it is the hint, with the grab cursor); on touch this is the
+        // only place a drag starts (GripTouchSensor).
         // Hidden from assistive tech: the row itself is the keyboard handle.
         <span
           className="grip"

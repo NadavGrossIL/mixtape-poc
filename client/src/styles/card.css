@@ -140,10 +140,28 @@
   flex-direction: column;
 }
 
+/* A song row is a grid with one head line, the title's first line: the
+   grip, the number and the replace button are centred on it, and the art
+   hangs from the top of it, the way a list with descriptions does it
+   (YouTube's video list, a podcast app's episodes). The note and the
+   unverified tag sit under the title, so every note follows its title at
+   the same distance. It was a flex row where the art, number and title
+   hugged the top while the grip and button floated at the middle of the
+   row: two alignments at once. Centring the whole head on the art was
+   tried and dropped — a one-line title then sat 10px above its note and a
+   two-line one did not, so the spacing changed from row to row.
+   Spacing is margins, not gap: the grip and the button only exist while
+   the card is editable, and an empty grid column would still carry a gap. */
 .track-row {
-  display: flex;
-  gap: 12px;
-  align-items: center;
+  --head-line: calc(var(--fs-md) * 1.3); /* the title's line box */
+  display: grid;
+  grid-template-columns: auto auto auto minmax(0, 1fr) auto;
+  grid-template-areas:
+    "grip art num title act"
+    "grip art .   note  act"
+    "grip art .   tag   act";
+  grid-template-rows: auto auto auto;
+  align-items: start;
   padding: 10px 6px 10px 0;
   border-top: 1px solid var(--paper-line);
   text-decoration: none;
@@ -178,14 +196,14 @@
    touch-action none so a finger on it drags instead of scrolling the page;
    the ::after widens the touch target without widening the row */
 .grip {
+  grid-area: 1 / 1 / 2 / 2; /* the head line only */
   position: relative;
-  flex-shrink: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   width: 12px;
-  align-self: stretch;
-  margin-right: -4px;
+  height: var(--head-line);
+  margin-right: 8px;
   color: var(--paper-dim);
   opacity: 0.55;
   cursor: grab;
@@ -199,7 +217,7 @@
 .grip::after {
   content: "";
   position: absolute;
-  inset: 0 -10px;
+  inset: -10px -10px; /* into the row's padding: a ~40px-tall target */
 }
 .track-row:hover .grip,
 .track-row.dragging .grip {
@@ -212,17 +230,19 @@
 }
 
 .album-art {
+  grid-area: 1 / 2 / 4 / 3;
   width: 40px;
   height: 40px;
+  margin-right: 12px;
   object-fit: cover;
-  flex-shrink: 0;
   display: block;
 }
 
 .album-art-placeholder {
+  grid-area: 1 / 2 / 4 / 3;
   width: 40px;
   height: 40px;
-  flex-shrink: 0;
+  margin-right: 12px;
   background: var(--paper-hover);
   border: 1px dashed var(--paper-line);
 }
@@ -233,53 +253,18 @@
   font-size: var(--fs-sm);
   font-weight: 700;
   width: 22px;
-  flex-shrink: 0;
+  margin-right: 12px;
+  grid-area: num;
+  line-height: var(--head-line); /* shares the title's first line */
 }
 
+/* its children are the grid's title, note and tag cells */
 .track-main {
-  flex: 1;
-  min-width: 0;
-}
-
-/* a song can wrap to four lines (title, note, unverified tag), so the row's
-   content reads from the top: the art and the number sit level with the
-   title's first line instead of floating at the middle of the block, where
-   "01" drifted down beside the note. The number's line box is the
-   title's, so the two share a baseline. The grip and the replace button
-   are centred on the art, not on the row: centred on the row they sank
-   16-20px below the art on every row with a two-line note, so one row had
-   two top lines. --row-art is the art's size (smaller on a phone). */
-.track-row {
-  --row-art: 40px;
-}
-
-.track-row > .album-art,
-.track-row > .album-art-placeholder,
-.track-row > .track-num,
-.track-row > .track-main,
-.track-row > .swap-btn {
-  align-self: flex-start;
-}
-
-/* the grip keeps the row's full height as its touch target; only the dots
-   move up, to the art's middle (the svg is 14px tall) */
-.track-row > .grip {
-  align-items: flex-start;
-}
-.track-row > .grip svg {
-  margin-top: calc((var(--row-art) - 14px) / 2);
-}
-
-/* the button is 30px tall on a pointer screen */
-.track-row > .swap-btn {
-  margin-top: calc((var(--row-art) - 30px) / 2);
-}
-
-.track-row > .track-num {
-  line-height: calc(var(--fs-md) * 1.3);
+  display: contents;
 }
 
 .track-title {
+  grid-area: title;
   font-family: "Space Grotesk", sans-serif;
   font-weight: 700;
   font-size: var(--fs-md);
@@ -288,6 +273,7 @@
 }
 
 .track-note {
+  grid-area: note;
   font-family: Georgia, serif;
   font-style: italic;
   font-size: var(--fs-sm);
@@ -300,6 +286,8 @@
    the chrome column beside the swap button, where on a phone it squeezed
    the title to ~110px and had to shrink to 9.5px to fit at all */
 .unverified {
+  grid-area: tag;
+  justify-self: start;
   display: inline-block;
   margin-top: 4px;
   font-family: "Space Mono", monospace;
@@ -410,6 +398,13 @@
 
 /* per-track swap: quiet print furniture on the paper */
 .swap-btn {
+  grid-area: 1 / 5 / 2 / 6; /* the head line only */
+  margin-left: 12px;
+  /* 30px tall, centred on the title's first line; the equal pull at the
+     bottom keeps it from making the head line taller than the title, so a
+     note sits the same distance under a one-line title as a two-line one */
+  margin-top: calc((var(--head-line) - 30px) / 2);
+  margin-bottom: calc((var(--head-line) - 30px) / 2);
   font-family: "Space Mono", monospace;
   font-size: var(--fs-md);
   line-height: 1;
@@ -766,14 +761,17 @@
     font-size: 14px;
   }
   /* denser rows: keep title space ahead of chrome on a ~270px body */
-  .track-row {
-    gap: 8px;
-    --row-art: 36px;
+  .grip {
+    margin-right: 4px;
   }
   .album-art,
   .album-art-placeholder {
     width: 36px;
     height: 36px;
+    margin-right: 8px;
+  }
+  .track-num {
+    margin-right: 8px;
   }
   .unverified {
     display: block;
@@ -786,17 +784,15 @@
     width: 58px;
     height: 44px;
     padding: 0;
-    margin: -7px -6px -7px -8px;
+    /* the 44px box centred on the title's first line; no left pull: the
+       58px box's own padding is the gap to the title */
+    margin: calc((var(--head-line) - 44px) / 2) -6px
+      calc((var(--head-line) - 44px) / 2) 0;
     border: none;
     /* the word stays on a phone — the bare arrow read as reload — stacked
        under the arrow so the column grows 14px, not the length of a word */
     flex-direction: column;
     gap: 1px;
-  }
-  /* the 44px box centred on the 36px art (pulled up 4px, not the 7px
-     that centred it on a one-line row) */
-  .track-row > .swap-btn {
-    margin-top: calc((var(--row-art) - 44px) / 2);
   }
   .swap-btn::before {
     content: "";

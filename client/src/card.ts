@@ -3,7 +3,7 @@
 // drag-to-reorder move, the copyable song list, the search fallback link,
 // the verified count and the accent ink.
 
-import type { MixCard, Track } from "./types.ts";
+import type { Accent, MixCard, Track } from "./types.ts";
 
 // Identity for a track. Not guaranteed unique: a repeated curated track, or
 // two entries resolving to the same URI, would collide.
@@ -52,7 +52,8 @@ export const verifiedCount = (tracks: Track[]) => tracks.filter((t) => t.resolve
 // Record<string, string>: the accent name arrives from the server, and the
 // lookup below already falls back to ember for anything unknown — including
 // cards curated before the Clay Wall palette, whose accent names no longer exist.
-// Keep these names in sync with the `accent` enums in server/curator.ts.
+// `satisfies`: every accent the curator can pick has an ink, so a new one
+// cannot be forgotten here.
 const ACCENT_INK: Record<string, string> & { ember: string } = {
   ember: "#a83a0a",
   rose: "#a92e5c",
@@ -60,7 +61,7 @@ const ACCENT_INK: Record<string, string> & { ember: string } = {
   cobalt: "#2f5aa8",
   forest: "#237a4a",
   rust: "#7a5518",
-};
+} satisfies Record<Accent, string>;
 
 export function accentInkFor(card: MixCard | null): string {
   return card

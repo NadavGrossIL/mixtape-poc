@@ -14,6 +14,8 @@
 
 import { normalize, stripSuffixes, formatClock } from "./spotify.ts";
 import type { SearchBudget } from "./searchBudget.ts";
+import { ACCENTS } from "./wire.ts";
+import type { WireCard, WireTrack } from "./wire.ts";
 
 const MODEL = "claude-sonnet-5";
 const TRACK_COUNT = 8;
@@ -25,30 +27,12 @@ function anthropicConfigured(): boolean {
   return key.length > 0 && !PLACEHOLDER_RE.test(key);
 }
 
-// A curated track, plus the optional fields Spotify resolution adds later.
-interface Track {
-  ref?: string;
-  artist: string;
-  title: string;
-  note: string;
-  resolved?: boolean | null;
-  spotifyUrl?: string | null;
-  spotifyUri?: string;
-  albumArt?: string | null;
-  matchedName?: string;
-}
-
-interface MixtapeCard {
-  title: string;
-  vibe: string;
-  accent: string;
-  tracks: Track[];
-  prompt?: string;
-  seed?: { id: string; name: string };
-  // Set only by the LangChain curator (lc/curator-lc.ts): the memory thread
-  // this card's conversation lives on. This agent has no memory and ignores it.
-  threadId?: string;
-}
+// A curated track and card. The shapes are the wire's (wire.ts), with one
+// difference: the curator hands back its card BEFORE Spotify resolution, so
+// `resolved` does not exist yet here. Every card that leaves the server has
+// been through resolution and is a WireCard.
+type Track = Omit<WireTrack, "resolved"> & { resolved?: boolean | null };
+type MixtapeCard = Omit<WireCard, "tracks"> & { tracks: Track[] };
 
 interface AdjustDiff {
   changes: {
@@ -139,7 +123,7 @@ const CURATOR_TOOL = {
       },
       accent: {
         type: "string",
-        enum: ["ember", "rose", "plum", "cobalt", "forest", "rust"],
+        enum: [...ACCENTS],
         description: "Accent color matching the mood.",
       },
       // Eight required keys, deliberately NOT an array.

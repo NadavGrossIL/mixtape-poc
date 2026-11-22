@@ -106,7 +106,7 @@ export default function MixtapeCard({
               false the moment save is tapped, and the shorter text
               shifted the whole list up a line on a phone */}
           {!saved
-            ? "tap a song to open it in Spotify · drag to reorder · ↻ swaps one"
+            ? "tap a song to open it in Spotify · drag ⋮⋮ to reorder"
             : "tap a song to open it in Spotify"}
         </div>
 

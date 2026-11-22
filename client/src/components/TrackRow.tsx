@@ -61,6 +61,28 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
         t.resolved ? "" : ", unverified"
       } (opens Spotify)`}
     >
+      {editable && (
+        // the "this row moves" sign. Desktop drags from anywhere on the row
+        // (this is just the hint, with the grab cursor); a touch here drags
+        // at once instead of waiting out the row's hold (GripTouchSensor).
+        // Hidden from assistive tech: the row itself is the keyboard handle.
+        <span
+          className="grip"
+          data-grip
+          aria-hidden
+          // a tap on the grip is not a tap on the song
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <svg viewBox="0 0 8 14" width="8" height="14">
+            {[2, 7, 12].map((y) =>
+              [2, 6].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" />)
+            )}
+          </svg>
+        </span>
+      )}
       {t.resolved && t.albumArt ? (
         <img src={t.albumArt} alt="" className="album-art" draggable={false} />
       ) : (

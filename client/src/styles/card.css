@@ -174,6 +174,43 @@
   box-shadow: 0 8px 22px rgba(0, 0, 0, 0.28);
 }
 
+/* drag grip: dim print furniture until the row is hovered or held.
+   touch-action none so a finger on it drags instead of scrolling the page;
+   the ::after widens the touch target without widening the row */
+.grip {
+  position: relative;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 12px;
+  align-self: stretch;
+  margin-right: -4px;
+  color: var(--paper-dim);
+  opacity: 0.55;
+  cursor: grab;
+  touch-action: none;
+  transition: opacity 0.15s ease;
+}
+.grip svg {
+  fill: currentColor;
+  display: block;
+}
+.grip::after {
+  content: "";
+  position: absolute;
+  inset: 0 -10px;
+}
+.track-row:hover .grip,
+.track-row.dragging .grip {
+  opacity: 1;
+  color: var(--paper-ink);
+}
+.track-row.dragging,
+.track-row.dragging .grip {
+  cursor: grabbing;
+}
+
 .album-art {
   width: 40px;
   height: 40px;

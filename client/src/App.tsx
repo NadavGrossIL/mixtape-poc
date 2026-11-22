@@ -7,13 +7,11 @@ import {
   type GenerateStreamEvent,
   type LogTrack,
   type MixCard,
-  type Playlist,
   type SaveStreamEvent,
   type Track,
 } from "./types";
 import { CapError, StreamDroppedError, readSSE } from "./sse";
 import { saveRefusal } from "./failures";
-import { parsePlaylistLink, seedPlaylistFor, visibleSeedPlaylists, type SeedPlaylists } from "./seed";
 import { reorderTracks, trackListText, verifiedCount } from "./card";
 import {
   classifyRunFailure,
@@ -35,12 +33,14 @@ import MixtapeCard from "./components/MixtapeCard";
 import RefinePanel from "./components/RefinePanel";
 import SaveDock from "./components/SaveDock";
 import PressedPanel from "./components/PressedPanel";
+import SeedPanel from "./components/SeedPanel";
 import useSession from "./hooks/useSession";
 import useLatestShelf from "./hooks/useLatestShelf";
 import useRecentMixtapes from "./hooks/useRecentMixtapes";
 import usePageView from "./hooks/usePageView";
 import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
 import useDictation from "./hooks/useDictation";
+import useSeedPicker from "./hooks/useSeedPicker";
 
 // The server-log console is a learning-project debugging aid, not product UI.
 //
@@ -105,16 +105,6 @@ export default function App() {
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
   const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
-  // "in the spirit of" seed picker
-  const [playlists, setPlaylists] = useState<SeedPlaylists>(null); // null=loading
-  const [seedId, setSeedId] = useState("");
-  const [seedOpen, setSeedOpen] = useState(false); // the inline picker panel
-  const [seedFilter, setSeedFilter] = useState("");
-  // a seed that arrived as a pasted link — visitors without a connected
-  // Spotify have no shelf to pick from, so they paste a playlist link
-  // instead; the server reads it with the host account and names it
-  const [pastedSeed, setPastedSeed] = useState<Playlist | null>(null);
-  const [seedPaste, setSeedPaste] = useState("");
   const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
@@ -144,6 +134,13 @@ export default function App() {
     setPrompt,
     setHint: setInputHint,
     announce: setAnnounce,
+    focusPrompt,
+  });
+
+  const seed = useSeedPicker({
+    loggedIn,
+    announce: setAnnounce,
+    setHint: setInputHint,
     focusPrompt,
   });
 
@@ -183,24 +180,6 @@ export default function App() {
   const unsavedCard = Boolean(card) && !playlistUrl;
   useUnsavedCardGuard(unsavedCard);
 
-  // the seed picker's playlist list. 403 = the stored token predates the
-  // playlist-read scopes — surfaced as a "reconnect Spotify" link. A named
-  // function (not just an effect) so the error state can offer a retry.
-  const loadPlaylists = () => {
-    setPlaylists(null);
-    fetch("/api/playlists")
-      .then(async (r) => {
-        if (r.status === 403) return setPlaylists("unauthorized");
-        if (!r.ok) throw new Error("playlists failed");
-        const d: { playlists?: Playlist[] } = await r.json();
-        setPlaylists(Array.isArray(d.playlists) ? d.playlists : []);
-      })
-      .catch(() => setPlaylists("error"));
-  };
-  useEffect(() => {
-    if (loggedIn === true) loadPlaylists();
-  }, [loggedIn]);
-
   // Move focus to the result when it lands, so keyboard and
   // screen-reader users aren't stranded back at the prompt. Only when a card
   // arrives where there was none: a reorder, a swap or a refine is a new
@@ -212,16 +191,11 @@ export default function App() {
     hadCardRef.current = Boolean(card);
   }, [card]);
 
-  const seedPlaylist = seedPlaylistFor(playlists, seedId, pastedSeed);
-
-  // the picker's rows (seed.ts)
-  const seedShown = visibleSeedPlaylists(playlists, seedFilter);
-
   const generate = async (p?: string) => {
     const thePrompt = (p ?? prompt).trim();
     if (loading || adjusting) return;
     // a seed playlist alone is a valid ask ("just like this one")
-    if (!thePrompt && !seedPlaylist) {
+    if (!thePrompt && !seed.armed) {
       setInputHint(
         "Type a vibe first — a mood, a moment, an era — or start from a playlist."
       );
@@ -253,8 +227,8 @@ export default function App() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: thePrompt,
-          ...(seedPlaylist
-            ? { seed: { id: seedPlaylist.id, name: seedPlaylist.name } }
+          ...(seed.armed
+            ? { seed: { id: seed.armed.id, name: seed.armed.name } }
             : {}),
         }),
         signal: controller.signal,
@@ -272,9 +246,8 @@ export default function App() {
           setStage("seeding");
           setSeedLog({ name: data?.name || "your playlist" });
           // a pasted seed learns its real name from the server
-          if (data?.name) {
-            setPastedSeed((s) => (s ? { ...s, name: data.name! } : s));
-          }
+          const name = data?.name;
+          if (name) seed.nameFromServer(name);
           setAnnounce("Reading your playlist.");
         } else if (event === "curating") {
           setStage("curating");
@@ -314,10 +287,7 @@ export default function App() {
       // The card records the seed (card.seed, printed on the sleeve); the
       // armed seed must not silently ride along into the next generation.
       // A failed run keeps it, so "try the same prompt again" stays true.
-      setSeedId("");
-      // a pasted seed too: seedPlaylist falls back to it once seedId is empty
-      setPastedSeed(null);
-      setSeedOpen(false);
+      seed.clearAfterRun();
     } catch (e) {
       const failure = classifyRunFailure(e, navigator.onLine);
       switch (failure.kind) {
@@ -562,18 +532,18 @@ export default function App() {
   // The waiting screen's step line. A run from a playlist has one more step
   // (reading it) than a run from a prompt; the armed seed is still set while
   // loading, so the total is known before the first event arrives.
-  const stepTotal = seedPlaylist ? 3 : 2;
+  const stepTotal = seed.armed ? 3 : 2;
   const loadingStep =
     stage === "resolving"
       ? {
           n: stepTotal,
           label: `checking each one on Spotify · ${liveChecked} of ${logTracks.length}`,
         }
-      : stage === "curating" || !seedPlaylist
+      : stage === "curating" || !seed.armed
         ? { n: stepTotal - 1, label: "picking the songs" }
         : {
             n: 1,
-            label: `reading “${seedLog?.name || seedPlaylist.name || "your playlist"}”`,
+            label: `reading “${seedLog?.name || seed.armed.name || "your playlist"}”`,
           };
 
   // Clipboard feedback is the button's own label for a beat, not a toast.
@@ -608,21 +578,6 @@ export default function App() {
       setAnnounce("Couldn't copy — select it by hand.");
     }
     // "shared" / "dismissed": the sheet was the feedback — nothing to report
-  };
-
-  // arm a pasted playlist link as the seed; the server names it while seeding
-  const applyPastedSeed = () => {
-    const id = parsePlaylistLink(seedPaste);
-    if (!id) {
-      setInputHint("That doesn't look like a Spotify playlist link — copy it from Share → Copy link in Spotify.");
-      return;
-    }
-    setPastedSeed({ id, name: "", total: null, mine: false });
-    setSeedPaste("");
-    setSeedOpen(false);
-    setInputHint(null);
-    setAnnounce("Using your pasted playlist. The prompt is now optional.");
-    inputRef.current?.focus();
   };
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
@@ -667,19 +622,11 @@ export default function App() {
               onSubmit={() => generate()}
               onStop={stopGenerating}
               loading={loading}
-              seed={seedPlaylist}
-              onClearSeed={() => {
-                setSeedId("");
-                setPastedSeed(null);
-                inputRef.current?.focus();
-              }}
-              showSeedEntry={
-                !loading &&
-                !seedPlaylist &&
-                !(Array.isArray(playlists) && playlists.length === 0)
-              }
-              seedOpen={seedOpen}
-              onToggleSeed={() => setSeedOpen(!seedOpen)}
+              seed={seed.armed}
+              onClearSeed={seed.clear}
+              showSeedEntry={!loading && seed.canOffer}
+              seedOpen={seed.open}
+              onToggleSeed={seed.toggle}
               inputRef={inputRef}
               micSupported={dictation.supported}
               listening={dictation.listening}
@@ -704,121 +651,8 @@ export default function App() {
                 {/* the seed picker, opened from the composer-bar trigger; a
                     chosen playlist collapses into the token docked on the
                     composer */}
-                {seedOpen && !seedPlaylist && (
-                  <div className="seed-panel">
-                      <div className="seed-panel-head">
-                        <span>{loggedIn ? "pick a playlist to base it on" : "paste a playlist to base it on"}</span>
-                        <button
-                          type="button"
-                          className="seed-panel-close"
-                          aria-label="Close the playlist picker"
-                          onClick={() => {
-                            setSeedOpen(false);
-                            setSeedFilter("");
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      {!loggedIn ? (
-                        <>
-                          <form
-                            className="seed-paste"
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              applyPastedSeed();
-                            }}
-                          >
-                            <input
-                              className="seed-filter"
-                              value={seedPaste}
-                              onChange={(e) => setSeedPaste(e.target.value)}
-                              placeholder="https://open.spotify.com/playlist/…"
-                              aria-label="Spotify playlist link"
-                              inputMode="url"
-                              autoFocus
-                            />
-                            <button type="submit" className="seed-retry">
-                              use it
-                            </button>
-                          </form>
-                          <div className="seed-explainer">
-                            in Spotify: the playlist’s ⋯ menu → Share → Copy link. Public
-                            playlists only — we read its tracks, then make a new
-                            mixtape in the same spirit
-                          </div>
-                        </>
-                      ) : Array.isArray(playlists) ? (
-                        <>
-                          {playlists.length > 6 && (
-                            <input
-                              className="seed-filter"
-                              value={seedFilter}
-                              onChange={(e) => setSeedFilter(e.target.value)}
-                              placeholder="find a playlist…"
-                              aria-label="Filter your playlists"
-                            />
-                          )}
-                          <div className="seed-list">
-                            {seedShown.map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className="seed-item"
-                                onClick={() => {
-                                  setSeedId(p.id);
-                                  setSeedOpen(false);
-                                  setSeedFilter("");
-                                  setInputHint(null);
-                                  setAnnounce(
-                                    `Using ${p.name}. The prompt is now optional.`
-                                  );
-                                  inputRef.current?.focus();
-                                }}
-                              >
-                                <span className="seed-item-name">{p.name}</span>
-                                <span className="seed-item-meta">
-                                  {p.total != null
-                                    ? `${p.total} track${p.total === 1 ? "" : "s"}`
-                                    : ""}
-                                  {p.mine === false && p.owner
-                                    ? `${p.total != null ? " · " : ""}by ${p.owner}`
-                                    : ""}
-                                </span>
-                              </button>
-                            ))}
-                            {seedShown.length === 0 && (
-                              <div className="seed-note">
-                                nothing matches “{seedFilter.trim()}”
-                              </div>
-                            )}
-                          </div>
-                          <div className="seed-explainer">
-                            we read its tracks, then make a new mixtape in the
-                            same spirit — no songs copied over
-                          </div>
-                        </>
-                      ) : playlists === "unauthorized" ? (
-                        <a href="/auth/login" className="seed-reauth">
-                          reconnect Spotify to browse your playlists
-                        </a>
-                      ) : playlists === "error" ? (
-                        <div className="seed-error-row">
-                          <span className="seed-note">
-                            couldn’t load your playlists
-                          </span>
-                          <button
-                            type="button"
-                            className="seed-retry"
-                            onClick={loadPlaylists}
-                          >
-                            retry
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="seed-note">loading your playlists…</span>
-                      )}
-                    </div>
+                {seed.open && !seed.armed && (
+                  <SeedPanel picker={seed} loggedIn={loggedIn} />
                 )}
 
                 {/* the prompt-optional contract while a seed is armed. The
@@ -826,7 +660,7 @@ export default function App() {
                     checked on Spotify") is gone: the header says what comes
                     back and the waiting screen says how long, so here it was
                     a third telling. */}
-                {seedPlaylist && (
+                {seed.armed && (
                   <div className="scope-line">
                     prompt optional — the mixtape follows that playlist’s
                     spirit; add words to steer it

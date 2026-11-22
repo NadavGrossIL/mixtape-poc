@@ -1,6 +1,10 @@
 // The card/track shapes the server streams back. Unresolved tracks keep only
 // the curator's fields; the Spotify fields land on successful resolution.
 export interface Track {
+  // the curator's handle on the search result it picked this track from.
+  // Never read here; a refine sends it back with the card, so the server
+  // can look the record up directly (server/lc/cardDiff.ts)
+  ref?: string;
   artist: string;
   title: string;
   note: string;
@@ -40,6 +44,10 @@ export interface MixCard {
   prompt?: string;
   seed?: { id?: string; name: string };
   tracks: Track[];
+  // the curator's memory thread for this card's conversation
+  // (server/lc/curator-lc.ts). Never read here, but a refine must send it
+  // back with the card, so a refine can continue that conversation.
+  threadId?: string;
 }
 
 export interface Playlist {

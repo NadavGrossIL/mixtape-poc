@@ -1,56 +1,45 @@
 import { useRef, useState } from "react";
-import LogConsole from "./LogConsole";
 import { type MixCard } from "./types";
 import { reorderTracks, verifiedCount } from "./card";
 import { loadingStep } from "./generationRun";
-import SampleCard from "./components/SampleCard";
-import SiteHeader from "./components/SiteHeader";
-import Composer from "./components/Composer";
-import RecentMixtapes from "./components/RecentMixtapes";
-import LatestShelf from "./components/LatestShelf";
-import ExamplePrompts from "./components/ExamplePrompts";
-import HomeNotes from "./components/HomeNotes";
-import GeneratingProgress from "./components/GeneratingProgress";
-import ErrorAlert from "./components/ErrorAlert";
-import MixtapeCard from "./components/MixtapeCard";
-import RefinePanel from "./components/RefinePanel";
-import SaveDock from "./components/SaveDock";
-import PressedPanel from "./components/PressedPanel";
-import SeedPanel from "./components/SeedPanel";
+import { SHOW_LOGS } from "./debug";
 import useSession from "./hooks/useSession";
 import useLatestShelf from "./hooks/useLatestShelf";
 import useRecentMixtapes from "./hooks/useRecentMixtapes";
 import usePageView from "./hooks/usePageView";
-import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
 import useDictation from "./hooks/useDictation";
 import useSeedPicker from "./hooks/useSeedPicker";
 import useSave from "./hooks/useSave";
 import useGeneration from "./hooks/useGeneration";
 import useRefine from "./hooks/useRefine";
+import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
+import SiteHeader from "./components/SiteHeader";
+import Composer from "./components/Composer";
+import ErrorAlert from "./components/ErrorAlert";
+import SeedPanel from "./components/SeedPanel";
+import RecentMixtapes from "./components/RecentMixtapes";
+import SampleCard from "./components/SampleCard";
+import LatestShelf from "./components/LatestShelf";
+import ExamplePrompts from "./components/ExamplePrompts";
+import HomeNotes from "./components/HomeNotes";
+import GeneratingProgress from "./components/GeneratingProgress";
+import MixtapeCard from "./components/MixtapeCard";
+import RefinePanel from "./components/RefinePanel";
+import SaveDock from "./components/SaveDock";
+import PressedPanel from "./components/PressedPanel";
+import LogConsole from "./components/LogConsole";
 
-// The server-log console is a learning-project debugging aid, not product UI.
+// The one screen, as a composition root: it owns what several concerns
+// share (the prompt and its hint, the card, the live region, the prompt's
+// focus), calls one hook per concern and wires them together, and lays out
+// the home screen, the waiting screen and the card screen. Each run's
+// state and request live in its hook (hooks/), each surface in its
+// component (components/), and the decisions worth unit-testing in pure
+// modules beside this file (card.ts, seed.ts, the *Run.ts reducers…).
 //
-// `?debug` has to outlive the OAuth round trip: /callback redirects to
-// CLIENT_URL ("/" in production) and drops the query string, so connecting
-// Spotify — the very thing the owner must do before the logs and funnel will
-// answer them — used to take the button away again. Remembered for the tab,
-// not the browser: a stray ?debug in a shared link shouldn't leave a debug
-// control on a stranger's screen for good.
-const DEBUG_KEY = "mixtape_debug";
-
-function debugRequested(): boolean {
-  if (typeof window === "undefined") return false;
-  const inUrl = new URLSearchParams(window.location.search).has("debug");
-  try {
-    if (inUrl) window.sessionStorage.setItem(DEBUG_KEY, "1");
-    return inUrl || window.sessionStorage.getItem(DEBUG_KEY) === "1";
-  } catch {
-    return inUrl; // private mode or storage blocked — the URL still works
-  }
-}
-
-const SHOW_LOGS = import.meta.env.DEV || debugRequested();
-
+// Hooks return plain functions rebuilt every render, with no
+// useCallback/useMemo: a click acts on the state of the render it was
+// clicked in (refine sends that card, a save records against that list).
 export default function App() {
   // first, in this order: their mount requests go auth, then latest, then view
   const { loggedIn, isOwner } = useSession();
@@ -58,13 +47,18 @@ export default function App() {
   const recent = useRecentMixtapes();
   usePageView();
 
+  // shared by several concerns below, so owned here: the prompt is typed,
+  // dictated and picked from the chips; the card is made, refined,
+  // reordered and cleared; the hint and the live region are written by
+  // almost everything
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
 
+  // the prompt box, focused by dictation, the seed picker, the chips, an
+  // empty generate and "make another one"
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-
   const focusPrompt = () => inputRef.current?.focus();
 
   const dictation = useDictation({
@@ -159,6 +153,7 @@ export default function App() {
     focusPrompt();
   };
 
+  // the waiting screen's "step n of m" line (generationRun.ts)
   const step = loadingStep(gen.stage, gen.logTracks, gen.seedLog, seed.armed);
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
@@ -284,7 +279,7 @@ export default function App() {
                   onPick={(ex) => {
                     setPrompt(ex);
                     setInputHint(null);
-                    inputRef.current?.focus();
+                    focusPrompt();
                   }}
                 />
 
@@ -317,9 +312,7 @@ export default function App() {
 
             {/* second chance: refine the card in place — only in the editable
                 window, same gating as drag-to-reorder */}
-            {editable && (
-              <RefinePanel refine={refine} />
-            )}
+            {editable && <RefinePanel refine={refine} />}
 
             {/* save to spotify — primary action; everything else stays quiet */}
             {!save.playlistUrl && (

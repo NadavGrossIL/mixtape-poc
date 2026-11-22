@@ -68,8 +68,9 @@ export function toAppUri(webUrl: string): string | null {
     // keep the segment percent-encoded — the app takes it as-is
     return `spotify:search:${parts.slice(1).join(":")}`;
   }
-  if (parts.length >= 2 && ENTITIES.has(parts[0])) {
-    return `spotify:${parts[0]}:${parts[1]}`;
+  const [kind, id] = parts;
+  if (kind && id && ENTITIES.has(kind)) {
+    return `spotify:${kind}:${id}`;
   }
   return null;
 }
@@ -95,8 +96,9 @@ function openWeb(webUrl: string) {
 
 // True only while openInSpotify is pointing the page at a spotify: URI.
 // Chromium runs beforeunload for any navigation the page starts, before it
-// knows the target is an external app — so App.tsx's unsaved-card guard
-// checks this and stays quiet for a hand-off that never leaves the page.
+// knows the target is an external app — so the unsaved-card guard
+// (hooks/useUnsavedCardGuard.ts) checks this and stays quiet for a hand-off
+// that never leaves the page.
 let handingOff = false;
 export function isHandingOff(): boolean {
   return handingOff;

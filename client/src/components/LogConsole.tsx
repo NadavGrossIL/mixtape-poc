@@ -68,12 +68,16 @@ const ago = (t: number) => {
 // A day the server has no row for is a real zero, not missing data — hence
 // the per-field fallback rather than a zeroed literal that would spell the
 // metric names out a second time.
-const funnel = (d: DayCounts | null | undefined) =>
-  `${d?.views ?? 0} views (${d?.newVisitors ?? 0} new) · ` +
-  `${d?.prompts ?? 0} prompts · ${d?.generated ?? 0} made · ` +
-  `${d?.adjusts ?? 0} refines · ${d?.pressed ?? 0} pressed · ` +
-  `${d?.errors ?? 0} errors` +
-  ((d?.capped ?? 0) > 0 ? ` · ${d!.capped} capped` : "");
+const funnel = (d: DayCounts | null | undefined) => {
+  const capped = d?.capped ?? 0;
+  return (
+    `${d?.views ?? 0} views (${d?.newVisitors ?? 0} new) · ` +
+    `${d?.prompts ?? 0} prompts · ${d?.generated ?? 0} made · ` +
+    `${d?.adjusts ?? 0} refines · ${d?.pressed ?? 0} pressed · ` +
+    `${d?.errors ?? 0} errors` +
+    (capped > 0 ? ` · ${capped} capped` : "")
+  );
+};
 
 // Matches the server ring's capacity — no reason to hold more than the
 // server can ever replay on reconnect.
@@ -200,7 +204,8 @@ export default function LogConsole() {
   // Mark everything seen while the panel is open, so the badge only ever
   // means "problems you haven't looked at".
   useEffect(() => {
-    if (open && entries.length) setReadSeq(entries[entries.length - 1]!.seq);
+    const last = entries[entries.length - 1];
+    if (open && last) setReadSeq(last.seq);
   }, [open, entries]);
 
   const unseenProblems = entries.filter(

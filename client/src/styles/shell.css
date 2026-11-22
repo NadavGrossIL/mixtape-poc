@@ -146,7 +146,13 @@
   font-size: 11px;
   color: var(--ink-faint);
   text-align: center;
-  margin-top: 28px;
+  /* a 44px touch target around the 11px line, text centred in it; the top
+     margin gives back the ~14px the box grew above the text, so the line
+     sits where it did (the notice under it moves down by the same) */
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  margin-top: 14px;
   text-decoration: none;
   text-underline-offset: 3px;
 }

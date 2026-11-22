@@ -205,7 +205,7 @@
   border: 1px solid var(--line);
   border-radius: 4px;
   padding: 6px 14px;
-  min-height: 36px;
+  min-height: 44px; /* a touch target; in the paste form it already stretched to the field's 44px */
   cursor: pointer;
 }
 

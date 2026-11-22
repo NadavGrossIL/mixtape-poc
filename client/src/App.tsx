@@ -1,1452 +1,171 @@
-import {
-  Fragment,
-  useEffect,
-  useRef,
-  useState,
-  type MutableRefObject,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
-import {
-  DndContext,
-  closestCenter,
-  MouseSensor,
-  TouchSensor,
-  useSensor,
-  useSensors,
-  type DragEndEvent,
-} from "@dnd-kit/core";
-import {
-  SortableContext,
-  arrayMove,
-  useSortable,
-  verticalListSortingStrategy,
-} from "@dnd-kit/sortable";
-import { CSS } from "@dnd-kit/utilities";
-import { isHandingOff, openInSpotify } from "./spotifyLink";
-import { shareOrCopy } from "./share";
-import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
-import { parseLatestResponse, pressedAgo, shelfFor, type LatestMixtape } from "./latest";
-import LogConsole from "./LogConsole";
+import { useRef, useState } from "react";
+import { type MixCard } from "./types";
+import { reorderTracks, verifiedCount } from "./card";
+import { loadingStep } from "./generationRun";
+import { SHOW_LOGS } from "./debug";
+import useSession from "./hooks/useSession";
+import useLatestShelf from "./hooks/useLatestShelf";
+import useRecentMixtapes from "./hooks/useRecentMixtapes";
+import usePageView from "./hooks/usePageView";
+import useDictation from "./hooks/useDictation";
+import useSeedPicker from "./hooks/useSeedPicker";
+import useSave from "./hooks/useSave";
+import useGeneration from "./hooks/useGeneration";
+import useRefine from "./hooks/useRefine";
+import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
+import SiteHeader from "./components/SiteHeader";
+import Composer from "./components/Composer";
+import ErrorAlert from "./components/ErrorAlert";
+import SeedPanel from "./components/SeedPanel";
+import RecentMixtapes from "./components/RecentMixtapes";
+import SampleCard from "./components/SampleCard";
+import LatestShelf from "./components/LatestShelf";
+import ExamplePrompts from "./components/ExamplePrompts";
+import HomeNotes from "./components/HomeNotes";
+import GeneratingProgress from "./components/GeneratingProgress";
+import MixtapeCard from "./components/MixtapeCard";
+import RefinePanel from "./components/RefinePanel";
+import SaveDock from "./components/SaveDock";
+import PressedPanel from "./components/PressedPanel";
+import LogConsole from "./components/LogConsole";
 
-// The card/track shapes the server streams back. Unresolved tracks keep only
-// the curator's fields; the Spotify fields land on successful resolution.
-interface Track {
-  artist: string;
-  title: string;
-  note: string;
-  resolved: boolean;
-  spotifyUri?: string | null;
-  spotifyUrl?: string | null;
-  albumArt?: string | null;
-  // from the catalog row that verified the track (spotify.ts resolveTrack)
-  durationMs?: number | null;
-  year?: number | null;
-}
-
-// The sleeve's stamp line. Runtime and era come from the resolved Spotify
-// rows — the same records that verified the tracks — never from the model.
-// Unverified tracks carry neither and won't be pressed, so the runtime is the
-// runtime of what actually lands in the playlist. A segment is dropped when
-// no track can supply it, so the line never says "0 MIN".
-function cardFacts(tracks: Track[]): string[] {
-  const ms = tracks.reduce((sum, t) => sum + (t.durationMs ?? 0), 0);
-  const years = tracks
-    .map((t) => t.year)
-    .filter((y): y is number => typeof y === "number");
-  const facts: string[] = [];
-  if (ms > 0) facts.push(`${Math.max(1, Math.round(ms / 60000))} MIN`);
-  if (years.length) {
-    const lo = Math.min(...years);
-    const hi = Math.max(...years);
-    facts.push(lo === hi ? String(lo) : `${lo}–${hi}`);
-  }
-  return facts;
-}
-
-interface MixCard {
-  title: string;
-  vibe: string;
-  accent: string;
-  prompt?: string;
-  seed?: { id?: string; name: string };
-  tracks: Track[];
-}
-
-interface Playlist {
-  id: string;
-  name: string;
-  total?: number | null;
-  owner?: string | null;
-  // false = followed, not made by the caller — dev-mode apps may not be able
-  // to read its tracks (Spotify-made ones never work), so the picker sorts
-  // and labels by this
-  mine?: boolean;
-}
-
-// Progress-log line for the generate stream — written sparsely by index, so
-// the array can have holes until every "track" event has landed.
-interface LogTrack {
-  artist: string;
-  title: string;
-  resolved?: boolean;
-}
-
-// Progress-log line for the refine stream.
-interface AdjustLogLine {
-  index: number;
-  artist: string;
-  title: string;
-  resolved?: boolean;
-}
-
-// SSE payloads, per stream, as [event, data] tuples — a discriminated tuple
-// union, so narrowing on the event name types the data in the callback.
-// Events the client ignores ("seeded", "resolving") are listed for honesty.
-type GenerateStreamEvent =
-  | ["seeding", { name?: string } | null]
-  | ["seeded", { count: number; total: number } | null]
-  | ["curating", { prompt?: string } | null]
-  | ["track", { index: number; artist: string; title: string }]
-  | ["curated", { count: number; title: string } | null]
-  | ["resolving", { index: number; artist: string; title: string } | null]
-  | ["resolved", { index: number; resolved: boolean }]
-  | ["done", { card?: MixCard; verified?: number } | null]
-  | ["error", { message?: string; detail?: string; quota?: boolean; outage?: boolean } | null];
-
-type AdjustStreamEvent =
-  | ["adjusting", { adjustment?: string } | null]
-  | ["change", { index: number; artist: string; title: string }]
-  | ["adjusted", { count: number } | null]
-  | ["resolving", { index: number; artist: string; title: string } | null]
-  | ["resolved", { index: number; resolved: boolean }]
-  | ["done", { card?: MixCard } | null]
-  | ["error", { message?: string; detail?: string; quota?: boolean; outage?: boolean } | null];
-
-type SaveStreamEvent =
-  | ["creating", { name?: string } | null]
-  | ["adding", { count?: number } | null]
-  // saved: the server followed the playlist straight into the caller's own
-  // library (connected accounts only); everyone else keeps it with one tap
-  | ["done", { playlistUrl?: string; playlistId?: string; saved?: boolean } | null]
-  | ["error", { message?: string; detail?: string } | null];
-
-// A daily-cap refusal (HTTP 429). Not a failure: the server's line IS the
-// message, and "try the same prompt again" would be the wrong advice.
-class CapError extends Error {
-  // `detail` is the owner-only upstream message the server attaches to a
-  // stream error; a 429 has none.
-  detail: string | null;
-  constructor(message?: string, detail: string | null = null) {
-    super(message || "that’s it for today — come back tomorrow.");
-    this.name = "CapError";
-    this.detail = detail;
-  }
-}
-
-// Spotify's app-wide daily quota, arriving mid-stream as an `error` event.
-// It is a cap like the 429 above, not a fault — so it must not wear the
-// "dropped the needle, try again" line, which contradicts its own detail.
-// The server flags it with `quota: true`; the exact message is the fallback
-// for a server that predates the flag.
-const QUOTA_MESSAGE = "Spotify's daily limit for this app is used up.";
-const QUOTA_COPY = "spotify’s daily limit for this app is used up — come back tomorrow.";
-function isQuotaEvent(data: { message?: string; quota?: boolean } | null) {
-  return data?.quota === true || data?.message === QUOTA_MESSAGE;
-}
-
-// The stream ended with no card and no error event: the connection was cut
-// mid-run (a redeploy, a webview backgrounding the tab). Not the curator's
-// fault, and "empty" is not a detail anyone can act on.
-class StreamDroppedError extends Error {
-  constructor() {
-    super("stream dropped");
-    this.name = "StreamDroppedError";
-  }
-}
-
-// The server's message IS the whole story — shown as the headline, with no
-// "dropped the needle, try the same prompt again" over it. Two sources: a
-// 400 that names what was wrong with the request ("that prompt is too
-// long"), and an `error` event flagged `outage` (the curator is offline or
-// busy — our side, not the visitor's). Both used to wear the generic retry
-// line, which contradicted them. `detail` is the owner-only upstream message
-// when the server sent one (a 400 has none), so the owner can still tell a
-// revoked key from an empty balance without opening the log.
-class PlainError extends Error {
-  detail: string | null;
-  constructor(message: string, detail: string | null = null) {
-    super(message);
-    this.name = "PlainError";
-    this.detail = detail;
-  }
-}
-
-// Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
-// The mic button only renders when the browser can actually transcribe.
-const SpeechRecognitionImpl =
-  typeof window !== "undefined"
-    ? window.SpeechRecognition || window.webkitSpeechRecognition
-    : null;
-
-// Once a browser has stored a "deny" for the mic, recognition fails the
-// instant it starts and no web page can reopen the permission prompt — the
-// only way back is the browser's own site settings, which live somewhere
-// different on every platform. Spell out the path for this one.
-const MIC_UNBLOCK_STEPS = (() => {
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  if (/iPhone|iPad|iPod/.test(ua))
-    return (
-      "tap the ᴀA button in the address bar → Website Settings → " +
-      "Microphone → Allow. Dictation itself must also be on: " +
-      "iOS Settings → General → Keyboard → Enable Dictation."
-    );
-  if (/Android/.test(ua))
-    return (
-      "tap the icon left of the address bar → Permissions → " +
-      "Microphone → Allow, then reload."
-    );
-  if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome/.test(ua))
-    return (
-      "open the Safari menu → Settings for This Website → " +
-      "Microphone → Allow."
-    );
-  return (
-    "click the icon left of the address bar → Site settings → " +
-    "Microphone → Allow, then reload."
-  );
-})();
-
-// Color tokens live in styles/tokens.css. This map is the per-mixtape accent,
-// darkened per hue to hold ≥4.5:1 contrast as ink on the cream card.
-// Record<string, string>: the accent name arrives from the server, and the
-// lookup below already falls back to ember for anything unknown — including
-// cards curated before the Clay Wall palette, whose accent names no longer exist.
-// Keep these names in sync with the `accent` enums in server/curator.ts.
-const ACCENT_INK: Record<string, string> = {
-  ember: "#a83a0a",
-  rose: "#a92e5c",
-  plum: "#6a3a86",
-  cobalt: "#2f5aa8",
-  forest: "#237a4a",
-  rust: "#7a5518",
-};
-
-// One static placeholder that names the three prompt axes and stops there:
-// the example chips carry the "what can I type" teaching, so the box itself
-// holds still — a fifth example here read as a twin of the 2am-drive chip.
-// A second variant takes over when a seed playlist is armed — the prompt is
-// optional in that mode and the placeholder is where that contract is stated.
-const PLACEHOLDER = "a mood, a moment, an era…";
-const SEEDED_PLACEHOLDER =
-  "optional: add a twist — “more instrumental, nothing in english…”";
-
-// Each example demonstrates a different prompt axis: speed/skill,
-// mood+moment, discovery/language, era+audience.
-// Three, not four: the 2am-drive prompt that used to lead is the sample card
-// below, and the same sentence twice on one screen read as noise.
-const EXAMPLES = [
-  "hebrew indie that deserves a bigger audience",
-  "90s hip-hop for a newborn's first road trip",
-  "fastest rap verses ever recorded — Rap God energy",
-];
-
-// Name decided 2026-08-23.
-const BRAND = "MIXTAPE";
-
-// The server-log console is a learning-project debugging aid, not product UI.
+// The one screen, as a composition root: it owns what several concerns
+// share (the prompt and its hint, the card, the live region, the prompt's
+// focus), calls one hook per concern and wires them together, and lays out
+// the home screen, the waiting screen and the card screen. Each run's
+// state and request live in its hook (hooks/), each surface in its
+// component (components/), and the decisions worth unit-testing in pure
+// modules beside this file (card.ts, seed.ts, the *Run.ts reducers…).
 //
-// `?debug` has to outlive the OAuth round trip: /callback redirects to
-// CLIENT_URL ("/" in production) and drops the query string, so connecting
-// Spotify — the very thing the owner must do before the logs and funnel will
-// answer them — used to take the button away again. Remembered for the tab,
-// not the browser: a stray ?debug in a shared link shouldn't leave a debug
-// control on a stranger's screen for good.
-const DEBUG_KEY = "mixtape_debug";
+// Hooks return plain functions rebuilt every render, with no
+// useCallback/useMemo: a click acts on the state of the render it was
+// clicked in (refine sends that card, a save records against that list).
+export default function App() {
+  // first, in this order: their mount requests go auth, then latest, then view
+  const { loggedIn, isOwner } = useSession();
+  const latest = useLatestShelf();
+  const recent = useRecentMixtapes();
+  usePageView();
 
-function debugRequested(): boolean {
-  if (typeof window === "undefined") return false;
-  const inUrl = new URLSearchParams(window.location.search).has("debug");
-  try {
-    if (inUrl) window.sessionStorage.setItem(DEBUG_KEY, "1");
-    return inUrl || window.sessionStorage.getItem(DEBUG_KEY) === "1";
-  } catch {
-    return inUrl; // private mode or storage blocked — the URL still works
-  }
-}
-
-const SHOW_LOGS = import.meta.env.DEV || debugRequested();
-
-// Autofocus the prompt only where a blinking cursor is the cheapest "act
-// here" signal and costs nothing: a pointer device. On a phone it would raise
-// the keyboard over the example chips before the visitor has read them.
-const AUTOFOCUS_PROMPT =
-  typeof window !== "undefined" && !!window.matchMedia?.("(hover: hover)").matches;
-
-const UNVERIFIED_TITLE =
-  "Spotify couldn't confirm this track exists — the curator may have " +
-  "misremembered it. Tap to search Spotify yourself.";
-
-// Minimal SSE parser over a fetch ReadableStream (native only, no libraries).
-// E is the caller's [event, data] tuple union for the stream being read — a
-// declared contract, not something the wire can prove.
-async function readSSE<E extends [string, unknown]>(
-  response: Response,
-  onEvent: (...args: E) => void
-) {
-  // these endpoints always stream a body; a bodyless response would have
-  // thrown here before the migration too
-  const reader = response.body!.getReader();
-  const decoder = new TextDecoder();
-  let buf = "";
-  for (;;) {
-    const { done, value } = await reader.read();
-    if (done) break;
-    buf += decoder.decode(value, { stream: true });
-    let idx;
-    while ((idx = buf.indexOf("\n\n")) !== -1) {
-      const chunk = buf.slice(0, idx);
-      buf = buf.slice(idx + 2);
-      let event = "message";
-      const dataLines = [];
-      for (const line of chunk.split("\n")) {
-        if (line.startsWith("event:")) event = line.slice(6).trim();
-        else if (line.startsWith("data:")) {
-          // per spec: strip one leading space only, join multi-line data with \n
-          const value = line.slice(5);
-          dataLines.push(value.startsWith(" ") ? value.slice(1) : value);
-        }
-      }
-      const data = dataLines.join("\n");
-      let parsed: unknown = null;
-      try {
-        parsed = JSON.parse(data);
-      } catch {
-        /* keep null */
-      }
-      // the one cast at the wire boundary: the server's events are trusted to
-      // match the caller's declared union (unknown events fall through the
-      // caller's if/else chains unhandled, exactly as before)
-      onEvent(...([event, parsed] as E));
-    }
-  }
-}
-
-// Leaves the notch, loops once, then runs level under the wordmark and stops
-// under its last letter. Units are the deck's own (84 wide); the end x is the
-// wordmark's right edge at the em sizes set in hero.css.
-const TAPE_SPILL =
-  "M42 44 C38 49 29 56 22 53.5 C17 51.5 21 47 26 49.5 " +
-  "C33 53 44 55 62 55 C130 55 190 53 287 54";
-
-// The header mark (landing and waiting screens), set beside the wordmark as
-// one lockup: an idle deck standing on the wordmark's baseline, reels
-// turning at different speeds (the take-up pack is smaller, so it spins
-// faster), and its spilled tape drawn out as the wordmark's underline. Drawn
-// for ~45px tall, so few, heavy strokes: no screws, no window, no label.
-// Pure decoration, aria-hidden; all motion lives in CSS behind the
-// reduced-motion gate.
-//
-// `compact` is the same drawing once a card is on the table: no tape and no
-// motion, sized to the smaller wordmark. One cassette on every screen — it
-// used to swap to a different, older icon the moment the card arrived.
-function DeckHero({ compact = false }: { compact?: boolean }) {
-  return (
-    <svg
-      className={"deck" + (compact ? " deck-compact" : "")}
-      // the box is the shell only, so flex baseline alignment puts the
-      // shell's bottom edge on the wordmark's baseline; the tape overflows
-      // it on purpose (overflow: visible in hero.css)
-      viewBox="0 0 84 44"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="2.5"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-      aria-hidden="true"
-    >
-      <rect x="1.25" y="1.25" width="81.5" height="41.5" rx="5" />
-      {/* supply reel: fat tape pack */}
-      <circle cx="27" cy="20" r="10.5" strokeWidth="1.75" className="deck-accent" />
-      <g className="deck-reel deck-reel-supply">
-        <circle cx="27" cy="20" r="4.75" className="deck-hub" />
-        <circle cx="29.3" cy="20" r="1.35" className="deck-hub-hole" />
-      </g>
-      {/* take-up reel: thin pack */}
-      <circle cx="57" cy="20" r="7.5" strokeWidth="1.75" className="deck-accent" />
-      <g className="deck-reel deck-reel-takeup">
-        <circle cx="57" cy="20" r="4.75" className="deck-hub" />
-        <circle cx="59.3" cy="20" r="1.35" className="deck-hub-hole" />
-      </g>
-      {/* tape running pack-top to pack-top */}
-      <path d="M27 9.5 L57 12.5" strokeWidth="1.75" className="deck-accent" />
-      {/* bottom notch */}
-      <path d="M26 42.75l3.5-8h25l3.5 8" strokeWidth="2" />
-      {!compact && (
-        <>
-          {/* spilled tape: solid run + a brighter dash sliding along it */}
-          <path className="deck-tape" d={TAPE_SPILL} />
-          {/* pathLength = the dash period in keyframes.css, so exactly one
-              highlight travels the tape per cycle whatever its drawn length */}
-          <path className="deck-tape-flow" d={TAPE_SPILL} pathLength={232} />
-        </>
-      )}
-    </svg>
-  );
-}
-
-// What a stranger gets, shown before they spend a minute finding out: the
-// proof, placed right under the composer.
-//
-// The content is a real production run (2026-11-21), trimmed to two rows.
-// The notes are the curator's own output, not marketing copy, so the sample
-// cannot promise a voice the product doesn't have. Picked from three runs
-// for songs a stranger already knows and notes with some wit in them: the
-// first sample (a 2am-drive tape of Kavinsky and Washed Out) was accurate
-// and gave nobody a reason to want one.
-const SAMPLE = {
-  prompt: "cooking dinner for someone you like",
-  title: "Stovetop Slow Burn",
-  vibe: "For nights when the sauce simmers slower than the conversation.",
-  total: 8,
-  tracks: [
-    {
-      artist: "Stevie Wonder",
-      title: "Signed, Sealed, Delivered (I'm Yours)",
-      note: "Motown handclaps that turn chopping onions into a little dance floor.",
-    },
-    {
-      artist: "Sade",
-      title: "Smooth Operator",
-      note: "Opens 1984's Diamond Life — brass and cool confidence over a simmering pan.",
-    },
-  ],
-};
-
-// Static on purpose: no links, no hover, no drag. It is a picture of the
-// result, and a row that reacted to the pointer would read as the result.
-// No accent hue either: it is drawn in the wall's own cream line, like the
-// cassette in the header, so the one bright paper object on the site is the
-// real card.
-function SampleCard() {
-  return (
-    <section className="sample" aria-labelledby="sample-heading">
-      <div className="section-note" id="sample-heading">
-        what you get
-      </div>
-      <div className="card sample-card">
-        <div className="spine">
-          <span className="spine-text">{SAMPLE.title.toUpperCase()}</span>
-        </div>
-        <div className="card-body">
-          <div className="prompt-line">
-            someone typed: <em>{SAMPLE.prompt}</em>
-          </div>
-          <div className="card-title sample-title">{SAMPLE.title}</div>
-          <div className="vibe">
-            “{SAMPLE.vibe}”
-          </div>
-          <div className="track-list">
-            {SAMPLE.tracks.map((t, i) => (
-              <div className="sample-row" key={t.title}>
-                <div className="track-num">
-                  {String(i + 1).padStart(2, "0")}
-                </div>
-                <div className="track-main">
-                  <div className="track-title">
-                    {t.artist} — {t.title}
-                  </div>
-                  <div className="track-note">{t.note}</div>
-                </div>
-              </div>
-            ))}
-          </div>
-          <div className="sample-more">
-            + {SAMPLE.total - SAMPLE.tracks.length} more songs
-          </div>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-// The Spotify mark, monochrome via currentColor — Spotify's brand rules allow
-// the one-color mark on buttons that link into Spotify. Used ONLY at the
-// touchpoints that actually hit Spotify (connect, save, open), never in the
-// header: this is Mixtape's page, not Spotify's.
-function SpotifyMark({ size = 16 }: { size?: number }) {
-  return (
-    <svg
-      className="spotify-mark"
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true"
-    >
-      <path d="M12 0C5.37 0 0 5.37 0 12s5.37 12 12 12 12-5.37 12-12S18.63 0 12 0zm5.5 17.31a.75.75 0 0 1-1.03.25c-2.82-1.72-6.37-2.11-10.55-1.16a.75.75 0 1 1-.33-1.46c4.57-1.04 8.49-.59 11.66 1.34.35.21.46.67.25 1.03zm1.47-3.27a.94.94 0 0 1-1.29.31c-3.23-1.98-8.15-2.55-11.97-1.4a.94.94 0 1 1-.54-1.79c4.36-1.32 9.79-.68 13.49 1.6.44.27.58.85.31 1.28zm.13-3.4C15.24 8.4 8.94 8.19 5.24 9.31a1.13 1.13 0 1 1-.65-2.16C8.83 5.86 15.88 6.11 20.26 8.7a1.13 1.13 0 0 1-1.16 1.94z" />
-    </svg>
-  );
-}
-
-// Identity for a track. Not guaranteed unique: a repeated curated track, or
-// two entries resolving to the same URI, would collide.
-const trackId = (t: Track) => t.spotifyUri || `${t.artist}—${t.title}`;
-
-// Sortable/key id, made unique by position. Computed from the card's current
-// order at render time — dnd-kit snapshots items at drag start, so ids stay
-// stable for the duration of a drag, and the positional suffix makes the
-// drag-end indexOf lookup exact even with duplicate tracks.
-const sortableId = (t: Track, i: number) => `${trackId(t)}#${i}`;
-
-// One row on the sleeve. The entire row is the drag surface (dnd-kit sortable);
-// while not editable it degrades to the plain link row it always was.
-// While a refine is in flight, drag and the swap button are disabled — the
-// server merges against the card the client sent, so mid-flight edits would
-// be clobbered by the merged result.
-interface TrackRowProps {
-  id: string;
-  t: Track;
-  index: number;
-  accentInk: string;
-  editable: boolean;
-  adjusting: boolean;
-  href: string;
-  justDragged: MutableRefObject<boolean>;
-  onSwap: () => void;
-}
-
-function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDragged, onSwap }: TrackRowProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
-    useSortable({ id, disabled: !editable || adjusting });
-
-  return (
-    <a
-      ref={setNodeRef}
-      href={href}
-      target="_blank"
-      rel="noopener noreferrer"
-      {...(editable ? attributes : {})}
-      {...(editable ? listeners : {})}
-      // An <a href> is natively draggable: without this, Chrome starts its own
-      // link-drag on the same gesture and dnd-kit's reorder never lands.
-      draggable={editable ? false : undefined}
-      onDragStart={editable ? (e) => e.preventDefault() : undefined}
-      onClick={(e) => {
-        if (justDragged.current) {
-          e.preventDefault();
-          return;
-        }
-        // cmd/ctrl/shift-click keeps its native "open the web URL" meaning;
-        // so does a phone tap — the anchor's own navigation is the one
-        // hand-off that works inside an in-app webview (see spotifyLink.ts)
-        if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-        if (openInSpotify(href)) e.preventDefault();
-      }}
-      className={"track-row" + (isDragging ? " dragging" : "")}
-      style={{
-        transform: CSS.Transform.toString(transform),
-        transition,
-        cursor: editable ? "grab" : "pointer",
-        // manipulation (not none): the TouchSensor hold-delay owns dragging,
-        // so plain swipes over the row must still scroll the page
-        touchAction: editable ? "manipulation" : "auto",
-      }}
-      aria-label={`${t.artist} — ${t.title}${
-        t.resolved ? "" : ", unverified"
-      } (opens Spotify)`}
-    >
-      {t.resolved && t.albumArt ? (
-        <img src={t.albumArt} alt="" className="album-art" draggable={false} />
-      ) : (
-        <div className="album-art-placeholder" />
-      )}
-      <div className="track-num" style={{ color: accentInk }}>
-        {String(index + 1).padStart(2, "0")}
-      </div>
-      <div className="track-main">
-        <div className="track-title">
-          {t.artist} — {t.title}
-        </div>
-        <div className="track-note">{t.note}</div>
-        {/* under the note, not in the chrome column: as a sibling it
-            squeezed a phone's title column to ~110px */}
-        {!t.resolved && (
-          <div className="unverified" title={UNVERIFIED_TITLE}>
-            unverified
-          </div>
-        )}
-      </div>
-      {editable && (
-        <button
-          type="button"
-          className="swap-btn"
-          disabled={adjusting}
-          title="Swap this track for a different one that fits"
-          aria-label={`Swap track ${index + 1}, ${t.artist} — ${t.title}, for a different one`}
-          // keep the button out of the row's drag-activation path —
-          // each sensor listens on its own start event
-          onPointerDown={(e) => e.stopPropagation()}
-          onMouseDown={(e) => e.stopPropagation()}
-          onTouchStart={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            // a plain click must neither open the track nor start a drag
-            e.preventDefault();
-            e.stopPropagation();
-            onSwap();
-          }}
-        >
-          <span aria-hidden>↻</span>
-          <span className="swap-label">swap</span>
-        </button>
-      )}
-    </a>
-  );
-}
-
-type Stage = "seeding" | "curating" | "resolving" | null;
-
-// Studio chatter: the rotating flavour line ("thumbing the dividers…"), the
-// product's version of an assistant's "thinking…". Cosmetic on purpose: the
-// step line above it states the stage in plain words, and this is the part
-// that keeps moving while no song has landed yet, keyed to the stage so it
-// never claims a step that isn't happening. It was cut from the generate
-// screen for a day as noise (2026-11-21) and put back the same day: the
-// owner missed it, and it is the screen's charm. aria-hidden: the live
-// region narrates the milestones.
-const CHATTER = {
-  reading: [
-    "reading your liner notes…",
-    "decoding the vibe…",
-    "warming up the tubes…",
-    "tuning the dial…",
-    "checking the levels…",
-    "sharpening the pencil…",
-  ],
-  seeding: [
-    "dropping the needle on your playlist…",
-    "reading the grooves…",
-    "taking notes from your crate…",
-    "rewinding to track one…",
-    "listening for the through-line…",
-  ],
-  curating: [
-    "thumbing the dividers…",
-    "flipping past the B-sides…",
-    "dusting off a deep cut…",
-    "asking the record-store guy…",
-    "arguing about the opener…",
-    "sequencing side A…",
-    "pulling a few sleeves…",
-    "checking the bpm…",
-    "holding out for the closer…",
-    "cutting one that didn't earn it…",
-  ],
-  resolving: [
-    "matching wax to Spotify…",
-    "checking the barcodes…",
-    "cueing up the tracks…",
-    "aligning the tape heads…",
-    "winding the cassette…",
-    "labelling the spine…",
-  ],
-  // the refine flow: same card, one instruction, a few tracks swapped
-  rewinding: [
-    "rewinding the tape…",
-    "reading your note…",
-    "listening back to the sequence…",
-    "finding the track that's off…",
-    "splicing in a replacement…",
-    "keeping what worked…",
-    "checking the segue…",
-    "re-dubbing side B…",
-  ],
-};
-type ChatterPool = keyof typeof CHATTER;
-const CHATTER_MS = 2600;
-
-function StudioChatter({ pool: name, inline }: { pool: ChatterPool; inline?: boolean }) {
-  const pool = CHATTER[name];
-  const [line, setLine] = useState(pool[0]);
-  useEffect(() => {
-    // new stage → its first line immediately, then wander the pool without
-    // repeating the line that's on screen
-    let current = pool[0];
-    setLine(current);
-    const id = setInterval(() => {
-      const rest = pool.filter((l) => l !== current);
-      current = rest[Math.floor(Math.random() * rest.length)];
-      setLine(current);
-    }, CHATTER_MS);
-    return () => clearInterval(id);
-  }, [pool]);
-  // key on the text so the fade-in re-runs on every change
-  return (
-    <div
-      className={"studio-chatter" + (inline ? " inline" : "")}
-      aria-hidden
-      key={line}
-    >
-      {line}
-    </div>
-  );
-}
-
-// see the /api/view effect below — survives a hot-reload remount
-let viewCounted = false;
-
-// a getter, not a value: in some browsers reading `window.localStorage`
-// itself throws (blocked storage); recent.ts catches that as well
-const browserStorage = () => window.localStorage;
-
-// the host account every mixtape is pressed to (ADR 0002) — the fallback for
-// anything this browser's list doesn't hold. Must be the account
-// SPOTIFY_HOST_REFRESH_TOKEN holds — or the owner's, which spotify.ts falls
-// back to when that is unset — or this link points at the wrong shelf.
-// how many of "your mixtapes" show before the "+ N more" toggle
-const RECENT_SHOWN = 3;
-
-const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
-
-export default function LinerNotes() {
+  // shared by several concerns below, so owned here: the prompt is typed,
+  // dictated and picked from the chips; the card is made, refined,
+  // reordered and cleared; the hint and the live region are written by
+  // almost everything
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  // The server's own words for what went wrong, shown under the friendly
-  // line — the log panel has the rest of the run.
-  const [errorDetail, setErrorDetail] = useState<string | null>(null);
-  const [booked, setBooked] = useState(false); // the error is a cap, not a fault
-  // bumps on every failure so the alert is scrolled into view even when the
-  // same line lands twice in a row (a capped visitor pressing again)
-  const [errorTick, setErrorTick] = useState(0);
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
-  const [isOwner, setIsOwner] = useState(false); // shows the shelf's "hide"; the server enforces it
-  const [saving, setSaving] = useState(false);
-  const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
-  const [savedToLibrary, setSavedToLibrary] = useState(false);
-  const [copied, setCopied] = useState<"tracks" | "share" | null>(null);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  // "your mixtapes": this browser's presses, newest first (see recent.ts)
-  const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
-  const [showAllRecent, setShowAllRecent] = useState(false);
-  // "fresh off the press": everyone's newest presses (server/latest.ts)
-  const [latest, setLatest] = useState<LatestMixtape[]>([]);
-  // one clock reading per render, for the filter and every row's label
-  const shelfNow = Date.now();
-  const shelf = shelfFor(
-    latest,
-    recent.map((m) => m.url),
-    shelfNow
-  );
-  // real progress, driven only by SSE events from the backend
-  const [stage, setStage] = useState<Stage>(null);
-  const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
-  const [seedLog, setSeedLog] = useState<{ name: string } | null>(null); // while seeding this run
-  // "in the spirit of" seed picker
-  const [playlists, setPlaylists] = useState<
-    Playlist[] | "unauthorized" | "error" | null
-  >(null); // null=loading
-  const [seedId, setSeedId] = useState("");
-  const [seedOpen, setSeedOpen] = useState(false); // the inline picker panel
-  const [seedFilter, setSeedFilter] = useState("");
-  // a seed that arrived as a pasted link — visitors without a connected
-  // Spotify have no shelf to pick from, so they paste a playlist link
-  // instead; the server reads it with the host account and names it
-  const [pastedSeed, setPastedSeed] = useState<Playlist | null>(null);
-  const [seedPaste, setSeedPaste] = useState("");
-  const [saveStage, setSaveStage] = useState<string | null>(null); // "creating" | "adding N"
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
-  // second-chance refine — same real-SSE discipline as generate
-  const [adjustText, setAdjustText] = useState("");
-  const [adjusting, setAdjusting] = useState(false);
-  const [adjustError, setAdjustError] = useState<string | null>(null);
-  const [adjustErrorDetail, setAdjustErrorDetail] = useState<string | null>(null);
-  const [adjustBooked, setAdjustBooked] = useState(false); // same cap-not-fault split as `booked`
-  const [adjustStage, setAdjustStage] = useState<"adjusting" | "resolving" | null>(null);
-  const [adjustLog, setAdjustLog] = useState<AdjustLogLine[]>([]);
 
-  // voice input — dictation appends to whatever is already typed
-  const [listening, setListening] = useState(false);
-  const recogRef = useRef<SpeechRecognition | null>(null);
-  const dictatingRef = useRef(false); // user intent: mic toggled on
-  const dictationBaseRef = useRef(""); // text that precedes this session's speech
-  const dictatedRef = useRef(""); // latest composed text, for restart folding
-
+  // the prompt box, focused by dictation, the seed picker, the chips, an
+  // empty generate and "make another one"
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
-  const refineRef = useRef<HTMLInputElement | null>(null);
-  const cardTitleRef = useRef<HTMLHeadingElement | null>(null);
-  const errorRef = useRef<HTMLDivElement | null>(null);
-  const abortRef = useRef<AbortController | null>(null);
-  const adjustAbortRef = useRef<AbortController | null>(null);
+  const focusPrompt = () => inputRef.current?.focus();
 
-  // The error renders inside the composer, but a phone that scrolled down to
-  // the progress log is still looking below it — the button just snapped
-  // from STOP back to MAKE THE MIXTAPE and looked like it did nothing. Pull
-  // the alert into view and focus it, so eye and screen reader both land on
-  // it. An effect, not a rAF in the catch: it runs after the commit that
-  // mounts the element, whichever way React schedules that.
-  useEffect(() => {
-    const el = errorRef.current;
-    if (!errorTick || !el) return;
-    const reduce =
-      typeof window.matchMedia === "function" &&
-      window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-    el.scrollIntoView({ block: "center", behavior: reduce ? "auto" : "smooth" });
-    el.focus({ preventScroll: true });
-  }, [errorTick]);
+  const dictation = useDictation({
+    prompt,
+    setPrompt,
+    setHint: setInputHint,
+    announce: setAnnounce,
+    focusPrompt,
+  });
 
-  // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
-  // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
-  // finger can still scroll the list — moving during the hold cancels the drag.
-  const sensors = useSensors(
-    useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } })
-  );
-  const justDragged = useRef(false);
+  const seed = useSeedPicker({
+    loggedIn,
+    announce: setAnnounce,
+    setHint: setInputHint,
+    focusPrompt,
+  });
 
-  useEffect(() => {
-    fetch("/auth/status")
-      .then((r) => r.json())
-      .then((d: { loggedIn?: boolean; owner?: boolean }) => {
-        setLoggedIn(Boolean(d.loggedIn));
-        setIsOwner(Boolean(d.owner));
-      })
-      .catch(() => setLoggedIn(false));
-  }, []);
-
-  // The shelf is a nice-to-have: any failure just leaves it off the page.
-  // Re-read after this visitor's own press, so the list is current when
-  // they come back to the composer.
-  const loadLatest = () => {
-    fetch("/api/latest")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setLatest(parseLatestResponse(d)))
-      .catch(() => {});
-  };
-  useEffect(loadLatest, []);
-
-  // owner only, and not undoable from here — so it asks first
-  const hideLatest = (id: string, title: string) => {
-    if (!window.confirm(`Hide “${title}” from the home page? The playlist itself stays.`)) return;
-    fetch("/api/latest/hide", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`hide failed: ${r.status}`);
-        return r.json();
-      })
-      .then((d) => setLatest(parseLatestResponse(d)))
-      .catch((e) => window.alert(`Couldn't hide it (${e.message}).`));
-  };
-
-  // A card is a draft until it's saved: it lives only in this tab. On
-  // 2026-11-22 a refined card was lost to a reload 20 minutes later, its
-  // maker sure they'd "created a playlist" — prod's request log had no save
-  // at all. So leaving with an unsaved card asks first (the browser's own
-  // "Leave site?" prompt; its wording can't be set).
-  const unsavedCard = Boolean(card) && !playlistUrl;
-  useEffect(() => {
-    if (!unsavedCard) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      if (isHandingOff()) return; // a song opening in the Spotify app, not leaving
-      e.preventDefault();
-      e.returnValue = ""; // older Chrome/Safari need it set to show the prompt
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [unsavedCard]);
-
-  // One page-view tick per load, counted server-side (server/metrics.ts).
-  // The module-level guard, not the empty dep array, is what makes it once:
-  // a dev hot-reload remounts the app without reloading the page.
-  useEffect(() => {
-    if (viewCounted) return;
-    viewCounted = true;
-    fetch("/api/view", { method: "POST", keepalive: true }).catch(() => {});
-  }, []);
-
-  // the seed picker's playlist list. 403 = the stored token predates the
-  // playlist-read scopes — surfaced as a "reconnect Spotify" link. A named
-  // function (not just an effect) so the error state can offer a retry.
-  const loadPlaylists = () => {
-    setPlaylists(null);
-    fetch("/api/playlists")
-      .then(async (r) => {
-        if (r.status === 403) return setPlaylists("unauthorized");
-        if (!r.ok) throw new Error("playlists failed");
-        const d: { playlists?: Playlist[] } = await r.json();
-        setPlaylists(Array.isArray(d.playlists) ? d.playlists : []);
-      })
-      .catch(() => setPlaylists("error"));
-  };
-  useEffect(() => {
-    if (loggedIn === true) loadPlaylists();
-  }, [loggedIn]);
-
-  // Move focus to the result when it lands, so keyboard and
-  // screen-reader users aren't stranded back at the prompt.
-  useEffect(() => {
-    if (card) cardTitleRef.current?.focus();
-  }, [card]);
-
-  const seedPlaylist =
-    (Array.isArray(playlists) ? playlists.find((p) => p.id === seedId) || null : null) ??
-    pastedSeed;
-
-  // the picker's rows: filtered by the search box, the caller's own playlists
-  // first (followed ones can be unreadable for dev-mode apps — see server).
-  // `mine ?? true`: rows from a server without the flag stay unlabeled.
-  const seedShown = Array.isArray(playlists)
-    ? playlists
-        .filter((p) =>
-          p.name.toLowerCase().includes(seedFilter.trim().toLowerCase())
-        )
-        .sort((a, b) => Number(b.mine ?? true) - Number(a.mine ?? true))
-    : [];
-
-  // a page-leave mid-dictation must not leave the mic hot
-  useEffect(
-    () => () => {
-      dictatingRef.current = false;
-      recogRef.current?.abort();
+  // pressing the card to Spotify; a press is remembered on this browser
+  // ("your mixtapes") and the shelf is re-read
+  const save = useSave({
+    card,
+    announce: setAnnounce,
+    onSaved: ({ title, url }) => {
+      recent.record({ title, url, pressedAt: Date.now() });
+      latest.reload();
     },
-    []
-  );
+  });
 
-  // The engine ends a session on its own — after a pause in speech, or at
-  // Chrome's session-length cap. dictatingRef holds the user's intent
-  // ("the mic button is on"), so onend can tell an engine timeout apart
-  // from a deliberate stop and reopen the mic mid-take.
-  const startRecognition = () => {
-    // non-null: only reachable through the mic button, which renders (and
-    // wires these handlers) only when SpeechRecognitionImpl exists
-    const recog = new SpeechRecognitionImpl!();
-    // one language per session is a Web Speech limitation; the browser's
-    // own locale is the best single guess we have
-    recog.lang = navigator.language || "en-US";
-    recog.interimResults = true; // words land in the box as they're spoken
-    recog.continuous = true; // a pause for thought must not end the take
-    recog.onresult = (e) => {
-      const heard = Array.from(e.results)
-        .map((r) => r[0].transcript)
-        .join("");
-      const composed = dictationBaseRef.current + heard;
-      dictatedRef.current = composed;
-      setPrompt(composed);
-      setInputHint(null);
-    };
-    recog.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        dictatingRef.current = false;
-        setInputHint(`The mic is blocked for this site — ${MIC_UNBLOCK_STEPS}`);
-      } else if (e.error !== "aborted" && e.error !== "no-speech") {
-        // real failure (network, audio-capture) — don't restart-loop on it
-        dictatingRef.current = false;
-        setInputHint("Couldn’t catch that — try again, or just type.");
-      }
-    };
-    recog.onend = () => {
-      if (dictatingRef.current) {
-        // engine gave up but the user never tapped stop — resume the take,
-        // folding what's already transcribed into the new session's base
-        dictationBaseRef.current = dictatedRef.current.trim()
-          ? dictatedRef.current.replace(/\s+$/, "") + " "
-          : "";
-        startRecognition();
-        return;
-      }
-      recogRef.current = null;
-      setListening(false);
-      inputRef.current?.focus();
-    };
-    recogRef.current = recog;
-    recog.start();
-  };
-
-  const stopDictation = () => {
-    dictatingRef.current = false;
-    recogRef.current?.stop();
-  };
-
-  const startDictation = () => {
-    dictatingRef.current = true;
-    dictationBaseRef.current = prompt.trim()
-      ? prompt.replace(/\s+$/, "") + " "
-      : "";
-    dictatedRef.current = prompt;
-    setListening(true);
-    setAnnounce("Listening. Speak your prompt.");
-    startRecognition();
-  };
-
-  // WhatsApp-style push-to-talk: hold the mic to record, let go to stop.
-  // A quick tap (released before the hold threshold) "locks" the mic on
-  // instead — hands-free for long prompts — and the next tap stops it.
-  const HOLD_MS = 400;
-  const holdStartRef = useRef(0);
-
-  const micPress = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    // capture the pointer so the release fires here even if the finger
-    // drifts off the button mid-hold
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    e.preventDefault();
-    if (recogRef.current) {
-      stopDictation(); // mic was locked on by a quick tap — this tap ends it
-      holdStartRef.current = 0;
-      return;
-    }
-    holdStartRef.current = e.timeStamp;
-    startDictation();
-  };
-
-  const micRelease = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!recogRef.current || !holdStartRef.current) return;
-    if (e.timeStamp - holdStartRef.current < HOLD_MS) return; // quick tap: lock on
-    stopDictation();
-  };
-
-  // keyboard can't hold-to-talk; Enter/Space toggles (a keyboard-sourced
-  // click has detail 0, pointer clicks were already handled above)
-  const micKeyToggle = (e: ReactMouseEvent<HTMLButtonElement>) => {
-    if (e.detail !== 0) return;
-    if (recogRef.current) stopDictation();
-    else startDictation();
-  };
-
-  const generate = async (p?: string) => {
-    const thePrompt = (p ?? prompt).trim();
-    if (loading || adjusting) return;
-    // a seed playlist alone is a valid ask ("just like this one")
-    if (!thePrompt && !seedPlaylist) {
-      setInputHint(
-        "Type a vibe first — a mood, a moment, an era — or start from a playlist."
-      );
-      inputRef.current?.focus();
-      return;
-    }
-    stopDictation(); // pressing it while dictating ends the take
-    setLoading(true);
-    setError(null);
-    setErrorDetail(null);
-    setBooked(false);
-    setCard(null);
-    setPlaylistUrl(null);
-    setSavedToLibrary(false);
-    setCopied(null);
-    setSaveError(null);
-    setAdjustError(null);
-    setAdjustErrorDetail(null);
-    setAdjustText("");
-    setStage(null);
-    setLogTracks([]);
-    setSeedLog(null);
-    setAnnounce("Making your mixtape.");
-    const controller = new AbortController();
-    abortRef.current = controller;
-    try {
-      const response = await fetch("/api/generate/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          prompt: thePrompt,
-          ...(seedPlaylist
-            ? { seed: { id: seedPlaylist.id, name: seedPlaylist.name } }
-            : {}),
-        }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const data: { error?: string } = await response.json().catch(() => ({}));
-        if (response.status === 429) throw new CapError(data.error);
-        if (response.status === 400 && data.error) throw new PlainError(data.error);
-        throw new Error(data.error || "generate failed");
-      }
-      // widened initializers: the assignments happen inside the readSSE
-      // callback, which TS's control-flow analysis can't see
-      let doneCard = null as MixCard | null;
-      let streamError = null as string | null;
-      let streamQuota = false;
-      let streamOutage = null as string | null;
-      let streamDetail = null as string | null;
-      await readSSE<GenerateStreamEvent>(response, (event, data) => {
-        if (event === "seeding") {
-          setStage("seeding");
-          setSeedLog({ name: data?.name || "your playlist" });
-          // a pasted seed learns its real name from the server
-          if (data?.name) {
-            setPastedSeed((s) => (s ? { ...s, name: data.name! } : s));
-          }
-          setAnnounce("Reading your playlist.");
-        } else if (event === "curating") {
-          setStage("curating");
-          setAnnounce("Picking the songs.");
-        } else if (event === "track") {
-          setLogTracks((ts) => {
-            const next = [...ts];
-            next[data.index] = { artist: data.artist, title: data.title };
-            return next;
-          });
-        } else if (event === "curated") {
-          setStage("resolving");
-          setAnnounce("Checking each song on Spotify.");
-        } else if (event === "resolved") {
-          setLogTracks((ts) => {
-            const next = [...ts];
-            const cur = next[data.index]; // local so TS narrows the sparse slot
-            if (cur) {
-              next[data.index] = { ...cur, resolved: data.resolved };
-            }
-            return next;
-          });
-        } else if (event === "done") {
-          doneCard = data?.card ?? null;
-        } else if (event === "error") {
-          if (isQuotaEvent(data)) streamQuota = true;
-          if (data?.outage && data.message) streamOutage = data.message;
-          streamDetail = data?.detail ?? null;
-          streamError = data?.detail || data?.message || "generate failed";
-        }
-      });
-      if (streamQuota) throw new CapError(QUOTA_COPY, streamDetail);
-      if (streamOutage) throw new PlainError(streamOutage, streamDetail);
-      if (streamError) throw new Error(streamError);
-      if (!doneCard?.tracks?.length) throw new StreamDroppedError();
-      const verified = doneCard.tracks.filter((t) => t.resolved).length;
-      setAnnounce(
-        `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
-      );
+  // making a mixtape. Called before useRefine, whose guard needs
+  // gen.loading; onStart reaches clearDraft (below), which needs refine.
+  // That is safe: onStart only runs on a click, after this render has
+  // declared both.
+  const gen = useGeneration({
+    prompt,
+    seed: seed.armed,
+    announce: setAnnounce,
+    setHint: setInputHint,
+    focusPrompt,
+    onStart: () => {
+      dictation.stop(); // pressing it while dictating ends the take
+      clearDraft();
+    },
+    onCard: (doneCard) => {
       setCard(doneCard);
       // The card records the seed (card.seed, printed on the sleeve); the
       // armed seed must not silently ride along into the next generation.
       // A failed run keeps it, so "try the same prompt again" stays true.
-      setSeedId("");
-      setSeedOpen(false);
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        setAnnounce("Stopped.");
-      } else if (e instanceof CapError) {
-        setBooked(true);
-        setError(e.message);
-        setErrorDetail(e.detail);
-        setAnnounce(e.message);
-        setErrorTick((t) => t + 1);
-      } else if (e instanceof StreamDroppedError) {
-        setError("the connection dropped mid-run — try the same prompt again.");
-        setErrorTick((t) => t + 1);
-      } else if (e instanceof PlainError) {
-        setError(e.message);
-        setErrorDetail(e.detail);
-        setAnnounce(e.message);
-        setErrorTick((t) => t + 1);
-      } else {
-        console.error(e);
-        setError("The curator dropped the needle — that’s on us. Try the same prompt again.");
-        setErrorDetail(e instanceof Error ? e.message : String(e));
-        setErrorTick((t) => t + 1);
-      }
-    } finally {
-      abortRef.current = null;
-      setLoading(false);
-    }
+      seed.clearAfterRun();
+    },
+    onSeedNamed: (name) => seed.nameFromServer(name),
+  });
+
+  // refine and swap; blocked while a mixtape is being made or saved
+  const refine = useRefine({
+    card,
+    blocked: gen.loading || save.saving,
+    announce: setAnnounce,
+    onCard: setCard,
+  });
+
+  // a card on screen that no playlist was pressed from: leaving asks first
+  // (useUnsavedCardGuard), and so does "make another one"
+  const unsavedCard = Boolean(card) && !save.playlistUrl;
+  useUnsavedCardGuard(unsavedCard);
+
+  // The last card and everything hanging off it: its save and its refine.
+  // A new run's start and "make another one" both clear it. Nulling the
+  // card in the same batch as a run's start is what keeps `loading ⇒ !card`
+  // (and a refine needs a card, so `adjusting ⇒ card`).
+  const clearDraft = () => {
+    setCard(null);
+    save.reset();
+    refine.reset();
   };
 
-  const stopGenerating = () => {
-    abortRef.current?.abort();
+  // the composer's MAKE THE MIXTAPE; not while a refine is in flight (the
+  // run's own "already loading" guard is in useGeneration)
+  const onGenerate = (p?: string) => {
+    if (refine.adjusting) return;
+    gen.generate(p);
   };
 
-  // Second-chance refine: send the current card + an adjustment instruction,
-  // stream the diff, swap in the merged card. One pipeline serves both the
-  // refine box and the per-track ↻ swap buttons.
-  const refine = async (instruction?: string) => {
-    const theInstruction = (instruction ?? adjustText).trim();
-    if (!card || adjusting || saving || loading) return;
-    if (!theInstruction) {
-      refineRef.current?.focus();
+  // "make another one": asks first if the card was never pressed
+  const startOver = () => {
+    if (
+      unsavedCard &&
+      !window.confirm("This mixtape isn’t on Spotify yet. Start over and lose it?")
+    ) {
       return;
     }
-    setAdjusting(true);
-    setAdjustError(null);
-    setAdjustErrorDetail(null);
-    setAdjustBooked(false);
-    setAdjustStage(null);
-    setAdjustLog([]);
-    setAnnounce("Changing the mixtape.");
-    let changeCount = 0;
-    const controller = new AbortController();
-    adjustAbortRef.current = controller;
-    try {
-      const response = await fetch("/api/adjust/stream", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card, adjustment: theInstruction }),
-        signal: controller.signal,
-      });
-      if (!response.ok) {
-        const data: { error?: string } = await response.json().catch(() => ({}));
-        if (response.status === 429) throw new CapError(data.error);
-        if (response.status === 400 && data.error) throw new PlainError(data.error);
-        throw new Error(data.error || "adjust failed");
-      }
-      // widened initializers, same reason as in generate
-      let doneCard = null as MixCard | null;
-      let streamError = null as string | null;
-      let streamQuota = false;
-      let streamOutage = null as string | null;
-      let streamDetail = null as string | null;
-      await readSSE<AdjustStreamEvent>(response, (event, data) => {
-        if (event === "adjusting") {
-          setAdjustStage("adjusting");
-        } else if (event === "change") {
-          changeCount++;
-          setAdjustLog((ls) => [
-            ...ls,
-            { index: data.index, artist: data.artist, title: data.title },
-          ]);
-        } else if (event === "adjusted") {
-          setAdjustStage("resolving");
-          setAnnounce("Checking the new songs on Spotify.");
-        } else if (event === "resolved") {
-          setAdjustLog((ls) =>
-            ls.map((l) =>
-              l.index === data.index ? { ...l, resolved: data.resolved } : l
-            )
-          );
-        } else if (event === "done") {
-          doneCard = data?.card ?? null;
-        } else if (event === "error") {
-          if (isQuotaEvent(data)) streamQuota = true;
-          if (data?.outage && data.message) streamOutage = data.message;
-          streamDetail = data?.detail ?? null;
-          streamError = data?.detail || data?.message || "adjust failed";
-        }
-      });
-      if (streamQuota) throw new CapError(QUOTA_COPY, streamDetail);
-      if (streamOutage) throw new PlainError(streamOutage, streamDetail);
-      if (streamError) throw new Error(streamError);
-      if (!doneCard?.tracks?.length) throw new StreamDroppedError();
-      setAnnounce(
-        `Mixtape adjusted: ${changeCount} track${changeCount === 1 ? "" : "s"} changed.`
-      );
-      setCard(doneCard);
-      setAdjustText("");
-    } catch (e) {
-      if (e instanceof Error && e.name === "AbortError") {
-        setAnnounce("Stopped.");
-      } else if (e instanceof CapError) {
-        setAdjustBooked(true);
-        setAdjustError(e.message);
-        setAdjustErrorDetail(e.detail);
-        setAnnounce(e.message);
-      } else if (e instanceof StreamDroppedError) {
-        setAdjustError("the connection dropped — try it again.");
-      } else if (e instanceof PlainError) {
-        setAdjustError(e.message);
-        setAdjustErrorDetail(e.detail);
-      } else {
-        console.error(e);
-        setAdjustError("Couldn't make that change. Try rewording it.");
-        setAdjustErrorDetail(e instanceof Error ? e.message : String(e));
-      }
-    } finally {
-      adjustAbortRef.current = null;
-      setAdjusting(false);
-      setAdjustStage(null);
-      setAdjustLog([]);
-    }
+    clearDraft();
+    focusPrompt();
   };
 
-  const stopAdjusting = () => {
-    adjustAbortRef.current?.abort();
-  };
-
-  // Per-track swap: a canned instruction through the same refine pipeline.
-  const swapTrack = (i: number, t: Track) =>
-    refine(
-      `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`
-    );
-
-  const saveToSpotify = async () => {
-    if (!card || saving) return;
-    const uris = card.tracks.filter((t) => t.resolved).map((t) => t.spotifyUri);
-    if (!uris.length) {
-      setSaveError("No verified songs to save.");
-      return;
-    }
-    setSaving(true);
-    setSaveError(null);
-    setSaveStage(null);
-    try {
-      const response = await fetch("/api/playlist", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "text/event-stream",
-        },
-        // the vibe line becomes the playlist description; the prompt stays
-        // off on purpose: it lands on a public profile, and a prompt can be
-        // more personal than intended
-        body: JSON.stringify({ title: card.title, vibe: card.vibe, uris }),
-      });
-      if (!response.ok) {
-        const data: { error?: string } = await response.json().catch(() => ({}));
-        throw new Error(data.error || "save failed");
-      }
-      // widened initializers, same reason as in generate
-      let url = null as string | null;
-      let saved = false;
-      let streamError = null as string | null;
-      await readSSE<SaveStreamEvent>(response, (event, data) => {
-        if (event === "creating") setSaveStage("CREATING PLAYLIST…");
-        else if (event === "adding") setSaveStage(`ADDING ${data?.count} SONGS…`);
-        else if (event === "done") {
-          url = data?.playlistUrl ?? null;
-          saved = Boolean(data?.saved);
-        } else if (event === "error") streamError = data?.message || "save failed";
-      });
-      if (streamError) throw new Error(streamError);
-      if (!url) throw new Error("no playlist url");
-      setAnnounce(
-        saved
-          ? "Saved. The playlist is in your Spotify library."
-          : "Your playlist is ready. Open it in Spotify and tap plus to add it to your library."
-      );
-      setPlaylistUrl(url);
-      setSavedToLibrary(saved);
-      // remembered here so a guest who didn't tap + can find it again
-      setRecent(
-        recordRecent(browserStorage, recent, { title: card.title, url, pressedAt: Date.now() })
-      );
-      loadLatest();
-    } catch (e) {
-      console.error(e);
-      setSaveError("Couldn't save it to Spotify. Try again.");
-    } finally {
-      setSaving(false);
-      setSaveStage(null);
-    }
-  };
-
-  const accentInk = card
-    ? ACCENT_INK[card.accent] || ACCENT_INK.ember
-    : ACCENT_INK.ember;
-
-  // checked, not confirmed: a run with two songs Spotify couldn't find must
-  // still end on "8 of 8", or the last thing on screen reads as stuck
-  const liveChecked = logTracks.filter((t) => t && t.resolved !== undefined).length;
-  // The waiting screen's step line. A run from a playlist has one more step
-  // (reading it) than a run from a prompt; the armed seed is still set while
-  // loading, so the total is known before the first event arrives.
-  const stepTotal = seedPlaylist ? 3 : 2;
-  const loadingStep =
-    stage === "resolving"
-      ? {
-          n: stepTotal,
-          label: `checking each one on Spotify · ${liveChecked} of ${logTracks.length}`,
-        }
-      : stage === "curating" || !seedPlaylist
-        ? { n: stepTotal - 1, label: "picking the songs" }
-        : {
-            n: 1,
-            label: `reading “${seedLog?.name || seedPlaylist.name || "your playlist"}”`,
-          };
-  const cardVerified = card ? card.tracks.filter((t) => t.resolved).length : 0;
-  const cardUnverified = card ? card.tracks.length - cardVerified : 0;
-  const cursor = (
-    <span className="cursor" aria-hidden>
-      ▮
-    </span>
-  );
-
-  const spotifySearch = (t: Track) =>
-    `https://open.spotify.com/search/${encodeURIComponent(t.artist + " " + t.title)}`;
-
-  // Clipboard feedback is the button's own label for a beat, not a toast.
-  const copyText = async (text: string, what: "tracks") => {
-    try {
-      await navigator.clipboard.writeText(text);
-      setCopied(what);
-      setAnnounce("Song list copied.");
-      setTimeout(() => setCopied((c) => (c === what ? null : c)), 1800);
-    } catch {
-      setAnnounce("Couldn't copy — select it by hand.");
-    }
-  };
-
-  // The card's tracks as plain lines — for anyone who wants to own a copy
-  // (paste into a new playlist, or search them on another service).
-  const trackListText = () =>
-    (card?.tracks || [])
-      .filter((t) => t.resolved)
-      .map((t) => `${t.artist} — ${t.title}`)
-      .join("\n");
-
-  // Native share sheet where there is one; otherwise the same clipboard path
-  // "copy link" uses. The decision (and the "dismissed is not a copy" rule)
-  // lives in share.ts so it is unit-tested; this is only the DOM edge.
-  const shareMixtape = async () => {
-    if (!playlistUrl || !card) return;
-    const outcome = await shareOrCopy(
-      { title: card.title, url: playlistUrl },
-      {
-        share: navigator.share ? navigator.share.bind(navigator) : undefined,
-        copy: (t) => navigator.clipboard.writeText(t),
-      },
-    );
-    if (outcome === "copied") {
-      setCopied("share");
-      setAnnounce("Link copied.");
-      setTimeout(() => setCopied((c) => (c === "share" ? null : c)), 1800);
-    } else if (outcome === "failed") {
-      setAnnounce("Couldn't copy — select it by hand.");
-    }
-    // "shared" / "dismissed": the sheet was the feedback — nothing to report
-  };
-
-  // arm a pasted playlist link as the seed; the server names it while seeding
-  const usePastedSeed = () => {
-    const m = /playlist[/:]([A-Za-z0-9]{22})/.exec(seedPaste) ||
-      /^\s*([A-Za-z0-9]{22})\s*$/.exec(seedPaste);
-    if (!m) {
-      setInputHint("That doesn't look like a Spotify playlist link — copy it from Share → Copy link in Spotify.");
-      return;
-    }
-    setPastedSeed({ id: m[1]!, name: "", total: null, mine: false });
-    setSeedPaste("");
-    setSeedOpen(false);
-    setInputHint(null);
-    setAnnounce("Using your pasted playlist. The prompt is now optional.");
-    inputRef.current?.focus();
-  };
+  // the waiting screen's "step n of m" line (generationRun.ts)
+  const step = loadingStep(gen.stage, gen.logTracks, gen.seedLog, seed.armed);
 
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
-  const editable = Boolean(card) && !playlistUrl && !saving;
+  const editable = Boolean(card) && !save.playlistUrl && !save.saving;
 
-  const onDragEnd = ({ active, over }: DragEndEvent) => {
-    // the click that follows a drop must not open the track
-    justDragged.current = true;
-    setTimeout(() => (justDragged.current = false), 0);
-    if (over && active.id !== over.id) {
-      setCard((c) => {
-        if (!c) return c; // unreachable: a drag can only start on a rendered card
-        const ids = c.tracks.map(sortableId);
-        return {
-          ...c,
-          // dnd-kit's UniqueIdentifier is string | number; ours are always the
-          // sortableId strings handed to SortableContext above
-          tracks: arrayMove(
-            c.tracks,
-            ids.indexOf(active.id as string),
-            ids.indexOf(over.id as string)
-          ),
-        };
-      });
-    }
-  };
+  // the card with a dragged row dropped somewhere else (TrackList's ids)
+  const reorderCard = (activeId: string, overId: string) =>
+    setCard((c) => {
+      if (!c) return c; // unreachable: a drag can only start on a rendered card
+      return reorderTracks(c, activeId, overId);
+    });
 
   return (
     <div className="app">
@@ -1455,31 +174,7 @@ export default function LinerNotes() {
         {announce}
       </div>
 
-      <header className="header">
-        {/* one cassette, not two, and one lockup, not a picture over a
-            title: the animated deck stands beside the wordmark on its
-            baseline and its tape underlines the word. Once a card is on
-            the table the compact static mark takes over. */}
-        <h1 className={card ? "wordmark" : "wordmark wordmark-lockup"}>
-          <DeckHero compact={Boolean(card)} />
-          {BRAND}
-        </h1>
-        {/* the tagline: one human sentence about the playlist, not a
-            process. The line under it answers the three things a stranger
-            needs before typing: who picks the songs, what comes back (a
-            Spotify playlist — the one thing it does ask of them), and what
-            it costs (nothing, and no account here). Both step aside
-            once a card is on the table — the pitch has done its job, and
-            the height goes to the card and its save button. */}
-        {!card && (
-          <>
-            <p className="tagline">Say the mood. We’ll make the playlist.</p>
-            <p className="tagline-sub">
-              An AI picks eight songs for a Spotify playlist. Free, no sign-up.
-            </p>
-          </>
-        )}
-      </header>
+      <SiteHeader compact={Boolean(card)} />
 
       <main className="main-col">
         {loggedIn === null && <div className="checking">checking the deck…</div>}
@@ -1494,133 +189,25 @@ export default function LinerNotes() {
                 composes the request: docked seed token, prompt, seed trigger,
                 submit. While a card is on the table this whole section
                 unmounts: one live text input on screen, ever. */}
-            <div className="composer">
-                {/* armed seed: a removable token docked to the prompt box.
-                    The box visibly "contains something", which is also what
-                    makes an empty textarea read as legitimate. */}
-                {seedPlaylist && (
-                  <div className="seed-token">
-                    <span className="seed-token-mark" aria-hidden>
-                      ♫
-                    </span>
-                    <span className="seed-token-label">
-                      in the spirit of{" "}
-                      <span className="seed-token-name">
-                        {seedPlaylist.name ? `“${seedPlaylist.name}”` : "your pasted playlist"}
-                      </span>
-                      {seedPlaylist.total != null
-                        ? ` · ${seedPlaylist.total} tracks`
-                        : ""}
-                    </span>
-                    <button
-                      type="button"
-                      className="seed-token-clear"
-                      aria-label={`Remove ${seedPlaylist.name || "the pasted playlist"}`}
-                      onClick={() => {
-                        setSeedId("");
-                        setPastedSeed(null);
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-                <div
-                  className={
-                    "prompt-wrap" + (SpeechRecognitionImpl ? " has-mic" : "")
-                  }
-                >
-                  <textarea
-                    ref={inputRef}
-                    autoFocus={AUTOFOCUS_PROMPT}
-                    value={prompt}
-                    onChange={(e) => {
-                      setPrompt(e.target.value);
-                      if (inputHint) setInputHint(null);
-                    }}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter" && !e.shiftKey) {
-                        e.preventDefault();
-                        generate();
-                      }
-                    }}
-                    placeholder={seedPlaylist ? SEEDED_PLACEHOLDER : PLACEHOLDER}
-                    rows={3}
-                    className="prompt-input"
-                    aria-label="Playlist prompt"
-                  />
-                {SpeechRecognitionImpl && (
-                  <button
-                    type="button"
-                    onPointerDown={micPress}
-                    onPointerUp={micRelease}
-                    onPointerCancel={micRelease}
-                    onClick={micKeyToggle}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={"mic-btn" + (listening ? " mic-live" : "")}
-                    aria-pressed={listening}
-                    aria-label={
-                      listening
-                        ? "Stop voice input"
-                        : "Hold to talk, or tap to keep the mic on"
-                    }
-                    title={
-                      listening
-                        ? "Stop voice input"
-                        : "Hold to talk · tap to keep the mic on"
-                    }
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      aria-hidden
-                    >
-                      <rect
-                        x="9"
-                        y="2"
-                        width="6"
-                        height="12"
-                        rx="3"
-                        fill="currentColor"
-                        stroke="none"
-                      />
-                      <path d="M5 11a7 7 0 0 0 14 0" />
-                      <line x1="12" y1="18" x2="12" y2="22" />
-                    </svg>
-                  </button>
-                )}
-                </div>
-              {/* the card's control row: attached-context trigger on the
-                  left, the one primary action on the right */}
-              <div className="composer-bar">
-                {!loading &&
-                !seedPlaylist &&
-                !(Array.isArray(playlists) && playlists.length === 0) ? (
-                  <button
-                    type="button"
-                    className="seed-entry"
-                    aria-expanded={seedOpen}
-                    onClick={() => setSeedOpen(!seedOpen)}
-                  >
-                    + start from a playlist
-                  </button>
-                ) : (
-                  <span aria-hidden />
-                )}
-                <button
-                  onClick={loading ? stopGenerating : () => generate()}
-                  className="btn-press"
-                >
-                  {loading ? "STOP" : "MAKE THE MIXTAPE"}
-                </button>
-              </div>
-            </div>
+            <Composer
+              prompt={prompt}
+              onPromptChange={(value) => {
+                setPrompt(value);
+                if (inputHint) setInputHint(null);
+              }}
+              onSubmit={() => onGenerate()}
+              onStop={gen.stop}
+              loading={gen.loading}
+              seed={seed.armed}
+              onClearSeed={seed.clear}
+              showSeedEntry={!gen.loading && seed.canOffer}
+              seedOpen={seed.open}
+              onToggleSeed={seed.toggle}
+              inputRef={inputRef}
+              micSupported={dictation.supported}
+              listening={dictation.listening}
+              micHandlers={dictation.micHandlers}
+            />
             {inputHint && (
               <div className="input-hint" role="alert">
                 {inputHint}
@@ -1629,140 +216,24 @@ export default function LinerNotes() {
             {/* failures and the daily cap live right under the button that
                 caused them. They used to render after the whole empty state,
                 which on a phone put them below the fold — the button snapped
-                from STOP back to MAKE THE MIXTAPE and looked inert. tabIndex
-                -1 so the effect above can focus it. */}
-            {error && (
-              <div
-                className={"error" + (booked ? " booked" : "")}
-                role="alert"
-                tabIndex={-1}
-                ref={errorRef}
-              >
-                {error}
-                {errorDetail && <span className="error-detail">{errorDetail}</span>}
-              </div>
+                from STOP back to MAKE THE MIXTAPE and looked inert. With
+                focusKey it scrolls itself into view and takes focus. */}
+            {gen.error && (
+              <ErrorAlert
+                message={gen.error.message}
+                detail={gen.error.detail}
+                booked={gen.error.booked}
+                focusKey={gen.errorTick}
+              />
             )}
 
-            {!loading && (
+            {!gen.loading && (
               <>
                 {/* the seed picker, opened from the composer-bar trigger; a
                     chosen playlist collapses into the token docked on the
                     composer */}
-                {seedOpen && !seedPlaylist && (
-                  <div className="seed-panel">
-                      <div className="seed-panel-head">
-                        <span>{loggedIn ? "pick a playlist to base it on" : "paste a playlist to base it on"}</span>
-                        <button
-                          type="button"
-                          className="seed-panel-close"
-                          aria-label="Close the playlist picker"
-                          onClick={() => {
-                            setSeedOpen(false);
-                            setSeedFilter("");
-                          }}
-                        >
-                          ✕
-                        </button>
-                      </div>
-                      {!loggedIn ? (
-                        <>
-                          <form
-                            className="seed-paste"
-                            onSubmit={(e) => {
-                              e.preventDefault();
-                              usePastedSeed();
-                            }}
-                          >
-                            <input
-                              className="seed-filter"
-                              value={seedPaste}
-                              onChange={(e) => setSeedPaste(e.target.value)}
-                              placeholder="https://open.spotify.com/playlist/…"
-                              aria-label="Spotify playlist link"
-                              inputMode="url"
-                              autoFocus
-                            />
-                            <button type="submit" className="seed-retry">
-                              use it
-                            </button>
-                          </form>
-                          <div className="seed-explainer">
-                            in Spotify: the playlist’s ⋯ menu → Share → Copy link. Public
-                            playlists only — we read its tracks, then make a new
-                            mixtape in the same spirit
-                          </div>
-                        </>
-                      ) : Array.isArray(playlists) ? (
-                        <>
-                          {playlists.length > 6 && (
-                            <input
-                              className="seed-filter"
-                              value={seedFilter}
-                              onChange={(e) => setSeedFilter(e.target.value)}
-                              placeholder="find a playlist…"
-                              aria-label="Filter your playlists"
-                            />
-                          )}
-                          <div className="seed-list">
-                            {seedShown.map((p) => (
-                              <button
-                                key={p.id}
-                                type="button"
-                                className="seed-item"
-                                onClick={() => {
-                                  setSeedId(p.id);
-                                  setSeedOpen(false);
-                                  setSeedFilter("");
-                                  setInputHint(null);
-                                  setAnnounce(
-                                    `Using ${p.name}. The prompt is now optional.`
-                                  );
-                                  inputRef.current?.focus();
-                                }}
-                              >
-                                <span className="seed-item-name">{p.name}</span>
-                                <span className="seed-item-meta">
-                                  {p.total != null
-                                    ? `${p.total} track${p.total === 1 ? "" : "s"}`
-                                    : ""}
-                                  {p.mine === false && p.owner
-                                    ? `${p.total != null ? " · " : ""}by ${p.owner}`
-                                    : ""}
-                                </span>
-                              </button>
-                            ))}
-                            {seedShown.length === 0 && (
-                              <div className="seed-note">
-                                nothing matches “{seedFilter.trim()}”
-                              </div>
-                            )}
-                          </div>
-                          <div className="seed-explainer">
-                            we read its tracks, then make a new mixtape in the
-                            same spirit — no songs copied over
-                          </div>
-                        </>
-                      ) : playlists === "unauthorized" ? (
-                        <a href="/auth/login" className="seed-reauth">
-                          reconnect Spotify to browse your playlists
-                        </a>
-                      ) : playlists === "error" ? (
-                        <div className="seed-error-row">
-                          <span className="seed-note">
-                            couldn’t load your playlists
-                          </span>
-                          <button
-                            type="button"
-                            className="seed-retry"
-                            onClick={loadPlaylists}
-                          >
-                            retry
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="seed-note">loading your playlists…</span>
-                      )}
-                    </div>
+                {seed.open && !seed.armed && (
+                  <SeedPanel picker={seed} loggedIn={loggedIn} />
                 )}
 
                 {/* the prompt-optional contract while a seed is armed. The
@@ -1770,7 +241,7 @@ export default function LinerNotes() {
                     checked on Spotify") is gone: the header says what comes
                     back and the waiting screen says how long, so here it was
                     a third telling. */}
-                {seedPlaylist && (
+                {seed.armed && (
                   <div className="scope-line">
                     prompt optional — the mixtape follows that playlist’s
                     spirit; add words to steer it
@@ -1782,54 +253,11 @@ export default function LinerNotes() {
                     above the example prompts: for a returning visitor their
                     own tapes outrank strangers' prompts. Newest three, the
                     rest behind one toggle, so it never outgrows the composer. */}
-                {recent.length > 0 && (
-                  <section className="recent" aria-labelledby="recent-heading">
-                    <div className="section-note" id="recent-heading">
-                      your mixtapes
-                    </div>
-                    <ul className="recent-list">
-                      {(showAllRecent ? recent : recent.slice(0, RECENT_SHOWN)).map((m) => (
-                        <li key={m.url}>
-                          <a
-                            href={m.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="recent-row"
-                            aria-label={`${m.title} (opens Spotify)`}
-                            onClick={(e) => {
-                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                              if (openInSpotify(m.url)) e.preventDefault();
-                            }}
-                          >
-                            <SpotifyMark size={14} />
-                            <span className="recent-title">{m.title}</span>
-                            <span className="recent-open" aria-hidden>
-                              open ↗
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                    {recent.length > RECENT_SHOWN && (
-                      <button
-                        type="button"
-                        className="recent-more"
-                        aria-expanded={showAllRecent}
-                        onClick={() => setShowAllRecent((v) => !v)}
-                      >
-                        {showAllRecent ? "show fewer" : `+ ${recent.length - RECENT_SHOWN} more`}
-                      </button>
-                    )}
-                    <a
-                      className="recent-fallback"
-                      href={MIXTAPE_PROFILE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      every mixtape lives on Mixtape’s Spotify profile
-                    </a>
-                  </section>
-                )}
+                <RecentMixtapes
+                  recent={recent.recent}
+                  showAll={recent.showAll}
+                  onToggle={recent.toggleShowAll}
+                />
 
                 {/* proof before more ways in: on a phone this was under the
                     chips and two gaps, off the first screen entirely */}
@@ -1839,460 +267,86 @@ export default function LinerNotes() {
                     open before typing anything. Under the sample (what you
                     get → what people got), minus this browser's own, which
                     "your mixtapes" already lists. Absent when empty. */}
-                {shelf.length > 0 && (
-                  <section className="recent latest" aria-labelledby="latest-heading">
-                    <div className="section-note" id="latest-heading">
-                      fresh off the press
-                    </div>
-                    <ul className="recent-list">
-                      {shelf.map((m) => (
-                        <li key={m.id} className="latest-item">
-                          <a
-                            href={m.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="recent-row latest-row"
-                            aria-label={`${m.title}, pressed ${pressedAgo(m.pressedAt, shelfNow)} (opens Spotify)`}
-                            onClick={(e) => {
-                              if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                              if (openInSpotify(m.url)) e.preventDefault();
-                            }}
-                          >
-                            <SpotifyMark size={14} />
-                            <span className="latest-text">
-                              <span className="recent-title">{m.title}</span>
-                              {m.vibe && <span className="latest-vibe">“{m.vibe}”</span>}
-                            </span>
-                            <span className="recent-open" aria-hidden>
-                              {pressedAgo(m.pressedAt, shelfNow)}
-                            </span>
-                          </a>
-                          {isOwner && (
-                            <button
-                              type="button"
-                              className="latest-hide"
-                              aria-label={`hide ${m.title} from this list`}
-                              onClick={() => hideLatest(m.id, m.title)}
-                            >
-                              hide
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
+                <LatestShelf
+                  latest={latest.latest}
+                  ownUrls={recent.recent.map((m) => m.url)}
+                  isOwner={isOwner}
+                  onHide={latest.hide}
+                />
 
                 {/* example chips: populate the prompt, stay editable */}
-                <div className="examples">
-                  <div className="section-note">stuck? steal a prompt</div>
-                  <div className="chips">
-                    {EXAMPLES.map((ex) => (
-                      <button
-                        key={ex}
-                        className="chip"
-                        onClick={() => {
-                          setPrompt(ex);
-                          setInputHint(null);
-                          inputRef.current?.focus();
-                        }}
-                      >
-                        {ex}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <ExamplePrompts
+                  onPick={(ex) => {
+                    setPrompt(ex);
+                    setInputHint(null);
+                    focusPrompt();
+                  }}
+                />
 
-                {/* the allowlisted few connect here. It cannot be offered to
-                    everyone (Spotify caps dev-mode apps at 5 accounts), and
-                    "5 test accounts" is internal vocabulary on a public page,
-                    so it only renders in dev or behind ?debug — the same door
-                    as the log console. The five who have an account know the
-                    door; a stranger never sees a line that reads as "this is
-                    a test". The wording stays literal: "on the list?" once
-                    read like a waitlist and sent strangers into OAuth. */}
-                {loggedIn === false && SHOW_LOGS && (
-                  <div className="connect-note">
-                    already one of the 5 test accounts?{" "}
-                    <a href="/auth/login" className="connect-link">
-                      connect your Spotify
-                    </a>{" "}
-                    to pick from your own playlists and save in one go
-                  </div>
-                )}
-
-
-                {/* the credit: the quietest line on the screen, under the
-                    garnish. A visitor from the post knows who made it; a
-                    visitor from a shared link doesn't, and this is the one
-                    backlink to the maker. One name, one link, nothing that
-                    competes with the composer above it. */}
-                <a
-                  className="credit-line"
-                  href="https://www.linkedin.com/in/nadavgr/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  made by Nadav Gross
-                </a>
-                {/* the notice: what a visitor types is kept. True today (the
-                    server log records each prompt) and it is what makes
-                    turning on LangSmith tracing for visitors an honest thing
-                    to do (LANGSMITH_TRACE_VISITORS, server/curatorLoader.ts).
-                    Said once, where the typing happens, as quietly as the
-                    credit above it. */}
-                <div className="notice-line">prompts are logged to help improve Mixtape</div>
+                <HomeNotes showConnect={loggedIn === false && SHOW_LOGS} />
               </>
             )}
           </>
         )}
 
-        {loading && (
-          <div className="loading">
-            <div className="spinner-disc" aria-hidden />
-            {/* the one plain statement of where the run is and how long the
-                tunnel is. It replaced three lines that each said "working"
-                in studio slang (the chatter, a caption, a log line); the
-                stage now has exactly one place on screen. aria-hidden: the
-                live region above narrates the same milestones. */}
-            <div className="loading-step" aria-hidden>
-              <div className="loading-step-now">
-                step {loadingStep.n} of {stepTotal} · {loadingStep.label}
-              </div>
-              <div className="loading-step-note">usually about a minute</div>
-            </div>
-            {/* the rotating chatter, then the songs as they land — every
-                song line is a real backend event */}
-            <div className="progress-log" aria-hidden>
-              <StudioChatter pool={stage ?? "reading"} inline />
-              {logTracks.map(
-                (t, i) =>
-                  t && (
-                    <div key={i} className="log-track">
-                      <span className="log-arrow">→</span>{" "}
-                      <span className="log-num">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>{" "}
-                      {t.artist} — {t.title}
-                      {t.resolved === true && <span className="log-check"> ✓</span>}
-                      {t.resolved === false && (
-                        <span className="log-unverified"> unverified</span>
-                      )}
-                    </div>
-                  )
-              )}
-            </div>
-          </div>
+        {gen.loading && (
+          <GeneratingProgress
+            stage={gen.stage}
+            logTracks={gen.logTracks}
+            step={step}
+            stepTotal={step.total}
+          />
         )}
 
         {/* the card */}
         {card && (
           <div className="card-wrap">
-            <div className="card">
-              {/* spine */}
-              <div className="spine" style={{ background: accentInk }}>
-                <span className="spine-text">{card.title.toUpperCase()}</span>
-              </div>
-
-              <div className="card-body">
-                {/* facts and date in two spans so a narrow card wraps at the
-                    date; each fact is its own no-wrap span so a line never
-                    breaks inside "1984–2018" */}
-                <div className="eyebrow">
-                  <span>
-                    {["SIDE A", `${card.tracks.length} TRACKS`, ...cardFacts(card.tracks)].map(
-                      (fact, i) => (
-                        <Fragment key={fact}>
-                          {i > 0 && " · "}
-                          <span className="fact">{fact}</span>
-                        </Fragment>
-                      )
-                    )}
-                  </span>
-                  <span>
-                    CUT{" "}
-                    {new Date()
-                      .toLocaleDateString("en-GB", {
-                        day: "2-digit",
-                        month: "short",
-                        year: "2-digit",
-                      })
-                      .toUpperCase()}
-                  </span>
-                </div>
-                <h2 className="card-title" tabIndex={-1} ref={cardTitleRef}>
-                  {card.title}
-                </h2>
-                <div className="vibe" style={{ borderColor: accentInk }}>
-                  “{card.vibe}”
-                </div>
-                <div className="prompt-line">
-                  {card.prompt && (
-                    <>
-                      prompted: <em>{card.prompt}</em>
-                    </>
-                  )}
-                  {card.prompt && card.seed && " · "}
-                  {card.seed && (
-                    <>
-                      in the spirit of: <em>{card.seed.name}</em>
-                    </>
-                  )}
-                </div>
-
-                {/* how the list works, said before the list. It used to be the
-                    card's last line, under eight rows — read after the fact,
-                    if at all. */}
-                <div className="card-legend">
-                  {/* keyed to "not saved yet", not to `editable`: that goes
-                      false the moment save is tapped, and the shorter text
-                      shifted the whole list up a line on a phone */}
-                  {!playlistUrl
-                    ? "tap a song to open it in Spotify · drag to reorder · ↻ swaps one"
-                    : "tap a song to open it in Spotify"}
-                </div>
-
-                <DndContext
-                  sensors={sensors}
-                  collisionDetection={closestCenter}
-                  onDragEnd={onDragEnd}
-                >
-                  <SortableContext
-                    items={card.tracks.map(sortableId)}
-                    strategy={verticalListSortingStrategy}
-                  >
-                    <div className="track-list">
-                      {card.tracks.map((t, i) => (
-                        <TrackRow
-                          key={sortableId(t, i)}
-                          id={sortableId(t, i)}
-                          t={t}
-                          index={i}
-                          accentInk={accentInk}
-                          editable={editable}
-                          adjusting={adjusting}
-                          href={
-                            t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearch(t)
-                          }
-                          justDragged={justDragged}
-                          onSwap={() => swapTrack(i, t)}
-                        />
-                      ))}
-                    </div>
-                  </SortableContext>
-                </DndContext>
-
-                <div className="card-footer">
-                  <span className="footer-brand">{BRAND} · STEREO</span>
-                  <div className="barcode" aria-hidden />
-                </div>
-              </div>
-            </div>
+            <MixtapeCard
+              card={card}
+              editable={editable}
+              adjusting={refine.adjusting}
+              saved={Boolean(save.playlistUrl)}
+              onReorder={reorderCard}
+              onSwap={refine.swap}
+            />
 
             {/* second chance: refine the card in place — only in the editable
                 window, same gating as drag-to-reorder */}
-            {editable && (
-              <div className="refine-area">
-                {/* frames refine as the optional branch, so the accent save
-                    button below reads as the finish line */}
-                <div className="refine-caption">not quite right?</div>
-                <div className="refine-row">
-                  <input
-                    ref={refineRef}
-                    value={adjustText}
-                    onChange={(e) => setAdjustText(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === "Enter") {
-                        e.preventDefault();
-                        refine();
-                      }
-                    }}
-                    placeholder="tweak it — less 80s, more instrumental…"
-                    className="refine-input"
-                    disabled={adjusting}
-                    aria-label="Refine the mixtape"
-                  />
-                  <button
-                    onClick={adjusting ? stopAdjusting : () => refine()}
-                    className="btn-ghost refine-btn"
-                  >
-                    {adjusting ? "STOP" : "REFINE"}
-                  </button>
-                </div>
-                {adjusting && (
-                  /* same console-log aesthetic as generate — every line is a
-                     real SSE event; the live region above narrates milestones */
-                  <div className="progress-log refine-log" aria-hidden>
-                    <StudioChatter
-                      pool={adjustStage === "resolving" ? "resolving" : "rewinding"}
-                      inline
-                    />
-                    <div className="log-line">
-                      changing the songs…
-                      {adjustStage === "resolving" ? (
-                        <span className="log-ok"> ok</span>
-                      ) : (
-                        cursor
-                      )}
-                    </div>
-                    {adjustLog.map((l, i) => (
-                      <div key={i} className="log-track">
-                        <span className="log-arrow">→</span>{" "}
-                        <span className="log-num">
-                          {String(l.index + 1).padStart(2, "0")}
-                        </span>{" "}
-                        {l.artist} — {l.title}
-                        {l.resolved === true && <span className="log-check"> ✓</span>}
-                        {l.resolved === false && (
-                          <span className="log-unverified"> unverified</span>
-                        )}
-                      </div>
-                    ))}
-                    {adjustStage === "resolving" && (
-                      <div className="log-line">checking on Spotify…{cursor}</div>
-                    )}
-                  </div>
-                )}
-                {adjustError && (
-                  <div className={"error" + (adjustBooked ? " booked" : "")} role="alert">
-                    {adjustError}
-                    {adjustErrorDetail && (
-                      <span className="error-detail">{adjustErrorDetail}</span>
-                    )}
-                  </div>
-                )}
-              </div>
-            )}
+            {editable && <RefinePanel refine={refine} />}
 
             {/* save to spotify — primary action; everything else stays quiet */}
-            {!playlistUrl && (
-              <>
-                {/* the dock: a strip the button rides in, so rows scroll under
-                    a bar instead of a button floating over a song title */}
-                <div className="save-dock">
-                <button
-                  onClick={saveToSpotify}
-                  disabled={saving || adjusting}
-                  className="btn-press press-cta"
-                >
-                  {/* says what the tap does in the visitor's words. It was
-                      "PRESS IT TO SPOTIFY": the brand verb, which a stranger
-                      has to decode at the one button that matters most */}
-                  {!saving && <SpotifyMark />}
-                  {saving
-                    ? saveStage || "SAVING…"
-                    : cardUnverified === 0
-                      ? "SAVE AS A SPOTIFY PLAYLIST"
-                      : `SAVE ${cardVerified} OF ${card.tracks.length} SONGS TO SPOTIFY`}
-                </button>
-                </div>
-                {/* what a stranger wonders at this button: is it on Spotify
-                    already (no — a card looked like a finished playlist to
-                    the person who built the app), will it ask for my login.
-                    Answered here, with the honest number of taps left. */}
-                <div className="save-note">
-                  <b>not on Spotify yet</b>
-                  {!loggedIn &&
-                    " — no login needed: we make the playlist, you tap + in Spotify to keep it"}
-                </div>
-                {cardUnverified > 0 && (
-                  <div className="save-note">
-                    {cardUnverified} unverified song
-                    {cardUnverified === 1 ? "" : "s"} — Spotify couldn’t
-                    confirm {cardUnverified === 1 ? "it exists" : "they exist"},
-                    so {cardUnverified === 1 ? "it’ll" : "they’ll"} be left off
-                    the playlist
-                  </div>
-                )}
-              </>
+            {!save.playlistUrl && (
+              <SaveDock
+                saving={save.saving}
+                stage={save.stage}
+                verified={verifiedCount(card.tracks)}
+                total={card.tracks.length}
+                disabled={save.saving || refine.adjusting}
+                loggedIn={loggedIn}
+                onSave={save.save}
+              />
             )}
-            {playlistUrl && (
-              <div className="pressed">
-                {/* the one primary action after pressing: open it. The https
-                    href stays in the DOM (copy, middle-click, no-app fallback);
-                    a desktop click hands off to the installed app, a phone
-                    tap lets the anchor navigate (see spotifyLink.ts). */}
-                <a
-                  href={playlistUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="btn-press pressed-open"
-                  aria-label="Open this mixtape in Spotify"
-                  onClick={(e) => {
-                    if (e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
-                    if (openInSpotify(playlistUrl)) e.preventDefault();
-                  }}
-                >
-                  <SpotifyMark />
-                  OPEN IN SPOTIFY
-                </a>
-                <div className="save-note pressed-note">
-                  {savedToLibrary
-                    ? "Saved — it’s in your Spotify library."
-                    : "Your playlist is ready. Open it and tap + to add it to your library."}
-                </div>
-                <div className="pressed-actions">
-                  {/* one button, not "copy link" + "share": with no share
-                      sheet (a desktop) share IS a copy, so the pair was the
-                      same action twice */}
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    aria-label="Share this mixtape"
-                    onClick={shareMixtape}
-                  >
-                    {copied === "share" ? "copied ✓" : "share"}
-                  </button>
-                </div>
-                {/* no embedded player here (removed 2026-09-08): it repeated
-                    the track list above, ran 352px tall on a phone, and its
-                    one unique control — the save heart — needs a Spotify
-                    cookie inside a cross-site iframe, which Safari and iOS
-                    block. OPEN IN SPOTIFY is the listen action. */}
-                <details className="pressed-mine">
-                  <summary>want your own editable copy?</summary>
-                  <p>
-                    Tapping + follows Mixtape’s playlist. To make one you can edit:
-                    in Spotify, open it → ⋯ → <b>Add to other playlist</b> →{" "}
-                    <b>New playlist</b>. Or copy the tracks and build it anywhere.
-                  </p>
-                  <button
-                    type="button"
-                    className="btn-ghost"
-                    onClick={() => copyText(trackListText(), "tracks")}
-                  >
-                    {copied === "tracks" ? "copied ✓" : "copy song list"}
-                  </button>
-                </details>
-              </div>
+            {save.playlistUrl && (
+              <PressedPanel
+                playlistUrl={save.playlistUrl}
+                savedToLibrary={save.savedToLibrary}
+                card={card}
+                announce={setAnnounce}
+              />
             )}
-            {saveError && (
-              <div className="error" role="alert">
-                {saveError}
-              </div>
+            {save.error && (
+              <ErrorAlert
+                message={save.error.message}
+                booked={save.error.booked}
+                focusKey={save.errorTick}
+              />
             )}
 
             <button
-              onClick={() => {
-                if (
-                  unsavedCard &&
-                  !window.confirm("This mixtape isn’t on Spotify yet. Start over and lose it?")
-                ) {
-                  return;
-                }
-                setCard(null);
-                setPlaylistUrl(null);
-                setSavedToLibrary(false);
-                setCopied(null);
-                setSaveError(null);
-                setAdjustError(null);
-                setAdjustErrorDetail(null);
-                setAdjustText("");
-                inputRef.current?.focus();
-              }}
+              onClick={startOver}
               // disabled while adjusting or saving: the in-flight refine or
               // press would land its result right back on the cleared state
-              disabled={adjusting || saving}
+              disabled={refine.adjusting || save.saving}
               className="btn-ghost"
               style={{ marginTop: 20 }}
             >

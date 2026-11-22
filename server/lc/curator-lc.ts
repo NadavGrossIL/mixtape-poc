@@ -50,6 +50,7 @@ import {
 } from "../curator.ts";
 import type { AdjustDiff, MixtapeCard } from "../curator.ts";
 import { makeSearchBudget } from "../searchBudget.ts";
+import { ACCENTS } from "../wire.ts";
 import type { SearchBudget } from "../searchBudget.ts";
 import { makeCardStream } from "./cardStream.ts";
 import { adjustMessage, diffCards, isEmptyDiff, sameTrack } from "./cardDiff.ts";
@@ -131,7 +132,7 @@ const Card = z.object({
   title: z.string().describe("Short evocative playlist title, max 5 words. Public: no names or personal details from the prompt."),
   vibe: z.string().describe("One-line dedication, like a record sleeve note. Max 14 words. Public: no names or personal details from the prompt."),
   accent: z
-    .enum(["ember", "rose", "plum", "cobalt", "forest", "rust"])
+    .enum(ACCENTS)
     .describe("Accent color matching the mood."),
   tracks: z
     .object({

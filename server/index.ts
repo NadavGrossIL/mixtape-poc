@@ -20,6 +20,7 @@ import { makePressCaps } from "./pressCaps.ts";
 import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
 import { parseTrackUris } from "./trackUris.ts";
+import { WireCardSchema } from "./wire.ts";
 import { playlistDescription, cleanVibe } from "./playlistDescription.ts";
 import { makeLatest, makeVouches } from "./latest.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
@@ -1031,15 +1032,25 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
 // Unchanged tracks never round-trip through the model or Spotify — their
 // spotifyUri/albumArt/resolved fields survive byte-identical by construction.
 app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
-  const card = req.body?.card;
   const adjustment = String(req.body?.adjustment || "").trim();
-  if (!adjustment || !card || !Array.isArray(card.tracks) || card.tracks.length === 0) {
+  if (!adjustment || !req.body?.card) {
     return res.status(400).json({ error: "Missing card or adjustment" });
   }
   if (adjustment.length > MAX_ADJUSTMENT_CHARS) {
     return res.status(400).json({
       error: `That note is too long — keep it under ${MAX_ADJUSTMENT_CHARS} characters.`,
     });
+  }
+  // The card is the caller's: it is checked against the shape this server
+  // sends (wire.ts) before anything is spent on it, and only the parsed copy
+  // is used from here on, so fields the caller added are dropped, not echoed.
+  const parsedCard = WireCardSchema.safeParse(req.body.card);
+  if (!parsedCard.success) {
+    return res.status(400).json({ error: "That card doesn't look like a mixtape." });
+  }
+  const card = parsedCard.data;
+  if (card.tracks.length === 0) {
+    return res.status(400).json({ error: "Missing card or adjustment" });
   }
   // The card comes back from the client, so its size is theirs to choose, and
   // every track in it is re-sent to the model on every turn of the loop.
@@ -1105,7 +1116,10 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
     }
     const tracks = card.tracks.slice();
     diff.changes.forEach((c, i) => {
-      tracks[c.index] = resolved[i];
+      // always set: resolution returns one row per change unless aborted,
+      // and an aborted run returned above
+      const row = resolved[i];
+      if (row) tracks[c.index] = row;
     });
     const merged = {
       ...card,
@@ -1120,7 +1134,7 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
     curatedCards.add(shelfKey(merged.title, merged.vibe));
     sseSend(res, "done", {
       card: merged,
-      verified: tracks.filter((t: any) => t.resolved).length,
+      verified: tracks.filter((t) => t.resolved).length,
     });
   } catch (err) {
     if (abort.signal.aborted) {

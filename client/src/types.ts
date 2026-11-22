@@ -1,5 +1,13 @@
 // The card/track shapes the server streams back. Unresolved tracks keep only
 // the curator's fields; the Spotify fields land on successful resolution.
+// The server's definition is server/wire.ts (zod). It cannot be imported
+// here, not even as types: the production build type-checks the client before
+// server/node_modules exists. server/test/wire.test.ts fails the gate when
+// these stop being identical to it.
+
+// The accent names the curator picks from (ACCENTS in server/wire.ts).
+export type Accent = "ember" | "rose" | "plum" | "cobalt" | "forest" | "rust";
+
 export interface Track {
   // the curator's handle on the search result it picked this track from.
   // Never read here; a refine sends it back with the card, so the server
@@ -12,6 +20,8 @@ export interface Track {
   spotifyUri?: string | null;
   spotifyUrl?: string | null;
   albumArt?: string | null;
+  // the catalog row resolution matched, as "artist — title". Never read here
+  matchedName?: string;
   // from the catalog row that verified the track (spotify.ts resolveTrack)
   durationMs?: number | null;
   year?: number | null;

@@ -88,10 +88,10 @@ function catalog() {
 // uses its own owner and looks only at the threads it made.
 let owners = 0;
 const owner = () => `test:${++owners}`;
-const threadsInMemory = () => new Set(Object.keys((_memory as any).storage));
+const threadsInMemory = () => new Set(Object.keys(_memory.storage));
 const pagesFor = (threadId: string) =>
-  (threadId in (_memory as any).storage ? 1 : 0) +
-  Object.keys((_memory as any).writes).filter((k) => k.includes(threadId)).length;
+  (threadId in _memory.storage ? 1 : 0) +
+  Object.keys(_memory.writes).filter((k) => k.includes(threadId)).length;
 const commits = () => {
   const seen: [number, string | null][] = [];
   return { seen, onCommit: (attempt: number, gap: string | null) => void seen.push([attempt, gap]) };
@@ -222,8 +222,8 @@ test("the model is sent exactly curator.ts's two tool definitions", async () => 
   await generateCard("x", { model, search: catalog().search, owner: owner() });
   const onTheWire = new ChatAnthropic({ apiKey: "test", model: "m" }).formatStructuredToolToAnthropic(bound);
   assert.deepEqual(onTheWire, [SEARCH_TOOL, CURATOR_TOOL]);
-  assert.equal((CURATOR_TOOL as any).eager_input_streaming, true);
-  assert.equal((CURATOR_TOOL as any).strict, true);
+  assert.equal(CURATOR_TOOL.eager_input_streaming, true);
+  assert.equal(CURATOR_TOOL.strict, true);
 });
 
 test("a run that never delivers fails with the round-limit error after 8 model calls", async () => {
@@ -244,11 +244,11 @@ test("a failed generate leaves no checkpoints behind", async () => {
     [says(search()), Object.assign(new Error("boom"), { status: 500 })], // dies mid-run
   ]) {
     const before = threadsInMemory();
-    const writesBefore = Object.keys((_memory as any).writes).length;
+    const writesBefore = Object.keys(_memory.writes).length;
     const { model } = script(...turns);
     await assert.rejects(generateCard("x", { model, search: catalog().search, owner: owner() }));
     assert.deepEqual(threadsInMemory(), before);
-    assert.equal(Object.keys((_memory as any).writes).length, writesBefore);
+    assert.equal(Object.keys(_memory.writes).length, writesBefore);
   }
 });
 

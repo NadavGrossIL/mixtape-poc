@@ -1,14 +1,5 @@
-import {
-  useEffect,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-  type PointerEvent as ReactPointerEvent,
-} from "react";
-import { isHandingOff } from "./spotifyLink";
+import { useEffect, useRef, useState } from "react";
 import { shareOrCopy } from "./share";
-import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
-import { parseLatestResponse, type LatestMixtape } from "./latest";
 import LogConsole from "./LogConsole";
 import {
   type AdjustLogLine,
@@ -44,41 +35,12 @@ import MixtapeCard from "./components/MixtapeCard";
 import RefinePanel from "./components/RefinePanel";
 import SaveDock from "./components/SaveDock";
 import PressedPanel from "./components/PressedPanel";
-
-// Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
-// The mic button only renders when the browser can actually transcribe.
-const SpeechRecognitionImpl =
-  typeof window !== "undefined"
-    ? window.SpeechRecognition || window.webkitSpeechRecognition
-    : null;
-
-// Once a browser has stored a "deny" for the mic, recognition fails the
-// instant it starts and no web page can reopen the permission prompt — the
-// only way back is the browser's own site settings, which live somewhere
-// different on every platform. Spell out the path for this one.
-const MIC_UNBLOCK_STEPS = (() => {
-  const ua = typeof navigator !== "undefined" ? navigator.userAgent : "";
-  if (/iPhone|iPad|iPod/.test(ua))
-    return (
-      "tap the ᴀA button in the address bar → Website Settings → " +
-      "Microphone → Allow. Dictation itself must also be on: " +
-      "iOS Settings → General → Keyboard → Enable Dictation."
-    );
-  if (/Android/.test(ua))
-    return (
-      "tap the icon left of the address bar → Permissions → " +
-      "Microphone → Allow, then reload."
-    );
-  if (/Macintosh/.test(ua) && /Safari/.test(ua) && !/Chrome/.test(ua))
-    return (
-      "open the Safari menu → Settings for This Website → " +
-      "Microphone → Allow."
-    );
-  return (
-    "click the icon left of the address bar → Site settings → " +
-    "Microphone → Allow, then reload."
-  );
-})();
+import useSession from "./hooks/useSession";
+import useLatestShelf from "./hooks/useLatestShelf";
+import useRecentMixtapes from "./hooks/useRecentMixtapes";
+import usePageView from "./hooks/usePageView";
+import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
+import useDictation from "./hooks/useDictation";
 
 // The server-log console is a learning-project debugging aid, not product UI.
 //
@@ -103,13 +65,6 @@ function debugRequested(): boolean {
 
 const SHOW_LOGS = import.meta.env.DEV || debugRequested();
 
-// see the /api/view effect below — survives a hot-reload remount
-let viewCounted = false;
-
-// a getter, not a value: in some browsers reading `window.localStorage`
-// itself throws (blocked storage); recent.ts catches that as well
-const browserStorage = () => window.localStorage;
-
 // Scroll something that just mounted into view and move focus onto it, so
 // eye and screen reader land in the same place. Smooth unless the visitor
 // asked for less motion; focus without a second, instant scroll.
@@ -122,6 +77,12 @@ function bringIntoView(scrollTo: HTMLElement, focusOn: HTMLElement = scrollTo) {
 }
 
 export default function App() {
+  // first, in this order: their mount requests go auth, then latest, then view
+  const { loggedIn, isOwner } = useSession();
+  const latest = useLatestShelf();
+  const recent = useRecentMixtapes();
+  usePageView();
+
   const [prompt, setPrompt] = useState("");
   const [card, setCard] = useState<MixCard | null>(null);
   const [loading, setLoading] = useState(false);
@@ -133,8 +94,6 @@ export default function App() {
   // bumps on every failure so the alert is scrolled into view even when the
   // same line lands twice in a row (a capped visitor pressing again)
   const [errorTick, setErrorTick] = useState(0);
-  const [loggedIn, setLoggedIn] = useState<boolean | null>(null); // null = checking
-  const [isOwner, setIsOwner] = useState(false); // shows the shelf's "hide"; the server enforces it
   const [saving, setSaving] = useState(false);
   const [playlistUrl, setPlaylistUrl] = useState<string | null>(null);
   const [savedToLibrary, setSavedToLibrary] = useState(false);
@@ -142,11 +101,6 @@ export default function App() {
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveBooked, setSaveBooked] = useState(false); // same cap-not-fault split as `booked`
   const [saveErrorTick, setSaveErrorTick] = useState(0); // same job as errorTick
-  // "your mixtapes": this browser's presses, newest first (see recent.ts)
-  const [recent, setRecent] = useState<RecentMixtape[]>(() => loadRecent(browserStorage));
-  const [showAllRecent, setShowAllRecent] = useState(false);
-  // "fresh off the press": everyone's newest presses (server/latest.ts)
-  const [latest, setLatest] = useState<LatestMixtape[]>([]);
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
@@ -173,13 +127,6 @@ export default function App() {
   const [adjustStage, setAdjustStage] = useState<"adjusting" | "resolving" | null>(null);
   const [adjustLog, setAdjustLog] = useState<AdjustLogLine[]>([]);
 
-  // voice input — dictation appends to whatever is already typed
-  const [listening, setListening] = useState(false);
-  const recogRef = useRef<SpeechRecognition | null>(null);
-  const dictatingRef = useRef(false); // user intent: mic toggled on
-  const dictationBaseRef = useRef(""); // text that precedes this session's speech
-  const dictatedRef = useRef(""); // latest composed text, for restart folding
-
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const refineRef = useRef<HTMLInputElement | null>(null);
   const cardTitleRef = useRef<HTMLHeadingElement | null>(null);
@@ -189,6 +136,16 @@ export default function App() {
   const pressedOpenRef = useRef<HTMLAnchorElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
   const adjustAbortRef = useRef<AbortController | null>(null);
+
+  const focusPrompt = () => inputRef.current?.focus();
+
+  const dictation = useDictation({
+    prompt,
+    setPrompt,
+    setHint: setInputHint,
+    announce: setAnnounce,
+    focusPrompt,
+  });
 
   // The error renders inside the composer, but a phone that scrolled down to
   // the progress log is still looking below it — the button just snapped
@@ -221,68 +178,10 @@ export default function App() {
     bringIntoView(el);
   }, [saveErrorTick]);
 
-  useEffect(() => {
-    fetch("/auth/status")
-      .then((r) => r.json())
-      .then((d: { loggedIn?: boolean; owner?: boolean }) => {
-        setLoggedIn(Boolean(d.loggedIn));
-        setIsOwner(Boolean(d.owner));
-      })
-      .catch(() => setLoggedIn(false));
-  }, []);
-
-  // The shelf is a nice-to-have: any failure just leaves it off the page.
-  // Re-read after this visitor's own press, so the list is current when
-  // they come back to the composer.
-  const loadLatest = () => {
-    fetch("/api/latest")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => setLatest(parseLatestResponse(d)))
-      .catch(() => {});
-  };
-  useEffect(loadLatest, []);
-
-  // owner only, and not undoable from here — so it asks first
-  const hideLatest = (id: string, title: string) => {
-    if (!window.confirm(`Hide “${title}” from the home page? The playlist itself stays.`)) return;
-    fetch("/api/latest/hide", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id }),
-    })
-      .then((r) => {
-        if (!r.ok) throw new Error(`hide failed: ${r.status}`);
-        return r.json();
-      })
-      .then((d) => setLatest(parseLatestResponse(d)))
-      .catch((e) => window.alert(`Couldn't hide it (${e.message}).`));
-  };
-
-  // A card is a draft until it's saved: it lives only in this tab. On
-  // 2026-11-22 a refined card was lost to a reload 20 minutes later, its
-  // maker sure they'd "created a playlist" — prod's request log had no save
-  // at all. So leaving with an unsaved card asks first (the browser's own
-  // "Leave site?" prompt; its wording can't be set).
+  // a card on screen that no playlist was pressed from: leaving asks first
+  // (useUnsavedCardGuard), and so does "make another one"
   const unsavedCard = Boolean(card) && !playlistUrl;
-  useEffect(() => {
-    if (!unsavedCard) return;
-    const warn = (e: BeforeUnloadEvent) => {
-      if (isHandingOff()) return; // a song opening in the Spotify app, not leaving
-      e.preventDefault();
-      e.returnValue = ""; // older Chrome/Safari need it set to show the prompt
-    };
-    window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
-  }, [unsavedCard]);
-
-  // One page-view tick per load, counted server-side (server/metrics.ts).
-  // The module-level guard, not the empty dep array, is what makes it once:
-  // a dev hot-reload remounts the app without reloading the page.
-  useEffect(() => {
-    if (viewCounted) return;
-    viewCounted = true;
-    fetch("/api/view", { method: "POST", keepalive: true }).catch(() => {});
-  }, []);
+  useUnsavedCardGuard(unsavedCard);
 
   // the seed picker's playlist list. 403 = the stored token predates the
   // playlist-read scopes — surfaced as a "reconnect Spotify" link. A named
@@ -318,115 +217,6 @@ export default function App() {
   // the picker's rows (seed.ts)
   const seedShown = visibleSeedPlaylists(playlists, seedFilter);
 
-  // a page-leave mid-dictation must not leave the mic hot
-  useEffect(
-    () => () => {
-      dictatingRef.current = false;
-      recogRef.current?.abort();
-    },
-    []
-  );
-
-  // The engine ends a session on its own — after a pause in speech, or at
-  // Chrome's session-length cap. dictatingRef holds the user's intent
-  // ("the mic button is on"), so onend can tell an engine timeout apart
-  // from a deliberate stop and reopen the mic mid-take.
-  const startRecognition = () => {
-    // non-null: only reachable through the mic button, which renders (and
-    // wires these handlers) only when SpeechRecognitionImpl exists
-    const recog = new SpeechRecognitionImpl!();
-    // one language per session is a Web Speech limitation; the browser's
-    // own locale is the best single guess we have
-    recog.lang = navigator.language || "en-US";
-    recog.interimResults = true; // words land in the box as they're spoken
-    recog.continuous = true; // a pause for thought must not end the take
-    recog.onresult = (e) => {
-      const heard = Array.from(e.results)
-        .map((r) => r[0].transcript)
-        .join("");
-      const composed = dictationBaseRef.current + heard;
-      dictatedRef.current = composed;
-      setPrompt(composed);
-      setInputHint(null);
-    };
-    recog.onerror = (e) => {
-      if (e.error === "not-allowed" || e.error === "service-not-allowed") {
-        dictatingRef.current = false;
-        setInputHint(`The mic is blocked for this site — ${MIC_UNBLOCK_STEPS}`);
-      } else if (e.error !== "aborted" && e.error !== "no-speech") {
-        // real failure (network, audio-capture) — don't restart-loop on it
-        dictatingRef.current = false;
-        setInputHint("Couldn’t catch that — try again, or just type.");
-      }
-    };
-    recog.onend = () => {
-      if (dictatingRef.current) {
-        // engine gave up but the user never tapped stop — resume the take,
-        // folding what's already transcribed into the new session's base
-        dictationBaseRef.current = dictatedRef.current.trim()
-          ? dictatedRef.current.replace(/\s+$/, "") + " "
-          : "";
-        startRecognition();
-        return;
-      }
-      recogRef.current = null;
-      setListening(false);
-      inputRef.current?.focus();
-    };
-    recogRef.current = recog;
-    recog.start();
-  };
-
-  const stopDictation = () => {
-    dictatingRef.current = false;
-    recogRef.current?.stop();
-  };
-
-  const startDictation = () => {
-    dictatingRef.current = true;
-    dictationBaseRef.current = prompt.trim()
-      ? prompt.replace(/\s+$/, "") + " "
-      : "";
-    dictatedRef.current = prompt;
-    setListening(true);
-    setAnnounce("Listening. Speak your prompt.");
-    startRecognition();
-  };
-
-  // WhatsApp-style push-to-talk: hold the mic to record, let go to stop.
-  // A quick tap (released before the hold threshold) "locks" the mic on
-  // instead — hands-free for long prompts — and the next tap stops it.
-  const HOLD_MS = 400;
-  const holdStartRef = useRef(0);
-
-  const micPress = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    // capture the pointer so the release fires here even if the finger
-    // drifts off the button mid-hold
-    e.currentTarget.setPointerCapture?.(e.pointerId);
-    e.preventDefault();
-    if (recogRef.current) {
-      stopDictation(); // mic was locked on by a quick tap — this tap ends it
-      holdStartRef.current = 0;
-      return;
-    }
-    holdStartRef.current = e.timeStamp;
-    startDictation();
-  };
-
-  const micRelease = (e: ReactPointerEvent<HTMLButtonElement>) => {
-    if (!recogRef.current || !holdStartRef.current) return;
-    if (e.timeStamp - holdStartRef.current < HOLD_MS) return; // quick tap: lock on
-    stopDictation();
-  };
-
-  // keyboard can't hold-to-talk; Enter/Space toggles (a keyboard-sourced
-  // click has detail 0, pointer clicks were already handled above)
-  const micKeyToggle = (e: ReactMouseEvent<HTMLButtonElement>) => {
-    if (e.detail !== 0) return;
-    if (recogRef.current) stopDictation();
-    else startDictation();
-  };
-
   const generate = async (p?: string) => {
     const thePrompt = (p ?? prompt).trim();
     if (loading || adjusting) return;
@@ -438,7 +228,7 @@ export default function App() {
       inputRef.current?.focus();
       return;
     }
-    stopDictation(); // pressing it while dictating ends the take
+    dictation.stop(); // pressing it while dictating ends the take
     setLoading(true);
     setError(null);
     setErrorDetail(null);
@@ -743,10 +533,8 @@ export default function App() {
       setPlaylistUrl(url);
       setSavedToLibrary(saved);
       // remembered here so a guest who didn't tap + can find it again
-      setRecent(
-        recordRecent(browserStorage, recent, { title: card.title, url, pressedAt: Date.now() })
-      );
-      loadLatest();
+      recent.record({ title: card.title, url, pressedAt: Date.now() });
+      latest.reload();
     } catch (e) {
       // a cap (today's saves, Spotify's daily quota) is the server's own
       // line: "try again" is wrong advice until tomorrow. Anything else is a
@@ -893,9 +681,9 @@ export default function App() {
               seedOpen={seedOpen}
               onToggleSeed={() => setSeedOpen(!seedOpen)}
               inputRef={inputRef}
-              micSupported={Boolean(SpeechRecognitionImpl)}
-              listening={listening}
-              micHandlers={{ press: micPress, release: micRelease, keyToggle: micKeyToggle }}
+              micSupported={dictation.supported}
+              listening={dictation.listening}
+              micHandlers={dictation.micHandlers}
             />
             {inputHint && (
               <div className="input-hint" role="alert">
@@ -1051,9 +839,9 @@ export default function App() {
                     own tapes outrank strangers' prompts. Newest three, the
                     rest behind one toggle, so it never outgrows the composer. */}
                 <RecentMixtapes
-                  recent={recent}
-                  showAll={showAllRecent}
-                  onToggle={() => setShowAllRecent((v) => !v)}
+                  recent={recent.recent}
+                  showAll={recent.showAll}
+                  onToggle={recent.toggleShowAll}
                 />
 
                 {/* proof before more ways in: on a phone this was under the
@@ -1065,10 +853,10 @@ export default function App() {
                     get → what people got), minus this browser's own, which
                     "your mixtapes" already lists. Absent when empty. */}
                 <LatestShelf
-                  latest={latest}
-                  ownUrls={recent.map((m) => m.url)}
+                  latest={latest.latest}
+                  ownUrls={recent.recent.map((m) => m.url)}
                   isOwner={isOwner}
-                  onHide={hideLatest}
+                  onHide={latest.hide}
                 />
 
                 {/* example chips: populate the prompt, stay editable */}

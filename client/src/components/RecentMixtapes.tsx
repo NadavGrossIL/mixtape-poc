@@ -5,7 +5,8 @@ import { type RecentMixtape } from "../recent";
 // "your mixtapes": this browser's presses, newest first, the rest behind a
 // "+ N more" toggle, and the link to the host profile that holds them all.
 // Renders nothing until this browser has pressed one. The toggle's state
-// lives in App, so it survives the home screen unmounting under a card.
+// lives in hooks/useRecentMixtapes.ts, so it survives the home screen
+// unmounting under a card.
 
 // how many of "your mixtapes" show before the "+ N more" toggle
 const RECENT_SHOWN = 3;

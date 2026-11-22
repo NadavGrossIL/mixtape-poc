@@ -1,7 +1,8 @@
 import { type MouseEvent, type PointerEvent } from "react";
 
 // The composer's mic button. The hold-to-talk and tap-to-lock logic lives
-// with the dictation state in App; this is only the button and its icon.
+// with the dictation state in hooks/useDictation.ts; this is only the button
+// and its icon.
 export interface MicHandlers {
   press: (e: PointerEvent<HTMLButtonElement>) => void;
   release: (e: PointerEvent<HTMLButtonElement>) => void;

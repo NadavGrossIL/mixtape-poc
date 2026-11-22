@@ -82,7 +82,7 @@ export default function useGeneration({
       const streamErrors = noStreamErrors();
       await readSSE<GenerateStreamEvent>(response, (event, data) => {
         if (event === "seeding") {
-          dispatch({ type: "seeding", name: data?.name || "your playlist" });
+          dispatch({ type: "seeding" });
           // a pasted seed learns its real name from the server
           const name = data?.name;
           if (name) onSeedNamed(name);
@@ -177,7 +177,6 @@ export default function useGeneration({
     loading: state.loading,
     stage: state.stage,
     logTracks: state.logTracks,
-    seedLog: state.seedLog,
     error: state.error,
     errorTick: state.errorTick,
     generate,

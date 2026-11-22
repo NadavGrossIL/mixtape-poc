@@ -27,28 +27,6 @@
   border: 2px solid var(--accent);
 }
 
-/* the step line: where the run is, in plain words, and how long to expect.
-   Pulled up toward the disc so the two read as one object and the list of
-   songs stays its own column. The headline of this screen, so full --ink
-   and the one bold line on it. */
-.loading-step {
-  margin-top: -16px;
-  font-family: "Space Mono", monospace;
-  text-align: center;
-}
-
-.loading-step-now {
-  font-size: 13.5px;
-  font-weight: 700;
-  color: var(--ink);
-}
-
-.loading-step-note {
-  font-size: 12px;
-  color: var(--ink-faint);
-  margin-top: 4px;
-}
-
 /* the rotating chatter line: the first line of the generate and refine logs, in the
    log's own type */
 .studio-chatter {

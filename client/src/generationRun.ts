@@ -25,7 +25,6 @@ export interface GenerationState {
   // real progress, driven only by SSE events from the backend
   stage: Stage;
   logTracks: (LogTrack | undefined)[]; // sparse until every "track" lands
-  seedLog: { name: string } | null; // while seeding this run
   error: GenerationError | null;
   // bumps on every failure so the alert is scrolled into view even when the
   // same line lands twice in a row (a capped visitor pressing again);
@@ -35,7 +34,7 @@ export interface GenerationState {
 
 export type GenerationAction =
   | { type: "started" }
-  | { type: "seeding"; name: string }
+  | { type: "seeding" }
   | { type: "stage"; stage: "curating" | "resolving" }
   | { type: "track"; index: number; artist: string; title: string }
   | { type: "resolved"; index: number; resolved: boolean }
@@ -46,7 +45,6 @@ export const generationIdle: GenerationState = {
   loading: false,
   stage: null,
   logTracks: [],
-  seedLog: null,
   error: null,
   errorTick: 0,
 };
@@ -54,9 +52,9 @@ export const generationIdle: GenerationState = {
 export function generationRun(state: GenerationState, action: GenerationAction): GenerationState {
   switch (action.type) {
     case "started":
-      return { ...state, loading: true, error: null, stage: null, logTracks: [], seedLog: null };
+      return { ...state, loading: true, error: null, stage: null, logTracks: [] };
     case "seeding":
-      return { ...state, stage: "seeding", seedLog: { name: action.name } };
+      return { ...state, stage: "seeding" };
     case "stage":
       // the same value twice is no change, as a useState setter would see it
       return state.stage === action.stage ? state : { ...state, stage: action.stage };
@@ -80,33 +78,4 @@ export function generationRun(state: GenerationState, action: GenerationAction):
     case "finished":
       return { ...state, loading: false };
   }
-}
-
-// The waiting screen's step line. A run from a playlist has one more step
-// (reading it) than a run from a prompt; the armed seed is still set while
-// loading, so the total is known before the first event arrives. `seed` is
-// the armed seed playlist, or null.
-export function loadingStep(
-  stage: Stage,
-  logTracks: (LogTrack | undefined)[],
-  seedLog: { name: string } | null,
-  seed: { name: string } | null
-): { n: number; label: string; total: number } {
-  // checked, not confirmed: a run with two songs Spotify couldn't find must
-  // still end on "8 of 8", or the last thing on screen reads as stuck
-  const liveChecked = logTracks.filter((t) => t && t.resolved !== undefined).length;
-  const total = seed ? 3 : 2;
-  return stage === "resolving"
-    ? {
-        n: total,
-        label: `checking each one on Spotify · ${liveChecked} of ${logTracks.length}`,
-        total,
-      }
-    : stage === "curating" || !seed
-      ? { n: total - 1, label: "picking the songs", total }
-      : {
-          n: 1,
-          label: `reading “${seedLog?.name || seed.name || "your playlist"}”`,
-          total,
-        };
 }

@@ -1,7 +1,6 @@
 import { useRef, useState } from "react";
 import { type MixCard } from "./types";
 import { reorderTracks, verifiedCount } from "./card";
-import { loadingStep } from "./generationRun";
 import { SHOW_LOGS } from "./debug";
 import useSession from "./hooks/useSession";
 import useLatestShelf from "./hooks/useLatestShelf";
@@ -153,9 +152,6 @@ export default function App() {
     focusPrompt();
   };
 
-  // the waiting screen's "step n of m" line (generationRun.ts)
-  const step = loadingStep(gen.stage, gen.logTracks, gen.seedLog, seed.armed);
-
   // reorder is a pure client-side edit; the save flow reads card.tracks in
   // order, so the pressed playlist follows whatever order is on the card
   const editable = Boolean(card) && !save.playlistUrl && !save.saving;
@@ -293,8 +289,6 @@ export default function App() {
           <GeneratingProgress
             stage={gen.stage}
             logTracks={gen.logTracks}
-            step={step}
-            stepTotal={step.total}
           />
         )}
 

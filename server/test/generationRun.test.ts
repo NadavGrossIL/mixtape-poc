@@ -10,7 +10,6 @@ import assert from "node:assert";
 import {
   generationIdle,
   generationRun,
-  loadingStep,
   type GenerationState,
 } from "../../client/src/generationRun.ts";
 
@@ -22,12 +21,11 @@ const loading = (over: Partial<GenerationState> = {}): GenerationState => ({
 
 // ── the reducer ──
 
-test("started resets the stage, log, seed and error, and keeps the tick", () => {
+test("started resets the stage, log and error, and keeps the tick", () => {
   const before: GenerationState = {
     loading: false,
     stage: "resolving",
     logTracks: [{ artist: "a", title: "t", resolved: true }],
-    seedLog: { name: "mine" },
     error: { message: "x", detail: "d", booked: true },
     errorTick: 4,
   };
@@ -38,10 +36,9 @@ test("started resets the stage, log, seed and error, and keeps the tick", () => 
   });
 });
 
-test("seeding sets the stage and the seed's name", () => {
-  const s = generationRun(loading(), { type: "seeding", name: "Road trip" });
+test("seeding sets the stage", () => {
+  const s = generationRun(loading(), { type: "seeding" });
   assert.strictEqual(s.stage, "seeding");
-  assert.deepStrictEqual(s.seedLog, { name: "Road trip" });
 });
 
 test("stage sets the stage, and the same stage twice is the same state", () => {
@@ -106,46 +103,4 @@ test("finished clears loading and keeps the error, stage and log", () => {
   const error = { message: "x", detail: null, booked: false };
   const before = loading({ stage: "resolving", logTracks: [{ artist: "a", title: "1" }], error, errorTick: 1 });
   assert.deepStrictEqual(generationRun(before, { type: "finished" }), { ...before, loading: false });
-});
-
-// ── loadingStep ──
-
-test("no seed: step 1 of 2, picking the songs", () => {
-  assert.deepStrictEqual(loadingStep(null, [], null, null), { n: 1, label: "picking the songs", total: 2 });
-});
-
-test("a seed before any event: step 1 of 3, reading it by its armed name", () => {
-  assert.deepStrictEqual(loadingStep(null, [], null, { name: "Road trip" }), {
-    n: 1,
-    label: "reading “Road trip”",
-    total: 3,
-  });
-});
-
-test("the server's seed name beats the armed one, then 'your playlist'", () => {
-  assert.strictEqual(loadingStep("seeding", [], { name: "From server" }, { name: "Armed" }).label, "reading “From server”");
-  assert.strictEqual(loadingStep("seeding", [], null, { name: "" }).label, "reading “your playlist”");
-});
-
-test("a seeded run picking the songs is step 2 of 3", () => {
-  assert.deepStrictEqual(loadingStep("curating", [], { name: "x" }, { name: "x" }), {
-    n: 2,
-    label: "picking the songs",
-    total: 3,
-  });
-});
-
-test("resolving counts a song Spotify couldn't find as checked", () => {
-  const log = [
-    { artist: "a", title: "1", resolved: true },
-    { artist: "b", title: "2", resolved: false },
-    { artist: "c", title: "3" },
-    undefined,
-  ];
-  assert.deepStrictEqual(loadingStep("resolving", log, null, null), {
-    n: 2,
-    label: "checking each one on Spotify · 2 of 4",
-    total: 2,
-  });
-  assert.strictEqual(loadingStep("resolving", log, null, { name: "x" }).n, 3);
 });

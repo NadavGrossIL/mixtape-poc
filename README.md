@@ -1,4 +1,8 @@
-# mixtape-poc
+# Mixtape
+
+**Try it: <https://mixtape-poc-production.up.railway.app/>** — free, no sign-up.
+
+<img src="docs/readme-card.jpg" width="360" alt="A finished mixtape card on a phone: First Mile Boom Bap, eight 90s hip-hop tracks, each with album art and a one-line liner note, above a Save as a Spotify playlist button.">
 
 Type a mood → Claude curates an 8-track mixtape with liner notes → every
 track is verified against Spotify → a record-sleeve card renders → one tap
@@ -8,6 +12,25 @@ Spotify and tap **+** to keep it. No Spotify login.
 The card is honest about hallucination: tracks the curator invented that
 don't resolve on Spotify are kept and marked `unverified` — the
 resolved/unverified split is the measurement, not a bug to hide.
+
+## How it's built
+
+- **The curator is a LangChain/LangGraph agent on Claude** with two tools:
+  `search_spotify` to look, `create_mixtape` to commit the card
+  (`server/lc/curator-lc.ts`; its prompt, tool schemas and card check live in
+  `server/curator.ts`).
+- **Every track has to point at a real search result.** Each one carries the
+  `ref` of the Spotify row it was verified against, and the card is checked in
+  plain code, with no model call, before anyone sees it.
+- **The card is eight required keys, `track1`…`track8`, not an array.** With
+  an array the model closed the list after one track 6 runs in 10; the
+  reliability eval below is what caught it.
+- **Two evals**: an LLM judge with web search checks whether the liner notes
+  are true, and a pass^k run checks the agent commits a complete card every
+  time (*Evals*, below).
+- **Built for strangers**: no login, daily caps on every paid route, one
+  shared Spotify search allowance per request, and a `/healthz` that fails
+  when the model's key or credit does (*Monitoring*, below).
 
 ## Setup
 

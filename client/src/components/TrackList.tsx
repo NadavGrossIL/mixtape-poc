@@ -19,6 +19,31 @@ import TrackRow from "./TrackRow";
 import { sortableId, spotifySearchUrl } from "../card";
 import { type Track } from "../types";
 
+// On a touch screen only the row's grip (⋮⋮) drags, and at once, after 4px
+// of movement so a tap stays a tap. The rest of the row is a link and a
+// scroll surface: a hold-to-drag there was undiscoverable, and on iOS a long
+// press on a link opens Safari's link preview instead. The check lives in
+// the activator rather than in a second sensor because dnd-kit keeps one
+// handler per event name (the last sensor's), so two TouchSensors would
+// silently replace each other.
+class GripTouchSensor extends TouchSensor {
+  static override activators = [
+    {
+      eventName: "onTouchStart" as const,
+      handler: (
+        ...args: Parameters<(typeof TouchSensor.activators)[number]["handler"]>
+      ) => {
+        const target = args[0].nativeEvent.target;
+        return (
+          target instanceof Element &&
+          target.closest("[data-grip]") !== null &&
+          TouchSensor.activators[0]!.handler(...args)
+        );
+      },
+    },
+  ];
+}
+
 // The card's sortable track list: the drag sensors, the drop handler, the
 // click-after-drop guard, and putting focus back on a row a keyboard drop
 // moved. The reorder itself is App's (`onReorder`, with sortableIds); this
@@ -42,9 +67,9 @@ export default function TrackList({
   onReorder: (activeId: string, overId: string) => void;
   onSwap: (i: number, t: Track) => void;
 }) {
-  // drag-to-reorder: the whole row is the drag surface. Mouse drags activate
-  // after 8px (a click still opens Spotify); touch needs a 250ms hold so a
-  // finger can still scroll the list — moving during the hold cancels the drag.
+  // drag-to-reorder: with a mouse the whole row is the drag surface, active
+  // after 8px (a click still opens Spotify); on touch only the grip drags
+  // (GripTouchSensor), so a swipe anywhere else scrolls the page.
   // Keyboard: the row already announces itself as sortable ("press space bar
   // to pick up"), so Space picks up, arrows move, Space drops, Escape
   // cancels. Enter is taken out of the start keys — on a row Enter opens the
@@ -53,7 +78,7 @@ export default function TrackList({
   // rather than opening the link with the row still in the air.
   const sensors = useSensors(
     useSensor(MouseSensor, { activationConstraint: { distance: 8 } }),
-    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+    useSensor(GripTouchSensor, { activationConstraint: { distance: 4 } }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
       keyboardCodes: {

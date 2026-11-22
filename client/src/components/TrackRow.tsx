@@ -53,14 +53,36 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
         transform: CSS.Transform.toString(transform),
         transition,
         cursor: editable ? "grab" : "pointer",
-        // manipulation (not none): the TouchSensor hold-delay owns dragging,
-        // so plain swipes over the row must still scroll the page
+        // manipulation (not none): only the grip drags on touch, so swipes
+        // over the rest of the row must still scroll the page
         touchAction: editable ? "manipulation" : "auto",
       }}
       aria-label={`${t.artist} — ${t.title}${
         t.resolved ? "" : ", unverified"
       } (opens Spotify)`}
     >
+      {editable && (
+        // the "this row moves" sign. A mouse drags from anywhere on the row
+        // (here it is the hint, with the grab cursor); on touch this is the
+        // only place a drag starts (GripTouchSensor).
+        // Hidden from assistive tech: the row itself is the keyboard handle.
+        <span
+          className="grip"
+          data-grip
+          aria-hidden
+          // a tap on the grip is not a tap on the song
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+        >
+          <svg viewBox="0 0 8 14" width="8" height="14">
+            {[2, 7, 12].map((y) =>
+              [2, 6].map((x) => <circle key={`${x}${y}`} cx={x} cy={y} r="1.3" />)
+            )}
+          </svg>
+        </span>
+      )}
       {t.resolved && t.albumArt ? (
         <img src={t.albumArt} alt="" className="album-art" draggable={false} />
       ) : (

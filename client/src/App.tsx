@@ -23,7 +23,7 @@ import {
   verticalListSortingStrategy,
 } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
-import { openInSpotify } from "./spotifyLink";
+import { isHandingOff, openInSpotify } from "./spotifyLink";
 import { shareOrCopy } from "./share";
 import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
 import { parseLatestResponse, pressedAgo, shelfFor, type LatestMixtape } from "./latest";
@@ -842,6 +842,23 @@ export default function LinerNotes() {
       .then((d) => setLatest(parseLatestResponse(d)))
       .catch((e) => window.alert(`Couldn't hide it (${e.message}).`));
   };
+
+  // A card is a draft until it's saved: it lives only in this tab. On
+  // 2026-11-22 a refined card was lost to a reload 20 minutes later, its
+  // maker sure they'd "created a playlist" — prod's request log had no save
+  // at all. So leaving with an unsaved card asks first (the browser's own
+  // "Leave site?" prompt; its wording can't be set).
+  const unsavedCard = Boolean(card) && !playlistUrl;
+  useEffect(() => {
+    if (!unsavedCard) return;
+    const warn = (e: BeforeUnloadEvent) => {
+      if (isHandingOff()) return; // a song opening in the Spotify app, not leaving
+      e.preventDefault();
+      e.returnValue = ""; // older Chrome/Safari need it set to show the prompt
+    };
+    window.addEventListener("beforeunload", warn);
+    return () => window.removeEventListener("beforeunload", warn);
+  }, [unsavedCard]);
 
   // One page-view tick per load, counted server-side (server/metrics.ts).
   // The module-level guard, not the empty dep array, is what makes it once:
@@ -2169,15 +2186,15 @@ export default function LinerNotes() {
                       : `SAVE ${cardVerified} OF ${card.tracks.length} SONGS TO SPOTIFY`}
                 </button>
                 </div>
-                {/* what a stranger wonders at this button: will it ask for
-                    my login, will it touch my account. Answered here, along
-                    with the honest number of taps left. */}
-                {!loggedIn && (
-                  <div className="save-note">
-                    no login needed — we make the playlist, you tap + in
-                    Spotify to keep it
-                  </div>
-                )}
+                {/* what a stranger wonders at this button: is it on Spotify
+                    already (no — a card looked like a finished playlist to
+                    the person who built the app), will it ask for my login.
+                    Answered here, with the honest number of taps left. */}
+                <div className="save-note">
+                  <b>not on Spotify yet</b>
+                  {!loggedIn &&
+                    " — no login needed: we make the playlist, you tap + in Spotify to keep it"}
+                </div>
                 {cardUnverified > 0 && (
                   <div className="save-note">
                     {cardUnverified} unverified song
@@ -2257,6 +2274,12 @@ export default function LinerNotes() {
 
             <button
               onClick={() => {
+                if (
+                  unsavedCard &&
+                  !window.confirm("This mixtape isn’t on Spotify yet. Start over and lose it?")
+                ) {
+                  return;
+                }
                 setCard(null);
                 setPlaylistUrl(null);
                 setSavedToLibrary(false);
@@ -2267,9 +2290,9 @@ export default function LinerNotes() {
                 setAdjustText("");
                 inputRef.current?.focus();
               }}
-              // disabled while adjusting: the in-flight refine would land its
-              // merged card right back on the cleared state
-              disabled={adjusting}
+              // disabled while adjusting or saving: the in-flight refine or
+              // press would land its result right back on the cleared state
+              disabled={adjusting || saving}
               className="btn-ghost"
               style={{ marginTop: 20 }}
             >

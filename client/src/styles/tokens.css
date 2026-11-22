@@ -46,5 +46,18 @@
   --sample-paper: #e6d2b3;
   --sample-dim: #5e4837;
   --sample-line: #d3bc98;
+  /* type scale: every font-size in the app is one of these. It had drifted
+     to 17 sizes, half-pixel steps among them (10.5, 11.5, 12.5, 14.5), which
+     read as near-misses rather than as tiers. Only the display faces (the
+     wordmark, the card and sample titles), the phone steps in the
+     max-width:520px blocks, and the log console's count badge sit outside
+     it. 11px is the floor: nothing readable goes smaller. */
+  --fs-2xs: 11px; /* print furniture and colophon: eyebrow, meta, credit */
+  --fs-xs: 12px; /* captions, ghost controls, the progress log */
+  --fs-sm: 13px; /* controls, chips, track numbers, notes on the paper */
+  --fs-md: 15px; /* list titles (tracks, shelves, recents), the vibe */
+  --fs-input: 16px; /* every text field: under 16px iOS zooms on focus */
+  --fs-lg: 20px; /* the "booked" line, in the tagline's voice */
+  --fs-xl: 23px; /* the tagline */
   --grain: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='140' height='140' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
 }

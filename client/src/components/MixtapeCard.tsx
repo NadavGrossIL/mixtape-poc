@@ -12,6 +12,7 @@ export default function MixtapeCard({
   card,
   editable,
   adjusting,
+  swapping,
   saved,
   onReorder,
   onSwap,
@@ -19,6 +20,7 @@ export default function MixtapeCard({
   card: MixCard;
   editable: boolean;
   adjusting: boolean;
+  swapping: number | null;
   saved: boolean;
   onReorder: (activeId: string, overId: string) => void;
   onSwap: (i: number, t: Track) => void;
@@ -115,6 +117,7 @@ export default function MixtapeCard({
           accentInk={accentInk}
           editable={editable}
           adjusting={adjusting}
+          swapping={swapping}
           onReorder={onReorder}
           onSwap={onSwap}
         />

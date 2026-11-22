@@ -57,6 +57,7 @@ export default function TrackList({
   accentInk,
   editable,
   adjusting,
+  swapping,
   onReorder,
   onSwap,
 }: {
@@ -64,6 +65,7 @@ export default function TrackList({
   accentInk: string;
   editable: boolean;
   adjusting: boolean;
+  swapping: number | null;
   onReorder: (activeId: string, overId: string) => void;
   onSwap: (i: number, t: Track) => void;
 }) {
@@ -139,6 +141,7 @@ export default function TrackList({
               accentInk={accentInk}
               editable={editable}
               adjusting={adjusting}
+              replacing={swapping === i}
               href={
                 t.resolved && t.spotifyUrl ? t.spotifyUrl : spotifySearchUrl(t)
               }

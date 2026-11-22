@@ -288,6 +288,7 @@ export default function App() {
               card={card}
               editable={editable}
               adjusting={refine.adjusting}
+              swapping={refine.swapping}
               saved={Boolean(save.playlistUrl)}
               onReorder={reorderCard}
               onSwap={refine.swap}

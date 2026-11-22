@@ -1,4 +1,4 @@
-import { useReducer, useRef } from "react";
+import { useReducer, useRef, useState } from "react";
 import { type AdjustStreamEvent, type MixCard, type Track } from "../types";
 import { StreamDroppedError, readSSE } from "../sse";
 import {
@@ -34,6 +34,9 @@ export default function useRefine({
   const [state, dispatch] = useReducer(refineRun, refineIdle);
   const inputRef = useRef<HTMLInputElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
+  // which row a ↻ replace is for, so that row (not just the whole card)
+  // shows the work; null for a typed refine
+  const [swapping, setSwapping] = useState<number | null>(null);
 
   // Send the current card + an adjustment instruction, stream the diff,
   // swap in the merged card. One pipeline serves both the refine box and
@@ -145,20 +148,25 @@ export default function useRefine({
       }
     } finally {
       abortRef.current = null;
+      setSwapping(null);
       dispatch({ type: "finished" });
     }
   };
 
-  // Per-track swap: a canned instruction through the same refine pipeline.
-  const swap = (i: number, t: Track) =>
-    refine(
+  // Per-track replace: a canned instruction through the same refine pipeline.
+  const swap = (i: number, t: Track) => {
+    if (!card || state.adjusting || blocked) return;
+    setSwapping(i);
+    return refine(
       `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`
     );
+  };
 
   return {
     text: state.text,
     setText: (text: string) => dispatch({ type: "textChanged", text }),
     adjusting: state.adjusting,
+    swapping,
     stage: state.stage,
     log: state.log,
     error: state.error,

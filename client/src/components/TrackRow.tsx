@@ -20,12 +20,13 @@ interface TrackRowProps {
   accentInk: string;
   editable: boolean;
   adjusting: boolean;
+  replacing: boolean;
   href: string;
   justDragged: MutableRefObject<boolean>;
   onSwap: () => void;
 }
 
-export default function TrackRow({ id, t, index, accentInk, editable, adjusting, href, justDragged, onSwap }: TrackRowProps) {
+export default function TrackRow({ id, t, index, accentInk, editable, adjusting, replacing, href, justDragged, onSwap }: TrackRowProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id, disabled: !editable || adjusting });
 
@@ -48,7 +49,9 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
         }
         followSpotifyLink(e, href);
       }}
-      className={"track-row" + (isDragging ? " dragging" : "")}
+      className={
+        "track-row" + (isDragging ? " dragging" : "") + (replacing ? " replacing" : "")
+      }
       style={{
         transform: CSS.Transform.toString(transform),
         transition,
@@ -109,14 +112,14 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
           type="button"
           className="swap-btn"
           disabled={adjusting}
-          title="Swap this track for a different one that fits"
-          aria-label={`Swap track ${index + 1}, ${t.artist} — ${t.title}, for a different one`}
+          title="Replace this song with a different one that fits the mixtape"
+          aria-label={`Replace track ${index + 1}, ${t.artist} — ${t.title}, with a different song`}
           // keep the button out of the row's drag-activation path —
           // each sensor listens on its own start event
           onPointerDown={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}
-          // and out of the keyboard sensor's: Space on the button is a swap,
+          // and out of the keyboard sensor's: Space on the button is a replace,
           // but bubbling to the row it would pick the row up instead
           onKeyDown={(e) => e.stopPropagation()}
           onClick={(e) => {
@@ -126,8 +129,10 @@ export default function TrackRow({ id, t, index, accentInk, editable, adjusting,
             onSwap();
           }}
         >
-          <span aria-hidden>↻</span>
-          <span className="swap-label">swap</span>
+          {/* "↻ swap" read as reload or as "swap places"; the verb says
+              what happens to this song, and phones keep the word too */}
+          <span aria-hidden className="swap-icon">↻</span>
+          <span className="swap-label">replace</span>
         </button>
       )}
     </a>

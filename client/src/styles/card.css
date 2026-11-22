@@ -442,6 +442,33 @@
   border-color: var(--paper-line);
 }
 
+/* the row a replace is working on: its song is on the way out, so it
+   fades, and its button stays lit to say which row is changing */
+.track-row.replacing .track-main,
+.track-row.replacing .album-art,
+.track-row.replacing .album-art-placeholder {
+  opacity: 0.45;
+}
+
+.track-row.replacing .swap-btn:disabled {
+  opacity: 1;
+  color: var(--paper-ink);
+  border-color: var(--paper-dim);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .track-row.replacing .swap-icon {
+    display: inline-block;
+    animation: swap-spin 1s linear infinite;
+  }
+}
+
+@keyframes swap-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
 /* ── save area ── */
 .save-note {
   font-family: "Space Mono", monospace;
@@ -708,26 +735,24 @@
     display: block;
     width: fit-content;
   }
-  /* the swap button sits in a link row where a miss opens Spotify: a true
-     44px box, padded out from the 30px ring and pulled back in with negative
-     margins so the row's layout doesn't shift. The ring moves to ::before
-     because the box's own border would draw the 44px square. */
+  /* the replace button sits in a link row where a miss opens Spotify: a
+     true 44px-tall box, pulled back in with negative margins so the row's
+     layout doesn't shift. The ring is drawn by ::before, just inside it. */
   .swap-btn {
-    width: 44px;
+    width: 58px;
     height: 44px;
     padding: 0;
     margin: -7px -6px -7px -8px;
     border: none;
-  }
-  /* no room for the word on a ~270px row: the arrow alone, taught by the
-     legend printed over the list */
-  .swap-label {
-    display: none;
+    /* the word stays on a phone — the bare arrow read as reload — stacked
+       under the arrow so the column grows 14px, not the length of a word */
+    flex-direction: column;
+    gap: 1px;
   }
   .swap-btn::before {
     content: "";
     position: absolute;
-    inset: 7px;
+    inset: 2px 1px;
     border: 1px solid var(--paper-line);
     border-radius: 4px;
     pointer-events: none;

@@ -26,7 +26,8 @@ type RunFacts = {
 // (`usage_metadata`). Missing or odd values count as zero: a log line must
 // never be the reason a run fails.
 function tokensOf(message: unknown): { in: number; out: number } {
-  const u = (message as any)?.usage_metadata;
+  const u = (message as { usage_metadata?: { input_tokens?: unknown; output_tokens?: unknown } } | null)
+    ?.usage_metadata;
   const n = (v: unknown) => (typeof v === "number" && Number.isFinite(v) && v > 0 ? v : 0);
   return { in: n(u?.input_tokens), out: n(u?.output_tokens) };
 }

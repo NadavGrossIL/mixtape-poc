@@ -25,7 +25,7 @@ import {
 import { followSpotifyLink, isHandingOff } from "./spotifyLink";
 import { shareOrCopy } from "./share";
 import { loadRecent, recordRecent, type RecentMixtape } from "./recent";
-import { parseLatestResponse, pressedAgo, shelfFor, type LatestMixtape } from "./latest";
+import { parseLatestResponse, type LatestMixtape } from "./latest";
 import LogConsole from "./LogConsole";
 import {
   cardFacts,
@@ -56,11 +56,19 @@ import {
   responseFailure,
   streamFailure,
 } from "./runFailure";
-import DeckHero from "./components/DeckHero";
 import SampleCard from "./components/SampleCard";
 import SpotifyMark from "./components/SpotifyMark";
 import TrackRow from "./components/TrackRow";
 import StudioChatter from "./components/StudioChatter";
+import SiteHeader from "./components/SiteHeader";
+import Composer from "./components/Composer";
+import RecentMixtapes from "./components/RecentMixtapes";
+import LatestShelf from "./components/LatestShelf";
+import ExamplePrompts from "./components/ExamplePrompts";
+import HomeNotes from "./components/HomeNotes";
+import LogLine from "./components/LogLine";
+import GeneratingProgress, { type Stage } from "./components/GeneratingProgress";
+import { BRAND } from "./brand";
 
 // Web Speech API — prefixed in Chrome/Safari, absent in Firefox.
 // The mic button only renders when the browser can actually transcribe.
@@ -97,28 +105,6 @@ const MIC_UNBLOCK_STEPS = (() => {
   );
 })();
 
-// One static placeholder that names the three prompt axes and stops there:
-// the example chips carry the "what can I type" teaching, so the box itself
-// holds still — a fifth example here read as a twin of the 2am-drive chip.
-// A second variant takes over when a seed playlist is armed — the prompt is
-// optional in that mode and the placeholder is where that contract is stated.
-const PLACEHOLDER = "a mood, a moment, an era…";
-const SEEDED_PLACEHOLDER =
-  "optional: add a twist — “more instrumental, nothing in english…”";
-
-// Each example demonstrates a different prompt axis: speed/skill,
-// mood+moment, discovery/language, era+audience.
-// Three, not four: the 2am-drive prompt that used to lead is the sample card
-// below, and the same sentence twice on one screen read as noise.
-const EXAMPLES = [
-  "hebrew indie that deserves a bigger audience",
-  "90s hip-hop for a newborn's first road trip",
-  "fastest rap verses ever recorded — Rap God energy",
-];
-
-// Name decided 2026-08-23.
-const BRAND = "MIXTAPE";
-
 // The server-log console is a learning-project debugging aid, not product UI.
 //
 // `?debug` has to outlive the OAuth round trip: /callback redirects to
@@ -142,29 +128,12 @@ function debugRequested(): boolean {
 
 const SHOW_LOGS = import.meta.env.DEV || debugRequested();
 
-// Autofocus the prompt only where a blinking cursor is the cheapest "act
-// here" signal and costs nothing: a pointer device. On a phone it would raise
-// the keyboard over the example chips before the visitor has read them.
-const AUTOFOCUS_PROMPT =
-  typeof window !== "undefined" && !!window.matchMedia?.("(hover: hover)").matches;
-
-type Stage = "seeding" | "curating" | "resolving" | null;
-
 // see the /api/view effect below — survives a hot-reload remount
 let viewCounted = false;
 
 // a getter, not a value: in some browsers reading `window.localStorage`
 // itself throws (blocked storage); recent.ts catches that as well
 const browserStorage = () => window.localStorage;
-
-// how many of "your mixtapes" show before the "+ N more" toggle
-const RECENT_SHOWN = 3;
-
-// the host account every mixtape is pressed to (ADR 0002) — the fallback for
-// anything this browser's list doesn't hold. Must be the account
-// SPOTIFY_HOST_REFRESH_TOKEN holds — or the owner's, which spotify.ts falls
-// back to when that is unset — or this link points at the wrong shelf.
-const MIXTAPE_PROFILE_URL = "https://open.spotify.com/user/31urgkolpmjmtftwah2ohwg3hzmy";
 
 // Scroll something that just mounted into view and move focus onto it, so
 // eye and screen reader land in the same place. Smooth unless the visitor
@@ -203,13 +172,6 @@ export default function App() {
   const [showAllRecent, setShowAllRecent] = useState(false);
   // "fresh off the press": everyone's newest presses (server/latest.ts)
   const [latest, setLatest] = useState<LatestMixtape[]>([]);
-  // one clock reading per render, for the filter and every row's label
-  const shelfNow = Date.now();
-  const shelf = shelfFor(
-    latest,
-    recent.map((m) => m.url),
-    shelfNow
-  );
   // real progress, driven only by SSE events from the backend
   const [stage, setStage] = useState<Stage>(null);
   const [logTracks, setLogTracks] = useState<(LogTrack | undefined)[]>([]); // sparse until every "track" lands
@@ -974,31 +936,7 @@ export default function App() {
         {announce}
       </div>
 
-      <header className="header">
-        {/* one cassette, not two, and one lockup, not a picture over a
-            title: the animated deck stands beside the wordmark on its
-            baseline and its tape underlines the word. Once a card is on
-            the table the compact static mark takes over. */}
-        <h1 className={card ? "wordmark" : "wordmark wordmark-lockup"}>
-          <DeckHero compact={Boolean(card)} />
-          {BRAND}
-        </h1>
-        {/* the tagline: one human sentence about the playlist, not a
-            process. The line under it answers the three things a stranger
-            needs before typing: who picks the songs, what comes back (a
-            Spotify playlist — the one thing it does ask of them), and what
-            it costs (nothing, and no account here). Both step aside
-            once a card is on the table — the pitch has done its job, and
-            the height goes to the card and its save button. */}
-        {!card && (
-          <>
-            <p className="tagline">Say the mood. We’ll make the playlist.</p>
-            <p className="tagline-sub">
-              An AI picks eight songs for a Spotify playlist. Free, no sign-up.
-            </p>
-          </>
-        )}
-      </header>
+      <SiteHeader compact={Boolean(card)} />
 
       <main className="main-col">
         {loggedIn === null && <div className="checking">checking the deck…</div>}
@@ -1013,136 +951,33 @@ export default function App() {
                 composes the request: docked seed token, prompt, seed trigger,
                 submit. While a card is on the table this whole section
                 unmounts: one live text input on screen, ever. */}
-            <div className="composer">
-                {/* armed seed: a removable token docked to the prompt box.
-                    The box visibly "contains something", which is also what
-                    makes an empty textarea read as legitimate. */}
-                {seedPlaylist && (
-                  <div className="seed-token">
-                    <span className="seed-token-mark" aria-hidden>
-                      ♫
-                    </span>
-                    <span className="seed-token-label">
-                      in the spirit of{" "}
-                      <span className="seed-token-name">
-                        {seedPlaylist.name ? `“${seedPlaylist.name}”` : "your pasted playlist"}
-                      </span>
-                      {seedPlaylist.total != null
-                        ? ` · ${seedPlaylist.total} tracks`
-                        : ""}
-                    </span>
-                    <button
-                      type="button"
-                      className="seed-token-clear"
-                      aria-label={`Remove ${seedPlaylist.name || "the pasted playlist"}`}
-                      onClick={() => {
-                        setSeedId("");
-                        setPastedSeed(null);
-                        inputRef.current?.focus();
-                      }}
-                    >
-                      ✕
-                    </button>
-                  </div>
-                )}
-                <div
-                  className={
-                    "prompt-wrap" + (SpeechRecognitionImpl ? " has-mic" : "")
-                  }
-                >
-                  <textarea
-                    ref={inputRef}
-                    autoFocus={AUTOFOCUS_PROMPT}
-                    value={prompt}
-                    onChange={(e) => {
-                      setPrompt(e.target.value);
-                      if (inputHint) setInputHint(null);
-                    }}
-                    onKeyDown={(e) => {
-                      // not while an IME is composing: that Enter confirms
-                      // the composition, and Safari reports it as a plain
-                      // Enter — it spent a generation on a half-typed prompt
-                      if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
-                        e.preventDefault();
-                        generate();
-                      }
-                    }}
-                    placeholder={seedPlaylist ? SEEDED_PLACEHOLDER : PLACEHOLDER}
-                    rows={3}
-                    className="prompt-input"
-                    aria-label="Playlist prompt"
-                  />
-                {SpeechRecognitionImpl && (
-                  <button
-                    type="button"
-                    onPointerDown={micPress}
-                    onPointerUp={micRelease}
-                    onPointerCancel={micRelease}
-                    onClick={micKeyToggle}
-                    onContextMenu={(e) => e.preventDefault()}
-                    className={"mic-btn" + (listening ? " mic-live" : "")}
-                    aria-pressed={listening}
-                    aria-label={
-                      listening
-                        ? "Stop voice input"
-                        : "Hold to talk, or tap to keep the mic on"
-                    }
-                    title={
-                      listening
-                        ? "Stop voice input"
-                        : "Hold to talk · tap to keep the mic on"
-                    }
-                  >
-                    <svg
-                      width="18"
-                      height="18"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="currentColor"
-                      strokeWidth="2"
-                      strokeLinecap="round"
-                      aria-hidden
-                    >
-                      <rect
-                        x="9"
-                        y="2"
-                        width="6"
-                        height="12"
-                        rx="3"
-                        fill="currentColor"
-                        stroke="none"
-                      />
-                      <path d="M5 11a7 7 0 0 0 14 0" />
-                      <line x1="12" y1="18" x2="12" y2="22" />
-                    </svg>
-                  </button>
-                )}
-                </div>
-              {/* the card's control row: attached-context trigger on the
-                  left, the one primary action on the right */}
-              <div className="composer-bar">
-                {!loading &&
+            <Composer
+              prompt={prompt}
+              onPromptChange={(value) => {
+                setPrompt(value);
+                if (inputHint) setInputHint(null);
+              }}
+              onSubmit={() => generate()}
+              onStop={stopGenerating}
+              loading={loading}
+              seed={seedPlaylist}
+              onClearSeed={() => {
+                setSeedId("");
+                setPastedSeed(null);
+                inputRef.current?.focus();
+              }}
+              showSeedEntry={
+                !loading &&
                 !seedPlaylist &&
-                !(Array.isArray(playlists) && playlists.length === 0) ? (
-                  <button
-                    type="button"
-                    className="seed-entry"
-                    aria-expanded={seedOpen}
-                    onClick={() => setSeedOpen(!seedOpen)}
-                  >
-                    + start from a playlist
-                  </button>
-                ) : (
-                  <span aria-hidden />
-                )}
-                <button
-                  onClick={loading ? stopGenerating : () => generate()}
-                  className="btn-press"
-                >
-                  {loading ? "STOP" : "MAKE THE MIXTAPE"}
-                </button>
-              </div>
-            </div>
+                !(Array.isArray(playlists) && playlists.length === 0)
+              }
+              seedOpen={seedOpen}
+              onToggleSeed={() => setSeedOpen(!seedOpen)}
+              inputRef={inputRef}
+              micSupported={Boolean(SpeechRecognitionImpl)}
+              listening={listening}
+              micHandlers={{ press: micPress, release: micRelease, keyToggle: micKeyToggle }}
+            />
             {inputHint && (
               <div className="input-hint" role="alert">
                 {inputHint}
@@ -1304,51 +1139,11 @@ export default function App() {
                     above the example prompts: for a returning visitor their
                     own tapes outrank strangers' prompts. Newest three, the
                     rest behind one toggle, so it never outgrows the composer. */}
-                {recent.length > 0 && (
-                  <section className="recent" aria-labelledby="recent-heading">
-                    <div className="section-note" id="recent-heading">
-                      your mixtapes
-                    </div>
-                    <ul className="recent-list">
-                      {(showAllRecent ? recent : recent.slice(0, RECENT_SHOWN)).map((m) => (
-                        <li key={m.url}>
-                          <a
-                            href={m.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="recent-row"
-                            aria-label={`${m.title} (opens Spotify)`}
-                            onClick={(e) => followSpotifyLink(e, m.url)}
-                          >
-                            <SpotifyMark size={14} />
-                            <span className="recent-title">{m.title}</span>
-                            <span className="recent-open" aria-hidden>
-                              open ↗
-                            </span>
-                          </a>
-                        </li>
-                      ))}
-                    </ul>
-                    {recent.length > RECENT_SHOWN && (
-                      <button
-                        type="button"
-                        className="recent-more"
-                        aria-expanded={showAllRecent}
-                        onClick={() => setShowAllRecent((v) => !v)}
-                      >
-                        {showAllRecent ? "show fewer" : `+ ${recent.length - RECENT_SHOWN} more`}
-                      </button>
-                    )}
-                    <a
-                      className="recent-fallback"
-                      href={MIXTAPE_PROFILE_URL}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                    >
-                      every mixtape lives on Mixtape’s Spotify profile
-                    </a>
-                  </section>
-                )}
+                <RecentMixtapes
+                  recent={recent}
+                  showAll={showAllRecent}
+                  onToggle={() => setShowAllRecent((v) => !v)}
+                />
 
                 {/* proof before more ways in: on a phone this was under the
                     chips and two gaps, off the first screen entirely */}
@@ -1358,147 +1153,35 @@ export default function App() {
                     open before typing anything. Under the sample (what you
                     get → what people got), minus this browser's own, which
                     "your mixtapes" already lists. Absent when empty. */}
-                {shelf.length > 0 && (
-                  <section className="recent latest" aria-labelledby="latest-heading">
-                    <div className="section-note" id="latest-heading">
-                      fresh off the press
-                    </div>
-                    <ul className="recent-list">
-                      {shelf.map((m) => (
-                        <li key={m.id} className="latest-item">
-                          <a
-                            href={m.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="recent-row latest-row"
-                            aria-label={`${m.title}, pressed ${pressedAgo(m.pressedAt, shelfNow)} (opens Spotify)`}
-                            onClick={(e) => followSpotifyLink(e, m.url)}
-                          >
-                            <SpotifyMark size={14} />
-                            <span className="latest-text">
-                              <span className="recent-title">{m.title}</span>
-                              {m.vibe && <span className="latest-vibe">“{m.vibe}”</span>}
-                            </span>
-                            <span className="recent-open" aria-hidden>
-                              {pressedAgo(m.pressedAt, shelfNow)}
-                            </span>
-                          </a>
-                          {isOwner && (
-                            <button
-                              type="button"
-                              className="latest-hide"
-                              aria-label={`hide ${m.title} from this list`}
-                              onClick={() => hideLatest(m.id, m.title)}
-                            >
-                              hide
-                            </button>
-                          )}
-                        </li>
-                      ))}
-                    </ul>
-                  </section>
-                )}
+                <LatestShelf
+                  latest={latest}
+                  ownUrls={recent.map((m) => m.url)}
+                  isOwner={isOwner}
+                  onHide={hideLatest}
+                />
 
                 {/* example chips: populate the prompt, stay editable */}
-                <div className="examples">
-                  <div className="section-note">stuck? steal a prompt</div>
-                  <div className="chips">
-                    {EXAMPLES.map((ex) => (
-                      <button
-                        key={ex}
-                        className="chip"
-                        onClick={() => {
-                          setPrompt(ex);
-                          setInputHint(null);
-                          inputRef.current?.focus();
-                        }}
-                      >
-                        {ex}
-                      </button>
-                    ))}
-                  </div>
-                </div>
+                <ExamplePrompts
+                  onPick={(ex) => {
+                    setPrompt(ex);
+                    setInputHint(null);
+                    inputRef.current?.focus();
+                  }}
+                />
 
-                {/* the allowlisted few connect here. It cannot be offered to
-                    everyone (Spotify caps dev-mode apps at 5 accounts), and
-                    "5 test accounts" is internal vocabulary on a public page,
-                    so it only renders in dev or behind ?debug — the same door
-                    as the log console. The five who have an account know the
-                    door; a stranger never sees a line that reads as "this is
-                    a test". The wording stays literal: "on the list?" once
-                    read like a waitlist and sent strangers into OAuth. */}
-                {loggedIn === false && SHOW_LOGS && (
-                  <div className="connect-note">
-                    already one of the 5 test accounts?{" "}
-                    <a href="/auth/login" className="connect-link">
-                      connect your Spotify
-                    </a>{" "}
-                    to pick from your own playlists and save in one go
-                  </div>
-                )}
-
-
-                {/* the credit: the quietest line on the screen, under the
-                    garnish. A visitor from the post knows who made it; a
-                    visitor from a shared link doesn't, and this is the one
-                    backlink to the maker. One name, one link, nothing that
-                    competes with the composer above it. */}
-                <a
-                  className="credit-line"
-                  href="https://www.linkedin.com/in/nadavgr/"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
-                  made by Nadav Gross
-                </a>
-                {/* the notice: what a visitor types is kept. True today (the
-                    server log records each prompt) and it is what makes
-                    turning on LangSmith tracing for visitors an honest thing
-                    to do (LANGSMITH_TRACE_VISITORS, server/curatorLoader.ts).
-                    Said once, where the typing happens, as quietly as the
-                    credit above it. */}
-                <div className="notice-line">prompts are logged to help improve Mixtape</div>
+                <HomeNotes showConnect={loggedIn === false && SHOW_LOGS} />
               </>
             )}
           </>
         )}
 
         {loading && (
-          <div className="loading">
-            <div className="spinner-disc" aria-hidden />
-            {/* the one plain statement of where the run is and how long the
-                tunnel is. It replaced three lines that each said "working"
-                in studio slang (the chatter, a caption, a log line); the
-                stage now has exactly one place on screen. aria-hidden: the
-                live region above narrates the same milestones. */}
-            <div className="loading-step" aria-hidden>
-              <div className="loading-step-now">
-                step {loadingStep.n} of {stepTotal} · {loadingStep.label}
-              </div>
-              <div className="loading-step-note">usually about a minute</div>
-            </div>
-            {/* the rotating chatter, then the songs as they land — every
-                song line is a real backend event */}
-            <div className="progress-log" aria-hidden>
-              <StudioChatter pool={stage ?? "reading"} inline />
-              {logTracks.map(
-                (t, i) =>
-                  t && (
-                    <div key={i} className="log-track">
-                      <span className="log-arrow">→</span>{" "}
-                      <span className="log-num">
-                        {String(i + 1).padStart(2, "0")}
-                      </span>{" "}
-                      {t.artist} — {t.title}
-                      {t.resolved === true && <span className="log-check"> ✓</span>}
-                      {t.resolved === false && (
-                        <span className="log-unverified"> unverified</span>
-                      )}
-                    </div>
-                  )
-              )}
-            </div>
-          </div>
+          <GeneratingProgress
+            stage={stage}
+            logTracks={logTracks}
+            step={loadingStep}
+            stepTotal={stepTotal}
+          />
         )}
 
         {/* the card */}
@@ -1653,17 +1336,7 @@ export default function App() {
                       )}
                     </div>
                     {adjustLog.map((l, i) => (
-                      <div key={i} className="log-track">
-                        <span className="log-arrow">→</span>{" "}
-                        <span className="log-num">
-                          {String(l.index + 1).padStart(2, "0")}
-                        </span>{" "}
-                        {l.artist} — {l.title}
-                        {l.resolved === true && <span className="log-check"> ✓</span>}
-                        {l.resolved === false && (
-                          <span className="log-unverified"> unverified</span>
-                        )}
-                      </div>
+                      <LogLine key={i} index={l.index} track={l} />
                     ))}
                     {adjustStage === "resolving" && (
                       <div className="log-line">checking on Spotify…{cursor}</div>

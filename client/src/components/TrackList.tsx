@@ -51,7 +51,8 @@ class GripTouchSensor extends TouchSensor {
 //
 // The refocus effect depends on three things staying true: this component
 // stays mounted across a reorder, every reorder hands it a new `tracks`
-// array, and `.track-list`'s direct children are the rows.
+// array, and `.track-list`'s direct children are the rows, each with its
+// song link (the row's keyboard handle) in `.track-title`.
 export default function TrackList({
   tracks,
   accentInk,
@@ -72,9 +73,9 @@ export default function TrackList({
   // drag-to-reorder: with a mouse the whole row is the drag surface, active
   // after 8px (a click still opens Spotify); on touch only the grip drags
   // (GripTouchSensor), so a swipe anywhere else scrolls the page.
-  // Keyboard: the row already announces itself as sortable ("press space bar
-  // to pick up"), so Space picks up, arrows move, Space drops, Escape
-  // cancels. Enter is taken out of the start keys — on a row Enter opens the
+  // Keyboard: the row's song link carries dnd-kit's instructions ("press
+  // space bar to pick up"), so Space on it picks up, arrows move, Space drops,
+  // Escape cancels. Enter is taken out of the start keys — on a link Enter opens the
   // song, and dnd-kit's default would have made it pick the row up instead.
   // It stays an end key: mid-drag it drops (and dnd-kit swallows the key)
   // rather than opening the link with the row still in the air.
@@ -94,13 +95,15 @@ export default function TrackList({
   // a keyboard drop's new position, focused once the reordered card renders
   // (see onDragEnd)
   const refocusRowRef = useRef<number | null>(null);
-  const trackListRef = useRef<HTMLDivElement | null>(null);
+  const trackListRef = useRef<HTMLUListElement | null>(null);
 
   useEffect(() => {
     const i = refocusRowRef.current;
     if (i === null) return;
     refocusRowRef.current = null;
-    (trackListRef.current?.children[i] as HTMLElement | undefined)?.focus();
+    trackListRef.current?.children[i]
+      ?.querySelector<HTMLElement>(".track-title a")
+      ?.focus();
   }, [tracks]);
 
   const onDragEnd = ({ active, over, activatorEvent }: DragEndEvent) => {
@@ -108,7 +111,7 @@ export default function TrackList({
     justDragged.current = true;
     setTimeout(() => (justDragged.current = false), 0);
     if (over && active.id !== over.id) {
-      // A keyboard drop must leave focus on the row that moved. Row keys are
+      // A keyboard drop must leave focus on the row that moved (its link). Row keys are
       // positional (sortableId), so the moved row remounts and focus falls to
       // the page — dnd-kit's own focus restore looks the row up by its old,
       // now-gone id. arrayMove puts it at `over`'s index.
@@ -131,7 +134,7 @@ export default function TrackList({
         items={tracks.map(sortableId)}
         strategy={verticalListSortingStrategy}
       >
-        <div className="track-list" ref={trackListRef}>
+        <ul className="track-list" ref={trackListRef}>
           {tracks.map((t, i) => (
             <TrackRow
               key={sortableId(t, i)}
@@ -149,7 +152,7 @@ export default function TrackList({
               onSwap={() => onSwap(i, t)}
             />
           ))}
-        </div>
+        </ul>
       </SortableContext>
     </DndContext>
   );

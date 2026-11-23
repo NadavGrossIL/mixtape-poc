@@ -59,9 +59,10 @@ export default function useGeneration({
     onStart();
     dispatch({ type: "started" });
     const startedAt = Date.now();
-    // the prompt's length and where it came from, never its text (analytics.ts)
+    // the prompt's length, never its text (analytics.ts). No typed-vs-chip
+    // flag: a chip only fills the box (App's pickPrompt), so every run
+    // arrives here the same way; the chip click itself is autocaptured.
     track("mixtape_requested", {
-      source: p === undefined ? "typed" : "picked",
       prompt_length: thePrompt.length,
       seeded: Boolean(seed),
     });

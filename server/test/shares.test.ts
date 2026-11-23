@@ -121,6 +121,14 @@ test("the preview rewrite escapes and hits every tag", () => {
   assert.ok(meta.description.includes("Artist 1, Artist 2 and more"));
 });
 
+test("a mixtape with no stored tracks gets no stray period after its vibe", () => {
+  assert.equal(
+    shareMeta({ title: "T", vibe: "Only in English.", tracks: [] }).description,
+    "“Only in English.” Listen on Spotify, or make your own.",
+  );
+  assert.equal(shareMeta({ title: "T", vibe: "" }).description, "A mixtape. Listen on Spotify, or make your own.");
+});
+
 test("the share link is /m/<id> on this site, from a Spotify playlist url", () => {
   const id = "B".repeat(22);
   assert.equal(shareUrlFor(`https://open.spotify.com/playlist/${id}?si=x`, "https://mix.test"), `https://mix.test/m/${id}`);

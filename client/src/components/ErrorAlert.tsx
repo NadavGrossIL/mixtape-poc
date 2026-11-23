@@ -5,7 +5,7 @@ import { bringIntoView } from "../bringIntoView";
 // server's own words under it when there are any, and the booked style for
 // a cap. With `focusKey` it is focusable (tabIndex -1) and scrolls itself
 // into view and takes focus whenever the key changes to a non-zero value;
-// generate and save pass their failure tick, refine passes nothing.
+// generate, save and refine each pass their failure tick.
 export default function ErrorAlert({
   message,
   detail,

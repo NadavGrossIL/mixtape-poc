@@ -216,7 +216,8 @@ export function shareMeta(m: { title: string; vibe: string; tracks?: { artist: s
 } {
   const artists = [...new Set((m.tracks ?? []).map((t) => t.artist))].slice(0, 3);
   const lead = m.vibe ? `“${m.vibe}”` : "A mixtape";
-  const withArtists = artists.length ? ` — ${artists.join(", ")} and more.` : ".";
+  // a quoted vibe already ends a sentence ("…English.”), so no period after it
+  const withArtists = artists.length ? ` — ${artists.join(", ")} and more.` : m.vibe ? "" : ".";
   return {
     title: `${m.title} — a Mixtape`,
     description: `${lead}${withArtists} Listen on Spotify, or make your own.`,

@@ -47,6 +47,10 @@ interface ComposerProps {
   seedOpen: boolean;
   onToggleSeed: () => void;
   inputRef: RefObject<HTMLTextAreaElement>;
+  // the Mixtape · Jam toggle, shown only when the server offers jam mode
+  jamOffered: boolean;
+  jam: boolean;
+  onJamChange: (jam: boolean) => void;
 }
 
 export default function Composer({
@@ -61,6 +65,9 @@ export default function Composer({
   seedOpen,
   onToggleSeed,
   inputRef,
+  jamOffered,
+  jam,
+  onJamChange,
 }: ComposerProps) {
   useLayoutEffect(() => fitToContent(inputRef.current), [prompt, seed, inputRef]);
   // a rotated phone or resized window rewraps the text
@@ -119,6 +126,28 @@ export default function Composer({
           {loading ? "STOP" : "MAKE THE MIXTAPE"}
         </button>
       </div>
+      {/* Mixtape · Jam: two buttons, one pressed. A jam set is songs to
+          play together, each row linking to chords, tabs and lyrics. */}
+      {jamOffered && (
+        <div className="mode-toggle" role="group" aria-label="What to make">
+          <button
+            type="button"
+            aria-pressed={!jam}
+            disabled={loading}
+            onClick={() => onJamChange(false)}
+          >
+            Mixtape
+          </button>
+          <button
+            type="button"
+            aria-pressed={jam}
+            disabled={loading}
+            onClick={() => onJamChange(true)}
+          >
+            Jam
+          </button>
+        </div>
+      )}
     </div>
   );
 }

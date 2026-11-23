@@ -5,7 +5,8 @@ import { type Refine } from "../hooks/useRefine";
 
 // The refine box under the card: the input and REFINE / STOP, the refine
 // run's progress log, and its error. The only UI for useRefine, so it takes
-// that hook's whole return value as one prop.
+// that hook's whole return value as one prop. `jam`: the card on screen is
+// a jam set, so the copy speaks to a circle of players.
 
 const cursor = (
   <span className="cursor" aria-hidden>
@@ -13,13 +14,13 @@ const cursor = (
   </span>
 );
 
-export default function RefinePanel({ refine }: { refine: Refine }) {
+export default function RefinePanel({ refine, jam = false }: { refine: Refine; jam?: boolean }) {
   const { stage, log, error, errorTick } = refine;
   return (
     <div className="refine-area">
       {/* frames refine as the optional branch, so the accent save
           button below reads as the finish line */}
-      <div className="refine-caption">not quite right?</div>
+      <div className="refine-caption">{jam ? "not the right crowd?" : "not quite right?"}</div>
       <div className="refine-row">
         <input
           ref={refine.inputRef}
@@ -32,7 +33,11 @@ export default function RefinePanel({ refine }: { refine: Refine }) {
               refine.refine();
             }
           }}
-          placeholder="tweak it — less 80s, more instrumental…"
+          placeholder={
+            jam
+              ? "tweak it — easier songs, more singalongs, add a ukulele…"
+              : "tweak it — less 80s, more instrumental…"
+          }
           className="refine-input"
           disabled={refine.adjusting}
           aria-label="Refine the mixtape"

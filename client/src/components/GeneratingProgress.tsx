@@ -14,10 +14,14 @@ import { type Stage } from "../generationRun";
 export default function GeneratingProgress({
   stage,
   logTracks,
+  jam = false,
 }: {
   stage: Stage;
   logTracks: (LogTrack | undefined)[];
+  // a jam set is being made: its own chatter while the songs are picked
+  jam?: boolean;
 }) {
+  const pool = stage ?? "reading";
   return (
     <div className="loading">
       <div className="spinner-disc" aria-hidden />
@@ -25,7 +29,10 @@ export default function GeneratingProgress({
           song line is a real backend event. aria-hidden: the live
           region narrates the milestones. */}
       <div className="progress-log" aria-hidden>
-        <StudioChatter pool={stage ?? "reading"} inline />
+        <StudioChatter
+          pool={jam && (pool === "reading" || pool === "curating") ? "jamming" : pool}
+          inline
+        />
         {logTracks.map(
           (t, i) => t && <LogLine key={i} index={i} track={t} />
         )}

@@ -259,3 +259,24 @@ test("refuses a track whose link or art is not Spotify's own (a javascript: link
     true,
   );
 });
+
+// ── jam mode (specs/0006): `mode` is the card's last key, and only a jam card has it ──
+
+test("a jam card round-trips with mode last, after seed", () => {
+  const jam = { ...realCard(), seed: { id: "abc", name: "this playlist" }, mode: "jam" };
+  roundTrips(jam);
+  assert.equal(Object.keys(WireCardSchema.parse(jam)).at(-1), "mode");
+  roundTrips({ ...realCard(), mode: "jam" });
+  roundTrips({ ...realCard(), mode: "mix" });
+});
+
+test("a mode that is not mix or jam is refused", () => {
+  for (const mode of ["other", "", 1, null]) {
+    assert.equal(WireCardSchema.safeParse({ ...realCard(), mode }).success, false, JSON.stringify(mode));
+  }
+});
+
+test("a mix card carries no mode key", () => {
+  const parsed = WireCardSchema.parse(realCard());
+  assert.equal("mode" in parsed, false);
+});

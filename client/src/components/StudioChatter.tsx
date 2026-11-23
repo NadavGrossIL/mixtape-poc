@@ -44,6 +44,14 @@ const CHATTER = {
     "winding the cassette…",
     "labelling the spine…",
   ],
+  // a jam set being picked (GeneratingProgress): a circle of players, so
+  // never a word about keys or difficulty
+  jamming: [
+    "tuning up…",
+    "picking songs the whole circle knows…",
+    "saving the singalong for the middle…",
+    "finding a soft one to close…",
+  ],
   // the refine flow: same card, one instruction, a few tracks swapped
   rewinding: [
     "rewinding the tape…",

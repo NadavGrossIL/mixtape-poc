@@ -15,12 +15,22 @@ export default function useSave({
   card,
   announce,
   onSaved,
+  initialPlaylistUrl = null,
+  initialSavedToLibrary = false,
 }: {
   card: MixCard | null;
   announce: (line: string) => void;
   onSaved: (pressed: { title: string; url: string }) => void;
+  // a card restored after Back or a reload that was already pressed
+  // (currentCard.ts): its playlist, so it isn't offered for saving again
+  initialPlaylistUrl?: string | null;
+  initialSavedToLibrary?: boolean;
 }) {
-  const [state, dispatch] = useReducer(saveRun, saveIdle);
+  const [state, dispatch] = useReducer(saveRun, {
+    ...saveIdle,
+    playlistUrl: initialPlaylistUrl,
+    savedToLibrary: initialSavedToLibrary,
+  });
 
   const save = async () => {
     if (!card || state.saving) return;

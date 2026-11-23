@@ -67,6 +67,11 @@ const WireCardSchema = z.object({
   threadId: z.string().optional(),
   prompt: z.string().optional(),
   seed: z.object({ id: z.string().optional(), name: z.string() }).optional(),
+  // "jam": a jam set (specs/0006), written by the generate route after seed,
+  // only on a jam run. A mix card carries no mode key, so every card made
+  // before jam mode still round-trips byte-identical. Adjust reads the
+  // curator's rules from it (jamMode.ts), never from the request.
+  mode: z.enum(["mix", "jam"]).optional(),
 });
 
 type WireTrack = z.infer<typeof WireTrackSchema>;

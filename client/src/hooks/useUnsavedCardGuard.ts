@@ -14,7 +14,9 @@ export default function useUnsavedCardGuard(unsavedCard: boolean) {
   useEffect(() => {
     if (!unsavedCard) return;
     const warn = (e: BeforeUnloadEvent) => {
-      if (isHandingOff()) return; // a song opening in the Spotify app, not leaving
+      // a song opening in the Spotify app, or a jam link a webview opens in
+      // this tab (Back restores the card): not leaving
+      if (isHandingOff()) return;
       e.preventDefault();
       e.returnValue = ""; // older Chrome/Safari need it set to show the prompt
     };

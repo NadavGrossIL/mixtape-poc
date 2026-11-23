@@ -6,6 +6,7 @@
 //   node evals/generate.ts --limit 2       # pilot: first N prompts
 //   node evals/generate.ts --only id1,id2  # specific prompt ids
 //   node evals/generate.ts --prompts fit-prompts.json   # another case file
+//   node evals/generate.ts --prompts jam-prompts.json   # jam mode cases (specs/0006)
 //
 // Writes evals/runs/<timestamp>/cards.json.
 
@@ -70,7 +71,9 @@ async function main() {
     console.log(`\n[generate] ${i + 1}/${prompts.length} (${p.id}): "${p.prompt}"`);
     let card;
     try {
-      card = await curator.generateCard(p.prompt);
+      // a jam case (jam-prompts.json) carries mode: "jam"; every other case
+      // calls exactly as before
+      card = await curator.generateCard(p.prompt, p.mode ? { mode: p.mode } : undefined);
     } catch (err: any) {
       console.error(`[generate] ✗ curator failed for ${p.id}: ${err.message}`);
       results.push({ ...p, error: err.message });

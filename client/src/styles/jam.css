@@ -1,0 +1,524 @@
+/* Jam mode (specs/0006): the composer's Mixtape · Jam toggle, and the row of
+   play-this-song links under each note on a jam card. */
+
+/* ── Mixtape · Jam toggle, under the composer's control row ── */
+.mode-toggle {
+  display: flex;
+  gap: 4px;
+  padding: 0 6px 6px;
+}
+
+.mode-toggle button {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-xs);
+  background: transparent;
+  color: var(--ink-dim);
+  border: 1px solid transparent;
+  border-radius: 4px;
+  padding: 6px 10px;
+  min-height: 44px;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.mode-toggle button[aria-pressed="true"] {
+  color: var(--ink);
+  border-color: var(--line);
+}
+
+.mode-toggle button:hover:not(:disabled) {
+  color: var(--ink);
+}
+
+.mode-toggle button:disabled {
+  cursor: default;
+  opacity: 0.6;
+}
+
+/* ── the link row on a jam card's track ── */
+/* Above the title link's row-wide ::after overlay (card.css), like the
+   replace button, so a click opens this link and not Spotify. */
+.jam-links {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 6px;
+  cursor: auto;
+}
+
+.jam-links a {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-xs);
+  letter-spacing: 0.5px;
+  color: var(--paper-ink);
+  text-decoration: underline;
+  text-decoration-color: var(--paper-line);
+  text-underline-offset: 3px;
+  cursor: pointer;
+  /* a taller hit area for a finger, without moving the text */
+  padding: 4px 0;
+}
+
+.jam-links a:hover {
+  text-decoration-color: currentColor;
+}
+
+/* the global ring disappears on the paper card — the dark one the swap
+   button uses */
+.jam-links a:focus-visible {
+  outline: 2px solid var(--paper-ink);
+  outline-offset: 2px;
+}
+
+/* ══ the jam card: "Taped Setlist" (docs/demos/jam-design-brief.md) ══
+   The setlist a band tapes to the stage floor: white printer paper,
+   Sharpie-black capitals, red marker numbers, two strips of tape. Every
+   rule is scoped under .card--jam so a mixtape card stays pixel-identical.
+   Its colours are tokens on the card, not :root, and the card's own
+   --paper* tokens are pointed at them, so every card.css rule that reads
+   them (hover, focus rings, the swap button, the drag lift) follows
+   without an override of its own. Ratios against the sheet are in the
+   brief. */
+.card--jam {
+  --set-paper: #f6f4ee;
+  --set-ink: #151311;
+  --set-dim: #5c564d;
+  --set-marker: #b3261e;
+  --set-chip-line: #8a8378;
+  --set-hover: #ebe7dd;
+  --set-tape: #2a2724;
+  --paper: var(--set-paper);
+  --paper-ink: var(--set-ink);
+  --paper-dim: var(--set-dim);
+  --paper-line: var(--set-chip-line);
+  --paper-hover: var(--set-hover);
+  background: var(--set-paper);
+  color: var(--set-ink);
+  /* the other way from the cassette's -0.4deg, so the two never look alike */
+  transform: rotate(0.6deg);
+  /* the cassette's outer shadow; printer paper has no inset highlight */
+  box-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.5),
+    0 8px 16px rgba(0, 0, 0, 0.35),
+    0 24px 48px rgba(0, 0, 0, 0.3);
+}
+
+.card--jam::after {
+  opacity: 0.07;
+}
+
+/* two strips of gaffer tape over the top corners, inside the card's own
+   width so a phone never scrolls sideways; torn ends from the clip-path.
+   The right one sits further in: the sheet's clockwise tilt swings its top
+   right corner outward by about half the card's height × sin 0.6°, and on
+   a 390px phone that pushed a flush strip a pixel past the screen. */
+.card--jam .jam-tape {
+  position: absolute;
+  top: -9px;
+  z-index: 3;
+  width: 72px;
+  height: 22px;
+  background: var(--set-tape);
+  opacity: 0.9;
+  pointer-events: none;
+  clip-path: polygon(
+    0 8%, 4% 0, 96% 4%, 100% 0, 98% 30%, 100% 55%, 97% 80%, 100% 100%,
+    5% 96%, 0 100%, 3% 70%, 0 45%, 2% 22%
+  );
+}
+.card--jam .jam-tape--left {
+  left: -4px;
+  transform: rotate(-8deg);
+}
+.card--jam .jam-tape--right {
+  right: 8px;
+  transform: rotate(6deg);
+}
+
+/* no spine: the text takes the width */
+.card--jam .card-body {
+  padding-top: 26px;
+}
+
+.card--jam .card-title {
+  font-size: 30px;
+  line-height: 1;
+  text-transform: uppercase;
+  text-shadow: none;
+  margin: 10px 0 12px;
+}
+
+.card--jam .vibe {
+  font-family: Fraunces, Georgia, serif;
+  font-style: italic;
+  font-size: var(--fs-md);
+  color: var(--set-dim);
+  border-left: none;
+  padding-left: 0;
+}
+
+/* ── the set's arc: positional labels over slots 1, 3 and 7. They describe
+   slots, not songs, so a drag never makes them wrong. Drawn in the row's
+   top margin (absolute, above the row box), outside anything clickable;
+   the label's rule takes the place of that row's dashed divider. ── */
+.card--jam .track-row:is(:nth-child(1), :nth-child(3), :nth-child(7)) {
+  margin-top: 20px;
+  border-top-color: transparent;
+}
+.card--jam .track-row:is(:nth-child(1), :nth-child(3), :nth-child(7))::before,
+.card--jam .track-row:is(:nth-child(1), :nth-child(3), :nth-child(7))::after {
+  position: absolute;
+  bottom: 100%;
+  pointer-events: none;
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-2xs);
+  line-height: 20px;
+}
+.card--jam .track-row:is(:nth-child(1), :nth-child(3), :nth-child(7))::before {
+  left: 0;
+  letter-spacing: 2px;
+  font-weight: 700;
+  color: var(--set-marker);
+}
+.card--jam .track-row:nth-child(1)::before {
+  content: "WARM UP";
+}
+.card--jam .track-row:nth-child(3)::before {
+  content: "EVERYONE SINGS";
+}
+.card--jam .track-row:nth-child(7)::before {
+  content: "WIND DOWN";
+}
+/* the thin rule running right of the label. Space Mono is monospaced, so
+   the label's width is its letter count in ch plus the letter-spacing */
+.card--jam .track-row:is(:nth-child(1), :nth-child(3), :nth-child(7))::after {
+  content: "";
+  right: 0;
+  left: calc(var(--arc-len) * (1ch + 2px) + 8px);
+  height: 20px;
+  background: linear-gradient(var(--set-marker), var(--set-marker)) center / 100% 1px no-repeat;
+}
+.card--jam .track-row:nth-child(1)::after {
+  --arc-len: 7;
+}
+.card--jam .track-row:nth-child(3)::after {
+  --arc-len: 14;
+}
+.card--jam .track-row:nth-child(7)::after {
+  --arc-len: 9;
+}
+
+/* ── a jam row: [grip] art | text, then the chips across the whole entry ── */
+.card--jam .track-row {
+  --row-art: 48px;
+  display: grid;
+  grid-template-columns: var(--row-art) minmax(0, 1fr);
+  column-gap: 12px;
+  row-gap: 10px;
+  align-items: start;
+  padding: 12px 0;
+  border-top: 1px dashed var(--set-chip-line);
+}
+.card--jam .track-row:has(> .grip) {
+  grid-template-columns: auto var(--row-art) minmax(0, 1fr);
+}
+/* no row-wide link on a jam card: the title is plain text */
+.card--jam .track-title a::after {
+  content: none;
+}
+.card--jam .track-title a {
+  cursor: inherit;
+}
+.card--jam .track-title a:focus-visible {
+  outline: 2px solid var(--set-ink);
+  outline-offset: 2px;
+}
+
+/* the art and the marker number written over its corner; the number takes
+   no clicks so it never hides what is under it */
+.card--jam .jam-art {
+  position: relative;
+  width: var(--row-art);
+  height: var(--row-art);
+}
+.card--jam .jam-num {
+  position: absolute;
+  left: -4px;
+  bottom: -6px;
+  pointer-events: none;
+  font-family: "Archivo Black", sans-serif;
+  font-size: 22px;
+  line-height: 1;
+  color: var(--set-marker);
+  /* a paper-coloured outline so the marker reads over any cover */
+  -webkit-text-stroke: 2px var(--set-paper);
+  paint-order: stroke fill;
+}
+
+.card--jam .track-title {
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: var(--fs-md);
+  line-height: 1.25;
+}
+
+/* the artist, and the replace control at its right end */
+.card--jam .jam-artist-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 2px;
+}
+.card--jam .jam-artist {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-xs);
+  color: var(--set-dim);
+  min-width: 0;
+  overflow-wrap: break-word;
+}
+/* a true 44px box at every width (card.css gives one only to phones),
+   handed back by the negative margins so the line stays the artist's */
+.card--jam .swap-btn {
+  margin: -13px 0;
+  height: 44px;
+  white-space: nowrap;
+}
+.card--jam .swap-btn::after {
+  inset: 0;
+}
+
+.card--jam .track-note {
+  font-family: Fraunces, Georgia, serif;
+  font-size: var(--fs-sm);
+  color: var(--set-dim);
+  margin-top: 6px;
+}
+
+/* ── the chips: the row's only links, across the whole entry. Five on one
+   line where they fit; on a phone a deliberate 3 + 2 (2 + 2 when an
+   unverified song has no Listen), never a ragged wrap. ── */
+.card--jam .jam-links {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: repeat(6, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: 0;
+}
+.card--jam .jam-chip {
+  grid-column: span 2;
+}
+.card--jam .jam-chip:nth-child(n + 4) {
+  grid-column: span 3;
+}
+.card--jam .jam-links:not(:has(> :nth-child(5))) .jam-chip {
+  grid-column: span 3;
+}
+@media (min-width: 521px) {
+  .card--jam .jam-links {
+    display: flex;
+  }
+}
+
+.card--jam .jam-links a.jam-chip {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 0 12px;
+  border: 1px solid var(--set-chip-line);
+  border-radius: 4px;
+  /* 700: index.html loads Space Grotesk at 400/500/700, so a 600 would
+     render as 700 anyway */
+  font-family: "Space Grotesk", sans-serif;
+  font-weight: 700;
+  font-size: var(--fs-xs);
+  letter-spacing: 0;
+  white-space: nowrap;
+  color: var(--set-ink);
+  background: transparent;
+  text-decoration: none;
+  transition: background 0.15s ease, transform 0.15s ease;
+}
+.card--jam .jam-links a.jam-chip:hover {
+  background: var(--set-hover);
+}
+.card--jam .jam-links a.jam-chip--main {
+  background: var(--set-ink);
+  border-color: var(--set-ink);
+  color: var(--set-paper);
+}
+.card--jam .jam-links a.jam-chip--main:hover {
+  background: #2e2a26;
+}
+.card--jam .jam-chip-arrow {
+  font-family: "Space Mono", monospace;
+  font-weight: 400;
+}
+
+/* ── now playing: a thick marker bar down the row, a NOW tag that is its
+   own clear button, and UP NEXT on the row after. A bar by inset shadow,
+   not a positioned element: the row must stay unpositioned for drag. ── */
+.card--jam .jam-now-hint {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-2xs);
+  color: var(--set-dim);
+  margin: -6px 0 10px;
+}
+
+.card--jam .track-row.jam-now {
+  box-shadow: inset 4px 0 0 var(--set-marker);
+  padding-left: 10px;
+}
+
+.card--jam .jam-now-tag,
+.card--jam .jam-next-tag {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-2xs);
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  line-height: 1;
+  margin-bottom: 6px;
+}
+
+.card--jam .jam-next-tag {
+  color: var(--set-dim);
+}
+
+/* a 44px-tall box handed back by its margins, so the tag takes one
+   short line above the title */
+.card--jam .jam-now-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 44px;
+  margin: -13px 0 -7px;
+  padding: 0;
+  background: transparent;
+  border: none;
+  color: var(--set-marker);
+  cursor: pointer;
+}
+.card--jam .jam-now-label {
+  background: var(--set-marker);
+  color: var(--set-paper);
+  padding: 3px 6px;
+  border-radius: 2px;
+}
+.card--jam .jam-now-clear {
+  font-weight: 400;
+  letter-spacing: 0.5px;
+  color: var(--set-dim);
+}
+.card--jam .jam-now-tag:hover .jam-now-clear {
+  color: var(--set-ink);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.card--jam .jam-now-tag:focus-visible {
+  outline: 2px solid var(--set-ink);
+  outline-offset: 2px;
+}
+
+/* ── keep screen on: the header's one control, a quiet toggle. Right of
+   the facts where they fit; on a phone it wraps to its own line, so the
+   header gives it room instead of pulling it over the facts. ── */
+.card--jam .eyebrow {
+  align-items: center;
+  row-gap: 8px;
+}
+
+.card--jam .jam-wake {
+  font-family: "Space Mono", monospace;
+  font-size: var(--fs-2xs);
+  letter-spacing: 1px;
+  color: var(--set-dim);
+  background: transparent;
+  border: 1px solid var(--set-chip-line);
+  border-radius: 999px;
+  padding: 0 10px;
+  height: 28px;
+  cursor: pointer;
+  position: relative;
+}
+/* 44px to a finger without a taller header */
+.card--jam .jam-wake::after {
+  content: "";
+  position: absolute;
+  inset: -8px 0;
+}
+.card--jam .jam-wake[aria-pressed="true"] {
+  background: var(--set-ink);
+  border-color: var(--set-ink);
+  color: var(--set-paper);
+}
+.card--jam .jam-wake:focus-visible {
+  outline: 2px solid var(--set-ink);
+  outline-offset: 2px;
+}
+
+/* ── footer: no barcode, the brand line alone ── */
+.card--jam .card-footer {
+  border-top: 1px dashed var(--set-chip-line);
+}
+
+@media (max-width: 520px) {
+  .card--jam .card-title {
+    font-size: clamp(24px, 7.6vw, 30px);
+  }
+  /* clear of the tape strips */
+  .card--jam .card-body {
+    padding-top: 30px;
+  }
+  .card--jam .vibe {
+    font-size: var(--fs-md);
+  }
+}
+
+/* ── motion: the sheet drops onto the floor, the tape presses down, the
+   main chip lifts. None of it under reduced motion. ── */
+@media (prefers-reduced-motion: no-preference) {
+  .card--jam {
+    animation: jam-drop 380ms cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  .card--jam .jam-tape {
+    animation: jam-tape 240ms cubic-bezier(0.2, 0.8, 0.2, 1) 300ms backwards;
+  }
+  .card--jam .jam-tape--right {
+    animation-delay: 420ms;
+  }
+  .card--jam .jam-links a.jam-chip--main:hover {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes jam-drop {
+  from {
+    opacity: 0;
+    transform: rotate(-2deg) translateY(-12px);
+  }
+  to {
+    opacity: 1;
+    transform: rotate(0.6deg);
+  }
+}
+
+/* `scale`, not transform: each strip keeps its own tilt while it presses */
+@keyframes jam-tape {
+  from {
+    scale: 0.6;
+    opacity: 0;
+  }
+}
+
+/* On a mixtape the whole row is the Spotify link, so it lights up and nudges
+   on hover. On a jam card the row opens nothing — only the labelled chips do
+   — so the row must not look clickable (no surprises: a hover promises a
+   click). The chips keep their own hover. */
+.card--jam .track-row:hover {
+  background: transparent;
+  transform: none;
+}

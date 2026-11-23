@@ -1,0 +1,26 @@
+[
+  {
+    "id": "jam-campfire-beginners",
+    "category": "jam",
+    "prompt": "acoustic campfire, 4 guitars, beginners",
+    "mode": "jam"
+  },
+  {
+    "id": "jam-kitchen-uke",
+    "category": "jam",
+    "prompt": "two ukuleles and a tambourine in the kitchen, everyone sings",
+    "mode": "jam"
+  },
+  {
+    "id": "jam-garage-rock-band",
+    "category": "jam",
+    "prompt": "garage band night: guitar, bass, drums, keys, we can all play a bit",
+    "mode": "jam"
+  },
+  {
+    "id": "jam-90s-singalong-piano",
+    "category": "jam",
+    "prompt": "90s singalong around a piano with one guitar",
+    "mode": "jam"
+  }
+]

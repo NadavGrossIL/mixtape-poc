@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useRef } from "react";
 import TrackList from "./TrackList";
+import useJamNow from "../hooks/useJamNow";
+import useWakeLock from "../hooks/useWakeLock";
 import { BRAND } from "../brand";
 import { accentInkFor } from "../card";
 import { cardFacts, type MixCard, type Track } from "../types";
@@ -16,6 +18,8 @@ export default function MixtapeCard({
   saved,
   onReorder,
   onSwap,
+  arrived = true,
+  announce = () => {},
 }: {
   card: MixCard;
   editable: boolean;
@@ -24,6 +28,11 @@ export default function MixtapeCard({
   saved: boolean;
   onReorder: (activeId: string, overId: string) => void;
   onSwap: (i: number, t: Track) => void;
+  // false for a card restored after Back or a reload (currentCard.ts): the
+  // browser puts the visitor back where they were, so focus doesn't move
+  arrived?: boolean;
+  // App's polite live region: a jam card says which song the room is on
+  announce?: (line: string) => void;
 }) {
   const accentInk = accentInkFor(card);
   const titleRef = useRef<HTMLHeadingElement | null>(null);
@@ -45,14 +54,31 @@ export default function MixtapeCard({
   // pending row, so only this one moves focus. Mount-only is safe because
   // there is no StrictMode (main.tsx); under it this would run twice.
   useEffect(() => {
-    titleRef.current?.focus();
+    if (arrived) titleRef.current?.focus();
   }, []);
+  const jam = card.mode === "jam";
+  const playing = useJamNow(card, announce);
+  const wake = useWakeLock();
+  // a setlist's header keeps only the runtime: the era range is a mixtape's
+  // boast, and cardFacts drops the runtime when no track has a duration
+  const facts = jam
+    ? ["SETLIST", `${card.tracks.length} SONGS`, ...cardFacts(card.tracks).filter((f) => f.endsWith(" MIN"))]
+    : ["SIDE A", `${card.tracks.length} TRACKS`, ...cardFacts(card.tracks)];
   return (
-    <div className="card">
-      {/* spine */}
-      <div className="spine" style={{ background: accentInk }}>
-        <span className="spine-text">{card.title.toUpperCase()}</span>
-      </div>
+    // a jam card is the same card with a modifier (jam.css), not a fork:
+    // focus, drag and the rows stay one implementation
+    <div className={jam ? "card card--jam" : "card"} data-mode={jam ? "jam" : undefined}>
+      {jam ? (
+        // the gaffer tape over the top corners; decorative
+        <>
+          <span className="jam-tape jam-tape--left" aria-hidden />
+          <span className="jam-tape jam-tape--right" aria-hidden />
+        </>
+      ) : (
+        <div className="spine" style={{ background: accentInk }}>
+          <span className="spine-text">{card.title.toUpperCase()}</span>
+        </div>
+      )}
 
       <div className="card-body">
         {/* facts and date in two spans so a narrow card wraps at the
@@ -60,30 +86,43 @@ export default function MixtapeCard({
             breaks inside "1984–2018" */}
         <div className="eyebrow">
           <span>
-            {["SIDE A", `${card.tracks.length} TRACKS`, ...cardFacts(card.tracks)].map(
-              (fact, i) => (
-                <Fragment key={fact}>
-                  {i > 0 && " · "}
-                  <span className="fact">{fact}</span>
-                </Fragment>
-              )
-            )}
+            {facts.map((fact, i) => (
+              <Fragment key={fact}>
+                {i > 0 && " · "}
+                <span className="fact">{fact}</span>
+              </Fragment>
+            ))}
           </span>
-          <span>
-            CUT{" "}
-            {new Date()
-              .toLocaleDateString("en-GB", {
-                day: "2-digit",
-                month: "short",
-                year: "2-digit",
-              })
-              .toUpperCase()}
-          </span>
+          {/* a jam card's one header control: the room plays from a phone
+              that must not lock mid-song. Opt-in, and only where the
+              browser can do it */}
+          {jam && wake.supported && (
+            <button
+              type="button"
+              className="jam-wake"
+              aria-pressed={wake.on}
+              onClick={wake.toggle}
+            >
+              keep screen on
+            </button>
+          )}
+          {!jam && (
+            <span>
+              CUT{" "}
+              {new Date()
+                .toLocaleDateString("en-GB", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "2-digit",
+                })
+                .toUpperCase()}
+            </span>
+          )}
         </div>
         <h2 className="card-title" tabIndex={-1} ref={titleRef}>
           {card.title}
         </h2>
-        <div className="vibe" style={{ borderColor: accentInk }}>
+        <div className="vibe" style={jam ? undefined : { borderColor: accentInk }}>
           “{card.vibe}”
         </div>
         <div className="prompt-line">
@@ -106,11 +145,18 @@ export default function MixtapeCard({
         <div className="card-legend">
           {/* keyed to "not saved yet", not to `editable`: that goes
               false the moment save is tapped, and the shorter text
-              shifted the whole list up a line on a phone */}
-          {!saved
-            ? "tap a song to open it in Spotify · drag ⋮⋮ to reorder"
-            : "tap a song to open it in Spotify"}
+              shifted the whole list up a line on a phone. A jam card
+              names every site its chips open, so no tap surprises. */}
+          {jam
+            ? !saved
+              ? JAM_LEGEND + " · drag ⋮⋮ to reshuffle"
+              : JAM_LEGEND
+            : !saved
+              ? "tap a song to open it in Spotify · drag ⋮⋮ to reorder"
+              : "tap a song to open it in Spotify"}
         </div>
+        {/* said before it happens, so the mark is never a surprise */}
+        {jam && <div className="jam-now-hint">the song you open is marked NOW</div>}
 
         <TrackList
           tracks={card.tracks}
@@ -120,13 +166,23 @@ export default function MixtapeCard({
           swapping={swapping}
           onReorder={onReorder}
           onSwap={onSwap}
+          // the card's own mode, not the composer's toggle
+          jam={jam}
+          nowAt={playing.index}
+          nextAt={playing.next}
+          onOpenLink={jam ? playing.mark : undefined}
+          onClearNow={playing.clear}
         />
 
         <div className="card-footer">
-          <span className="footer-brand">{BRAND} · STEREO</span>
-          <div className="barcode" aria-hidden />
+          <span className="footer-brand">
+            {BRAND} · {jam ? "JAM NIGHT" : "STEREO"}
+          </span>
+          {!jam && <div className="barcode" aria-hidden />}
         </div>
       </div>
     </div>
   );
 }
+
+const JAM_LEGEND = "links open Ultimate Guitar, Chordify, Songsterr, Genius and Spotify";

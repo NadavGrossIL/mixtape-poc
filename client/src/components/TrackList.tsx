@@ -61,6 +61,11 @@ export default function TrackList({
   swapping,
   onReorder,
   onSwap,
+  jam,
+  nowAt = -1,
+  nextAt = -1,
+  onOpenLink,
+  onClearNow,
 }: {
   tracks: Track[];
   accentInk: string;
@@ -69,6 +74,14 @@ export default function TrackList({
   swapping: number | null;
   onReorder: (activeId: string, overId: string) => void;
   onSwap: (i: number, t: Track) => void;
+  // a jam card: every row gets its play-this-song links
+  jam: boolean;
+  // a jam card's now-playing and up-next rows (useJamNow), and what a
+  // row's link press and its NOW tag's clear do; passed through to the rows
+  nowAt?: number;
+  nextAt?: number;
+  onOpenLink?: (i: number, t: Track) => void;
+  onClearNow?: () => void;
 }) {
   // drag-to-reorder: with a mouse the whole row is the drag surface, active
   // after 8px (a click still opens Spotify); on touch only the grip drags
@@ -150,6 +163,10 @@ export default function TrackList({
               }
               justDragged={justDragged}
               onSwap={() => onSwap(i, t)}
+              jam={jam}
+              now={i === nowAt ? "now" : i === nextAt ? "next" : null}
+              onOpenLink={() => onOpenLink?.(i, t)}
+              onClearNow={onClearNow}
             />
           ))}
         </ul>

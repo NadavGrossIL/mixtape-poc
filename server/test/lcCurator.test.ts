@@ -403,3 +403,44 @@ test("Spotify's quota running out ends the run with that very error", async () =
   );
   assert.deepEqual(threadsInMemory(), before);
 });
+
+// ── jam mode (specs/0006): the rules come from the card's mode ──
+
+const { SYSTEM, systemFor } = await import("../curator.ts");
+// The system prompt a model call was sent.
+const systemSent = (model: ReturnType<typeof script>["model"], i = 0) =>
+  model.calls[i]!.messages.find((m) => m.getType() === "system")?.text;
+
+test("generate sends SYSTEM by default and the jam prompt for mode jam", async () => {
+  const mix = script(says(deliver()));
+  await generateCard("x", { model: mix.model, search: catalog().search, owner: owner() });
+  assert.strictEqual(systemSent(mix.model), SYSTEM);
+
+  const jam = script(says(deliver()));
+  const made = await generateCard("x", { model: jam.model, search: catalog().search, owner: owner(), mode: "jam" });
+  assert.strictEqual(systemSent(jam.model), systemFor("jam"));
+  // the route writes mode onto the card (after seed), not the agent
+  assert.equal("mode" in made, false);
+});
+
+test("adjust on a jam card runs with the jam prompt, on a remembered thread too", async () => {
+  const me = owner();
+  const made = await generateCard("campfire", {
+    model: script(says(deliver())).model,
+    search: catalog().search,
+    owner: me,
+    mode: "jam",
+  });
+  const { model } = script(says(deliver(card("a warmer opener than before"))));
+  const diff = await adjustCard({ ...made, mode: "jam" }, "warmer", { model, search: catalog().search, owner: me });
+  assert.equal(diff.threadId, undefined); // the same thread, continued
+  assert.strictEqual(systemSent(model), systemFor("jam"));
+});
+
+test("adjust on a card with no mode runs with SYSTEM, whatever opts say", async () => {
+  const me = owner();
+  const made = await generateCard("x", { model: script(says(deliver())).model, search: catalog().search, owner: me });
+  const { model } = script(says(deliver(card("a warmer opener than before"))));
+  await adjustCard(made, "warmer", { model, search: catalog().search, owner: me, mode: "jam" } as any);
+  assert.strictEqual(systemSent(model), SYSTEM);
+});

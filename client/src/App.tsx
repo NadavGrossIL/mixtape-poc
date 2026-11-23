@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { type MixCard } from "./types";
 import { reorderTracks, verifiedCount } from "./card";
 import { SHOW_LOGS } from "./debug";
+import { loadCurrentCard, saveCurrentCard } from "./currentCard";
+
+// a getter, not a value: reading `window.sessionStorage` itself can throw
+// (blocked storage); currentCard.ts catches that
+const tabStorage = () => window.sessionStorage;
 import { startAnalytics } from "./analytics";
 import useSession from "./hooks/useSession";
 import useLatestShelf from "./hooks/useLatestShelf";
@@ -41,7 +46,7 @@ import LogConsole from "./components/LogConsole";
 // clicked in (refine sends that card, a save records against that list).
 export default function App() {
   // first, in this order: their mount requests go auth, then latest, then view
-  const { loggedIn, isOwner } = useSession();
+  const { loggedIn, isOwner, jamMode } = useSession();
   const latest = useLatestShelf();
   const recent = useRecentMixtapes();
   usePageView();
@@ -55,9 +60,16 @@ export default function App() {
   // reordered and cleared; the hint and the live region are written by
   // almost everything
   const [prompt, setPrompt] = useState("");
-  const [card, setCard] = useState<MixCard | null>(null);
+  // The card on screen survives Back and a reload in this tab
+  // (currentCard.ts): read once here, written by the effect below.
+  const [restored] = useState(() => loadCurrentCard(tabStorage));
+  const [card, setCard] = useState<MixCard | null>(restored?.card ?? null);
   const [inputHint, setInputHint] = useState<string | null>(null);
   const [announce, setAnnounce] = useState(""); // screen-reader milestones
+  // the composer's Mixtape · Jam toggle (shown only when the server offers
+  // jam mode). It shapes the NEXT generate only: a card on screen keeps its
+  // own mode, and that is what its rows and its refines follow.
+  const [jam, setJam] = useState(false);
 
   // the prompt box, focused by the seed picker, the chips, an
   // empty generate and "make another one"
@@ -80,7 +92,18 @@ export default function App() {
       recent.record({ title, url, pressedAt: Date.now() });
       latest.reload();
     },
+    initialPlaylistUrl: restored?.playlistUrl ?? null,
+    initialSavedToLibrary: restored?.savedToLibrary ?? false,
   });
+
+  // keep this tab's copy of the card current: every change, the save that
+  // pressed it, and null when the card goes
+  useEffect(() => {
+    saveCurrentCard(
+      tabStorage,
+      card ? { card, playlistUrl: save.playlistUrl, savedToLibrary: save.savedToLibrary } : null
+    );
+  }, [card, save.playlistUrl, save.savedToLibrary]);
 
   // making a mixtape. Called before useRefine, whose guard needs
   // gen.loading; onStart reaches clearDraft (below), which needs refine.
@@ -89,6 +112,7 @@ export default function App() {
   const gen = useGeneration({
     prompt,
     seed: seed.armed,
+    mode: jamMode && jam ? "jam" : "mix",
     announce: setAnnounce,
     setHint: setInputHint,
     focusPrompt,
@@ -173,7 +197,7 @@ export default function App() {
       <SiteHeader compact={Boolean(card)} />
 
       <main className="main-col">
-        {loggedIn === null && <div className="checking">checking the deck…</div>}
+        {loggedIn === null && !card && <div className="checking">checking the deck…</div>}
 
         {/* no login gate: anyone past the door can make a mixtape. A
             connected Spotify (the allowlisted few) only adds the shelf picker
@@ -200,6 +224,9 @@ export default function App() {
               seedOpen={seed.open}
               onToggleSeed={seed.toggle}
               inputRef={inputRef}
+              jamOffered={jamMode}
+              jam={jam}
+              onJamChange={setJam}
             />
             {inputHint && (
               <div className="input-hint" role="alert">
@@ -283,6 +310,7 @@ export default function App() {
           <GeneratingProgress
             stage={gen.stage}
             logTracks={gen.logTracks}
+            jam={jamMode && jam}
           />
         )}
 
@@ -297,11 +325,14 @@ export default function App() {
               saved={Boolean(save.playlistUrl)}
               onReorder={reorderCard}
               onSwap={refine.swap}
+              // the restored card itself mounts quietly; a new one doesn't
+              arrived={card !== restored?.card}
+              announce={setAnnounce}
             />
 
             {/* second chance: refine the card in place — only in the editable
                 window, same gating as drag-to-reorder */}
-            {editable && <RefinePanel refine={refine} />}
+            {editable && <RefinePanel refine={refine} jam={card.mode === "jam"} />}
 
             {/* save to spotify — primary action; everything else stays quiet */}
             {!save.playlistUrl && (
@@ -321,6 +352,8 @@ export default function App() {
                 savedToLibrary={save.savedToLibrary}
                 card={card}
                 announce={setAnnounce}
+                // a save made in this page load, not one restored with the card
+                arrived={save.playlistUrl !== restored?.playlistUrl}
               />
             )}
             {save.error && (

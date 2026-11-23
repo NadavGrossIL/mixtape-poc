@@ -24,6 +24,7 @@ import { track } from "../analytics";
 export default function useGeneration({
   prompt,
   seed,
+  mode,
   announce,
   setHint,
   focusPrompt,
@@ -33,6 +34,10 @@ export default function useGeneration({
 }: {
   prompt: string;
   seed: Playlist | null;
+  // the Mixtape · Jam toggle at the moment of the request ("mix" whenever
+  // the toggle is hidden). Goes into the body and the requested event; the
+  // card that comes back carries its own mode from then on.
+  mode: "mix" | "jam";
   announce: (line: string) => void;
   setHint: (hint: string | null) => void;
   focusPrompt: () => void;
@@ -65,6 +70,7 @@ export default function useGeneration({
     track("mixtape_requested", {
       prompt_length: thePrompt.length,
       seeded: Boolean(seed),
+      mode,
     });
     announce("Making your mixtape.");
     const controller = new AbortController();
@@ -75,6 +81,7 @@ export default function useGeneration({
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           prompt: thePrompt,
+          mode,
           ...(seed
             ? { seed: { id: seed.id, name: seed.name } }
             : {}),

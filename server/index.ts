@@ -21,6 +21,7 @@ import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
 import { parseTrackUris } from "./trackUris.ts";
 import { WireCardSchema } from "./wire.ts";
+import { adjustMode, generateMode, jamAllowed, jamEnabled, jamInviteToken, JAM_COOKIE, MIN_INVITE } from "./jamMode.ts";
 import { playlistDescription, cleanVibe } from "./playlistDescription.ts";
 import { makeLatest, makeVouches } from "./latest.ts";
 import {
@@ -388,6 +389,53 @@ if (APP_SECRET) {
       return res.status(401).json({ error: "Locked — reload the page and enter the secret key." });
     }
     res.status(401).type("html").send(GATE_PAGE);
+  });
+}
+
+// ── jam mode: everyone (JAM_MODE=1) or invite link only (JAM_INVITE) ──
+
+// jamMode.ts has the rule. The invite link is `/?jam=<JAM_INVITE>`: one visit
+// sets a cookie with a hash of the secret and redirects to strip it from the
+// address bar, the same shape as the site gate's `?key=` link above, through
+// the same throttle (a wrong `jam` costs a guess like a wrong `key`).
+const JAM_INVITE_TOKEN = jamInviteToken(process.env.JAM_INVITE, (s) =>
+  crypto.createHash("sha256").update(s).digest("hex")
+);
+if (process.env.JAM_INVITE && !JAM_INVITE_TOKEN) {
+  console.warn(`[config] JAM_INVITE is shorter than ${MIN_INVITE} characters — ignored, jam invite links are off`);
+}
+
+function jamAllowedFor(req: Request): boolean {
+  return jamAllowed(
+    {
+      everyone: jamEnabled(process.env.JAM_MODE),
+      token: JAM_INVITE_TOKEN,
+      cookie: readCookie(req, JAM_COOKIE),
+    },
+    timingSafeMatch
+  );
+}
+
+if (JAM_INVITE_TOKEN) {
+  app.use((req, res, next) => {
+    if (req.method !== "GET" || typeof req.query.jam !== "string") return next();
+    const ip = String(req.ip);
+    const now = Date.now();
+    const verdict = gateThrottle.check(ip, now);
+    if (!verdict.allowed) return refuseThrottled(req, res, verdict.retryAfterMs);
+    if (timingSafeMatch(req.query.jam, process.env.JAM_INVITE)) {
+      gateThrottle.succeed(ip, now);
+      res.setHeader(
+        "Set-Cookie",
+        `${JAM_COOKIE}=${JAM_INVITE_TOKEN}; Path=/; HttpOnly; SameSite=Lax; Max-Age=31536000` +
+          (req.secure ? "; Secure" : "")
+      );
+    } else {
+      gateThrottle.fail(ip, now);
+    }
+    // Strip the secret (or the wrong guess) from the address bar either way;
+    // leading slashes collapsed for the reason given at the gate above.
+    return res.redirect(req.path.replace(/^\/+/, "/"));
   });
 }
 
@@ -781,7 +829,14 @@ app.get("/auth/status", async (req, res) => {
   // `owner` lets the client show owner-only surfaces (the log console's
   // usage strip) to the right person; the server still enforces it per route
   const owner = loggedIn && user === (await spotify.getOwnerId());
-  res.json({ loggedIn, owner, name: loggedIn && user ? spotify.getDisplayName(user) : null });
+  res.json({
+    loggedIn,
+    owner,
+    name: loggedIn && user ? spotify.getDisplayName(user) : null,
+    // the Mixtape · Jam toggle shows only when JAM_MODE=1, or for a browser
+    // that opened the jam invite link (jamMode.ts)
+    jamMode: jamAllowedFor(req),
+  });
 });
 
 // ── api ──────────────────────────────────────────────────────
@@ -953,6 +1008,9 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
       error: `That prompt is too long — keep it under ${MAX_PROMPT_CHARS} characters.`,
     });
   }
+  // Jam mode (specs/0006): refused before anything is charged or counted.
+  const mode = generateMode(req.body?.mode, jamAllowedFor(req));
+  if (typeof mode !== "string") return res.status(400).json({ error: mode.error });
   if (!curator.anthropicConfigured()) {
     // Counted, unlike the 400s above: a missing or rotated key 500s on every
     // visitor, and an unconfigured server reading `0 errors` is the exact
@@ -1015,6 +1073,7 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
       signal: abort.signal,
       budget,
       owner: user,
+      mode,
       onTrack: (index, t) =>
         sseSend(res, "track", { index, artist: t.artist, title: t.title }),
     });
@@ -1036,6 +1095,8 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
     }
     card.prompt = prompt;
     if (seed) card.seed = { id: seedId, name: seed.name };
+    // last key on the card (wire.ts); a mix card carries none
+    if (mode === "jam") card.mode = "jam";
     const verified = card.tracks.filter((t) => t.resolved).length;
     console.log(
       `[generate/stream] done: "${card.title}" — ${verified}/${card.tracks.length} verified on Spotify`
@@ -1114,6 +1175,12 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
   if (card.tracks.length > MAX_CARD_TRACKS) {
     return res.status(400).json({ error: "That card has too many tracks." });
   }
+  // The mode is the card's, never the body's, and the flag guards it here
+  // too: the card is the browser's, so with JAM_MODE off a hand-edited jam
+  // card is refused, before anything is charged or counted (jamMode.ts).
+  // The curator reads card.mode itself (lc/curator-lc.ts adjustCard).
+  const mode = adjustMode(card, jamAllowedFor(req));
+  if (typeof mode !== "string") return res.status(400).json({ error: mode.error });
   if (!curator.anthropicConfigured()) {
     metrics.count("errors"); // same reasoning as /api/generate/stream
     return res

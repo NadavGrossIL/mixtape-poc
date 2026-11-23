@@ -58,6 +58,10 @@ export interface MixCard {
   // (server/lc/curator-lc.ts). Never read here, but a refine must send it
   // back with the card, so a refine can continue that conversation.
   threadId?: string;
+  // "jam": a jam set — the rows show the play-this-song links (jamLinks.ts).
+  // Set by the server on a jam run only; a refine sends it back untouched,
+  // and the server picks the curator's rules from it.
+  mode?: "mix" | "jam";
 }
 
 export interface Playlist {

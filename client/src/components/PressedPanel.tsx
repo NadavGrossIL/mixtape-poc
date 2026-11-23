@@ -20,11 +20,15 @@ export default function PressedPanel({
   savedToLibrary,
   card,
   announce,
+  arrived = true,
 }: {
   playlistUrl: string;
   savedToLibrary: boolean;
   card: MixCard;
   announce: (line: string) => void;
+  // false when the press happened before a reload or Back (the card was
+  // restored already saved, currentCard.ts): no scroll, no focus move
+  arrived?: boolean;
 }) {
   const [copied, setCopied] = useState<"tracks" | null>(null);
   const pressedRef = useRef<HTMLDivElement | null>(null);
@@ -44,7 +48,7 @@ export default function PressedPanel({
   // the old effect found its refs set. Mount-only is safe because there is
   // no StrictMode (main.tsx); under it this would run twice.
   useEffect(() => {
-    if (pressedRef.current && pressedOpenRef.current) {
+    if (arrived && pressedRef.current && pressedOpenRef.current) {
       bringIntoView(pressedRef.current, pressedOpenRef.current);
     }
   }, []);

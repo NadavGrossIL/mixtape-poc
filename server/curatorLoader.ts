@@ -26,8 +26,11 @@ interface Curator {
       signal?: AbortSignal;
       budget?: SearchBudget;
       owner?: string;
+      // "jam": the jam rules (curator.ts systemFor). Default "mix".
+      mode?: "mix" | "jam";
     }
   ): Promise<MixtapeCard>;
+  // No mode in opts: an adjust runs with the card's own mode.
   adjustCard(
     card: MixtapeCard,
     adjustment: string,

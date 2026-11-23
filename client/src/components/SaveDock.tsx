@@ -48,7 +48,9 @@ export default function SaveDock({
           Answered here, with the honest number of taps left. */}
       <div className="save-note">
         <b>not on Spotify yet</b>
-        {!loggedIn &&
+        {/* false, not null: a restored card is on screen before /auth/status
+            answers, and a connected visitor mustn't be told "no login" */}
+        {loggedIn === false &&
           " — no login needed: we make the playlist, you tap + in Spotify to keep it"}
       </div>
       {unverified > 0 && (

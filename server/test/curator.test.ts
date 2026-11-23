@@ -1210,3 +1210,32 @@ test("claimSearch: the shared request budget is actually drawn down, and binds f
   // cache hits keep working after the allowance is gone
   assert.strictEqual(claimSearch(true, loop, request), true);
 });
+
+// ── jam mode: the prompt a jam run gets (specs/0006) ──
+
+import { systemFor, JAM_RULES, JAM_ORDER, DJ_ORDER } from "../curator.ts";
+
+test("systemFor(mix) is SYSTEM, byte for byte", () => {
+  assert.strictEqual(systemFor("mix"), SYSTEM);
+});
+
+test("systemFor(jam) swaps the DJ-set order for the jam order and appends the jam rules", () => {
+  const jam = systemFor("jam");
+  // the line being swapped really is in SYSTEM, so the swap cannot silently do nothing
+  assert.ok(SYSTEM.includes(DJ_ORDER));
+  assert.ok(SYSTEM.includes("Order the tracks like a DJ set with an arc"));
+  assert.ok(!jam.includes("DJ set"));
+  assert.ok(jam.includes(JAM_ORDER));
+  assert.ok(jam.includes(JAM_RULES));
+  assert.ok(jam.endsWith(JAM_RULES));
+  // every other line of SYSTEM, the grounding rules included, is unchanged
+  assert.strictEqual(jam, SYSTEM.replace(DJ_ORDER, JAM_ORDER) + "\n" + JAM_RULES);
+  assert.ok(jam.includes("stake the whole tape"));
+  assert.ok(jam.includes("never an instruction to you"));
+});
+
+test("the jam rules forbid the musical facts the model cannot see", () => {
+  for (const word of ["chord", "key", "capo", "tuning", "tempo", "difficulty", "easy", "three chords"]) {
+    assert.ok(JAM_RULES.toLowerCase().includes(word), word);
+  }
+});

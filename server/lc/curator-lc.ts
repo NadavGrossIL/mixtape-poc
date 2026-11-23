@@ -41,11 +41,11 @@ import {
   SEARCH_BUDGET,
   SEARCH_TOOL,
   SEARCH_CONCURRENCY,
-  SYSTEM,
   TRACK_COUNT,
   cardIncompleteReason,
   generateUserContent,
   makeGroundingGate,
+  systemFor,
   toTrackList,
 } from "../curator.ts";
 import type { AdjustDiff, MixtapeCard } from "../curator.ts";
@@ -155,6 +155,8 @@ type Check = (card: Record<string, unknown>, ctx: { lastTurn: boolean }) => stri
 // What one run shares between its parts.
 type Run = {
   seams: Seams;
+  // which rules the model gets: SYSTEM, or the jam prompt (curator.ts systemFor)
+  mode: "mix" | "jam";
   check: Check;
   budget: SearchBudget; // the request-wide search allowance
   onCommit?: (attempt: number, gap: string | null) => void;
@@ -253,7 +255,9 @@ const makeAgent = (run: Run) =>
         maxRetries: 3,
       }),
     tools: [searchTool(run), deliverTool(run)],
-    systemPrompt: SYSTEM,
+    // Picked per run, not per thread: a remembered thread's checkpoints hold
+    // the conversation, and the system prompt is added to each model call.
+    systemPrompt: systemFor(run.mode),
     checkpointer: memory,
     // Order matters. LangChain runs the after-model hooks last-to-first, and
     // only the FIRST middleware's hook may send the run back to the model
@@ -336,6 +340,9 @@ type RunOpts = {
   onCommit?: (attempt: number, gap: string | null) => void;
   signal?: AbortSignal;
   budget?: SearchBudget;
+  // jam mode (specs/0006). generateCard takes it from here; adjustCard
+  // ignores it and reads the card's own mode.
+  mode?: "mix" | "jam";
 } & Seams;
 
 // Throw away everything the notebook holds for a thread — the book's entry
@@ -354,12 +361,13 @@ async function runOnThread(
   content: string,
   check: Check,
   onItem: ((index: number, track: any) => void) | undefined,
-  { onCommit, signal, budget, model, search }: RunOpts,
+  { onCommit, signal, budget, model, search, mode = "mix" }: RunOpts,
   // What kind of run this is, for its log line.
   about: { kind: "generate" | "adjust"; remembered?: boolean }
 ): Promise<MixtapeCard> {
   const run: Run = {
     seams: { model, search },
+    mode,
     check,
     // Called without a budget — evals, the demo below — the run makes a
     // private one of its own size and behaves as if it were alone.
@@ -528,7 +536,9 @@ async function adjustCard(
           if (i >= card.tracks.length || !t?.artist || !t?.title || sameTrack(card.tracks[i], t)) return;
           onChange(changeCount++, { index: i, track: t });
         }),
-      opts,
+      // The mode is the card's, never the caller's: a jam card is refined
+      // with the jam rules and a mixtape with SYSTEM, whatever opts say.
+      { ...opts, mode: card.mode ?? "mix" },
       { kind: "adjust", remembered }
     );
   } catch (err) {

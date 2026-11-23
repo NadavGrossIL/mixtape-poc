@@ -101,7 +101,18 @@ function openWeb(webUrl: string) {
 // that never leaves the page.
 let handingOff = false;
 export function isHandingOff(): boolean {
-  return handingOff;
+  return handingOff || Date.now() < outboundUntil;
+}
+
+// A jam card's links (chords, tabs, lyrics) are plain target=_blank anchors,
+// but an in-app webview opens them in this tab, and the guard's "Leave
+// site?" would then stand between a musician and the chords. Leaving is safe
+// there: Back restores the card from sessionStorage (currentCard.ts). A time
+// window, not the next-task reset above: an anchor's own navigation (and its
+// beforeunload) can land after the click task has ended.
+let outboundUntil = 0;
+export function noteOutboundLink(): void {
+  outboundUntil = Date.now() + 1500;
 }
 
 // Call from a click handler BEFORE preventDefault(). Returns true when it took

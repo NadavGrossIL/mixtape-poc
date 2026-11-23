@@ -59,7 +59,10 @@ file is a map. The reasoning lives next to the code as comments; read those.
   imports): `card.ts` `seed.ts` `runFailure.ts` `failures.ts` `recent.ts`
   `latest.ts` `share.ts` and the run reducers `generationRun.ts`
   `refineRun.ts` `saveRun.ts` · `debug.ts` is the `?debug` switch for the
-  log console. `src/types.ts` declares the card on its own instead of
+  log console · `analytics.ts` (2026-11-23) is PostHog product analytics:
+  clicks, replay and the named run events, off unless `VITE_POSTHOG_KEY`
+  is set at build time, cookieless, never sends prompt text, never counts
+  the owner; `server/metrics.ts` stays the funnel's source of truth. `src/types.ts` declares the card on its own instead of
   importing `server/wire.ts`: the production build compiles the client
   before `server/node_modules` exists, so even a type-only import of a file
   that imports zod fails the deploy; `server/test/wire.test.ts` fails the

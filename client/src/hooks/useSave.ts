@@ -3,6 +3,7 @@ import { type MixCard, type SaveStreamEvent } from "../types";
 import { CapError, readSSE } from "../sse";
 import { saveRefusal } from "../failures";
 import { saveIdle, saveRun } from "../saveRun";
+import { track } from "../analytics";
 
 // Pressing the card to a Spotify playlist: the save run (its stage label,
 // the pressed playlist, its error and failure tick; saveRun.ts). The card
@@ -29,6 +30,7 @@ export default function useSave({
       return;
     }
     dispatch({ type: "started" });
+    track("save_requested", { tracks: uris.length });
     try {
       const response = await fetch("/api/playlist", {
         method: "POST",
@@ -71,6 +73,7 @@ export default function useSave({
           ? "Saved. The playlist is in your Spotify library."
           : "Your playlist is ready. Open it in Spotify and tap plus to add it to your library."
       );
+      track("playlist_saved", { tracks: uris.length, saved_to_library: saved });
       dispatch({ type: "succeeded", playlistUrl: url, savedToLibrary: saved });
       // remembered here so a guest who didn't tap + can find it again
       onSaved({ title: card.title, url });
@@ -78,6 +81,7 @@ export default function useSave({
       // a cap (today's saves, Spotify's daily quota) is the server's own
       // line: "try again" is wrong advice until tomorrow. Anything else is a
       // fault, and its text is for the log, not the visitor (failures.ts).
+      track("save_failed", { capped: e instanceof CapError });
       if (e instanceof CapError) {
         dispatch({ type: "failed", error: { message: e.message, booked: true } });
         announce(e.message);

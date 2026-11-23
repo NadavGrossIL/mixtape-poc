@@ -10,6 +10,7 @@ import {
   streamFailure,
 } from "../runFailure";
 import { generationIdle, generationRun } from "../generationRun";
+import { track } from "../analytics";
 
 // Making a mixtape: the generate run (its stage, progress log, seed being
 // read, error and failure tick; generationRun.ts) and its abort
@@ -57,6 +58,13 @@ export default function useGeneration({
     // and the run's start land in one render
     onStart();
     dispatch({ type: "started" });
+    const startedAt = Date.now();
+    // the prompt's length and where it came from, never its text (analytics.ts)
+    track("mixtape_requested", {
+      source: p === undefined ? "typed" : "picked",
+      prompt_length: thePrompt.length,
+      seeded: Boolean(seed),
+    });
     announce("Making your mixtape.");
     const controller = new AbortController();
     abortRef.current = controller;
@@ -110,11 +118,21 @@ export default function useGeneration({
       announce(
         `Mixtape ready: ${doneCard.tracks.length} tracks, ${verified} verified on Spotify.`
       );
+      track("mixtape_generated", {
+        tracks: doneCard.tracks.length,
+        verified,
+        seeded: Boolean(seed),
+        seconds: Math.round((Date.now() - startedAt) / 1000),
+      });
       onCard(doneCard);
     } catch (e) {
       // worded and announced apart from refine's on purpose: generate
       // announces a cap and a plain error
       const failure = classifyRunFailure(e, navigator.onLine);
+      track(failure.kind === "aborted" ? "mixtape_stopped" : "mixtape_failed", {
+        kind: failure.kind,
+        seconds: Math.round((Date.now() - startedAt) / 1000),
+      });
       switch (failure.kind) {
         case "aborted":
           announce("Stopped.");

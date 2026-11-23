@@ -144,6 +144,12 @@ app.use((err: unknown, _req: Request, res: Response, next: NextFunction) => {
 //     is all style attributes. Google Fonts serves the stylesheet itself.
 //   img-src data: + *.scdn.co — album art comes from Spotify's CDN at runtime;
 //     some inline SVG is data:.
+//   connect-src + PostHog — client/src/analytics.ts sends events and session
+//     replay to PostHog's ingestion host, and reads the project's remote
+//     config (is replay on, etc.) from its *-assets host. EU and US both,
+//     so switching region is a build variable, not a CSP edit. The recorder is bundled
+//     (posthog-js "no-external"), so script-src gains nothing; its
+//     compression worker is a blob:, hence worker-src.
 //   frame-src 'none' — nothing on the page is framed. The Spotify playlist
 //     embed on the pressed card was the one exception until 2026-09-08.
 // In dev none of this reaches the page: Vite serves the client on :5173 and
@@ -154,7 +160,8 @@ const CSP = [
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
   "font-src 'self' https://fonts.gstatic.com",
   "img-src 'self' data: https://*.scdn.co",
-  "connect-src 'self'",
+  "connect-src 'self' https://eu.i.posthog.com https://us.i.posthog.com https://eu-assets.i.posthog.com https://us-assets.i.posthog.com",
+  "worker-src 'self' blob:",
   "frame-src 'none'",
   "frame-ancestors 'none'",
   "base-uri 'self'",

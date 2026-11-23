@@ -9,6 +9,7 @@ import {
   streamFailure,
 } from "../runFailure";
 import { refineIdle, refineRun } from "../refineRun";
+import { track } from "../analytics";
 
 // Second-chance refine: the refine box's text, the refine run (its stage,
 // progress log and error; refineRun.ts) and its abort controller, plus the
@@ -41,7 +42,7 @@ export default function useRefine({
   // Send the current card + an adjustment instruction, stream the diff,
   // swap in the merged card. One pipeline serves both the refine box and
   // the per-track ↻ swap buttons.
-  const refine = async (instruction?: string) => {
+  const refine = async (instruction?: string, kind: "typed" | "swap" = "typed") => {
     const theInstruction = (instruction ?? state.text).trim();
     if (!card || state.adjusting || blocked) return;
     if (!theInstruction) {
@@ -50,6 +51,7 @@ export default function useRefine({
     }
     dispatch({ type: "started" });
     announce("Changing the mixtape.");
+    track("refine_requested", { kind });
     let changeCount = 0;
     const controller = new AbortController();
     abortRef.current = controller;
@@ -94,12 +96,14 @@ export default function useRefine({
       announce(
         `Mixtape adjusted: ${changeCount} track${changeCount === 1 ? "" : "s"} changed.`
       );
+      track("refine_done", { kind, changes: changeCount });
       onCard(doneCard);
       dispatch({ type: "succeeded" });
     } catch (e) {
       // worded and announced apart from generate's on purpose: a refine
       // announces only a cap
       const failure = classifyRunFailure(e, navigator.onLine);
+      track(failure.kind === "aborted" ? "refine_stopped" : "refine_failed", { kind, reason: failure.kind });
       switch (failure.kind) {
         case "aborted":
           announce("Stopped.");
@@ -158,7 +162,8 @@ export default function useRefine({
     if (!card || state.adjusting || blocked) return;
     setSwapping(i);
     return refine(
-      `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`
+      `Replace track ${i + 1} (${t.artist} — ${t.title}) with a different track that fits the mixtape. Keep every other track exactly as it is.`,
+      "swap"
     );
   };
 

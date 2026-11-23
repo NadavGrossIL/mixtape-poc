@@ -1,7 +1,8 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { type MixCard } from "./types";
 import { reorderTracks, verifiedCount } from "./card";
 import { SHOW_LOGS } from "./debug";
+import { startAnalytics } from "./analytics";
 import useSession from "./hooks/useSession";
 import useLatestShelf from "./hooks/useLatestShelf";
 import useRecentMixtapes from "./hooks/useRecentMixtapes";
@@ -44,6 +45,10 @@ export default function App() {
   const latest = useLatestShelf();
   const recent = useRecentMixtapes();
   usePageView();
+  // analytics waits for /auth/status so the owner is never counted
+  useEffect(() => {
+    if (loggedIn !== null) startAnalytics({ owner: isOwner });
+  }, [loggedIn, isOwner]);
 
   // shared by several concerns below, so owned here: the prompt is typed
   // or picked from the chips; the card is made, refined,

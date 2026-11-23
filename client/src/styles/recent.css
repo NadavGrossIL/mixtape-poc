@@ -150,6 +150,8 @@
 }
 
 /* owner only: a quiet word, not a control strangers ever see */
+/* the rows' share and the owner's hide: a slim cell at the row's end */
+.row-share,
 .latest-hide {
   flex: none;
   font-family: "Space Mono", monospace;
@@ -162,6 +164,7 @@
   cursor: pointer;
 }
 
+.row-share:hover,
 .latest-hide:hover {
   color: var(--ink);
 }

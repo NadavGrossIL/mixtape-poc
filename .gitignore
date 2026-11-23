@@ -15,6 +15,7 @@ server/.usage.json*
 server/.metrics.json*
 server/.latest.json*
 server/.search-cache.json*
+server/shares/
 
 # Same reasoning for env files: `.env`, `.env.local`, `.env.production` and any
 # editor/tool sidecar. The example file is the one thing that must stay tracked.

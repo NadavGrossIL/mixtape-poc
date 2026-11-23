@@ -5,6 +5,7 @@ import { shareOrCopy } from "../share";
 import { trackListText } from "../card";
 import { bringIntoView } from "../bringIntoView";
 import { type MixCard } from "../types";
+import { track } from "../analytics";
 
 // What replaces the save button once the playlist exists: OPEN IN SPOTIFY,
 // the share button, and the editable-copy details with "copy song list".
@@ -71,6 +72,7 @@ export default function PressedPanel({
         copy: (t) => navigator.clipboard.writeText(t),
       },
     );
+    track("mixtape_shared", { outcome });
     if (outcome === "copied") {
       setCopied("share");
       announce("Link copied.");
@@ -94,7 +96,10 @@ export default function PressedPanel({
         rel="noopener noreferrer"
         className="btn-press pressed-open"
         aria-label="Open this mixtape in Spotify"
-        onClick={(e) => followSpotifyLink(e, playlistUrl)}
+        onClick={(e) => {
+          track("playlist_opened");
+          followSpotifyLink(e, playlistUrl);
+        }}
       >
         <SpotifyMark />
         OPEN IN SPOTIFY

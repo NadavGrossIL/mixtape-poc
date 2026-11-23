@@ -128,7 +128,8 @@ dev-only). Required env vars on the host:
 | `SPOTIFY_HOST_REFRESH_TOKEN` | the **Mixtape host account's** token — every mixtape is pressed into this account, public. Unset = the owner's account hosts them (fine for testing, not for sharing widely). See *Sharing* below |
 | `DATA_DIR` | optional — a writable directory for the counters (`.metrics.json`). Unset, they sit on the host's ephemeral disk and reset on every redeploy; point it at a Railway volume to keep the history |
 | `DAILY_GENERATIONS_PER_USER` | optional, default 25 — per-account generate/adjust cap (Anthropic spend and Spotify's daily quota are shared by everyone) |
-| `GUEST_DAILY_CAP` / `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 5 / 10 / 12 — caps for visitors who never connect Spotify: per guest cookie, per IP, and all guests together (the last one bounds the bill). Pressing a playlist is capped separately, at these numbers plus headroom (`server/pressCaps.ts`). All caps are in-memory: they refill on every restart or redeploy |
+| `GUEST_MIXTAPE_DAILY_CAP` / `GUEST_REFINE_DAILY_CAP` / `GUEST_REPLACE_DAILY_CAP` | optional, defaults 2 / 2 / 5 — what one visitor who never connects Spotify gets a day, per kind of run: a new mixtape, a typed refine, a one-song replace (`server/runCaps.ts`). Each runs out on its own and is refused in its own words |
+| `GUEST_IP_DAILY_CAP` / `GUEST_TOTAL_DAILY_CAP` | optional, defaults 20 / 12 — every guest run added up, per IP and for all guests together (the last one bounds the bill). Pressing a playlist is capped separately, at the guest total plus headroom (`server/pressCaps.ts`). All caps are in-memory: they refill on every restart or redeploy. `GUEST_DAILY_CAP` is no longer read |
 
 Also set `RAILWAY_DEPLOYMENT_DRAINING_SECONDS=30` on the service. On SIGTERM
 the server keeps open SSE streams alive for up to 25 s so in-flight runs

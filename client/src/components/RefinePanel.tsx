@@ -15,7 +15,7 @@ const cursor = (
 );
 
 export default function RefinePanel({ refine, jam = false }: { refine: Refine; jam?: boolean }) {
-  const { stage, log, error } = refine;
+  const { stage, log, error, errorTick } = refine;
   return (
     <div className="refine-area">
       {/* frames refine as the optional branch, so the accent save
@@ -74,7 +74,12 @@ export default function RefinePanel({ refine, jam = false }: { refine: Refine; j
         </div>
       )}
       {error && (
-        <ErrorAlert message={error.message} detail={error.detail} booked={error.booked} />
+        <ErrorAlert
+          message={error.message}
+          detail={error.detail}
+          booked={error.booked}
+          focusKey={errorTick}
+        />
       )}
     </div>
   );

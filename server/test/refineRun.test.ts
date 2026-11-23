@@ -26,6 +26,7 @@ test("started clears the error, stage and log but keeps the text", () => {
     stage: "resolving",
     log: [line(1)],
     error: { message: "x", detail: "d", booked: true },
+    errorTick: 1,
   };
   assert.deepStrictEqual(refineRun(before, { type: "started" }), {
     text: "less 80s",
@@ -33,6 +34,7 @@ test("started clears the error, stage and log but keeps the text", () => {
     stage: null,
     log: [],
     error: null,
+    errorTick: 1,
   });
 });
 
@@ -89,7 +91,17 @@ test("finished clears adjusting, stage and log but keeps the error and text", ()
     stage: null,
     log: [],
     error,
+    errorTick: 0,
   });
+});
+
+test("every failure bumps the tick, so the same line twice still scrolls into view", () => {
+  const error = { message: "capped", detail: null, booked: true };
+  const once = refineRun(running(), { type: "failed", error });
+  const twice = refineRun(once, { type: "failed", error });
+  assert.strictEqual(once.errorTick, 1);
+  assert.strictEqual(twice.errorTick, 2);
+  assert.strictEqual(refineRun(twice, { type: "reset" }).errorTick, 2);
 });
 
 test("reset clears the error and the text", () => {

@@ -59,7 +59,13 @@ export default function useRefine({
       const response = await fetch("/api/adjust/stream", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ card, adjustment: theInstruction }),
+        // `kind` picks which daily allowance the server spends
+        // (server/runCaps.ts): the ↻ replace button has its own
+        body: JSON.stringify({
+          card,
+          adjustment: theInstruction,
+          kind: kind === "swap" ? "replace" : "refine",
+        }),
         signal: controller.signal,
       });
       if (!response.ok) {
@@ -175,6 +181,7 @@ export default function useRefine({
     stage: state.stage,
     log: state.log,
     error: state.error,
+    errorTick: state.errorTick,
     inputRef,
     refine,
     swap,

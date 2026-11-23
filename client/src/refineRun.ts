@@ -11,7 +11,7 @@ export type RefineStage = "adjusting" | "resolving" | null;
 
 // What failed, shown under the refine box. `detail` is the server's own
 // words, under the friendly line; `booked`: the error is a cap, not a
-// fault. Refine has no failure tick: its alert never takes focus.
+// fault.
 export interface RefineError {
   message: string;
   detail: string | null;
@@ -24,6 +24,11 @@ export interface RefineState {
   stage: RefineStage;
   log: AdjustLogLine[];
   error: RefineError | null;
+  // Bumped on every failure, so the alert scrolls into view even when the
+  // same line lands twice in a row (a capped visitor tapping replace again);
+  // ErrorAlert's focusKey. A replace is tapped up in the track list, and the
+  // alert sits under the whole card — on a phone, off-screen. Never reset.
+  errorTick: number;
 }
 
 export type RefineAction =
@@ -43,6 +48,7 @@ export const refineIdle: RefineState = {
   stage: null,
   log: [],
   error: null,
+  errorTick: 0,
 };
 
 export function refineRun(state: RefineState, action: RefineAction): RefineState {
@@ -68,7 +74,7 @@ export function refineRun(state: RefineState, action: RefineAction): RefineState
     case "succeeded":
       return { ...state, text: "" };
     case "failed":
-      return { ...state, error: action.error };
+      return { ...state, error: action.error, errorTick: state.errorTick + 1 };
     // the run's `finally`: the log goes, the error stays on screen
     case "finished":
       return { ...state, adjusting: false, stage: null, log: [] };

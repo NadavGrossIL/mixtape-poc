@@ -25,7 +25,11 @@ file is a map. The reasoning lives next to the code as comments; read those.
   `quotaExceeded` off a caught value, so no route needs `catch (err: any)`) ·
   `wire.ts` the zod schema of the card on the wire and the one accent list;
   `/api/adjust/stream` parses the card it is sent with it · `test/`
-  unit tests (`node:test`). `pressCaps.ts` caps `/api/playlist`, the one paid
+  unit tests (`node:test`). `runCaps.ts` (2026-11-23) is the daily cap on
+  curator runs, per kind for guests (2 new mixtapes, 2 refines, 5 replaces,
+  each refused in its own words) under per-IP and all-guests totals; it
+  replaced `caps.ts`'s one shared allowance on the run routes, and
+  `caps.ts`'s `makeCaps` now only backs `pressCaps.ts`. `pressCaps.ts` caps `/api/playlist`, the one paid
   route reachable without the curator; `metrics.ts` is the per-day funnel
   (`makeMetrics({ dir, today })`, `DATA_DIR` or beside the code — an
   ephemeral disk resets it); `health.ts` decides what `/healthz` fails on

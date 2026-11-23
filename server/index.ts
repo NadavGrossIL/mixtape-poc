@@ -15,7 +15,8 @@ import * as usage from "./usage.ts";
 import { makeMetrics } from "./metrics.ts";
 import { healthBody, publicHealthBody } from "./health.ts";
 import { signUser, verifyUser, newAnonId, isAnon, SESSION_MAX_AGE_MS } from "./session.ts";
-import { makeCaps, today } from "./caps.ts";
+import { today } from "./caps.ts";
+import { guestTotal, makeRunCaps, type RunKind } from "./runCaps.ts";
 import { makePressCaps } from "./pressCaps.ts";
 import { makeSearchBudget } from "./searchBudget.ts";
 import { originAllowed, allowedOriginsFromUrls, isRemoteUrl } from "./httpOrigin.ts";
@@ -620,9 +621,12 @@ async function requireOwner(req: Request, res: Response): Promise<boolean> {
 
 // ── daily caps ───────────────────────────────────────────────
 
-// The reasoning and the counting live in caps.ts (pure, tested); this is
-// just the env wiring. Guests are cheap to mint, so the guest caps are what
-// bound the bill; the account cap is per allowlisted friend.
+// The reasoning and the counting live in runCaps.ts (pure, tested); this is
+// just the env wiring. A guest gets an allowance per kind of run (a new
+// mixtape, a typed refine, a one-song replace); guests are cheap to mint, so
+// the per-IP and all-guests totals are what bound the bill; the account cap
+// is per allowlisted friend. GUEST_DAILY_CAP (one shared allowance) is no
+// longer read.
 // The all-guests default is sized to Spotify's daily SEARCH quota, not to the
 // Anthropic bill: a run costs 8-30 searches against a few hundred a day, so a
 // higher ceiling here doesn't serve more people, it just trips the breaker
@@ -632,14 +636,20 @@ async function requireOwner(req: Request, res: Response): Promise<boolean> {
 // REQUEST_SEARCH_BUDGET below), so the number these caps are sized against is
 // the number actually enforced. It used to be an assumption the resolution
 // half never read — worst case ~44.
-const generationLimits = {
+const runLimits = {
+  guest: {
+    mixtape: Number(process.env.GUEST_MIXTAPE_DAILY_CAP) || 2,
+    refine: Number(process.env.GUEST_REFINE_DAILY_CAP) || 2,
+    replace: Number(process.env.GUEST_REPLACE_DAILY_CAP) || 5,
+  },
   perAccount: Number(process.env.DAILY_GENERATIONS_PER_USER) || 25,
-  perGuest: Number(process.env.GUEST_DAILY_CAP) || 5,
-  perIp: Number(process.env.GUEST_IP_DAILY_CAP) || 10,
+  // two guests' full allowance: people sharing one network (an office, a
+  // phone carrier's NAT) shouldn't refuse each other on the first visit
+  perIp: Number(process.env.GUEST_IP_DAILY_CAP) || 20,
   allGuests: Number(process.env.GUEST_TOTAL_DAILY_CAP) || 12,
 };
 
-const caps = makeCaps(generationLimits);
+const runCaps = makeRunCaps(runLimits);
 
 // Spotify searches one request may spend, across BOTH halves of it. 30 because
 // the curator loop keeps its own internal cap of 20 and resolution draws from
@@ -665,14 +675,21 @@ const MAX_SEED_NAME_CHARS = 200;
 // Pressing keeps a second, independent ledger derived from the same numbers.
 // /api/playlist is reachable without ever calling the curator, so the caps
 // above never see it; pressCaps.ts has the reasoning.
-const pressCaps = makePressCaps(generationLimits);
+// Its per-guest figure is every kind added up, so a guest who used all of
+// them can still save the last card.
+const pressCaps = makePressCaps({
+  perAccount: runLimits.perAccount,
+  perGuest: guestTotal(runLimits),
+  perIp: runLimits.perIp,
+  allGuests: runLimits.allGuests,
+});
 
-function capExceeded(user: string, req: Request): string | null {
-  return caps.refusal(user, String(req.ip), today());
+function capExceeded(user: string, req: Request, kind: RunKind): string | null {
+  return runCaps.refusal(user, String(req.ip), today(), kind);
 }
 
-function countGeneration(user: string, req: Request) {
-  caps.count(user, String(req.ip), today());
+function countGeneration(user: string, req: Request, kind: RunKind) {
+  runCaps.count(user, String(req.ip), today(), kind);
 }
 
 function pressExceeded(user: string, req: Request): string | null {
@@ -964,12 +981,12 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
   }
   const user = callerIdentity(req, res);
-  const refusal = capExceeded(user, req);
+  const refusal = capExceeded(user, req, "mixtape");
   if (refusal) {
     metrics.count("capped");
     return res.status(429).json({ error: refusal });
   }
-  countGeneration(user, req);
+  countGeneration(user, req, "mixtape");
   usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "generation");
   metrics.count("prompts");
   sseInit(res);
@@ -1082,7 +1099,7 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
   res.end();
 });
 
-// Streaming refine ("second chance"). Body: { card, adjustment } — the client's
+// Streaming refine ("second chance"). Body: { card, adjustment, kind? } — the client's
 // card is authoritative (the user may have drag-reordered it). Emits, in order:
 //   adjusting → change (per change, as Claude streams it) → adjusted (count)
 //   → resolving / resolved (changed indices only) → done (merged card) | error
@@ -1106,6 +1123,9 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
     return res.status(400).json({ error: "That card doesn't look like a mixtape." });
   }
   const card = parsedCard.data;
+  // which allowance this spends (runCaps.ts): the per-song replace button
+  // says "replace"; anything else, or nothing, is a typed refine
+  const kind: RunKind = req.body?.kind === "replace" ? "replace" : "refine";
   if (card.tracks.length === 0) {
     return res.status(400).json({ error: "Missing card or adjustment" });
   }
@@ -1121,12 +1141,12 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
       .json({ error: "ANTHROPIC_API_KEY is not configured on the server." });
   }
   const user = callerIdentity(req, res);
-  const refusal = capExceeded(user, req);
+  const refusal = capExceeded(user, req, kind);
   if (refusal) {
     metrics.count("capped");
     return res.status(429).json({ error: refusal });
   }
-  countGeneration(user, req);
+  countGeneration(user, req, kind);
   usage.record(user, isAnon(user) ? "guest" : spotify.getDisplayName(user), "adjust");
   metrics.count("adjusts");
   sseInit(res);

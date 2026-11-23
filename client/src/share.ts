@@ -30,3 +30,19 @@ export async function shareOrCopy(
     return "failed";
   }
 }
+
+// The link a share sends: this mixtape's own page on Mixtape (/m/<playlist
+// id>, server/shares.ts), so the friend sees the card, not a bare Spotify
+// URL. Anything that isn't a Spotify playlist link is passed through as is.
+const PLAYLIST_URL_RE = /^https:\/\/open\.spotify\.com\/playlist\/([A-Za-z0-9]{22})(?:[?#/]|$)/;
+
+export function shareUrlFor(spotifyUrl: string, origin: string): string {
+  const m = PLAYLIST_URL_RE.exec(spotifyUrl);
+  return m ? `${origin}/m/${m[1]}` : spotifyUrl;
+}
+
+// The playlist id when this page IS a share page, else null.
+export function sharedIdFrom(pathname: string): string | null {
+  const m = /^\/m\/([A-Za-z0-9]{22})\/?$/.exec(pathname);
+  return m ? m[1]! : null;
+}

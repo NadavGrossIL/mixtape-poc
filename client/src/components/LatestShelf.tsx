@@ -1,5 +1,6 @@
 import SpotifyMark from "./SpotifyMark";
 import { followSpotifyLink } from "../spotifyLink";
+import ShareButton from "./ShareButton";
 import { pressedAgo, shelfFor, type LatestMixtape } from "../latest";
 
 // "fresh off the press": everyone's newest presses, minus the ones this
@@ -45,6 +46,12 @@ export default function LatestShelf({
                 {pressedAgo(m.pressedAt, shelfNow)}
               </span>
             </a>
+            <ShareButton
+              title={m.title}
+              spotifyUrl={m.url}
+              where="latest"
+              className="row-share"
+            />
             {isOwner && (
               <button
                 type="button"

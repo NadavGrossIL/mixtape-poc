@@ -1,5 +1,6 @@
 import SpotifyMark from "./SpotifyMark";
 import { followSpotifyLink } from "../spotifyLink";
+import ShareButton from "./ShareButton";
 import { type RecentMixtape } from "../recent";
 
 // "your mixtapes": this browser's presses, newest first, the rest behind a
@@ -34,12 +35,12 @@ export default function RecentMixtapes({
       </div>
       <ul className="recent-list">
         {(showAll ? recent : recent.slice(0, RECENT_SHOWN)).map((m) => (
-          <li key={m.url}>
+          <li key={m.url} className="latest-item">
             <a
               href={m.url}
               target="_blank"
               rel="noopener noreferrer"
-              className="recent-row"
+              className="recent-row latest-row"
               aria-label={`${m.title} (opens Spotify)`}
               onClick={(e) => followSpotifyLink(e, m.url)}
             >
@@ -49,6 +50,12 @@ export default function RecentMixtapes({
                 open ↗
               </span>
             </a>
+            <ShareButton
+              title={m.title}
+              spotifyUrl={m.url}
+              where="recent"
+              className="row-share"
+            />
           </li>
         ))}
       </ul>

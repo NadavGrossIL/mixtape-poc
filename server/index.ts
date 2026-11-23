@@ -23,6 +23,16 @@ import { parseTrackUris } from "./trackUris.ts";
 import { WireCardSchema } from "./wire.ts";
 import { playlistDescription, cleanVibe } from "./playlistDescription.ts";
 import { makeLatest, makeVouches } from "./latest.ts";
+import {
+  makeShares,
+  makeTrustedCards,
+  toShareCard,
+  adjustedShareCard,
+  cardForPress,
+  shareMeta,
+  withShareMeta,
+  PLAYLIST_ID_RE,
+} from "./shares.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
 import { makeOutageTracker } from "./outage.ts";
@@ -79,6 +89,11 @@ const latest = makeLatest({ dir: process.env.DATA_DIR || import.meta.dirname });
 // ...and only for cards the curator wrote here (latest.ts says why). The key
 // is the title and vibe exactly as the press would write them.
 const curatedCards = makeVouches();
+// The share page, /m/<id> (shares.ts): the curator's own copy of each card,
+// by the same key, and the pressed ones on disk. Only these are ever shown
+// there — never a card a browser sent.
+const trustedCards = makeTrustedCards();
+const shares = makeShares({ dir: process.env.DATA_DIR || import.meta.dirname });
 function shelfKey(title: unknown, vibe: unknown): string {
   return `${spotify.sanitizePlaylistName(title)}\n${cleanVibe(vibe)}`;
 }
@@ -855,6 +870,25 @@ app.get("/api/latest", (_req, res) => {
   res.json({ mixtapes: latest.list() });
 });
 
+// One pressed mixtape, for its share page (/m/<id>, shares.ts). Public: the
+// playlist already is. The curator's copy of the card when we kept one,
+// else the shelf entry (title + vibe, no tracks), else 404.
+function sharedMixtape(id: string) {
+  if (!PLAYLIST_ID_RE.test(id)) return null;
+  const url = `https://open.spotify.com/playlist/${id}`;
+  const card = shares.get(id);
+  if (card) return { ...card, id, url };
+  const entry = latest.list().find((m) => m.id === id);
+  if (entry) return { title: entry.title, vibe: entry.vibe, accent: "ember", tracks: [], id, url };
+  return null;
+}
+
+app.get("/api/mixtape/:id", (req, res) => {
+  const mixtape = sharedMixtape(req.params.id);
+  if (!mixtape) return res.status(404).json({ error: "No such mixtape." });
+  res.json({ mixtape });
+});
+
 // Owner moderation: take one off the shelf. The playlist itself stays —
 // deleting or privatizing it would revoke it from every library that saved
 // it (.claude/rules/spotify.md).
@@ -862,6 +896,8 @@ app.post("/api/latest/hide", sameOriginOnly, async (req, res) => {
   if (!(await requireOwner(req, res))) return;
   const id = String(req.body?.id || "");
   const hidden = latest.hide(id);
+  // hiding is the moderation tool, so it takes the share page down too
+  shares.remove(id);
   if (hidden) console.log(`[latest] owner hid ${id}`);
   res.json({ hidden, mixtapes: latest.list() });
 });
@@ -1006,6 +1042,7 @@ app.post("/api/generate/stream", sameOriginOnly, async (req, res) => {
     );
     metrics.count("generated");
     curatedCards.add(shelfKey(card.title, card.vibe));
+    trustedCards.add(shelfKey(card.title, card.vibe), toShareCard(card));
     sseSend(res, "done", { card, verified });
   } catch (err) {
     if (abort.signal.aborted) {
@@ -1160,6 +1197,16 @@ app.post("/api/adjust/stream", sameOriginOnly, async (req, res) => {
     if (curatedCards.has(shelfKey(card.title, card.vibe)) || (diff.title != null && diff.vibe != null)) {
       curatedCards.add(shelfKey(merged.title, merged.vibe));
     }
+    // The share page's copy is built from the trusted parent plus the tracks
+    // rewritten just now — not from the tracks the browser sent (shares.ts).
+    trustedCards.add(
+      shelfKey(merged.title, merged.vibe),
+      adjustedShareCard(
+        trustedCards.get(shelfKey(card.title, card.vibe)),
+        merged,
+        new Set(diff.changes.map((c) => c.index))
+      )
+    );
     sseSend(res, "done", {
       card: merged,
       verified: tracks.filter((t) => t.resolved).length,
@@ -1253,6 +1300,10 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
     try {
       if (curatedCards.has(shelfKey(title, req.body?.vibe))) {
         latest.record({ id, title: name, vibe: cleanVibe(req.body?.vibe) });
+        // its share page, when the curator's copy lists exactly these tracks
+        const shared = cardForPress(trustedCards.get(shelfKey(title, req.body?.vibe)), uris);
+        if (shared) shares.record(id, { ...shared, title: name });
+        else console.log(`[shares] ${id} has no page — no curator copy matches these tracks`);
       } else {
         console.log(`[latest] ${id} not listed — not a card this server curated`);
       }
@@ -1292,6 +1343,16 @@ app.post("/api/playlist", sameOriginOnly, async (req, res) => {
 // (no CORS, relative fetches keep working). Registered last: API routes win.
 const CLIENT_DIST = path.join(import.meta.dirname, "..", "client", "dist");
 if (fs.existsSync(path.join(CLIENT_DIST, "index.html"))) {
+  // The share page: the same app, with index.html's title and link-preview
+  // tags rewritten for this mixtape, because crawlers don't run JS.
+  const indexHtml = fs.readFileSync(path.join(CLIENT_DIST, "index.html"), "utf8");
+  app.get("/m/:id", (req, res) => {
+    const mixtape = sharedMixtape(req.params.id);
+    res.setHeader("Cache-Control", "no-cache");
+    if (!mixtape) return res.status(404).type("html").send(indexHtml);
+    const url = `${req.protocol}://${req.get("host")}/m/${mixtape.id}`;
+    res.type("html").send(withShareMeta(indexHtml, shareMeta(mixtape), url));
+  });
   app.use(express.static(CLIENT_DIST));
   app.get("*", (_req, res) => res.sendFile(path.join(CLIENT_DIST, "index.html")));
 }

@@ -72,6 +72,30 @@
   border-color: var(--ink-faint);
 }
 
+/* the second action beside a .btn-press: same weight of type, outlined in
+   the accent instead of filled, so the primary stays the primary */
+.btn-share {
+  font-family: "Archivo Black", sans-serif;
+  font-size: var(--fs-sm);
+  letter-spacing: 1px;
+  background: transparent;
+  color: var(--ink);
+  border: 2px solid var(--accent);
+  border-radius: 4px;
+  padding: 10px 20px;
+  min-height: 48px;
+  cursor: pointer;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s ease;
+}
+
+.btn-share:hover {
+  background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
 .progress-log {
   display: flex;
   flex-direction: column;

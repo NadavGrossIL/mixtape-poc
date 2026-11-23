@@ -1,15 +1,15 @@
 import { useEffect, useRef, useState } from "react";
 import SpotifyMark from "./SpotifyMark";
 import { followSpotifyLink } from "../spotifyLink";
-import { shareOrCopy } from "../share";
+import ShareButton from "./ShareButton";
 import { trackListText } from "../card";
 import { bringIntoView } from "../bringIntoView";
 import { type MixCard } from "../types";
 import { track } from "../analytics";
 
 // What replaces the save button once the playlist exists: OPEN IN SPOTIFY,
-// the share button, and the editable-copy details with "copy song list".
-// It owns the "copied ✓" label state and both clipboard handlers, and on
+// the share button (ShareButton.tsx), and the editable-copy details with "copy song list".
+// It owns the song list's "copied ✓" label state and its clipboard handler, and on
 // mount brings itself into view with focus on OPEN IN SPOTIFY.
 //
 // `copied` is local because every reset it used to get in App ("make
@@ -26,7 +26,7 @@ export default function PressedPanel({
   card: MixCard;
   announce: (line: string) => void;
 }) {
-  const [copied, setCopied] = useState<"tracks" | "share" | null>(null);
+  const [copied, setCopied] = useState<"tracks" | null>(null);
   const pressedRef = useRef<HTMLDivElement | null>(null);
   const pressedOpenRef = useRef<HTMLAnchorElement | null>(null);
 
@@ -61,28 +61,6 @@ export default function PressedPanel({
     }
   };
 
-  // Native share sheet where there is one; otherwise the same clipboard path
-  // "copy link" uses. The decision (and the "dismissed is not a copy" rule)
-  // lives in share.ts so it is unit-tested; this is only the DOM edge.
-  const shareMixtape = async () => {
-    const outcome = await shareOrCopy(
-      { title: card.title, url: playlistUrl },
-      {
-        share: navigator.share ? navigator.share.bind(navigator) : undefined,
-        copy: (t) => navigator.clipboard.writeText(t),
-      },
-    );
-    track("mixtape_shared", { outcome });
-    if (outcome === "copied") {
-      setCopied("share");
-      announce("Link copied.");
-      setTimeout(() => setCopied((c) => (c === "share" ? null : c)), 1800);
-    } else if (outcome === "failed") {
-      announce("Couldn't copy — select it by hand.");
-    }
-    // "shared" / "dismissed": the sheet was the feedback — nothing to report
-  };
-
   return (
     <div className="pressed" ref={pressedRef}>
       {/* the one primary action after pressing: open it. The https
@@ -109,19 +87,18 @@ export default function PressedPanel({
           ? "Saved — it’s in your Spotify library."
           : "Your playlist is ready. Open it and tap + to add it to your library."}
       </div>
-      <div className="pressed-actions">
-        {/* one button, not "copy link" + "share": with no share
-            sheet (a desktop) share IS a copy, so the pair was the
-            same action twice */}
-        <button
-          type="button"
-          className="btn-ghost"
-          aria-label="Share this mixtape"
-          onClick={shareMixtape}
-        >
-          {copied === "share" ? "copied ✓" : "share"}
-        </button>
-      </div>
+      {/* share sits right under open, as a full-width button: it was a
+          small ghost button and people didn't find it. It sends the
+          mixtape's own page (/m/<id>), not the Spotify link. */}
+      <ShareButton
+        title={card.title}
+        spotifyUrl={playlistUrl}
+        where="pressed"
+        className="btn-share pressed-share"
+        label="SHARE THIS MIXTAPE"
+        ariaLabel="Share this mixtape"
+        announce={announce}
+      />
       {/* no embedded player here (removed 2026-09-08): it repeated
           the track list above, ran 352px tall on a phone, and its
           one unique control — the save heart — needs a Spotify

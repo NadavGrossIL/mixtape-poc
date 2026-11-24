@@ -28,8 +28,16 @@
 // Stored one file per playlist under <dir>/shares/, so a press writes one
 // small file and a page view reads one; the id is checked against Spotify's
 // 22-char shape before it is ever a path. Same DATA_DIR story as metrics.ts.
+//
+// A jam set (card.mode "jam") can also be shared WITHOUT a Spotify save
+// (POST /api/share): same rule — only the curator's own card, only when its
+// verified tracks are exactly the ones on screen (shareSetDecision) — under a
+// 23-char id derived from the card itself (setShareId). 23, so it can never
+// be a playlist id, and the page never builds a Spotify playlist link from
+// it; derived, so sharing one set twice writes one file, not two.
 
 import fs from "node:fs";
+import crypto from "node:crypto";
 import path from "node:path";
 import { errorMessage } from "./errors.ts";
 
@@ -50,9 +58,16 @@ export type ShareCard = {
   vibe: string;
   accent: string;
   tracks: ShareTrack[];
+  // only ever "jam", and absent on a mixtape, so a mix share file is
+  // byte-for-byte what it was before jam sets existed
+  mode?: "jam";
 };
 
 export const PLAYLIST_ID_RE = /^[A-Za-z0-9]{22}$/;
+// a set shared without a Spotify save (setShareId); one longer than a
+// playlist id, so the two shapes never overlap
+export const SET_ID_RE = /^[A-Za-z0-9]{23}$/;
+const SHARE_ID_RE = /^[A-Za-z0-9]{22,23}$/;
 const SPOTIFY_URL_RE = /^https:\/\/open\.spotify\.com\//;
 const ART_RE = /^https:\/\/[a-z0-9-]+\.scdn\.co\//;
 const TRACK_URI_RE = /^spotify:track:[A-Za-z0-9]{22}$/;
@@ -108,6 +123,7 @@ export function toShareCard(value: unknown): ShareCard | null {
     vibe: str(c.vibe, 200),
     accent: match(c.accent, ACCENT_RE) ?? "ember",
     tracks,
+    ...(c.mode === "jam" ? { mode: "jam" as const } : {}),
   };
 }
 
@@ -123,9 +139,13 @@ export function adjustedShareCard(
   if (!parent) return null;
   const next = toShareCard(merged);
   if (!next || next.tracks.length !== parent.tracks.length) return null;
+  // the mode is the parent's too: `merged` started as the browser's card, and
+  // a forged mode would make a mixtape shareable through /api/share
+  const { mode: _browsers, ...rest } = next;
   return {
-    ...next,
+    ...rest,
     tracks: next.tracks.map((t, i) => (changed.has(i) ? t : parent.tracks[i]!)),
+    ...(parent.mode === "jam" ? { mode: "jam" as const } : {}),
   };
 }
 
@@ -138,6 +158,58 @@ export function cardForPress(card: ShareCard | undefined, uris: readonly string[
   if (verified.length !== uris.length) return null;
   if (verified.some((t, i) => t.spotifyUri !== uris[i])) return null;
   return { ...card, tracks: verified };
+}
+
+// A set's share id: base62 of the sha256 of its share card, first 23 chars.
+// Deterministic, so one card is one file however often it is shared.
+const BASE62 = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
+export function setShareId(card: ShareCard): string {
+  let n = BigInt("0x" + crypto.createHash("sha256").update(JSON.stringify(card)).digest("hex"));
+  let out = "";
+  while (n > 0n) {
+    out = BASE62[Number(n % 62n)]! + out;
+    n /= 62n;
+  }
+  // 2^256 is 43 base62 digits; a small hash is zero-padded, never short
+  return out.padStart(43, "0").slice(0, 23);
+}
+
+// POST /api/share's decision (index.ts): the curator's own copy of this card,
+// its verified tracks exactly the uris on screen, and a jam set — a mixtape
+// keeps save-then-share. The body's title and vibe are only the lookup key;
+// the page shows the trusted card, never them.
+export const SET_GONE = "This set can't be shared — make it again.";
+export function shareSetDecision(
+  trusted: ShareCard | undefined,
+  uris: readonly string[],
+): { card: ShareCard; id: string } | { status: 400 | 404; error: string } {
+  // The original order is the id: one file per set, however it is reshuffled.
+  const canonical = trusted ? cardForPress(trusted, verifiedUris(trusted)) : null;
+  const card = cardInOrder(trusted, uris);
+  if (!card || !canonical) return { status: 404, error: SET_GONE };
+  if (card.mode !== "jam") return { status: 400, error: "Only a jam set can be shared without saving it." };
+  return { card, id: setShareId(canonical) };
+}
+
+const verifiedUris = (card: ShareCard) =>
+  card.tracks.filter((t) => t.resolved && t.spotifyUri).map((t) => t.spotifyUri as string);
+
+// The card's verified tracks in the order the visitor has them on screen. A
+// jam card invites a reshuffle (drag ⋮⋮), so unlike the press, which must
+// match the playlist exactly, a share accepts any order of the SAME verified
+// tracks — still only the curator's words, just in the band's order. A uri
+// that isn't on the card, one missing, or one twice gets nothing.
+export function cardInOrder(card: ShareCard | undefined, uris: readonly string[]): ShareCard | null {
+  if (!card) return null;
+  const byUri = new Map(card.tracks.filter((t) => t.resolved && t.spotifyUri).map((t) => [t.spotifyUri as string, t]));
+  if (byUri.size !== uris.length || new Set(uris).size !== uris.length) return null;
+  const tracks: ShareTrack[] = [];
+  for (const u of uris) {
+    const t = byUri.get(u);
+    if (!t) return null;
+    tracks.push(t);
+  }
+  return { ...card, tracks };
 }
 
 // The curator's cards by the shelf key (title + vibe as pressed), in memory
@@ -163,7 +235,7 @@ export function makeShares({ dir }: { dir: string }) {
   const fileFor = (id: string) => path.join(folder, `${id}.json`);
 
   function record(id: string, card: ShareCard): void {
-    if (!PLAYLIST_ID_RE.test(id)) return;
+    if (!SHARE_ID_RE.test(id)) return;
     try {
       fs.mkdirSync(folder, { recursive: true, mode: 0o700 });
       const file = fileFor(id);
@@ -179,7 +251,7 @@ export function makeShares({ dir }: { dir: string }) {
   }
 
   function get(id: string): ShareCard | null {
-    if (!PLAYLIST_ID_RE.test(id)) return null;
+    if (!SHARE_ID_RE.test(id)) return null;
     try {
       return toShareCard(JSON.parse(fs.readFileSync(fileFor(id), "utf8")));
     } catch {
@@ -188,7 +260,7 @@ export function makeShares({ dir }: { dir: string }) {
   }
 
   function remove(id: string): void {
-    if (!PLAYLIST_ID_RE.test(id)) return;
+    if (!SHARE_ID_RE.test(id)) return;
     fs.rmSync(fileFor(id), { force: true });
   }
 
@@ -210,7 +282,7 @@ export function escapeHtml(s: string): string {
     .replace(/'/g, "&#39;");
 }
 
-export function shareMeta(m: { title: string; vibe: string; tracks?: { artist: string }[] }): {
+export function shareMeta(m: { title: string; vibe: string; tracks?: { artist: string }[]; mode?: string }): {
   title: string;
   description: string;
 } {
@@ -220,7 +292,10 @@ export function shareMeta(m: { title: string; vibe: string; tracks?: { artist: s
   const withArtists = artists.length ? ` — ${artists.join(", ")} and more.` : m.vibe ? "" : ".";
   return {
     title: `${m.title} — a Mixtape`,
-    description: `${lead}${withArtists} Listen on Spotify, or make your own.`,
+    description:
+      m.mode === "jam"
+        ? `${lead}${withArtists} A jam set — chords and lyrics for every song, or make your own.`
+        : `${lead}${withArtists} Listen on Spotify, or make your own.`,
   };
 }
 

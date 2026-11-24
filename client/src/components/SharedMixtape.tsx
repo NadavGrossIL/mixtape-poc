@@ -14,7 +14,12 @@ import { type MixCard } from "../types";
 // share it on, and "make your own" back to the front page. A mixtape pressed
 // before share pages existed has only its shelf entry (title + vibe, no
 // tracks), so that shows as a title block instead of a card.
-type Shared = MixCard & { id: string; url: string };
+//
+// A jam set shows as its Taped Setlist card, chips and all, read-only. One
+// shared without a Spotify save (a 23-char id) has no playlist: `url` is
+// null, so there is no OPEN IN SPOTIFY — each row's own Spotify chip still
+// opens its track — and the share button sends this page's own link.
+type Shared = MixCard & { id: string; url: string | null };
 
 export default function SharedMixtape({ id }: { id: string }) {
   const { loggedIn, isOwner } = useSession();
@@ -56,7 +61,9 @@ export default function SharedMixtape({ id }: { id: string }) {
         )}
         {typeof state === "object" && (
           <div className="card-wrap">
-            <div className="shared-kicker">someone made you a mixtape</div>
+            <div className="shared-kicker">
+              {state.mode === "jam" ? "someone made you a jam set" : "someone made you a mixtape"}
+            </div>
             {state.tracks.length > 0 ? (
               <MixtapeCard
                 card={state}
@@ -74,23 +81,27 @@ export default function SharedMixtape({ id }: { id: string }) {
               </div>
             )}
             <div className="pressed">
-              <a
-                href={state.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="btn-press pressed-open"
-                aria-label="Open this mixtape in Spotify"
-                onClick={(e) => {
-                  track("playlist_opened", { where: "page" });
-                  followSpotifyLink(e, state.url);
-                }}
-              >
-                <SpotifyMark />
-                OPEN IN SPOTIFY
-              </a>
+              {state.url && (
+                <a
+                  href={state.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="btn-press pressed-open"
+                  aria-label="Open this mixtape in Spotify"
+                  onClick={(e) => {
+                    track("playlist_opened", { where: "page" });
+                    if (state.url) followSpotifyLink(e, state.url);
+                  }}
+                >
+                  <SpotifyMark />
+                  OPEN IN SPOTIFY
+                </a>
+              )}
               <ShareButton
                 title={state.title}
-                spotifyUrl={state.url}
+                {...(state.url
+                  ? { spotifyUrl: state.url }
+                  : { url: `${window.location.origin}/m/${state.id}`, kind: "set" as const })}
                 where="page"
                 className="btn-share pressed-share"
                 label="SHARE IT ON"
@@ -102,7 +113,9 @@ export default function SharedMixtape({ id }: { id: string }) {
                 href="/"
                 onClick={() => track("shared_make_own")}
               >
-                make your own mixtape →
+                {/* not "make your own set": jam mode is invite-only, so most friends
+                    who tap this land on the mixtape maker — say what they'll get */}
+                {"make your own mixtape →"}
               </a>
             </div>
           </div>

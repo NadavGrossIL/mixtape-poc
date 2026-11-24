@@ -33,7 +33,9 @@ import {
   cardForPress,
   shareMeta,
   withShareMeta,
+  shareSetDecision,
   PLAYLIST_ID_RE,
+  SET_ID_RE,
 } from "./shares.ts";
 import { makeGateThrottle } from "./gateThrottle.ts";
 import { drain } from "./drain.ts";
@@ -205,8 +207,8 @@ app.use((req, res, next) => {
 // ── cross-site guard ─────────────────────────────────────────
 
 // Applied to the state-changing POSTs: the two paid streams, the playlist
-// write and the view beacon. Without it, a plain <form> on someone else's page
-// could drive all four — no preflight, no CORS check, and SameSite=Lax buys
+// write, the set share and the view beacon. Without it, a plain <form> on
+// someone else's page could drive any of them — no preflight, no CORS check, and SameSite=Lax buys
 // nothing because none of them need an existing session (callerIdentity mints
 // a guest cookie for whoever asks). The rule and its trade-offs live in
 // httpOrigin.ts; this is the wiring and the 403.
@@ -945,7 +947,16 @@ app.get("/api/latest", (_req, res) => {
 // One pressed mixtape, for its share page (/m/<id>, shares.ts). Public: the
 // playlist already is. The curator's copy of the card when we kept one,
 // else the shelf entry (title + vibe, no tracks), else 404.
+//
+// A 23-char id is a jam set shared without saving (POST /api/share): there
+// is no playlist, so `url` is null — never a Spotify link built from it —
+// and no shelf entry to fall back on. Viewing one needs no jam access: it
+// costs nothing.
 function sharedMixtape(id: string) {
+  if (SET_ID_RE.test(id)) {
+    const card = shares.get(id);
+    return card ? { ...card, id, url: null } : null;
+  }
   if (!PLAYLIST_ID_RE.test(id)) return null;
   const url = `https://open.spotify.com/playlist/${id}`;
   const card = shares.get(id);
@@ -959,6 +970,26 @@ app.get("/api/mixtape/:id", (req, res) => {
   const mixtape = sharedMixtape(req.params.id);
   if (!mixtape) return res.status(404).json({ error: "No such mixtape." });
   res.json({ mixtape });
+});
+
+// Share a jam set without saving it to Spotify: its page at /m/<23-char id>.
+// Body: { title, vibe, uris } — the same inputs as the press, the uris the
+// card's verified tracks in the order on screen. Only the curator's own copy
+// of the card is ever written (shareSetDecision, shares.ts); title and vibe
+// are the lookup key and nothing more. No model call and no Spotify call, so
+// nothing is counted against the caps, and nothing goes on the shelf (that
+// lists public playlists, and this is not one). The id is derived from the
+// card, so one card is one file however often it is shared.
+app.post("/api/share", sameOriginOnly, (req, res) => {
+  const uris = parseTrackUris(req.body?.uris);
+  if (typeof req.body?.title !== "string" || !uris) {
+    return res.status(400).json({ error: "Missing title or valid track uris" });
+  }
+  const decision = shareSetDecision(trustedCards.get(shelfKey(req.body.title, req.body?.vibe)), uris);
+  if ("error" in decision) return res.status(decision.status).json({ error: decision.error });
+  shares.record(decision.id, decision.card);
+  console.log(`[shares] set shared → ${decision.id}`);
+  res.json({ id: decision.id, url: `${req.protocol}://${req.get("host")}/m/${decision.id}` });
 });
 
 // Owner moderation: take one off the shelf. The playlist itself stays —

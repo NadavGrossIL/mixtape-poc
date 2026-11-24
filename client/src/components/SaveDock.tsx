@@ -1,8 +1,13 @@
+import { type ReactNode } from "react";
 import SpotifyMark from "./SpotifyMark";
 
 // The save button in its sticky dock, and the notes under it: not on
 // Spotify yet, no login needed, and how many unverified songs stay off.
 // Presentational: the save run lives in useSave.
+//
+// On a jam card the button says both things the press does — save, and the
+// share page it makes — and `extra` (the share-without-saving button) sits
+// right under the dock. A mixtape passes neither and renders as it always did.
 export default function SaveDock({
   saving,
   stage,
@@ -11,6 +16,8 @@ export default function SaveDock({
   disabled,
   loggedIn,
   onSave,
+  jam = false,
+  extra,
 }: {
   saving: boolean;
   stage: string | null;
@@ -19,6 +26,8 @@ export default function SaveDock({
   disabled: boolean;
   loggedIn: boolean | null;
   onSave: () => void;
+  jam?: boolean;
+  extra?: ReactNode;
 }) {
   const unverified = total - verified;
   return (
@@ -37,11 +46,16 @@ export default function SaveDock({
           {!saving && <SpotifyMark />}
           {saving
             ? stage || "SAVING…"
-            : unverified === 0
-              ? "SAVE AS A SPOTIFY PLAYLIST"
-              : `SAVE ${verified} OF ${total} SONGS TO SPOTIFY`}
+            : jam
+              ? unverified === 0
+                ? "Save to Spotify & share"
+                : `Save ${verified} of ${total} to Spotify & share`
+              : unverified === 0
+                ? "SAVE AS A SPOTIFY PLAYLIST"
+                : `SAVE ${verified} OF ${total} SONGS TO SPOTIFY`}
         </button>
       </div>
+      {extra}
       {/* what a stranger wonders at this button: is it on Spotify
           already (no — a card looked like a finished playlist to
           the person who built the app), will it ask for my login.

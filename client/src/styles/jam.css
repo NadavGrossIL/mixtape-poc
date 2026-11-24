@@ -522,3 +522,26 @@
   background: transparent;
   transform: none;
 }
+
+/* ── a jam set's second way out (App.tsx): its page, without a Spotify save.
+   Right under the save dock, in flow (the dock is sticky; two buttons riding
+   the screen would cover a row), outlined so the save stays the primary. ── */
+.jam-share-set {
+  width: 100%;
+  max-width: 360px;
+  margin-top: 4px;
+}
+
+@media (max-width: 520px) {
+  .jam-share-set {
+    font-size: var(--fs-xs);
+    letter-spacing: 0.5px;
+    padding-inline: 12px;
+  }
+}
+
+/* the link itself, when the sheet and the clipboard both refused it */
+.jam-share-link a {
+  color: var(--ink-dim);
+  word-break: break-all;
+}

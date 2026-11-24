@@ -99,8 +99,8 @@ export default function PressedPanel({
         spotifyUrl={playlistUrl}
         where="pressed"
         className="btn-share pressed-share"
-        label="SHARE THIS MIXTAPE"
-        ariaLabel="Share this mixtape"
+        label={card.mode === "jam" ? "Share the set" : "SHARE THIS MIXTAPE"}
+        ariaLabel={card.mode === "jam" ? "Share this set" : "Share this mixtape"}
         announce={announce}
       />
       {/* no embedded player here (removed 2026-09-08): it repeated

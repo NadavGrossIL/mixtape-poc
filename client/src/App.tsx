@@ -17,6 +17,7 @@ import useSave from "./hooks/useSave";
 import useGeneration from "./hooks/useGeneration";
 import useRefine from "./hooks/useRefine";
 import useUnsavedCardGuard from "./hooks/useUnsavedCardGuard";
+import useShareSet from "./hooks/useShareSet";
 import SiteHeader from "./components/SiteHeader";
 import Composer from "./components/Composer";
 import ErrorAlert from "./components/ErrorAlert";
@@ -31,6 +32,7 @@ import MixtapeCard from "./components/MixtapeCard";
 import RefinePanel from "./components/RefinePanel";
 import SaveDock from "./components/SaveDock";
 import PressedPanel from "./components/PressedPanel";
+import ShareButton from "./components/ShareButton";
 import LogConsole from "./components/LogConsole";
 
 // The one screen, as a composition root: it owns what several concerns
@@ -135,6 +137,9 @@ export default function App() {
     onCard: setCard,
   });
 
+  // a jam set's other way out: its page, without a Spotify save
+  const shareSet = useShareSet({ card });
+
   // a card on screen that no playlist was pressed from: leaving asks first
   // (useUnsavedCardGuard), and so does "make another one"
   const unsavedCard = Boolean(card) && !save.playlistUrl;
@@ -148,6 +153,7 @@ export default function App() {
     setCard(null);
     save.reset();
     refine.reset();
+    shareSet.reset();
   };
 
   // the composer's MAKE THE MIXTAPE; not while a refine is in flight (the
@@ -344,7 +350,34 @@ export default function App() {
                 disabled={save.saving || refine.adjusting}
                 loggedIn={loggedIn}
                 onSave={save.save}
+                jam={card.mode === "jam"}
+                extra={
+                  card.mode === "jam" && (
+                    <ShareButton
+                      title={card.title}
+                      url={shareSet.link}
+                      kind="set"
+                      where="card"
+                      className="btn-share jam-share-set"
+                      label="Share the set — no Spotify needed"
+                      ariaLabel="Share the set — no Spotify needed"
+                      announce={setAnnounce}
+                      disabled={save.saving || refine.adjusting}
+                      onOutcome={(outcome, url) => shareSet.showUrl(outcome === "failed" ? url : null)}
+                    />
+                  )
+                }
               />
+            )}
+            {/* the link itself, when neither the share sheet nor the
+                clipboard would take it: select it by hand */}
+            {!save.playlistUrl && shareSet.shownUrl && (
+              <div className="save-note jam-share-link">
+                <a href={shareSet.shownUrl}>{shareSet.shownUrl}</a>
+              </div>
+            )}
+            {!save.playlistUrl && shareSet.error && (
+              <ErrorAlert message={shareSet.error} booked={false} focusKey={shareSet.errorTick} />
             )}
             {save.playlistUrl && (
               <PressedPanel

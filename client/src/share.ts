@@ -41,8 +41,9 @@ export function shareUrlFor(spotifyUrl: string, origin: string): string {
   return m ? `${origin}/m/${m[1]}` : spotifyUrl;
 }
 
-// The playlist id when this page IS a share page, else null.
+// The share id when this page IS a share page, else null: a playlist id
+// (22 chars), or a jam set shared without saving it (23, server/shares.ts).
 export function sharedIdFrom(pathname: string): string | null {
-  const m = /^\/m\/([A-Za-z0-9]{22})\/?$/.exec(pathname);
+  const m = /^\/m\/([A-Za-z0-9]{22,23})\/?$/.exec(pathname);
   return m ? m[1]! : null;
 }

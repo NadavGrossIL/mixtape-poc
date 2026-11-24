@@ -1,0 +1,30 @@
+{
+  "name": "jam-share",
+  "base": "http://127.0.0.1:8889",
+  "viewport": "phone",
+  "fixture": "jam-mode",
+  "steps": [
+    { "goto": "/" },
+    { "pause": 800 },
+    { "click": ".mode-toggle button:has-text('Jam')" },
+    { "type": { "selector": "textarea", "text": "acoustic campfire, 4 guitars, beginners", "delay": 45 } },
+    { "press": "Enter" },
+    { "waitFor": { "selector": ".jam-links", "min": 8, "timeout": 180000 } },
+    { "waitFor": { "selector": ".press-cta", "timeout": 180000 } },
+    { "scroll": { "selector": ".card--jam", "block": "start", "ms": 1000 } },
+    { "pause": 1500 },
+    { "scrollBy": { "y": 3200, "ms": 5000 } },
+    { "pause": 800 },
+    { "hover": "button:has-text('Save to Spotify & share')" },
+    { "pause": 1800 },
+    { "hover": "button:has-text('no Spotify needed')" },
+    { "pause": 2500 },
+    { "goto": "/m/4ly0VUozw6AoCFFbDE8xJP3" },
+    { "waitFor": { "selector": ".card--jam", "timeout": 20000 } },
+    { "pause": 3000 },
+    { "scrollBy": { "y": 900, "ms": 3500 } },
+    { "pause": 1500 },
+    { "scrollBy": { "y": 2600, "ms": 4500 } },
+    { "pause": 2500 }
+  ]
+}

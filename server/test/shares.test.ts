@@ -14,6 +14,9 @@ import {
   makeShares,
   withShareMeta,
   shareMeta,
+  setShareId,
+  shareSetDecision,
+  SET_ID_RE,
 } from "../shares.ts";
 import { shareUrlFor, sharedIdFrom } from "../../client/src/share.ts";
 
@@ -137,5 +140,105 @@ test("the share link is /m/<id> on this site, from a Spotify playlist url", () =
   assert.equal(sharedIdFrom(`/m/${id}`), id);
   assert.equal(sharedIdFrom(`/m/${id}/`), id);
   assert.equal(sharedIdFrom("/m/short"), null);
+  // a shared jam set's id is 23 chars (shares.ts setShareId)
+  assert.equal(sharedIdFrom(`/m/${"C".repeat(23)}`), "C".repeat(23));
+  assert.equal(sharedIdFrom(`/m/${"C".repeat(24)}`), null);
   assert.equal(sharedIdFrom("/"), null);
+});
+
+// ── jam sets: the page keeps the jam look, and one can be shared unsaved ──
+
+test("toShareCard keeps mode only when it is exactly jam; a mix card has no mode key", () => {
+  assert.equal(toShareCard({ ...card(), mode: "jam" })!.mode, "jam");
+  for (const mode of [undefined, "mix", "JAM", 1, { x: 1 }]) {
+    const s = toShareCard({ ...card(), mode })!;
+    assert.ok(!("mode" in s), `mode ${String(mode)} must leave no key`);
+  }
+  // byte-identical to what a mix share file was before jam sets existed
+  assert.equal(
+    JSON.stringify(toShareCard(card())),
+    JSON.stringify({ title: "Rain Tape", vibe: "wet streets", accent: "cobalt", tracks: toShareCard(card())!.tracks }),
+  );
+});
+
+test("a refine's copy takes its mode from the trusted parent, never the browser", () => {
+  const jamParent = toShareCard({ ...card(), mode: "jam" })!;
+  assert.equal(adjustedShareCard(jamParent, card(), new Set())!.mode, "jam");
+  const mixParent = toShareCard(card())!;
+  const forged = adjustedShareCard(mixParent, { ...card(), mode: "jam" }, new Set())!;
+  assert.ok(!("mode" in forged));
+});
+
+test("cardForPress keeps the jam mode", () => {
+  const s = toShareCard({ ...card(), mode: "jam" })!;
+  assert.equal(cardForPress(s, [uri(1), uri(2), uri(3)])!.mode, "jam");
+});
+
+test("a set's share id is 23 base62 chars, the same for the same card, different for another", () => {
+  const a = toShareCard({ ...card(), mode: "jam" })!;
+  const b = toShareCard({ ...card([track(1), track(2), track(4)]), mode: "jam" })!;
+  const id = setShareId(a);
+  assert.match(id, /^[A-Za-z0-9]{23}$/);
+  assert.ok(SET_ID_RE.test(id));
+  assert.equal(setShareId(structuredClone(a)), id);
+  assert.notEqual(setShareId(b), id);
+  // a playlist id is 22: the two can never collide
+  assert.ok(!SET_ID_RE.test("A".repeat(22)));
+  for (let n = 0; n < 200; n++) assert.equal(setShareId({ ...a, title: `t${n}` }).length, 23);
+});
+
+test("shares accept a playlist id (22) or a set id (23), nothing else", () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "mixtape-shares-"));
+  try {
+    const shares = makeShares({ dir });
+    const s = toShareCard({ ...card(), mode: "jam" })!;
+    for (const id of ["A".repeat(22), "B".repeat(23)]) {
+      shares.record(id, s);
+      assert.equal(shares.get(id)!.mode, "jam");
+    }
+    for (const id of ["C".repeat(21), "D".repeat(24), "E".repeat(22) + "!"]) {
+      shares.record(id, s);
+      assert.equal(shares.get(id), null);
+    }
+    assert.deepEqual(fs.readdirSync(path.join(dir, "shares")).sort(), [`${"A".repeat(22)}.json`, `${"B".repeat(23)}.json`]);
+    shares.remove("B".repeat(23));
+    assert.equal(shares.get("B".repeat(23)), null);
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test("shareSetDecision: only the curator's own jam card, with exactly these tracks", () => {
+  const jam = toShareCard({ ...card([track(1), track(2, { resolved: false, spotifyUri: null }), track(3)]), mode: "jam" })!;
+  const ok = shareSetDecision(jam, [uri(1), uri(3)]);
+  assert.ok("card" in ok);
+  assert.deepEqual(ok.card.tracks.map((t) => t.title), ["Song 1", "Song 3"]);
+  assert.equal(ok.card.mode, "jam");
+  assert.equal(ok.id, setShareId(ok.card));
+
+  const none = shareSetDecision(undefined, [uri(1)]);
+  assert.ok("error" in none && none.status === 404);
+  assert.equal(none.error, "This set can't be shared — make it again.");
+
+  // a reshuffled set shares in the band's order, under the same id (one file per set)
+  const reshuffled = shareSetDecision(jam, [uri(3), uri(1)]);
+  assert.ok("card" in reshuffled);
+  assert.deepEqual(reshuffled.card.tracks.map((t) => t.title), ["Song 3", "Song 1"]);
+  assert.equal(reshuffled.id, ok.id);
+
+  // a track that isn't on the card, one missing, or one twice gets nothing
+  for (const bad of [[uri(1), uri(4)], [uri(1)], [uri(1), uri(1)], [uri(1), uri(3), uri(4)]]) {
+    const r = shareSetDecision(jam, bad);
+    assert.ok("error" in r && r.status === 404, JSON.stringify(bad));
+  }
+
+  const mix = shareSetDecision(toShareCard(card())!, [uri(1), uri(2), uri(3)]);
+  assert.ok("error" in mix && mix.status === 400);
+});
+
+test("a jam share says so in its link preview; a mix one is unchanged", () => {
+  const mix = shareMeta({ title: "T", vibe: "v" });
+  assert.equal(mix.description, "“v” Listen on Spotify, or make your own.");
+  const jam = shareMeta({ title: "T", vibe: "v", mode: "jam" });
+  assert.ok(jam.description.includes("jam set"));
 });

@@ -1,0 +1,27 @@
+{
+  "name": "jam-mode",
+  "base": "http://127.0.0.1:8889",
+  "viewport": "phone",
+  "fixture": "jam-mode",
+  "steps": [
+    { "goto": "/" },
+    { "pause": 1200 },
+    { "click": ".mode-toggle button:has-text('Jam')" },
+    { "pause": 600 },
+    { "type": { "selector": "textarea", "text": "acoustic campfire, 4 guitars, beginners", "delay": 70 } },
+    { "pause": 500 },
+    { "press": "Enter" },
+    { "waitFor": { "selector": ".card:not(.sample-card)", "timeout": 180000 } },
+    { "scroll": { "selector": ".card:not(.sample-card)", "block": "start", "ms": 1200 } },
+    { "waitFor": { "selector": ".jam-links", "min": 8, "timeout": 180000 } },
+    { "waitFor": { "selector": ".press-cta", "timeout": 180000 } },
+    { "pause": 1000 },
+    { "scroll": { "selector": ".jam-links", "block": "center", "ms": 1500 } },
+    { "pause": 1200 },
+    { "scrollBy": { "y": 1400, "ms": 7000 } },
+    { "hover": ".jam-links >> nth=5 >> a:nth-child(2)" },
+    { "pause": 2000 },
+    { "scroll": { "selector": ".press-cta", "block": "center", "ms": 1500 } },
+    { "pause": 1500 }
+  ]
+}

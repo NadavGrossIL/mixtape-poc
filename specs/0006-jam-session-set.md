@@ -332,3 +332,20 @@ The owner wants jam mode shown only to people given a specific link. Added
 - Owed by the owner: document `JAM_INVITE` in `server/.env.example` (never
   tier) and set it on Railway.
 
+
+### Jam eval (2026-11-24, run `evals/runs/2026-11-24T07-42-30-367Z`)
+
+- Mix gate run not owed: `systemFor("mix")` is `SYSTEM` byte for byte
+  (`git diff c0eb02d` changes no SYSTEM text; `curator.test.ts` asserts it).
+- 4 jam cards, 32 notes. Resolution 32/32 (pass). Regex scan: zero matches
+  (pass). Invented 1/19 checkable (Riptide "opens its own EP"; it is track 2
+  on the 2013 EP), reported, not gated; all four thresholds met anyway.
+- Human read: no chord, key, capo, tuning or tempo. Four soft
+  difficulty/ease phrasings slip past the rules: "easy for two voices to
+  find harmony" (Can't Help Falling in Love), "the song nearly every beginner
+  learns first" (Wonderwall), "loose and forgiving for every instrument"
+  (Louie Louie), "a simple strumming pattern" (Let Her Cry). None is a
+  checkable fact a chord site would contradict; left as is, a candidate for
+  a later JAM_RULES tightening plus an eval rerun.
+- Jam `card.mode` is set by the generate route, not the curator, so eval
+  cards carry no `mode` key; expected.

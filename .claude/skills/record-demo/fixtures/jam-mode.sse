@@ -1,0 +1,81 @@
+event: curating
+data: {"prompt":"acoustic campfire, 4 guitars, beginners"}
+
+event: track
+data: {"index":0,"artist":"Bob Marley & The Wailers","title":"Three Little Birds"}
+
+event: track
+data: {"index":1,"artist":"America, George Martin","title":"A Horse with No Name"}
+
+event: track
+data: {"index":2,"artist":"Ben E. King","title":"Stand By Me"}
+
+event: track
+data: {"index":3,"artist":"Old Crow Medicine Show","title":"Wagon Wheel"}
+
+event: track
+data: {"index":4,"artist":"Oasis","title":"Wonderwall"}
+
+event: track
+data: {"index":5,"artist":"John Denver","title":"Take Me Home, Country Roads - Original Version"}
+
+event: track
+data: {"index":6,"artist":"Bob Dylan","title":"Knockin' On Heaven's Door"}
+
+event: track
+data: {"index":7,"artist":"Creedence Clearwater Revival","title":"Have You Ever Seen The Rain"}
+
+event: curated
+data: {"count":8,"title":"Four Guitars, One Fire"}
+
+event: resolving
+data: {"index":0,"artist":"Bob Marley & The Wailers","title":"Three Little Birds"}
+
+event: resolving
+data: {"index":1,"artist":"America, George Martin","title":"A Horse with No Name"}
+
+event: resolving
+data: {"index":2,"artist":"Ben E. King","title":"Stand By Me"}
+
+event: resolved
+data: {"index":0,"artist":"Bob Marley & The Wailers","title":"Three Little Birds","resolved":true,"matched":"Bob Marley & The Wailers — Three Little Birds"}
+
+event: resolving
+data: {"index":3,"artist":"Old Crow Medicine Show","title":"Wagon Wheel"}
+
+event: resolved
+data: {"index":1,"artist":"America, George Martin","title":"A Horse with No Name","resolved":true,"matched":"America, George Martin — A Horse with No Name"}
+
+event: resolving
+data: {"index":4,"artist":"Oasis","title":"Wonderwall"}
+
+event: resolved
+data: {"index":2,"artist":"Ben E. King","title":"Stand By Me","resolved":true,"matched":"Ben E. King — Stand By Me"}
+
+event: resolving
+data: {"index":5,"artist":"John Denver","title":"Take Me Home, Country Roads - Original Version"}
+
+event: resolved
+data: {"index":3,"artist":"Old Crow Medicine Show","title":"Wagon Wheel","resolved":true,"matched":"Old Crow Medicine Show — Wagon Wheel"}
+
+event: resolving
+data: {"index":6,"artist":"Bob Dylan","title":"Knockin' On Heaven's Door"}
+
+event: resolved
+data: {"index":4,"artist":"Oasis","title":"Wonderwall","resolved":true,"matched":"Oasis — Wonderwall"}
+
+event: resolving
+data: {"index":7,"artist":"Creedence Clearwater Revival","title":"Have You Ever Seen The Rain"}
+
+event: resolved
+data: {"index":5,"artist":"John Denver","title":"Take Me Home, Country Roads - Original Version","resolved":true,"matched":"John Denver — Take Me Home, Country Roads - Original Version"}
+
+event: resolved
+data: {"index":6,"artist":"Bob Dylan","title":"Knockin' On Heaven's Door","resolved":true,"matched":"Bob Dylan — Knockin' On Heaven's Door"}
+
+event: resolved
+data: {"index":7,"artist":"Creedence Clearwater Revival","title":"Have You Ever Seen The Rain","resolved":true,"matched":"Creedence Clearwater Revival — Have You Ever Seen The Rain"}
+
+event: done
+data: {"card":{"title":"Four Guitars, One Fire","vibe":"For circles of beginners trading verses till the embers die down.","accent":"rust","tracks":[{"ref":"7vggqxNKwd6xdRoYS0pQtM","artist":"Bob Marley & The Wailers","title":"Three Little Birds","note":"That gentle up-down skank lets all four guitars lock into the same lazy groove right away.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/7vggqxNKwd6xdRoYS0pQtM","spotifyUri":"spotify:track:7vggqxNKwd6xdRoYS0pQtM","albumArt":"https://i.scdn.co/image/ab67616d00004851413a6c2c7b296d98171e5e21","matchedName":"Bob Marley & The Wailers — Three Little Birds","durationMs":180440,"year":2002},{"ref":"54eZmuggBFJbV7k248bTTt","artist":"America, George Martin","title":"A Horse with No Name","note":"One hypnotic two-part vamp repeats the whole song, perfect for newer hands to settle into.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/54eZmuggBFJbV7k248bTTt","spotifyUri":"spotify:track:54eZmuggBFJbV7k248bTTt","albumArt":"https://i.scdn.co/image/ab67616d00004851cc2ef2810c85fde8ec60cbc4","matchedName":"America, George Martin — A Horse with No Name","durationMs":252239,"year":1972},{"ref":"7jmHyHMEqm9MJWiMAneF05","artist":"Ben E. King","title":"Stand By Me","note":"That walking bass line everyone can hum means one guitar can carry it while others join the vocal.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/7jmHyHMEqm9MJWiMAneF05","spotifyUri":"spotify:track:7jmHyHMEqm9MJWiMAneF05","albumArt":"https://i.scdn.co/image/ab67616d00004851492d1fbc99ce045b8dd63244","matchedName":"Ben E. King — Stand By Me","durationMs":175493,"year":1962},{"ref":"5aAHai9OzUlkYPk2TJ4LLp","artist":"Old Crow Medicine Show","title":"Wagon Wheel","note":"The whole circle shouts the chorus together here — this is where the fire gets loud.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/5aAHai9OzUlkYPk2TJ4LLp","spotifyUri":"spotify:track:5aAHai9OzUlkYPk2TJ4LLp","albumArt":"https://i.scdn.co/image/ab67616d000048515539b9bd72451f2f177f4fd3","matchedName":"Old Crow Medicine Show — Wagon Wheel","durationMs":232133,"year":2004},{"ref":"35EfXlRKogBr1RvrkFBMHr","artist":"Oasis","title":"Wonderwall","note":"Still the campfire cliché for a reason — every voice knows this chorus by heart.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/35EfXlRKogBr1RvrkFBMHr","spotifyUri":"spotify:track:35EfXlRKogBr1RvrkFBMHr","albumArt":"https://i.scdn.co/image/ab67616d00004851d63ea8320406ecbfe96df72a","matchedName":"Oasis — Wonderwall","durationMs":258906,"year":1995},{"ref":"1YYhDizHx7PnDhAhko6cDS","artist":"John Denver","title":"Take Me Home, Country Roads - Original Version","note":"A pure singalong built for a group — let the loudest voices take the title line.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/1YYhDizHx7PnDhAhko6cDS","spotifyUri":"spotify:track:1YYhDizHx7PnDhAhko6cDS","albumArt":"https://i.scdn.co/image/ab67616d00004851795c9ba853f5a9f7a88b4e31","matchedName":"John Denver — Take Me Home, Country Roads - Original Version","durationMs":193937,"year":1971},{"ref":"6HSXNV0b4M4cLJ7ljgVVeh","artist":"Bob Dylan","title":"Knockin' On Heaven's Door","note":"Slow, spacious and repetitive, it gives tired fingers room to breathe as the energy drops.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/6HSXNV0b4M4cLJ7ljgVVeh","spotifyUri":"spotify:track:6HSXNV0b4M4cLJ7ljgVVeh","albumArt":"https://i.scdn.co/image/ab67616d000048516c86683d20c72e3874c11c6d","matchedName":"Bob Dylan — Knockin' On Heaven's Door","durationMs":149880,"year":1973},{"ref":"5DnT9a5IM3eMjKgXTWVJvi","artist":"Creedence Clearwater Revival","title":"Have You Ever Seen The Rain","note":"A warm, rolling closer that winds the circle down as the fire burns low.","resolved":true,"spotifyUrl":"https://open.spotify.com/track/5DnT9a5IM3eMjKgXTWVJvi","spotifyUri":"spotify:track:5DnT9a5IM3eMjKgXTWVJvi","albumArt":"https://i.scdn.co/image/ab67616d000048519b7a4a59ac03447db7491f37","matchedName":"Creedence Clearwater Revival — Have You Ever Seen The Rain","durationMs":160333,"year":1970}],"threadId":"f1cf229a-6bf5-49ad-b504-04b124b31923","prompt":"acoustic campfire, 4 guitars, beginners","mode":"jam"},"verified":8}
+

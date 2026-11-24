@@ -29,7 +29,15 @@ file is a map. The reasoning lives next to the code as comments; read those.
   curator runs, per kind for guests (2 new mixtapes, 2 refines, 5 replaces,
   each refused in its own words) under per-IP and all-guests totals; it
   replaced `caps.ts`'s one shared allowance on the run routes, and
-  `caps.ts`'s `makeCaps` now only backs `pressCaps.ts`. `pressCaps.ts` caps `/api/playlist`, the one paid
+  `caps.ts`'s `makeCaps` now only backs `pressCaps.ts`. `jamMode.ts`
+  (2026-11-23, `specs/0006`) decides who gets jam mode — `JAM_MODE=1`
+  everyone, or `JAM_INVITE` (16+ chars) only browsers that opened
+  `/?jam=<secret>` — and which curator rules a run gets (`systemFor` in
+  `curator.ts`; the mix prompt is byte-identical, tested). `shares.ts` is
+  the `/m/<id>` share page: it shows only words this server's curator wrote
+  (the trusted-card map). A 22-char id is a Spotify playlist; a 23-char id
+  is a jam set shared without saving, via `POST /api/share`
+  (2026-11-24, no model or Spotify call, no caps). `pressCaps.ts` caps `/api/playlist`, the one paid
   route reachable without the curator; `metrics.ts` is the per-day funnel
   (`makeMetrics({ dir, today })`, `DATA_DIR` or beside the code — an
   ephemeral disk resets it); `health.ts` decides what `/healthz` fails on
@@ -61,7 +69,8 @@ file is a map. The reasoning lives next to the code as comments; read those.
   surface, the log console included · pure modules flat in `src/`,
   unit-tested from `server/test/` (so no `react`, no DOM, `.ts` on internal
   imports): `card.ts` `seed.ts` `runFailure.ts` `failures.ts` `recent.ts`
-  `latest.ts` `share.ts` and the run reducers `generationRun.ts`
+  `latest.ts` `share.ts` `currentCard.ts` (the card survives a link out and
+  Back) `jamLinks.ts` `jamNow.ts` and the run reducers `generationRun.ts`
   `refineRun.ts` `saveRun.ts` · `debug.ts` is the `?debug` switch for the
   log console · `analytics.ts` (2026-11-23) is PostHog product analytics:
   clicks, replay and the named run events, off unless `VITE_POSTHOG_KEY`
